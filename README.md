@@ -6,6 +6,19 @@ DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek 
 
 It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
 
+## Key features
+
+- **Plugin-first architecture.** Every capability — the agent loop, tools, sandboxing, storage, the Web UI — is a Cordis plugin composed from `cordis.yml` patch layers. A deployment picks its stack by composition, not by forking.
+- **Multiple runtime surfaces.** The same composed tree powers the [Web UI](docs/user/guide/index.md), the CLI, one-shot headless tasks, an ACP automation server, a JSON-RPC SDK, and the Python SDK.
+- **Full agent stack.** Sessions with durable JSONL persistence, system prompts, a tool registry, the agent loop, subagents, background jobs, workflow definitions, and automatic context compaction.
+- **Sandboxed execution.** Bash/pwsh shells, a code-execution runtime with Code Mode, and a process-confinement seam backed by bwrap, Landlock, and Seatbelt — each guarded by per-session approval and sandbox policy.
+- **Workspace-native tools.** Filesystem read/write/edit with observation policy, git workflows, Excalidraw whiteboards shared between the model and the UI, web search and fetch, LSP, and a skill registry.
+- **Session intelligence.** Projection read models (session stats, token usage), SQLite full-text search over history, lineage and relationship queries, and session log export.
+- **Extensible surfaces.** Agent presets for per-session composition, installable `dsh --profile` bundle patch layers, hooks bridges for Claude Code and Codex, MCP server integration, and self-modifying extensions.
+- **User plane.** User settings with a file backend, credential references, human feedback, goals, plan mode, and interactive approval flows.
+
+See [packages/README.md](packages/README.md) for the package inventory and [docs/architecture.md](docs/architecture.md) for how the pieces compose.
+
 ## Developer preview
 
 DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**

@@ -13,7 +13,75 @@ Web GUI polish plugin, browser half plus a small host half — enhancements that
 
 The host half registers the `/git`, `/bg`, and `/scene` route prefixes on the host webserver, resolving each request's `cwd` against the live workspace registry (switching workspaces switches the repository without a restart), and runs `git` through `execFile` with array arguments (no shell). Paths containing `..` or separators are rejected, unknown cwds fall back to the host process cwd, and a non-repo directory shows a quiet notice.
 
-The `/client` exports are the plugin body (`apply`/`inject`), the component prop types, and the injected background-write face type.
+## Installation
+
+Mount the plugin as a browser-roster row in the web-app bundle (`cordis.patch.yml`), exactly like the built-in client plugins; the shipped `dsh-web-app` patch already carries it:
+
+```yaml ignore-check
+- id: ui-polish
+  name: '@deepseek-ai/dsh-client-ui-polish'
+```
+
+The model-facing whiteboard tools (`excalidraw_read`/`write`/`draw`/`export`) live in the separate [`@deepseek-ai/dsh-tool-excalidraw`](../../fs/tool-excalidraw/README.md) package and mount through an agent-preset row (the shipped `standard` preset already carries it):
+
+```yaml ignore-check
+- id: tool-excalidraw
+  name: '@deepseek-ai/dsh-tool-excalidraw'
+```
+
+The node half waits for the optional `settings` and `webServer` services via `ctx.inject`, so the plugin loads harmlessly in compositions without them.
+
+## Settings
+
+The plugin owns the `ui-polish` namespace in the user-settings document (validated by `PolishSettingsSchema`):
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `backgroundImage` | `string` (URL) | absent | Served background image (`/bg/current`), or a legacy data URL; absent clears the background. |
+| `compactionThresholdRatio` | `number` (0.5–0.8) | absent (harness 0.8) | Pressure ratio at which the node half asks the session's compaction service to compact. |
+| `modelPricing` | `string` (JSON) | absent (built-in seed card) | User-edited rate card pricing the stats float; see **Model rate card** below. |
+
+Only the background-image and compaction fields existed in the original standalone plugin; the rate card is the integrated package's extension (see the next section).
+
+## Model rate card
+
+The stats float prices each settled assistant message at its own model's rate and settle time against a rate card (CNY per 1M tokens). The built-in card in `src/client/model-pricing.json` is a snapshot converted from the amaxsmp gateway pricing; the General-settings **Model rate card** row edits the card as JSON (`{ default, models }`) and persists it in `modelPricing`. A saved card survives restarts and re-prices the float immediately; invalid JSON or a non-finite price is rejected with a field-level message and nothing is persisted. Unknown models fall back to the card's `default` entry; time-tiered models (deepseek) switch at peak/off-peak boundaries and length-tiered models pick the tier covering the billed input.
+
+## Host routes
+
+The node half registers three prefixes on the host webserver; every request carries the workspace `cwd` (in the query for GETs, in the JSON body for POSTs) resolved per request against the live workspace registry:
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/git/list` | POST `{cwd, dir?}` | Directory entries (files + subdirs), directories first; `dir` is repo-relative. |
+| `/git/read` | POST `{cwd, path}` | File content (or a data URL for image previews). |
+| `/git/write` | POST `{cwd, path, content}` | Overwrite a file in place. |
+| `/git/status` | GET `?cwd` | Branch + porcelain working-tree status. |
+| `/git/diff` | GET `?cwd&path` | Working-tree diff for one file. |
+| `/git/log` | GET `?cwd` | Recent commit subjects. |
+| `/git/commit` | POST `{cwd, message}` | `add -A` + commit. |
+| `/git/push` | POST `{cwd}` | Push the current branch. |
+| `/bg/current` | GET | The persisted background image file. |
+| `/bg/upload` | POST (raw body) | Upload a background image (≤ 2MB); returns `{url}`. |
+| `/bg` | DELETE | Best-effort delete of the persisted file. |
+| `/scene/current` | POST `{cwd}` | The workspace Excalidraw scene JSON, or 404 when none exists. |
+| `/scene/write` | POST `{cwd, scene}` | Overwrite the workspace scene file (validated JSON). |
+
+`git` runs through `execFile` with array arguments — no shell, so paths and commit messages never reach a shell. Paths containing `..` or a path separator are rejected, and an unknown `cwd` falls back to the host process directory (the browser tabs then show a non-repo notice).
+
+## Slots
+
+The browser half registers into five slots:
+
+| Slot | id | Purpose |
+|---|---|---|
+| `settings.general.item` | `polish-background` | Background image upload / preview / remove. |
+| `settings.general.item` | `polish-compaction` | Automatic-compaction threshold select. |
+| `settings.general.item` | `polish-pricing` | Model rate card JSON editor. |
+| `conversation.composer.dock` | `polish-stats` | Session stats float with cost (viewport-pinned). |
+| `conversation.view` | `files` | Workspace file browser / editor. |
+| `conversation.view` | `git` | Git panel (status, diff, commit, push, log). |
+| `conversation.view` | `excalidraw` | Excalidraw whiteboard tab. |
 
 ## Model Experience
 

@@ -6,6 +6,19 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
 
+## 核心特性
+
+- **插件优先的架构。** 每一项能力——agent 循环、工具、沙箱、存储、Web UI——都是一个 Cordis 插件，由 `cordis.yml` patch 层组合而成。部署通过组合而非 fork 来选择自己的技术栈。
+- **多运行表面。** 同一棵组合树驱动 [Web UI](docs/user/guide/index.md)、CLI、一次性 headless 任务、ACP 自动化服务器、JSON-RPC SDK 与 Python SDK。
+- **完整的 agent 栈。** 带持久化 JSONL 的会话、系统提示、工具注册表、agent 循环、子代理、后台任务、工作流定义与自动上下文压缩。
+- **沙箱化执行。** bash/pwsh shell、带 Code Mode 的代码执行运行时、由 bwrap、Landlock 与 Seatbelt 支撑的进程约束接缝——每一项都由逐会话审批与沙箱策略守护。
+- **工作区原生工具。** 带观察策略的文件系统读写编辑、git 工作流、模型与 UI 共享的 Excalidraw 白板、web 搜索与抓取、LSP 与技能注册表。
+- **会话智能。** 投影读模型（会话统计、token 用量）、历史 SQLite 全文检索、谱系与关系查询、会话日志导出。
+- **可扩展表面。** 逐会话组合的 agent 预设、可安装的 `dsh --profile` bundle patch 层、Claude Code 与 Codex 的 hooks 桥、MCP 服务器集成与自修改扩展。
+- **用户平面。** 带文件后端的用户设置、凭据引用、人工反馈、目标、计划模式与交互式审批流程。
+
+包清单见 [packages/README.md](packages/README.md)，各部分如何组合见 [docs/architecture.md](docs/architecture.md)。
+
 ## 开发者预览
 
 DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**

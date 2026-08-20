@@ -12,6 +12,25 @@ The **model-facing Excalidraw scene tools** — `excalidraw_read`, `excalidraw_w
 
 Mount the row in an agent preset (the shipped `standard` preset already does). The tools derive their target workspace from the calling agent's session: a session owned by a known workspace uses that workspace's path, otherwise the session cwd; a caller with neither is rejected.
 
+## Scene file
+
+All four tools read and write the same file: `<workspace>/.dsh/excalidraw/scene.json` (the `SCENE_RELATIVE` export), an Excalidraw scene object with an `elements` array and an `appState` object. The file lives under the workspace's hidden `.dsh` directory, out of the visible working tree, and is the exact file the web canvas tab (`@deepseek-ai/dsh-client-ui-polish`'s `/scene` routes) renders — so a model draw appears on the whiteboard live, and a canvas edit is what the next tool call reads.
+
+The scene is plain JSON; the tools enforce the following boundaries:
+
+| Boundary | Value |
+|---|---|
+| `excalidraw_read` full-JSON echo cap | 128 KB |
+| `excalidraw_write` scene size cap | 1 MB |
+| `excalidraw_draw` elements per call | 256 |
+| Export path escape | rejected (`..`, leading `/`, backslash) |
+
+A missing scene reads as an empty canvas; a corrupt (non-JSON) scene reads as empty with an `error` field and refuses writes only at parse time.
+
+## Security
+
+Scene and export paths resolve inside the calling workspace: `excalidraw_export`'s `path` argument must stay workspace-relative (no `..`, no leading slash, no backslash), and the scene file itself is always the workspace-relative `SCENE_RELATIVE`. The tools use node's `fs/promises` with no shell involved, so a model-supplied path can never escape the workspace or reach a shell.
+
 ## Model Experience
 
 ### Tool schemas

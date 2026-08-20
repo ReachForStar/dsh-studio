@@ -12,6 +12,25 @@
 
 在 agent 预设中挂载该行（内置 `standard` 预设已包含）。工具从调用 agent 的会话推导目标工作区：会话归属已知工作区时使用该工作区路径，否则使用会话 cwd；两者皆无的调用被拒绝。
 
+## 场景文件
+
+四个工具读写同一个文件：`<workspace>/.dsh/excalidraw/scene.json`（`SCENE_RELATIVE` 导出），即含 `elements` 数组与 `appState` 对象的 Excalidraw 场景对象。文件位于工作区的隐藏 `.dsh` 目录下，不在可见工作树中，且正是 web 画布标签页（`@deepseek-ai/dsh-client-ui-polish` 的 `/scene` 路由）渲染的同一文件——因此模型绘制会实时出现在白板上，画布编辑也是下次工具调用读到的内容。
+
+场景是普通 JSON；工具实施以下边界：
+
+| 边界 | 值 |
+|---|---|
+| `excalidraw_read` 完整 JSON 回显上限 | 128 KB |
+| `excalidraw_write` 场景大小上限 | 1 MB |
+| `excalidraw_draw` 每次调用元素数 | 256 |
+| 导出路径逃逸 | 拒绝（`..`、前导 `/`、反斜杠） |
+
+缺失场景读作空白画布；损坏（非 JSON）场景读作空白并带 `error` 字段，仅在解析时拒绝写入。
+
+## 安全
+
+场景与导出路径解析在调用工作区内：`excalidraw_export` 的 `path` 参数必须保持工作区相对（无 `..`、无前导 `/`、无反斜杠），场景文件本身始终是工作区相对的 `SCENE_RELATIVE`。工具使用 node 的 `fs/promises`，不涉及 shell，因此模型提供的路径永远不会逃出工作区或到达 shell。
+
 ## Model Experience
 
 ### Tool schemas

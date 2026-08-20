@@ -6,6 +6,16 @@ DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek 
 
 It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
 
+**This repository is a customized fork** of the official [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): it tracks the official release as its base and layers the Web GUI polish, the model-facing whiteboard tools, and the Pi delegation backend described in the next section on top. Everything stays a Cordis plugin, so the additions mount by composition and the official core remains intact.
+
+## Customizations over the official release
+
+| Package | What this fork adds |
+|---|---|
+| [`@deepseek-ai/dsh-client-ui-polish`](packages/client/ui-polish/README.md) | Web GUI polish: a whole-app background image, a session stats float pricing each settled message at its model's rate against an editable rate card, in-place file and git panels in the conversation view, an embedded Excalidraw whiteboard tab sharing one scene with the model's tools, and a configurable automatic-compaction threshold. |
+| [`@deepseek-ai/dsh-tool-excalidraw`](packages/fs/tool-excalidraw/README.md) | Model-facing whiteboard tools — `excalidraw_read`, `excalidraw_write`, `excalidraw_draw`, `excalidraw_export` — over the workspace scene file the canvas tab renders. |
+| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.md) | A subagent provider that delegates a task to the [Pi coding agent](https://github.com/earendil-works/pi) over its RPC mode; the [`pi-dsh` example](examples/pi-dsh/README.md) covers the reverse Pi→dsh direction. |
+
 ## Key features
 
 - **Plugin-first architecture.** Every capability — the agent loop, tools, sandboxing, storage, the Web UI — is a Cordis plugin composed from `cordis.yml` patch layers. A deployment picks its stack by composition, not by forking.
@@ -35,12 +45,14 @@ npx @deepseek-ai/dsh web
 
 The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
 
+This path installs the official build; the customizations in this fork are available only from this repository's source.
+
 ### Run from source
 
 To run from a repository checkout:
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
+git clone https://github.com/ReachForStar/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build

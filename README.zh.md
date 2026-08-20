@@ -6,6 +6,16 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
 
+**本仓库是基于官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的自定义分支**：它以官方发布版为基础，并在其上叠加了下一节所述的 Web GUI 打磨、模型面向的白板工具与 Pi 委派后端。所有新增仍以 Cordis 插件形态交付，通过组合挂载，官方核心保持不变。
+
+## 相对官方版本的定制
+
+| 包 | 本分支新增 |
+|---|---|
+| [`@deepseek-ai/dsh-client-ui-polish`](packages/client/ui-polish/README.md) | Web GUI 打磨：全局背景图片、按模型单价估算每条已结算消息费用的会话统计浮窗（模型费率卡可编辑）、会话视图内的就地文件与 git 面板、内嵌 Excalidraw 白板标签页（与模型的工具共享同一场景）、可配置的自动压缩上下文阈值。 |
+| [`@deepseek-ai/dsh-tool-excalidraw`](packages/fs/tool-excalidraw/README.md) | 模型面向的白板工具——`excalidraw_read`、`excalidraw_write`、`excalidraw_draw`、`excalidraw_export`——读写画布标签页渲染的同一工作区场景文件。 |
+| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.md) | 通过 RPC 模式把任务委派给 [Pi 编码 agent](https://github.com/earendil-works/pi) 的子代理提供方；[`pi-dsh` 示例](examples/pi-dsh/README.md)覆盖反向的 Pi→dsh 委派。 |
+
 ## 核心特性
 
 - **插件优先的架构。** 每一项能力——agent 循环、工具、沙箱、存储、Web UI——都是一个 Cordis 插件，由 `cordis.yml` patch 层组合而成。部署通过组合而非 fork 来选择自己的技术栈。
@@ -35,12 +45,14 @@ npx @deepseek-ai/dsh web
 
 该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.md)。
 
+该路径安装的是官方构建；本分支的定制仅在本仓库源码中可用。
+
 ### 从源码运行
 
 如需从仓库源码运行：
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
+git clone https://github.com/ReachForStar/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build

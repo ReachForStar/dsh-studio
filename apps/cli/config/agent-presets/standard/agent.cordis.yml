@@ -61,6 +61,11 @@
   config:
     sampleOverCapGlobResults: false
 
+# Excalidraw whiteboard scene tools: read/write/draw/export the workspace
+# scene file that the web canvas tab renders (`<workspace>/.dsh/excalidraw/`).
+- id: tool-excalidraw
+  name: '@deepseek-ai/dsh-tool-excalidraw'
+
 # ── background jobs ────────────────────────────────────────────────────────
 
 # Only the model-facing controls. The task REGISTRY stays on the host plane:

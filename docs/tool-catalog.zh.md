@@ -26,6 +26,7 @@
 | `@deepseek-ai/dsh-tool-bash-persistent` | `bash` | `ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 bash 工具；部署组合提供 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 pwsh 工具，持久 bash 工具的 Windows 对应物；部署组合提供 pwsh 方言的 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`、`ctx.fs` | `tool/call`、`fs/observed after view presence/absence, edit absence, or successful mutation`、`tool/result` | - | 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。 |
+| `@deepseek-ai/dsh-tool-excalidraw` | `excalidraw_draw`、`excalidraw_export`、`excalidraw_read`、`excalidraw_write` | `ctx.tools`、`ctx.workspaceRegistry` | `tool/call`、`tool/result` | - | 白板场景工具从调用 agent 的会话推导目标工作区；无归属工作区的调用被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 web 画布标签页共享。 |
 | `@deepseek-ai/dsh-tool-fs` | `edit`、`read`、`read_image`、`write` | `ctx.tools`、`ctx.fs`、`ctx.systemPrompt`、`ctx.attachments (read_image registration)`、`ctx.llm + an image-capable route (read_image execution)` | `tool/call`、`fs/write-intent or fs/edit-intent for mutations`、`fs/observed after read presence/absence or successful file operation`、`durable attachment (read_image)`、`tool/result` | - | 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时 `read_image` 不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图像输入，否则拒绝。 |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`、`grep` | `ctx.tools`、`ctx.subprocess`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | glob 和 grep 是无条件可用的发现工具，通过 ctx.subprocess spawn 随包提供的 ripgrep 二进制文件（`@vscode/ripgrep`），并作为普通前台调用运行，绝不作为后台任务；无需在宿主机安装 `rg`，也不经过 shell 层。本目录使用 `sampleOverCapGlobResults: true`；部署必须显式选择该行为。结果超过上限时，会通过可选的 ctx.spillStore 后端保存完整的格式化列表；在共置部署中，如果后端公开本地路径，返回的定位信息可供后续读取／搜索。 |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`、`terminal_list`、`terminal_open`、`terminal_read`、`terminal_send`、`terminal_signal` | `ctx.tools`、`ctx.terminals`、`ctx.systemPrompt`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | 这 6 个终端工具需要选择启用，用于补充一次性 bash／文件系统工具。`terminal_send(run_in_background: true)` 会注册到 `ctx.jobs`；schema 不包含 TUI、具名按键序列、BEL、调整尺寸、自动启动和跨 agent 共享。 |
@@ -628,6 +629,154 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 来源：[`packages/fs/tool-str-replace-editor/src/index.ts`](../packages/fs/tool-str-replace-editor/src/index.ts)
 
 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。
+
+<a id="deepseek-aidsh-tool-excalidraw"></a>
+
+## `@deepseek-ai/dsh-tool-excalidraw`
+
+### `excalidraw_draw`
+
+在当前工作区的 Excalidraw 画布（共享白板）上绘制形状。以高层方式描述形状——无需了解 Excalidraw 内部。可用于绘制图表、流程图或在画布上推演问题（如几何）。`action: "append"` 添加到现有场景；`action: "replace"` 先清空画布。支持的 `type` 取值："rectangle"、"ellipse"、"diamond"、"text"（内容放在 `text`）、"arrow"、"line"（可选 `points` 为 [[x1,y1],[x2,y2],...]，否则使用跨盒对角线）。坐标为画布像素（左上原点）。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "elements": {
+      "type": "array",
+      "description": "Shapes to draw.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "One of rectangle/ellipse/diamond/text/arrow/line."
+          },
+          "x": {
+            "type": "number",
+            "description": "Left edge in canvas pixels."
+          },
+          "y": {
+            "type": "number",
+            "description": "Top edge in canvas pixels."
+          },
+          "width": {
+            "type": "number",
+            "description": "Width in canvas pixels."
+          },
+          "height": {
+            "type": "number",
+            "description": "Height in canvas pixels."
+          },
+          "text": {
+            "type": "string",
+            "description": "Text content (for type \"text\")."
+          },
+          "points": {
+            "type": "array",
+            "description": "Line/arrow points as [[x,y],...] (optional)."
+          },
+          "strokeColor": {
+            "type": "string",
+            "description": "Outline color (CSS color)."
+          },
+          "backgroundColor": {
+            "type": "string",
+            "description": "Fill color (CSS color)."
+          },
+          "fillStyle": {
+            "type": "string",
+            "description": "hachure/solid/cross-hatch/zigzag."
+          },
+          "strokeWidth": {
+            "type": "number",
+            "description": "Outline width in pixels."
+          },
+          "opacity": {
+            "type": "number",
+            "description": "Opacity 0-100."
+          }
+        },
+        "required": [
+          "type",
+          "x",
+          "y",
+          "width",
+          "height"
+        ]
+      }
+    },
+    "action": {
+      "type": "string",
+      "description": "\"append\" (default) adds shapes; \"replace\" clears the canvas first."
+    }
+  },
+  "required": [
+    "elements"
+  ]
+}
+```
+
+来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_export`
+
+将当前工作区的 Excalidraw 画布导出为工作区内的 SVG 图片文件（纯 node 侧渲染——无需浏览器）。读取画布标签页显示的同一场景，并在 `<workspace>/<path>` 写入矢量 SVG（默认 `.dsh/excalidraw/export.svg`）。用它持久化模型绘制的图表，以便查看、提交或在别处转换。SVG 使用平面填充/描边（无手绘纹理）；文本保留其内容与字号。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Workspace-relative output path (e.g. \"docs/flow.svg\"); default \".dsh/excalidraw/export.svg\"."
+    },
+    "transparent": {
+      "type": "boolean",
+      "description": "When true, the SVG has a transparent background; default uses the canvas background color."
+    }
+  }
+}
+```
+
+来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_read`
+
+读取当前工作区的 Excalidraw 画布场景。返回摘要（按类型统计的元素数、文本元素、主题）、紧凑的 `elements` 列表（id/type/x/y/width/height/text）以便你推断画布上的内容，以及较小时在 `sceneJson` 中的完整场景 JSON 字符串。用 `excalidraw_draw` 添加形状，或用 `excalidraw_write` 替换场景。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_write`
+
+用完整场景 JSON 字符串（`excalidraw_read` 的 `sceneJson` 所产形状：含 `elements` 与 `appState` 的对象）覆盖当前工作区的 Excalidraw 画布场景。画布标签页渲染的正是该文件。缺失的场景文件会被创建。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scene": {
+      "type": "string",
+      "description": "Complete Excalidraw scene JSON (object with `elements` array and `appState` object)."
+    }
+  },
+  "required": [
+    "scene"
+  ]
+}
+```
+
+来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+白板场景工具从调用 agent 的会话推导目标工作区；无归属工作区的调用被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 @deepseek-ai/dsh-client-ui-polish 中的 web 画布标签页共享。
 
 <a id="deepseek-aidsh-tool-fs"></a>
 

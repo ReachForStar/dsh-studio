@@ -2319,6 +2319,49 @@ export interface Config {
 
 来源：[`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
 
+<a id="deepseek-aidsh-subagent-pi"></a>
+
+## `@deepseek-ai/dsh-subagent-pi`
+
+需要：`subagents` · `subprocess`
+
+```ts config-catalog
+/** Deployment-owned environment, process-release bounds, and Pi directories. */
+export interface Config {
+  /**
+   * Explicit environment entries layered over the subprocess seam's
+   * credential-scrubbed parent environment. Pi credentials (for example
+   * `DEEPSEEK_API_KEY`) and any Pi extension variables belong here.
+   */
+  env?: Record<string, string>
+  /** Grace in milliseconds for Pi's cooperative EOF shutdown before termination. */
+  disposeEofGraceMs?: number
+  /** Grace in milliseconds for app-server process-tree termination. */
+  disposeGraceMs?: number
+  /**
+   * Pi executable (bare name on `PATH`) or a test fixture launcher; the
+   * provider appends `--mode rpc`.
+   */
+  command?: string
+  /** Fixed arguments appended after the Pi executable. */
+  args?: string[]
+  /**
+   * Absolute `PI_CODING_AGENT_DIR` override naming where Pi keeps agent
+   * settings and trust state. When omitted, Pi uses its native home
+   * (`~/.pi/agent`). Wins over an `env.PI_CODING_AGENT_DIR` entry.
+   */
+  agentDir?: string
+  /**
+   * Absolute `PI_CODING_AGENT_SESSION_DIR` override naming where Pi keeps
+   * session files. When omitted, Pi uses its native session location. Wins
+   * over an `env.PI_CODING_AGENT_SESSION_DIR` entry.
+   */
+  sessionDir?: string
+}
+```
+
+来源：[`packages/subagent/subagent-pi/src/index.ts:32`](../packages/subagent/subagent-pi/src/index.ts)
+
 <a id="deepseek-aidsh-subagent-spawn-in-process"></a>
 
 ## `@deepseek-ai/dsh-subagent-spawn-in-process`

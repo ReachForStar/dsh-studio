@@ -18,6 +18,8 @@ coverage/
 oxlint-contract-*.ts
 .humanize/
 tmp/
+.dsh/
+.artifacts/
 .claude/commands/
 .claude/launch.json
 .claude/settings.json
@@ -39,3 +41,5 @@ apps/web/dist/
 worktrees/
 .agents/worktrees/
 .typert-*/
+.playwright-mcp/
+.pnpm-store/

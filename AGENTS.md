@@ -11,41 +11,56 @@ DeepSeek Harness is a plugin-based agent harness on vendored Cordis: **everythin
 ```
 vendor/      Vendored Cordis source — manifest + sync procedure in vendor/README.md
 packages/    @deepseek-ai/dsh-<pkg> workspaces at packages/<group>/<pkg>/
-  core/        product API spine: session, system-prompt, tools, agent, agent-loop
-  api/         Remote BFF assembly and Typert RPC gateway
-  typert/      type graph generator, loader, and runtime registry
-  llm/         LLM capability: Service Definition/Consumer + DeepSeek providers
-  e2b/         E2B POC: sandbox + FS/subprocess adapters
-  shell/        bash capability: Service Definition + local/pwsh providers + shell Consumers
+  core/  product API spine: session, system-prompt, tools, agent, agent-loop
+  api/  Remote BFF assembly and Typert RPC gateway
+  typert/  type graph generator, loader, and runtime registry
+  goal/  same-session goal persistence and lifecycle
+  schedule/  session-local scheduled follow-ups
+  feedback/  human feedback capture
+  identity/  anonymous identity
+  llm/  LLM capability: Service Definition + provider adapters (DeepSeek, Pi AI)
+  e2b/  E2B POC: sandbox + FS/subprocess adapters
   subprocess/  subprocess capability + local process-tree provider
-  terminal/         persistent sessions
-  fs/          filesystem capability + policy
-  lsp/         language-server capability
-  skill/       skill provider registry + local impl + catalog/loader tool
-  web/         web capability: Service Definition + search/fetch providers + tool Consumer
-  compaction/     compaction capability + basic provider
-  context/     request-context plugins
-  subagent/    subagent capability: Service Definition + providers + delegation Consumers
-  bundle/      installable dsh --profile patch-layer bundles
-  workflow/    workflow capability + worker-thread provider + tool Consumer
-  todo/        todo_write tool
-  plan/        plan mode as logged state
-  preset/      per-session agent composition from preset cordis.yml files
-  guard/       loop-hygiene + tool-timeout plugins
-  self-modification/  the agent inspects/mounts its own plugins
-  hooks/       Claude Code/Codex hook bridges + wire-protocol library
-  session/     durable session data: persistence, projection, titles, telemetry
-  identity/    anonymous identity
-  settings/    user-settings capability + file provider
-  credentials/ credential-reference capability + env/.env provider
-  acp/         automation-only Agent Client Protocol server
-  interaction/ approval/interaction capabilities, permission, commands, ask-user
-  boot/        shared app-bin glue
-  sdk/         JSON-RPC protocol, server, and TypeScript client
-  examples/    demo bundles (agent-spine + CLI/ACP/JSON-RPC bins)
-  experimental/ private prototypes excluded from official releases
-  support/     dev/test infrastructure
-  util/        zero-dependency utilities
+  shell/  bash capability: Service Definition + local/pwsh providers + shell Consumers
+  terminal/  persistent PTY sessions
+  code-runtime/  code-execution capability + worker-thread provider + Code Mode Consumer
+  sandbox/  process-confinement seam + bwrap/Landlock/Seatbelt backends
+  fs/  filesystem capability + policy + file/search/edit tools
+  lsp/  language-server capability
+  skill/  skill provider registry + local impl + catalog/loader tool
+  compaction/  compaction capability + basic provider + tool-result pruner
+  context/  request-context plugins
+  subagent/  subagent capability: Service Definition + providers + delegation Consumers
+  mcp/  MCP bridge registering external server tools on ctx.tools
+  jobs/  background-job runtime + job_* control tools
+  workflow/  workflow capability + worker-thread provider + tool Consumer
+  web/  web capability: Service Definition + search/fetch providers + tool Consumer
+  attachment/  durable attachment identity + local content-addressed storage
+  spill/  spill capability: storage seam + local impl + tool-result spill policy
+  todo/  todo_write tool
+  plan/  plan mode as logged state
+  preset/  per-session agent composition from preset cordis.yml files
+  guard/  loop-hygiene + tool-timeout plugins
+  bundle/  installable dsh --profile patch-layer bundles
+  extensions/  agent self-modification: plugin inspection + model-written plugin mount/unmount
+  hooks/  Claude Code/Codex hook bridges + wire-protocol library
+  session/  durable session data: persistence, projection, titles, telemetry
+  session-query/  session retrieval: corpus, bounded reads, lineage, relationships, SQLite FTS
+  settings/  user-settings capability + file provider
+  credentials/  credential-reference capability + env/.env provider
+  storage/  non-session storage hub + JSON/SQLite backends
+  workspace/  workspace entity
+  sdk/  JSON-RPC protocol, server, and TypeScript client
+  acp/  automation-only Agent Client Protocol server
+  interaction/  approval/interaction capabilities, permission, commands, ask-user
+  boot/  shared app-bin glue
+  host/  web-GUI host half: API gateway + HTTP route server
+  client/  web-GUI browser half: shell, wire, object services, ui-* plugins
+  examples/  demo bundles (agent-spine + CLI/ACP/JSON-RPC bins)
+  test-support/  test infrastructure: testkits, replay, Loader smokes
+  runtime-diagnostics/  package-owned runtime invariant registry
+  util/  zero-dependency utilities
+apps/        dsh CLI and web frontend workspaces (apps/cli, apps/web)
 python/      Python SDK and bundled runtime (see python/README.md)
 native/      @deepseek-ai/node-addon-landlock-run source of record (see native/README.md)
 examples/    Runnable cordis.yml leaves over packages/examples bundles (see examples/AGENTS.md)
@@ -70,7 +85,7 @@ pnpm run test:snapshot:record  # re-record expected outputs (needs key)
 pnpm run typecheck
 pnpm run lint
 pnpm run duplication    # cross-file TypeScript clone detection
-pnpm run build          # tsc emits lib/types, tsdown bundles runtime
+pnpm run build          # tsc emits lib/types and tsdown bundles host+client runtime, then builds the web frontend
 pnpm run hygiene        # knip + publint + workspace constraints + NodeNext consumer check
 pnpm run check:windows-wine  # ONLY when diagnosing a known Windows failure (needs wine); CI owns this signal
 pnpm run doc-sync       # all documentation gates; leaf list in scripts/run-gates.ts
@@ -124,7 +139,6 @@ Real-API tests and demos read `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`, 
 - **Testing policy** — [docs/testing.md](docs/testing.md). Every non-trivial model- or product-user-visible behavior change adds or updates a keyless snapshot through a real runnable example in the same PR; package tests, e2e-only assertions, and mock-only fixtures do not substitute for the assembled application transcript. Fixtures must replay on macOS/Linux; fix fixtures, not normalizers.
 - **A tool's UI render intent is part of its design**, decided up front (`generic`/`terminal`/`diff`, `locations`); presentation methods are pure functions of `args` ([cookbook](docs/cookbook/adding-a-tool.md)).
 - **Plan unit, e2e, and snapshot coverage** for capability seams, lifecycle paths, and transcript output; include missing snapshot-harness support in the same change.
-- **Both SDKs project the loop.** Agent-loop, session-lifecycle, and `SessionEventMap` changes update the TypeScript and Python SDK expected outputs in the same PR; `pnpm run test` covers neither ([surfaces](docs/testing.md#when-a-snapshot-test-is-required)).
 - **Choose PR history deliberately.** Split independent changes; fix the introducing PR before propagation. Standalone PRs and official stacks may merge-forward or rebase after review. Rewrites use `--force-with-lease`, abort on remote movement, never raw `--force`; an in-progress merge-forward preserves its checkpoint before taking a newer base ([rationale](.agents/notes/implemented/process/2026-08-02-native-github-stacks-and-optional-rebases.md)).
 - **Labels:** one PR `kind/*`, all material `area/*`, and native Issue Type ([taxonomy](.agents/notes/implemented/process/2026-08-08-unified-github-label-taxonomy.md)).
 - TODO markers: `FIXME`/`TODO`/`XXX` by urgency ([semantics](docs/development.md)).

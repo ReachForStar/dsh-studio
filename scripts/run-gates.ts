@@ -697,6 +697,7 @@ function builtBinSmokeGate(needs: string[] = ['build']): Gate {
     'packages/sdk/server/tests/built-scope-carrier.e2e.ts',
     'packages/subagent/subagent-codex/tests/loader-composition.e2e.ts',
     'packages/subagent/subagent-claude-code/tests/loader-composition.e2e.ts',
+    'packages/subagent/subagent-pi/tests/loader-composition.e2e.ts',
     'packages/api/remotes/tests/built-lib.e2e.ts',
     // Built execution consumers: the only automated proof that package-name
     // imports reach their lib/ entrypoints under plain Node. The e2e lane runs

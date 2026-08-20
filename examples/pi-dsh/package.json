@@ -1,0 +1,7 @@
+{
+  "name": "pi-dsh-example",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Bidirectional Pi and DeepSeek Harness collaboration: the Pi Agent Skill and delegate helper"
+}

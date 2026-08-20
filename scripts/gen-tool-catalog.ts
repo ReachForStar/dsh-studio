@@ -48,6 +48,7 @@ import CordisHostRunner from '@deepseek-ai/dsh-cordis-host-runner'
 import * as ToolCordis from '@deepseek-ai/dsh-tool-cordis'
 import * as ToolFs from '@deepseek-ai/dsh-tool-fs'
 import * as ToolFsSearch from '@deepseek-ai/dsh-tool-fs-search'
+import * as ToolExcalidraw from '@deepseek-ai/dsh-tool-excalidraw'
 import * as ToolStrReplaceEditor from '@deepseek-ai/dsh-tool-str-replace-editor'
 import TerminalSessionService from '@deepseek-ai/dsh-terminal'
 import * as ToolPty from '@deepseek-ai/dsh-tool-terminal'
@@ -309,6 +310,18 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'Standalone view/create/unique literal replace/line insert tool over the filesystem seam; it composes with any shell or terminal API.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-excalidraw',
+    dir: 'tool-excalidraw',
+    source: 'packages/fs/tool-excalidraw/src/index.ts',
+    requires: ['ctx.tools', 'ctx.workspaceRegistry'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolExcalidraw)
+    },
+    note:
+      'The whiteboard scene tools derive the target workspace from the calling agent\'s session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @deepseek-ai/dsh-client-ui-polish.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-fs',

@@ -10,9 +10,13 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import { createSlotRenderer } from './scoped-slots.tsx'
 import { buildRenderApp } from './app.tsx'
+import { bindSnapshotSelector } from './bind.ts'
 
 /** Selector hook over a session's conversation snapshot. */
 export type UseSession<Snap extends object = object> = SnapshotSelectorHook<Snap>
+
+/** Bind a host observable to a selector hook (the merged web-react binding). */
+export { bindSnapshotSelector }
 
 export type {
   ChainRenderOpts, HostObservable, RenderOpts, SessionProvideInfo, SnapshotSelectorHook,

@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { resolvePwshPath } from './packages/shell/pwsh-local/src/resolve.ts'
@@ -6,6 +7,18 @@ import { defineConfig } from 'vitest/config'
 import { standardDecoratorPlugin, vitestExecArgv } from './vitest.shared.ts'
 import { COVERAGE_EXEMPT_ENV, coverageExemptHeavySuites } from './scripts/coverage-exempt.ts'
 import { COVERAGE_PARTITION_MODE_ENV } from './scripts/coverage-partitions.ts'
+
+// Excalidraw ships its stylesheet outside its exports map (`./*` carries only
+// the types condition), so vitest's vite resolver cannot map the panel's
+// bare CSS import; alias the exact specifier to the physical sheet the
+// `dsh-css-global-inline` build path reads.
+const excalidrawCssPath = resolve(
+  import.meta.dirname,
+  'packages/client/ui-polish/node_modules/@excalidraw/excalidraw/dist/prod/index.css',
+)
+const excalidrawCssAlias = {
+  '@excalidraw/excalidraw/dist/prod/index.css': excalidrawCssPath,
+}
 
 // Prints exact `path:line:col` records for every uncovered statement, branch
 // path, and function when a file misses the per-file 100% gate — the built-in
@@ -137,6 +150,7 @@ export default defineConfig({
     projects: [
       {
         plugins: [pathsPlugin(), standardDecoratorPlugin()],
+        resolve: { alias: excalidrawCssAlias },
         test: {
           name: 'thread-safe',
           execArgv: vitestExecArgv,
@@ -155,6 +169,7 @@ export default defineConfig({
       },
       {
         plugins: [pathsPlugin(), standardDecoratorPlugin()],
+        resolve: { alias: excalidrawCssAlias },
         test: {
           name: 'process-bound',
           execArgv: vitestExecArgv,

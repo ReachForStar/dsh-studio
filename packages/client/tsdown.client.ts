@@ -10,8 +10,8 @@
  */
 import { readFile } from 'node:fs/promises'
 import { existsSync, globSync, readFileSync } from 'node:fs'
-import { isBuiltin } from 'node:module'
-import { basename, dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path'
+import { createRequire, isBuiltin } from 'node:module'
+import { basename, dirname, isAbsolute, join, relative, resolve as resolvePath, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { UserConfig } from 'tsdown'
 import { transform } from 'lightningcss'
@@ -319,6 +319,40 @@ function isBareSpecifier(specifier: string): boolean {
 }
 
 /**
+ * Resolve a bare stylesheet specifier (e.g. a dependency's shipped css that
+ * its exports map does not expose under the import condition) to its physical
+ * path. The package name is resolved through the importer's own node_modules
+ * chain, then the remaining subpath is appended — bypassing the exports map
+ * the same way the excalidraw build path does.
+ * @param source - bare specifier ending in `.css`.
+ * @param importer - absolute path of the importing module.
+ * @returns the physical stylesheet path, or undefined when the package is unresolvable.
+ */
+function bareCssPath(source: string, importer: string): string | undefined {
+  const scoped = source.startsWith('@')
+  const firstSlash = source.indexOf('/')
+  const secondSlash = scoped ? source.indexOf('/', firstSlash + 1) : -1
+  const end = scoped && secondSlash > 0 ? secondSlash : firstSlash
+  if (end < 0) return undefined
+  const pkgName = source.slice(0, end)
+  const rest = source.slice(end + 1)
+  try {
+    // Resolve through the package's main entry (its exports map exposes no
+    // ./package.json), then walk up to the package root holding package.json.
+    const entry = createRequire(importer).resolve(pkgName)
+    let dir = dirname(entry)
+    while (!existsSync(join(dir, 'package.json'))) {
+      const parent = dirname(dir)
+      if (parent === dir) return undefined
+      dir = parent
+    }
+    return resolvePath(dir, rest)
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Locate a stylesheet import against the package sources and name its emitted position.
  * @param source - relative import specifier as written in the source.
  * @param importer - absolute path of the importing module, emitted or source.
@@ -540,7 +574,12 @@ function clientConfig(id: string, entry: string): UserConfig {
       name: 'dsh-css-global-inline',
       resolveId(source: string, importer: string | undefined) {
         if (!source.endsWith('.css') || source.endsWith('.module.css')) return null
-        const abs = importer !== undefined ? sourceAssetPath(source, importer) : source
+        // A bare dependency stylesheet (exports map without an import
+        // condition) resolves through the importer's node_modules chain; a
+        // relative specifier resolves against the package sources.
+        const abs = importer === undefined ? source
+          : isBareSpecifier(source) ? (bareCssPath(source, importer) ?? source)
+            : sourceAssetPath(source, importer)
         return GLOBAL_CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
       },
       async load(virtualId: string) {
@@ -554,6 +593,10 @@ function clientConfig(id: string, entry: string): UserConfig {
     }],
     outputOptions: {
       entryFileNames: 'client.js',
+      // The module table loads exactly one bundle per plugin; excalidraw's
+      // dynamic locale imports must not split into sibling chunks the browser
+      // require cannot answer, so every dynamic import stays in client.js.
+      inlineDynamicImports: true,
       // The map is served from /plugins/<scoped-package>/client.js.map. The
       // browser resolves its local sources back into URLs that mirror the
       // /packages/<group>/<package>/src directories; sourcesContent keeps them usable

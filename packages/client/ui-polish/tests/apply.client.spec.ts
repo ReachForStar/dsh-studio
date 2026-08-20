@@ -51,7 +51,7 @@ async function bench() {
   }))
   const mutate = vi.fn((request: { ops: { value: unknown }[] }) => {
     const raw = request.ops[0]!.value
-    /* oxlint-disable-next-line typescript/no-base-to-string -- settings values are strings or null */
+    // oxlint-disable-next-line typescript/no-base-to-string -- settings values are strings or null
     backgroundImage = raw === null ? undefined : String(raw)
     return Promise.resolve({ rpcId: 'polish-mutate' as never, result: { ok: true as const, value: namespace() } })
   })

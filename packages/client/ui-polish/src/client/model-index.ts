@@ -13,7 +13,7 @@ import type {
 type EmptyState = Record<string, never>
 
 /** Extract the message id and model from a settled assistant/message event. */
-/* oxlint-disable typescript/no-unnecessary-condition -- the match face may hand any session event at runtime */
+/* oxlint-disable typescript/no-unnecessary-condition -- the match face may hand any session event */
 function assistantMessageFacts(event: ConversationMatch['event']): { messageId: string; model: string } | null {
   if (event.type !== 'assistant/message') return null
   const source = event.data.message.source

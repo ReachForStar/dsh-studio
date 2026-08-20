@@ -136,7 +136,7 @@ describe('MutationDiffPanel (file panel)', () => {
 
   it('renders nothing extra when the listing is empty', async () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>
-    /* oxlint-disable-next-line typescript/no-misused-promises -- the fetch stub returns a promise by contract */
+    // oxlint-disable-next-line typescript/no-misused-promises -- the fetch stub returns a promise by contract
     fetchMock.mockImplementationOnce(() => Promise.resolve(jsonResponse({ items: [] })))
     const { source } = makeSource([], SID)
     const view = render(<MutationDiffPanel {...props(source)} useWorkspaces={workspaceWorkspaces()} />)

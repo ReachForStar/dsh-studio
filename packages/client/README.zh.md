@@ -21,6 +21,7 @@ dsh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-layout/`](ui-layout/README.md) | 排列应用的主要区域。 |
 | [`ui-sidebar/`](ui-sidebar/README.md) | 展示工作区与会话导航。 |
 | [`ui-brand-official/`](ui-brand-official/README.md) | 使用官方名称和标记填充通用浏览器品牌 slot。 |
+| [`ui-polish/`](ui-polish/README.md) | Web GUI 打磨：全局背景图片、带费用的会话统计浮层、文件/Git/画布标签页、可配置压缩阈值、可编辑模型费率卡。 |
 | [`ui-workspace/`](ui-workspace/README.md) | 提供工作区选择与创建界面。 |
 | [`ui-conversation/`](ui-conversation/README.md) | 展示当前对话及其输入界面。 |
 | [`ui-tool/`](ui-tool/README.md) | 编排工具调用树和按工具键控的视图。 |

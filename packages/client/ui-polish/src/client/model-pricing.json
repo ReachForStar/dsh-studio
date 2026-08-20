@@ -1,0 +1,1006 @@
+{
+  "$comment": "Model rate card in CNY per 1M tokens, converted once from the amaxsmp gateway pricing (https://ai.amaxsmp.com/api/pricing) on 2026-08-19. Modes: flat (fixed per-model prices), time (peak/off-peak by Asia/Shanghai hour), len (price tiers by input length). Edit freely; rebuild the plugin for changes to take effect. Unknown models fall back to \"default\".",
+  "default": {
+    "inputPerMillion": 1.5,
+    "outputPerMillion": 4.5,
+    "cacheReadPerMillion": 0.05,
+    "cacheWritePerMillion": 1.5
+  },
+  "models": {
+    "claude-fable-5": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 70,
+        "outputPerMillion": 350,
+        "cacheReadPerMillion": 7,
+        "cacheWritePerMillion": 87.5
+      }
+    },
+    "claude-haiku-4-5-20251001": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 7,
+        "outputPerMillion": 35,
+        "cacheReadPerMillion": 0.7,
+        "cacheWritePerMillion": 8.75
+      }
+    },
+    "claude-opus-4-6": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 35,
+        "outputPerMillion": 175,
+        "cacheReadPerMillion": 3.5,
+        "cacheWritePerMillion": 43.75
+      }
+    },
+    "claude-opus-4-7": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 35,
+        "outputPerMillion": 175,
+        "cacheReadPerMillion": 3.5,
+        "cacheWritePerMillion": 43.75
+      }
+    },
+    "claude-opus-4-8": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 35,
+        "outputPerMillion": 175,
+        "cacheReadPerMillion": 3.5,
+        "cacheWritePerMillion": 43.75
+      }
+    },
+    "claude-opus-5": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 35,
+        "outputPerMillion": 175,
+        "cacheReadPerMillion": 3.5,
+        "cacheWritePerMillion": 43.75
+      }
+    },
+    "claude-sonnet-4-5": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 21,
+        "outputPerMillion": 105,
+        "cacheReadPerMillion": 2.1,
+        "cacheWritePerMillion": 26.25
+      }
+    },
+    "claude-sonnet-4-6": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 21,
+        "outputPerMillion": 105,
+        "cacheReadPerMillion": 2.1,
+        "cacheWritePerMillion": 26.25
+      }
+    },
+    "deepseek-v4-flash": {
+      "mode": "time",
+      "time": {
+        "timezone": "Asia/Shanghai",
+        "peak": [
+          {
+            "startMinute": 540,
+            "endMinute": 720
+          },
+          {
+            "startMinute": 840,
+            "endMinute": 1080
+          }
+        ],
+        "tiers": [
+          {
+            "name": "default",
+            "inputPerMillion": 1.5,
+            "outputPerMillion": 4.5,
+            "cacheReadPerMillion": 0.05
+          },
+          {
+            "name": "peak",
+            "inputPerMillion": 3,
+            "outputPerMillion": 9,
+            "cacheReadPerMillion": 0.1
+          },
+          {
+            "name": "off_peak",
+            "inputPerMillion": 1.5,
+            "outputPerMillion": 4.5,
+            "cacheReadPerMillion": 0.05
+          }
+        ]
+      }
+    },
+    "deepseek-v4-flash-nothinking": {
+      "mode": "time",
+      "time": {
+        "timezone": "Asia/Shanghai",
+        "peak": [
+          {
+            "startMinute": 540,
+            "endMinute": 720
+          },
+          {
+            "startMinute": 840,
+            "endMinute": 1080
+          }
+        ],
+        "tiers": [
+          {
+            "name": "default",
+            "inputPerMillion": 1.5,
+            "outputPerMillion": 4.5,
+            "cacheReadPerMillion": 0.05
+          },
+          {
+            "name": "peak",
+            "inputPerMillion": 3,
+            "outputPerMillion": 9,
+            "cacheReadPerMillion": 0.1
+          },
+          {
+            "name": "off_peak",
+            "inputPerMillion": 1.5,
+            "outputPerMillion": 4.5,
+            "cacheReadPerMillion": 0.05
+          }
+        ]
+      }
+    },
+    "deepseek-v4-pro": {
+      "mode": "time",
+      "time": {
+        "timezone": "Asia/Shanghai",
+        "peak": [
+          {
+            "startMinute": 540,
+            "endMinute": 720
+          },
+          {
+            "startMinute": 840,
+            "endMinute": 1080
+          }
+        ],
+        "tiers": [
+          {
+            "name": "default",
+            "inputPerMillion": 4.5,
+            "outputPerMillion": 13.5,
+            "cacheReadPerMillion": 0.15
+          },
+          {
+            "name": "peak",
+            "inputPerMillion": 9,
+            "outputPerMillion": 27,
+            "cacheReadPerMillion": 0.3
+          },
+          {
+            "name": "off_peak",
+            "inputPerMillion": 4.5,
+            "outputPerMillion": 13.5,
+            "cacheReadPerMillion": 0.15
+          }
+        ]
+      }
+    },
+    "deepseek-v4-pro-nothinking": {
+      "mode": "time",
+      "time": {
+        "timezone": "Asia/Shanghai",
+        "peak": [
+          {
+            "startMinute": 540,
+            "endMinute": 720
+          },
+          {
+            "startMinute": 840,
+            "endMinute": 1080
+          }
+        ],
+        "tiers": [
+          {
+            "name": "default",
+            "inputPerMillion": 4.5,
+            "outputPerMillion": 13.5,
+            "cacheReadPerMillion": 0.15
+          },
+          {
+            "name": "peak",
+            "inputPerMillion": 9,
+            "outputPerMillion": 27,
+            "cacheReadPerMillion": 0.3
+          },
+          {
+            "name": "off_peak",
+            "inputPerMillion": 4.5,
+            "outputPerMillion": 13.5,
+            "cacheReadPerMillion": 0.15
+          }
+        ]
+      }
+    },
+    "gemini-2.5-flash": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 2.1,
+        "outputPerMillion": 17.5,
+        "cacheReadPerMillion": 0.21,
+        "cacheWritePerMillion": 7
+      }
+    },
+    "gemini-3.1-flash-image-preview": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 3.5,
+        "outputPerMillion": 21
+      }
+    },
+    "gemini-3.1-pro-preview": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<200K",
+            "maxLen": 2000000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 12
+          },
+          {
+            "name": "输入≥200K",
+            "inputPerMillion": 4,
+            "outputPerMillion": 18
+          }
+        ]
+      }
+    },
+    "gemini-3.5-flash": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 10.5,
+        "outputPerMillion": 63,
+        "cacheReadPerMillion": 1.05
+      }
+    },
+    "gemini-embedding-001": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 1.05,
+        "outputPerMillion": 4.2
+      }
+    },
+    "gemma-4": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0
+      }
+    },
+    "gemma-4-31B": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5
+      }
+    },
+    "MiniMax-M2.7": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 2.1,
+        "outputPerMillion": 8.4,
+        "cacheReadPerMillion": 0.42
+      }
+    },
+    "MiniMax-M3": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 4.2,
+        "outputPerMillion": 16.8,
+        "cacheReadPerMillion": 0.84
+      }
+    },
+    "kimi-k2.6": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 6.5,
+        "outputPerMillion": 27,
+        "cacheReadPerMillion": 1.1
+      }
+    },
+    "kimi-k3": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 20,
+        "outputPerMillion": 100,
+        "cacheReadPerMillion": 2
+      }
+    },
+    "gpt-4.1": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 14,
+        "outputPerMillion": 56,
+        "cacheReadPerMillion": 3.5
+      }
+    },
+    "gpt-4.1-mini": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 2.8,
+        "outputPerMillion": 11.2
+      }
+    },
+    "gpt-4o-mini": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 1.05,
+        "outputPerMillion": 4.2,
+        "cacheReadPerMillion": 0.525
+      }
+    },
+    "gpt-5": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 8.75,
+        "outputPerMillion": 70,
+        "cacheReadPerMillion": 0.875
+      }
+    },
+    "gpt-5-mini": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 1.75,
+        "outputPerMillion": 14,
+        "cacheReadPerMillion": 0.175
+      }
+    },
+    "gpt-5.4": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 17.5,
+        "outputPerMillion": 105,
+        "cacheReadPerMillion": 1.75
+      }
+    },
+    "gpt-5.4-mini": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 5.25,
+        "outputPerMillion": 31.5,
+        "cacheReadPerMillion": 0.49
+      }
+    },
+    "gpt-5.5": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 35,
+        "outputPerMillion": 210,
+        "cacheReadPerMillion": 3.5
+      }
+    },
+    "gpt-5.6-luna": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入≤272K",
+            "maxLen": 272000,
+            "inputPerMillion": 0.2,
+            "outputPerMillion": 1.2,
+            "cacheReadPerMillion": 0.02,
+            "cacheWritePerMillion": 0.25
+          },
+          {
+            "name": "输入＞272K",
+            "inputPerMillion": 0.4,
+            "outputPerMillion": 1.8,
+            "cacheReadPerMillion": 0.04,
+            "cacheWritePerMillion": 0.5
+          }
+        ]
+      }
+    },
+    "gpt-5.6-sol": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入≤272K",
+            "maxLen": 272000,
+            "inputPerMillion": 5,
+            "outputPerMillion": 30,
+            "cacheReadPerMillion": 0.5,
+            "cacheWritePerMillion": 6.25
+          },
+          {
+            "name": "输入＞272K",
+            "inputPerMillion": 10,
+            "outputPerMillion": 45,
+            "cacheReadPerMillion": 1,
+            "cacheWritePerMillion": 12.5
+          }
+        ]
+      }
+    },
+    "gpt-5.6-terra": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入≤272K",
+            "maxLen": 272000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.2,
+            "cacheWritePerMillion": 2.5
+          },
+          {
+            "name": "输入＞272K",
+            "inputPerMillion": 4,
+            "outputPerMillion": 18,
+            "cacheReadPerMillion": 0.4,
+            "cacheWritePerMillion": 5
+          }
+        ]
+      }
+    },
+    "gpt-image-2": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 35,
+        "outputPerMillion": 70,
+        "cacheReadPerMillion": 8.75
+      }
+    },
+    "glm-5-turbo": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=32K",
+            "maxLen": 32000,
+            "inputPerMillion": 5,
+            "outputPerMillion": 22,
+            "cacheReadPerMillion": 1.2
+          },
+          {
+            "name": "输入>32K",
+            "inputPerMillion": 7,
+            "outputPerMillion": 26,
+            "cacheReadPerMillion": 1.79
+          }
+        ]
+      }
+    },
+    "glm-5.1": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=32K",
+            "maxLen": 32000,
+            "inputPerMillion": 6,
+            "outputPerMillion": 24,
+            "cacheReadPerMillion": 1.3
+          },
+          {
+            "name": "32K<输入",
+            "inputPerMillion": 8,
+            "outputPerMillion": 28,
+            "cacheReadPerMillion": 2
+          }
+        ]
+      }
+    },
+    "glm-5.2": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 28,
+        "cacheReadPerMillion": 2
+      }
+    },
+    "glm-5.3": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 28,
+        "cacheReadPerMillion": 2
+      }
+    },
+    "step-3.7-flash": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 1.35,
+        "outputPerMillion": 8.1,
+        "cacheReadPerMillion": 0.27
+      }
+    },
+    "happyhorse-1.0-i2v": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0
+      }
+    },
+    "happyhorse-1.0-r2v": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0
+      }
+    },
+    "happyhorse-1.0-t2v": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0
+      }
+    },
+    "qwen3.5-flash": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 0.2,
+            "outputPerMillion": 2,
+            "cacheReadPerMillion": 0.04
+          },
+          {
+            "name": "128K<输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 0.8,
+            "outputPerMillion": 8,
+            "cacheReadPerMillion": 0.16
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 1.2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.24
+          }
+        ]
+      }
+    },
+    "qwen3.5-flash-nothinking": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 0.2,
+            "outputPerMillion": 2,
+            "cacheReadPerMillion": 0.04
+          },
+          {
+            "name": "128K<输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 0.8,
+            "outputPerMillion": 8,
+            "cacheReadPerMillion": 0.16
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 1.2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.24
+          }
+        ]
+      }
+    },
+    "qwen3.5-flash-search-preview": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 0.2,
+            "outputPerMillion": 2,
+            "cacheReadPerMillion": 0.04
+          },
+          {
+            "name": "128K<输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 0.8,
+            "outputPerMillion": 8,
+            "cacheReadPerMillion": 0.16
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 1.2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.24
+          }
+        ]
+      }
+    },
+    "qwen3.5-plus": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 0.8,
+            "outputPerMillion": 4.8,
+            "cacheReadPerMillion": 0.16
+          },
+          {
+            "name": "128K<输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.4
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 4,
+            "outputPerMillion": 24,
+            "cacheReadPerMillion": 0.8
+          }
+        ]
+      }
+    },
+    "qwen3.5-plus-nothinking": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 0.8,
+            "outputPerMillion": 4.8,
+            "cacheReadPerMillion": 0.16
+          },
+          {
+            "name": "128K<输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.4
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 4,
+            "outputPerMillion": 24,
+            "cacheReadPerMillion": 0.8
+          }
+        ]
+      }
+    },
+    "qwen3.5-plus-search-preview": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 0.8,
+            "outputPerMillion": 4.8,
+            "cacheReadPerMillion": 0.16
+          },
+          {
+            "name": "128K<输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.4
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 4,
+            "outputPerMillion": 24,
+            "cacheReadPerMillion": 0.8
+          }
+        ]
+      }
+    },
+    "qwen3.6-flash": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 1.2,
+            "outputPerMillion": 7.2,
+            "cacheReadPerMillion": 0.24
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 4.8,
+            "outputPerMillion": 28.8,
+            "cacheReadPerMillion": 0.96
+          }
+        ]
+      }
+    },
+    "qwen3.6-flash-nothinking": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 1.2,
+            "outputPerMillion": 7.2,
+            "cacheReadPerMillion": 0.24
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 4.8,
+            "outputPerMillion": 28.8,
+            "cacheReadPerMillion": 0.96
+          }
+        ]
+      }
+    },
+    "qwen3.6-flash-search-preview": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 1.2,
+            "outputPerMillion": 7.2,
+            "cacheReadPerMillion": 0.24
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 4.8,
+            "outputPerMillion": 28.8,
+            "cacheReadPerMillion": 0.96
+          }
+        ]
+      }
+    },
+    "qwen3.6-max-preview": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 9,
+            "outputPerMillion": 54,
+            "cacheReadPerMillion": 1.8
+          },
+          {
+            "name": "128K<输入<=256K",
+            "inputPerMillion": 15,
+            "outputPerMillion": 90,
+            "cacheReadPerMillion": 3
+          }
+        ]
+      }
+    },
+    "qwen3.6-max-preview-nothinking": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 9,
+            "outputPerMillion": 54,
+            "cacheReadPerMillion": 1.8
+          },
+          {
+            "name": "128K<输入<=256K",
+            "inputPerMillion": 15,
+            "outputPerMillion": 90,
+            "cacheReadPerMillion": 3
+          }
+        ]
+      }
+    },
+    "qwen3.6-max-search-preview": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=128K",
+            "maxLen": 128000,
+            "inputPerMillion": 9,
+            "outputPerMillion": 54,
+            "cacheReadPerMillion": 1.8
+          },
+          {
+            "name": "128K<输入<=256K",
+            "inputPerMillion": 15,
+            "outputPerMillion": 90,
+            "cacheReadPerMillion": 3
+          }
+        ]
+      }
+    },
+    "qwen3.6-plus": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.2
+          },
+          {
+            "name": "输入>=256K",
+            "inputPerMillion": 8,
+            "outputPerMillion": 48,
+            "cacheReadPerMillion": 1.6
+          }
+        ]
+      }
+    },
+    "qwen3.6-plus-nothinking": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.2
+          },
+          {
+            "name": "输入>=256K",
+            "inputPerMillion": 8,
+            "outputPerMillion": 48,
+            "cacheReadPerMillion": 1.6
+          }
+        ]
+      }
+    },
+    "qwen3.6-plus-search-preview": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 12,
+            "cacheReadPerMillion": 0.2
+          },
+          {
+            "name": "输入>=256K",
+            "inputPerMillion": 8,
+            "outputPerMillion": 48,
+            "cacheReadPerMillion": 1.6
+          }
+        ]
+      }
+    },
+    "qwen3.7-max": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 12,
+        "outputPerMillion": 36,
+        "cacheReadPerMillion": 2.4
+      }
+    },
+    "qwen3.7-max-nothinking": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 12,
+        "outputPerMillion": 36,
+        "cacheReadPerMillion": 2.4
+      }
+    },
+    "qwen3.7-max-search-preview": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 12,
+        "outputPerMillion": 36,
+        "cacheReadPerMillion": 2.4
+      }
+    },
+    "qwen3.7-plus": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 8,
+            "cacheReadPerMillion": 0.4
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 6,
+            "outputPerMillion": 24,
+            "cacheReadPerMillion": 1.2
+          }
+        ]
+      }
+    },
+    "qwen3.7-plus-nothinking": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 8,
+            "cacheReadPerMillion": 0.4
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 6,
+            "outputPerMillion": 24,
+            "cacheReadPerMillion": 1.2
+          }
+        ]
+      }
+    },
+    "qwen3.7-plus-search-preview": {
+      "mode": "len",
+      "len": {
+        "tiers": [
+          {
+            "name": "输入<=256K",
+            "maxLen": 256000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 8,
+            "cacheReadPerMillion": 0.4
+          },
+          {
+            "name": "256K<输入<=1M",
+            "inputPerMillion": 6,
+            "outputPerMillion": 24,
+            "cacheReadPerMillion": 1.2
+          }
+        ]
+      }
+    },
+    "qwen3.8-max": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 12,
+        "outputPerMillion": 36,
+        "cacheReadPerMillion": 1.5
+      }
+    },
+    "text-embedding-v4": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0.5,
+        "outputPerMillion": 0.5
+      }
+    },
+    "wan2.7-i2v": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0
+      }
+    },
+    "wan2.7-r2v": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0
+      }
+    },
+    "wan2.7-t2v": {
+      "mode": "flat",
+      "flat": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0
+      }
+    }
+  }
+}

@@ -213,6 +213,14 @@
     - id: ui-brand-official
       name: '@deepseek-ai/dsh-client-ui-brand-official'
 
+    # Web GUI polish: whole-app background image, session stats float with cost,
+    # file/git/excalidraw conversation tabs, and configurable compaction threshold.
+    # Its node half registers the /git, /bg, and /scene routes and the ui-polish
+    # settings namespace; the model-facing excalidraw tools mount through the
+    # agent-preset row `tool-excalidraw` instead.
+    - id: ui-polish
+      name: '@deepseek-ai/dsh-client-ui-polish'
+
     - id: ui-attachment
       name: '@deepseek-ai/dsh-client-ui-attachment'
 

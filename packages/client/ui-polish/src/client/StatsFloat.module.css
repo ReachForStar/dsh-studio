@@ -1,0 +1,93 @@
+/* Session stats float: pinned to the viewport's bottom-right via position:fixed,
+   so it never overlaps the conversation header or input. The dock only mounts
+   while a session is active, which is when the readout matters. Default state is
+   a compact capsule showing just the cost; clicking it expands the full readout. */
+
+.root {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 30;
+  display: block;
+  box-sizing: border-box;
+  max-width: min(100vw - 32px, 560px);
+  padding: 6px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: var(--dsw-alias-button-floating-fill);
+  box-shadow: var(--dsw-shadow-lv2);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.85;
+  transition: opacity 120ms ease;
+}
+
+.root:hover {
+  opacity: 1;
+}
+
+/* Expanded state: square corners, full width content. */
+.root[data-expanded='true'] {
+  border-radius: 12px;
+}
+
+/* Collapsed capsule label: the single cost figure. */
+.costInline {
+  display: inline-block;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+}
+
+.line {
+  display: block;
+}
+
+.sep {
+  color: var(--dsw-alias-separator-primary);
+  margin: 0 8px; /* carries the former flex gap */
+}
+
+.cost {
+  display: block;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.costTotal {
+  color: var(--dsw-alias-label-primary);
+}
+
+.costBuckets {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+}
+
+.costModels {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+}

@@ -1,0 +1,58 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "include": [
+    "src/background-service.ts",
+    "src/background-settings.ts",
+    "src/compaction-control.ts",
+    "src/excalidraw-service.ts",
+    "src/git-service.ts",
+    "src/index.ts",
+    "src/invariant.ts"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../preset/agent-presets"
+    },
+    {
+      "path": "../../compaction/compaction"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../llm/token-meter"
+    },
+    {
+      "path": "../../settings/settings"
+    },
+    {
+      "path": "../../util/home-paths"
+    },
+    {
+      "path": "../../host/webserver"
+    },
+    {
+      "path": "../../workspace/workspace"
+    },
+    {
+      "path": "../../fs/tool-excalidraw"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
+    }
+  ]
+}

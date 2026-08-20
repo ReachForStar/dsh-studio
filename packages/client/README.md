@@ -21,6 +21,7 @@ The browser side of the dsh web GUI: shell boot, browser-host communication, sha
 | [`ui-layout/`](ui-layout/README.md) | Arranges the main application regions. |
 | [`ui-sidebar/`](ui-sidebar/README.md) | Presents workspace and session navigation. |
 | [`ui-brand-official/`](ui-brand-official/README.md) | Fills the generic browser-brand slots with the official name and marks. |
+| [`ui-polish/`](ui-polish/README.md) | Web GUI polish: whole-app background image, session stats float with cost, file/git/excalidraw tabs, configurable compaction threshold, editable model rate card. |
 | [`ui-workspace/`](ui-workspace/README.md) | Provides workspace selection and creation surfaces. |
 | [`ui-conversation/`](ui-conversation/README.md) | Presents the active conversation and its input surface. |
 | [`ui-tool/`](ui-tool/README.md) | Composes Tool call trees and keyed per-Tool views. |

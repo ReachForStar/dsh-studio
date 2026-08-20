@@ -1,0 +1,308 @@
+/* Git panel view: a conversation.view tab filling the view area with a
+   two-column layout (working-tree changes + commit controls | log + diff).
+   Design: developer-tool dark-first (ui-ux-pro-max "Dark Mode OLED" +
+   IBM Plex/JetBrains Mono pairing), 150-300ms ease-out micro-interactions,
+   visible focus rings, status-coded file rows. */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 14px 18px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.viewHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex: none;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.cwd {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  overflow-wrap: anywhere;
+}
+
+/* Change-count badge: a subtle pill that reads the working-tree volume at a
+   glance (ui-ux-pro-max: nav active-state + data density). */
+.countBadge {
+  margin-left: auto;
+  flex: none;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-accent) 16%, transparent);
+  color: var(--dsw-alias-accent);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-error) 12%, transparent);
+  color: var(--dsw-alias-error);
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Success feedback after commit/push/save (ui-ux-pro-max: submit feedback). */
+.noticeOk {
+  margin-left: auto;
+  flex: none;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent);
+  color: var(--dsw-alias-state-success-primary);
+  font-size: 12px;
+  transition: opacity 150ms ease-out;
+}
+
+.branch {
+  font-family: var(--dsw-font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.column {
+  min-width: 0;
+}
+
+.files {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  outline: none;
+}
+
+.groupLabel {
+  padding: 8px 0 2px;
+}
+
+.file {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.file:hover {
+  background: color-mix(in srgb, var(--dsw-alias-button-floating-fill) 60%, transparent);
+}
+
+.file:focus-visible,
+.fileSelected {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--dsw-alias-accent) 14%, transparent);
+}
+
+.fileStatus {
+  flex: none;
+  min-width: 64px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Status-coded chips (ui-ux-pro-max: color-not-only — the label text carries
+   the meaning, color reinforces it). */
+.file[data-status='modified'] .fileStatus,
+.fileSelected[data-status='modified'] .fileStatus {
+  color: var(--dsw-alias-accent);
+}
+
+.file[data-status='added'] .fileStatus,
+.fileSelected[data-status='added'] .fileStatus {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.file[data-status='deleted'] .fileStatus,
+.fileSelected[data-status='deleted'] .fileStatus {
+  color: var(--dsw-alias-error);
+}
+
+.file[data-status='untracked'] .fileStatus,
+.fileSelected[data-status='untracked'] .fileStatus {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.filePath {
+  overflow-wrap: anywhere;
+}
+
+.commitRow {
+  display: flex;
+  gap: 8px;
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+}
+
+.message:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -1px;
+}
+
+.action {
+  flex: none;
+  padding: 6px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-button-floating-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, opacity 150ms ease-out;
+}
+
+.action:hover:not(:disabled) {
+  border-color: var(--dsw-alias-accent);
+}
+
+.action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sideTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+
+.log {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  font-family: var(--dsw-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.fileHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.fileHeader .sideTitle {
+  margin-bottom: 0;
+}
+
+.viewSwitch {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.switch,
+.switchActive {
+  padding: 3px 9px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.switch:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.switchActive {
+  background: color-mix(in srgb, var(--dsw-alias-accent) 16%, transparent);
+  border-color: var(--dsw-alias-accent);
+  color: var(--dsw-alias-accent);
+  font-weight: 600;
+}
+
+.diff {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+  border: 1px solid var(--dsw-alias-border-l1);
+  font-family: var(--dsw-font-mono);
+  font-size: 12px;
+  line-height: 17px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 60vh;
+  overflow-y: auto;
+  color: var(--dsw-alias-label-primary);
+}
+
+.editor {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 60vh;
+  padding: 10px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--dsw-font-mono);
+  font-size: 12px;
+  line-height: 17px;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow: auto;
+  resize: vertical;
+}
+
+.editor:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -1px;
+}

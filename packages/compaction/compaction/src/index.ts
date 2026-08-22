@@ -24,6 +24,17 @@ export type { CompactionCheckpointSource } from './checkpoint.ts'
 /** Why automatic policy is asking a backend to consider compaction. */
 export type CompactionTrigger = 'pressure' | 'context-overflow'
 
+/** Caller options for one automatic pressure compaction call. */
+export interface PressureTriggerOptions {
+  /**
+   * Compact when the latest durable routed request reaches this fraction of the
+   * model's context window, overriding the backend's configured threshold for
+   * this call only. Must be in (0, 1]; retention and retry policy stay the
+   * backend's. Ignored by context-overflow triggers, which bypass thresholds.
+   */
+  thresholdRatio?: number
+}
+
 /** Expected failure classes for an explicit idle-session compaction request. */
 export type ManualCompactionErrorCode =
   | 'busy'
@@ -108,12 +119,16 @@ export abstract class CompactionEngine extends Service {
    * @param agent - agent context owning the session surface and routing options.
    * @param trigger - normal pressure or provider-confirmed context overflow.
    * @param signal - cancellation signal; model-backed implementations must forward it.
+   * @param options - per-call trigger overrides; the pressure trigger honors
+   *   a caller-supplied `thresholdRatio` in place of the backend's configured
+   *   threshold for this call only.
    * @returns the compaction result, or `null` if no compaction was needed.
    */
   abstract compactIfNeeded(
     agent: CompactionAgentContext,
     trigger: CompactionTrigger,
     signal: AbortSignal,
+    options?: PressureTriggerOptions,
   ): Promise<CompactionResult | null>
 
   /**

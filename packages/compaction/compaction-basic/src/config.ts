@@ -124,15 +124,24 @@ export function resolveTargetPolicy(
   })
 }
 
+/** Per-call pressure threshold override applied after target-policy resolution. */
+export interface CompactSpecOverride {
+  /** Compact at this fraction of the model's context window for this call. */
+  thresholdRatio?: number
+}
+
 /**
  * Scale one routed policy into concrete token budgets for its model capacity.
  * @param policy - merged policy for the exact routed target.
  * @param contextWindow - positive adapter-owned capacity for that target.
+ * @param override - optional per-call threshold override applied in place of
+ *   the policy's configured ratio; retention and retry budgets are unchanged.
  * @returns detached immutable pressure and retention budgets.
  */
 export function resolveCompactSpec(
   policy: ResolvedTargetPolicy,
   contextWindow: number,
+  override?: CompactSpecOverride,
 ): ResolvedCompactSpec {
   const targetKey = `${policy.target.provider}/${policy.target.model}`
   if (!Number.isInteger(contextWindow) || contextWindow <= 0) {
@@ -141,7 +150,11 @@ export function resolveCompactSpec(
       `BasicCompactionConfig: contextWindow (${contextWindow}) must be a positive integer`,
     )
   }
-  const thresholdTokens = Math.floor(contextWindow * policy.thresholdRatio)
+  const thresholdRatio = override?.thresholdRatio ?? policy.thresholdRatio
+  if (override?.thresholdRatio !== undefined) {
+    assertRatio('BasicCompactionConfig: per-call thresholdRatio', override.thresholdRatio)
+  }
+  const thresholdTokens = Math.floor(contextWindow * thresholdRatio)
   const retainTokens = policy.retainTokens === undefined
     ? Math.floor(contextWindow * policy.retainRatio)
     : policy.retainTokens
@@ -155,7 +168,7 @@ export function resolveCompactSpec(
   return deepFreeze({
     target: { ...policy.target },
     contextWindow,
-    thresholdRatio: policy.thresholdRatio,
+    thresholdRatio,
     thresholdTokens,
     retainTokens,
     summarizationProvider: policy.summarizationProvider,

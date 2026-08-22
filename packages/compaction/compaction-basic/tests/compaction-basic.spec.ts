@@ -6,6 +6,7 @@ import type { BasicCompactionConfig } from '@deepseek-ai/dsh-compaction-basic'
 import { selectCompactableRange } from '@deepseek-ai/dsh-compaction-basic/src/region.ts'
 import type { SummarizationInput, SummaryResult } from '@deepseek-ai/dsh-compaction-basic/src/summarizer.ts'
 import { CompactionId, toolPairingBalancedAfter, toolPairingBalancedBefore } from '@deepseek-ai/dsh-compaction'
+import type { PressureTriggerOptions } from '@deepseek-ai/dsh-compaction'
 import {
   resolveCompactSpec,
   resolveConfig,
@@ -280,8 +281,9 @@ async function compactIfNeeded(
   session: Session,
   trigger: 'pressure' | 'context-overflow' = 'pressure',
   model: string | undefined = MODEL,
+  options?: PressureTriggerOptions,
 ): Promise<CompactionResult | null> {
-  return compact.compactIfNeeded(agent(session, model), trigger, SIGNAL)
+  return compact.compactIfNeeded(agent(session, model), trigger, SIGNAL, options)
 }
 
 describe('compact configuration and defaults', () => {
@@ -373,6 +375,36 @@ describe('compact configuration and defaults', () => {
       compactionRetries: 2,
       maxOverflowRetries: 3,
     })
+  })
+
+  it('applies a per-call threshold ratio override without touching retention', () => {
+    const policy = resolveTargetPolicy(resolveConfig({ retainTokens: 200 }), {
+      provider: 'override-provider',
+      model: 'override-model',
+    })
+
+    expect(resolveCompactSpec(policy, 2_000)).toMatchObject({
+      thresholdRatio: 0.8,
+      thresholdTokens: 1_600,
+      retainTokens: 200,
+    })
+    expect(resolveCompactSpec(policy, 2_000, { thresholdRatio: 0.5 })).toMatchObject({
+      thresholdRatio: 0.5,
+      thresholdTokens: 1_000,
+      retainTokens: 200,
+    })
+    expect(() => resolveCompactSpec(policy, 2_000, { thresholdRatio: 1.5 }))
+      .toThrow(/number in \(0, 1\]/)
+
+    // The override scales the pressure bar, so a retention budget that clears
+    // the configured threshold can still collide with a lower per-call one.
+    const tight = resolveTargetPolicy(resolveConfig({ retainTokens: 900 }), {
+      provider: 'tight-provider',
+      model: 'tight-model',
+    })
+    expect(resolveCompactSpec(tight, 2_000)).toMatchObject({ thresholdTokens: 1_600 })
+    expect(() => resolveCompactSpec(tight, 2_000, { thresholdRatio: 0.4 }))
+      .toThrow(/less than threshold/)
   })
 
   it('inherits, clears, and replaces the summarization target as a pair', () => {
@@ -614,6 +646,29 @@ describe('pressure measurement and retention', () => {
     expect(result).not.toBeNull()
     expect(result?.shadowedSeqs.length).toBeGreaterThan(2)
     expect(session.surface.nodes.length).toBeLessThan(8)
+  })
+
+  it('compacts at a per-call ratio below the configured pressure bar', async () => {
+    const compact = service({ auto: false, thresholdRatio: 0.8, retainTokens: 180 })
+    const session = conversation(3)
+
+    // conversation(3) prices between the 0.5 override bar and the 0.8 bar.
+    expect(await compactIfNeeded(compact, session)).toBeNull()
+    const result = await compactIfNeeded(compact, session, 'pressure', MODEL, {
+      thresholdRatio: 0.5,
+    })
+    expect(result).not.toBeNull()
+  })
+
+  it('holds above a per-call ratio raised past the configured pressure bar', async () => {
+    const compact = service(compactConfig)
+    expect(await compactIfNeeded(compact, conversation(4))).not.toBeNull()
+
+    const held = conversation(4)
+    expect(await compactIfNeeded(compact, held, 'pressure', MODEL, {
+      thresholdRatio: 0.8,
+    })).toBeNull()
+    expect(held.surface.nodes.length).toBe(8)
   })
 
   it('counts the durable routed request envelope without putting it on the surface', async () => {

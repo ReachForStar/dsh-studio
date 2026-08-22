@@ -95,7 +95,15 @@ export function capture(command: string, args: readonly string[], options: RunOp
  * @param options - working directory and environment.
  */
 export function run(command: string, args: readonly string[], options: RunOptions = {}): void {
-  const result = spawnSync(command, [...args], { cwd: options.cwd, env: options.env, stdio: 'inherit' })
+  // On Windows the release steps spawn the pnpm/npm .cmd shims, which Node
+  // cannot exec directly; the shell resolves them through PATHEXT. Linux keeps
+  // plain exec so arguments never pass through a shell.
+  const result = spawnSync(command, [...args], {
+    cwd: options.cwd,
+    env: options.env,
+    stdio: 'inherit',
+    ...(process.platform === 'win32' ? { shell: true } : {}),
+  })
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} exited with ${String(result.status)}`)
 }

@@ -67,6 +67,9 @@ import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
 import VmWorkflowEngine from '@deepseek-ai/dsh-workflow-worker-thread'
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
+import LocalSshService from '@deepseek-ai/dsh-ssh-local'
+import * as ToolSsh from '@deepseek-ai/dsh-tool-ssh'
+import { MemorySettings } from '../packages/settings/settings/tests/memory.ts'
 import { githubSlug } from './verify-md-links.ts'
 
 /** Attachment seam marker that makes the attachments-conditional `read_image` schema harvestable. */
@@ -271,6 +274,22 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'Not in any shipped tree (a deliberate opt-in — dynamic package code reaches the real runtime, see .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md). The toolset injects `ctx.dynamicCordisRunner` from `@deepseek-ai/dsh-cordis-host-runner`, which owns the definition registry and the vm sandbox; a composition missing it never activates the tools. A running package may register ADDITIONAL model-visible tools until it is stopped, undefined, or DSH restarts; a full changed request header logs those tool-set changes.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-ssh',
+    dir: 'tool-ssh',
+    source: 'packages/remote/tool-ssh/src/index.ts',
+    requires: ['ctx.tools', 'ctx.ssh', 'ctx.systemPrompt'],
+    writes: ['tool/call', 'tool/result', 'settings/document-updated (ssh definition saves)'],
+    async mount(ctx) {
+      // The ssh tools consume the ctx.ssh seam; the local provider plus an
+      // in-memory settings provider satisfy the inject without any I/O.
+      await ctx.plugin(MemorySettings)
+      await ctx.plugin(LocalSshService)
+      await ctx.plugin(ToolSsh)
+    },
+    note:
+      'The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: connection management (ssh_connect/ssh_connections/ssh_disconnect/ssh_test), remote command execution (ssh_exec), and SFTP transfer/browse (sftp_list/stat/read/write/mkdir/rm/rename). Definitions and remembered host keys persist in the `ssh` settings namespace; host keys verify by default (accept-new) and secrets never appear in results.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-bash-persistent',

@@ -21,6 +21,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-bash` | `bash` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The bash tool is the model-facing consumer of the bash executor seam. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@deepseek-ai/dsh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled. |
 | `@deepseek-ai/dsh-tool-pwsh` | `pwsh` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@deepseek-ai/dsh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `DSH_*` environment comes from `@deepseek-ai/dsh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\...` paths and `$env:NAME` variables. |
 | `@deepseek-ai/dsh-tool-cordis` | `cordis_define`, `cordis_inspect_list`, `cordis_inspect_query`, `cordis_inspect_self`, `cordis_run`, `cordis_stop`, `cordis_undefine` | `ctx.tools`, `ctx.dynamicCordisRunner` | `tool/call`, `tool/result`, `process-local dynamic package lifecycle` | - | Not in any shipped tree (a deliberate opt-in — dynamic package code reaches the real runtime, see .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md). The toolset injects `ctx.dynamicCordisRunner` from `@deepseek-ai/dsh-cordis-host-runner`, which owns the definition registry and the vm sandbox; a composition missing it never activates the tools. A running package may register ADDITIONAL model-visible tools until it is stopped, undefined, or DSH restarts; a full changed request header logs those tool-set changes. |
+| `@deepseek-ai/dsh-tool-ssh` | `sftp_list`, `sftp_mkdir`, `sftp_read`, `sftp_rename`, `sftp_rm`, `sftp_stat`, `sftp_write`, `ssh_connect`, `ssh_connections`, `ssh_disconnect`, `ssh_exec`, `ssh_test` | `ctx.tools`, `ctx.ssh`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `settings/document-updated (ssh definition saves)` | - | The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: connection management (ssh_connect/ssh_connections/ssh_disconnect/ssh_test), remote command execution (ssh_exec), and SFTP transfer/browse (sftp_list/stat/read/write/mkdir/rm/rename). Definitions and remembered host keys persist in the `ssh` settings namespace; host keys verify by default (accept-new) and secrets never appear in results. |
 | `@deepseek-ai/dsh-tool-bash-persistent` | `bash` | `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent bash tool; deployment composition supplies the PTY backend and may override the model-facing environment description. |
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent pwsh tool, the Windows counterpart of the persistent bash tool; deployment composition supplies a pwsh-dialect PTY backend and may override the model-facing environment description. |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`, `ctx.fs` | `tool/call`, `fs/observed after view presence/absence, edit absence, or successful mutation`, `tool/result` | - | Standalone view/create/unique literal replace/line insert tool over the filesystem seam; it composes with any shell or terminal API. |
@@ -501,6 +502,374 @@ Permanently remove a dynamic Plugin owned by the current Session. If it is runni
 Source: [`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts)
 
 Not in any shipped tree (a deliberate opt-in — dynamic package code reaches the real runtime, see .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md). The toolset injects `ctx.dynamicCordisRunner` from `@deepseek-ai/dsh-cordis-host-runner`, which owns the definition registry and the vm sandbox; a composition missing it never activates the tools. A running package may register ADDITIONAL model-visible tools until it is stopped, undefined, or DSH restarts; a full changed request header logs those tool-set changes.
+
+<a id="deepseek-aidsh-tool-ssh"></a>
+
+## `@deepseek-ai/dsh-tool-ssh`
+
+### `sftp_list`
+
+List one remote directory over SFTP (non-recursive). Entries report type, size, mtime, and mode.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote directory path to list."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_mkdir`
+
+Create one remote directory over SFTP. With `recursive`, missing parents are created too.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote directory path to create."
+    },
+    "recursive": {
+      "type": "boolean",
+      "description": "Create missing parents (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_read`
+
+Download one remote file to a local path over SFTP. The local file must not exist unless `overwrite` is set; a failed transfer removes the partial local file.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "remote_path": {
+      "type": "string",
+      "description": "Remote file path to download."
+    },
+    "local_path": {
+      "type": "string",
+      "description": "Local destination path; relative paths resolve against the session workspace."
+    },
+    "overwrite": {
+      "type": "boolean",
+      "description": "Replace an existing local file (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "remote_path",
+    "local_path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_rename`
+
+Rename or move one remote path over SFTP.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "from": {
+      "type": "string",
+      "description": "Current remote path."
+    },
+    "to": {
+      "type": "string",
+      "description": "Destination remote path."
+    }
+  },
+  "required": [
+    "connection",
+    "from",
+    "to"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_rm`
+
+Remove one remote file or directory over SFTP. Directories require `recursive: true` and are deleted depth-first; symlinks are unlinked, never followed.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote path to remove."
+    },
+    "recursive": {
+      "type": "boolean",
+      "description": "Remove a directory tree (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_stat`
+
+Stat one remote path over SFTP without following symlinks.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote path to stat."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_write`
+
+Upload one local file to a remote path over SFTP. The remote directory must already exist (use sftp_mkdir first).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "local_path": {
+      "type": "string",
+      "description": "Local source path; relative paths resolve against the session workspace."
+    },
+    "remote_path": {
+      "type": "string",
+      "description": "Remote destination path."
+    }
+  },
+  "required": [
+    "connection",
+    "local_path",
+    "remote_path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_connect`
+
+Save a new SSH connection definition (or update one by passing its id). The definition persists in user settings and is usable by ssh_exec and the sftp_* tools; secrets never come back in results. List saved connections with ssh_connections.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique display name for the connection (also accepted wherever a connection id is)."
+    },
+    "host": {
+      "type": "string",
+      "description": "Remote host name or IP address."
+    },
+    "username": {
+      "type": "string",
+      "description": "Remote login user."
+    },
+    "port": {
+      "type": "number",
+      "description": "Remote SSH port (default 22)."
+    },
+    "auth": {
+      "type": "string",
+      "description": "Authentication kind: \"password\" or \"privateKey\".",
+      "enum": [
+        "password",
+        "privateKey"
+      ]
+    },
+    "password": {
+      "type": "string",
+      "description": "Password (required when auth is \"password\")."
+    },
+    "private_key_path": {
+      "type": "string",
+      "description": "Absolute local path of the private key (required when auth is \"privateKey\")."
+    },
+    "passphrase": {
+      "type": "string",
+      "description": "Private-key passphrase, when the key is encrypted."
+    },
+    "connect_timeout_ms": {
+      "type": "number",
+      "description": "Connection-establishment timeout in milliseconds (default 10000, range 1000-300000)."
+    },
+    "id": {
+      "type": "string",
+      "description": "Id of an existing connection to update; omit to create a new one."
+    }
+  },
+  "required": [
+    "name",
+    "host",
+    "username",
+    "auth"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_connections`
+
+List every saved SSH connection definition (secret-free view). Use the returned id or name as the `connection` argument of ssh_exec and the sftp_* tools.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_disconnect`
+
+Close the shared connection for one saved connection. Later ssh_exec/sftp_* calls reconnect automatically.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    }
+  },
+  "required": [
+    "connection"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_exec`
+
+Execute a command on a saved SSH connection and return its stdout/stderr. Each call runs in a fresh remote shell: no state (cwd, variables) persists between calls — pass `cwd` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`; commands that exceed the timeout are killed and reported as `[timed out ...]`. Long output is truncated to its tail with a truncation marker.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "command": {
+      "type": "string",
+      "description": "The command to execute on the remote host."
+    },
+    "timeout_ms": {
+      "type": "number",
+      "description": "Timeout in milliseconds. The provider applies its configured default and cap, and kills the command on expiry."
+    },
+    "cwd": {
+      "type": "string",
+      "description": "Remote working directory for this command; a `cd` prefix is applied on the remote side."
+    }
+  },
+  "required": [
+    "connection",
+    "command"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_test`
+
+Probe one saved connection: connect, run a probe command, and close again. Reports the round-trip latency or the failure reason.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    }
+  },
+  "required": [
+    "connection"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: connection management (ssh_connect/ssh_connections/ssh_disconnect/ssh_test), remote command execution (ssh_exec), and SFTP transfer/browse (sftp_list/stat/read/write/mkdir/rm/rename). Definitions and remembered host keys persist in the `ssh` settings namespace; host keys verify by default (accept-new) and secrets never appear in results.
 
 <a id="deepseek-aidsh-tool-bash-persistent"></a>
 

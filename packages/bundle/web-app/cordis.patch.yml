@@ -100,6 +100,11 @@
     - id: plugin-inventory
       name: '@deepseek-ai/dsh-host-plugin-inventory'
 
+    # Connection-management Remote gateway over the ctx.ssh seam for the
+    # browser: list/save/remove definitions and the connectivity probe.
+    - id: ssh-remotes
+      name: '@deepseek-ai/dsh-host-ssh-remotes'
+
     # The API gateway: the transport-agnostic dispatch face every client shape
     # shares. The base layer's agent-default-model service owns the default model.
     - id: api-gateway
@@ -205,6 +210,10 @@
 
     - id: ui-settings-plugin-inventory
       name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
+
+    # SSH/SFTP connection management page in Settings, over the ssh Remote.
+    - id: ui-ssh
+      name: '@deepseek-ai/dsh-client-ui-ssh'
 
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'
@@ -323,6 +332,11 @@
   disabled: true
 
 - id: tool-pwsh
+  disabled: true
+
+# The SSH tools mount per agent through the standard preset; the host-plane
+# rows (the `ssh` provider and the GUI gateway) stay active for every session.
+- id: tool-ssh
   disabled: true
 
 # The background-job REGISTRY stays on the host plane; only the model-facing

@@ -49,6 +49,14 @@
   name: '@deepseek-ai/dsh-tool-pwsh'
   disabled: !!js process.platform !== 'win32'
 
+# ── remote SSH/SFTP ─────────────────────────────────────────────────────────
+
+# The ssh provider and the definition/known-hosts registry stay in the HOST
+# composition (base layer); this row gives the agent the model-facing tools
+# over that seam.
+- id: tool-ssh
+  name: '@deepseek-ai/dsh-tool-ssh'
+
 # ── filesystem ──────────────────────────────────────────────────────────────
 
 # Both register into the host `tools` registry and provide nothing, so

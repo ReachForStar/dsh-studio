@@ -74,6 +74,10 @@ flowchart LR
   cfg --> plugin_dsh_base_tool_pwsh
   plugin_dsh_base_tool_jobs["tool-jobs<br/>@deepseek-ai/dsh-tool-jobs"]
   cfg --> plugin_dsh_base_tool_jobs
+  plugin_dsh_base_ssh_local["ssh-local<br/>@deepseek-ai/dsh-ssh-local"]
+  cfg --> plugin_dsh_base_ssh_local
+  plugin_dsh_base_tool_ssh["tool-ssh<br/>@deepseek-ai/dsh-tool-ssh"]
+  cfg --> plugin_dsh_base_tool_ssh
   plugin_dsh_base_fs_observation_policy["fs-observation-policy<br/>@deepseek-ai/dsh-fs-observation-policy"]
   cfg --> plugin_dsh_base_fs_observation_policy
   plugin_dsh_base_tool_fs["tool-fs<br/>@deepseek-ai/dsh-tool-fs"]
@@ -201,6 +205,8 @@ flowchart LR
 | `tool-bash` | `@deepseek-ai/dsh-tool-bash` |
 | `tool-pwsh` | `@deepseek-ai/dsh-tool-pwsh` |
 | `tool-jobs` | `@deepseek-ai/dsh-tool-jobs` |
+| `ssh-local` | `@deepseek-ai/dsh-ssh-local` |
+| `tool-ssh` | `@deepseek-ai/dsh-tool-ssh` |
 | `fs-observation-policy` | `@deepseek-ai/dsh-fs-observation-policy` |
 | `tool-fs` | `@deepseek-ai/dsh-tool-fs` |
 | `tool-fs-search` | `@deepseek-ai/dsh-tool-fs-search` |

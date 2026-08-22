@@ -218,6 +218,15 @@
     - id: tool-jobs
       name: '@deepseek-ai/dsh-tool-jobs'
 
+    # Remote SSH/SFTP: the local ssh2-backed executor registers ctx.ssh and
+    # the model-facing tools. Definitions and known host keys persist in the
+    # `ssh` settings namespace; host keys verify by default (accept-new).
+    - id: ssh-local
+      name: '@deepseek-ai/dsh-ssh-local'
+
+    - id: tool-ssh
+      name: '@deepseek-ai/dsh-tool-ssh'
+
     - id: fs-observation-policy
       name: '@deepseek-ai/dsh-fs-observation-policy'
 

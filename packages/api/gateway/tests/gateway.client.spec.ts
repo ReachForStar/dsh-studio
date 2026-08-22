@@ -404,6 +404,43 @@ describe('Client Typert API', () => {
     await disposeMultipleScoped()
   })
 
+  it('accepts a delete method the namespace service does not reserve', async () => {
+    const call = vi.fn<ConnectionHandle['rpc']['call']>()
+      .mockResolvedValue({ ok: true, value: { removed: true } })
+    const ctx = await bench(call)
+    const deletion: InvocationDescriptor = {
+      id: '@fixture/probe#probe/delete',
+      service: 'probe',
+      namespace: 'probe',
+      method: 'delete',
+      invocation: { kind: 'direct' },
+      parameters: [{
+        name: 'id',
+        wire: 'id',
+        source: 'json',
+        codec: { mode: 'strict', typeSymbol: '@fixture#Id', schema: z.string().min(1) },
+      }],
+      result: { mode: 'strict', typeSymbol: '@fixture#RemoveResult', schema: z.object({ removed: z.boolean() }) },
+    }
+
+    // `delete` is not a Service member, so a namespaced endpoint by that name
+    // mounts where `remove` would collide with the namespace service.
+    const dispose = await ctx.remote.$mount({
+      package: '@fixture/delete',
+      descriptors: [deletion],
+    })
+    await expect((ctx.remote.probe as unknown as {
+      delete(id: string): Promise<RemoteResult<{ removed: boolean }>>
+    }).delete('conn-1')).resolves.toEqual({ ok: true, value: { removed: true } })
+    expect(call).toHaveBeenLastCalledWith(
+      '/api',
+      'probe/delete',
+      { args: { id: 'conn-1' } },
+      expect.any(AbortSignal),
+    )
+    await dispose()
+  })
+
   it('rolls back earlier descriptors when a later descriptor fails to install', async () => {
     const ctx = await bench(vi.fn<ConnectionHandle['rpc']['call']>())
     const { scope: _scope, ...first } = directDescriptor()

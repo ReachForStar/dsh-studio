@@ -263,6 +263,7 @@
         "./packages/experimental/*/src",
         "./packages/workflow/*/src",
         "./packages/web/*/src",
+        "./packages/remote/*/src",
         "./packages/attachment/*/src",
         "./packages/spill/*/src",
         "./packages/todo/*/src",

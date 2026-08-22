@@ -407,6 +407,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Plugins declare effect-scoped DSH_* facts; each shell tool collects one trusted snapshot per execution and its executor rebuilds the namespace.',
   },
   {
+    key: 'ssh',
+    pkg: 'ssh',
+    title: 'SSH/SFTP capability seam',
+    mode: 'seam',
+    implementations: ['ssh-local'],
+    consumers: ['tool-ssh', 'host-ssh-remotes'],
+    note: 'The seam owns the settings-backed definition registry and the live-connection contract; the model-facing tools and the GUI gateway consume it, and a future remote provider replaces ssh-local without touching them.',
+  },
+  {
     key: 'terminals',
     pkg: 'terminal',
     title: 'Persistent PTY session registry',

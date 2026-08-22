@@ -53,6 +53,11 @@ allowBuilds:
   # The Python runtime deploy includes the reviewed workspace postinstall that
   # restores the executable bit on node-pty's macOS spawn helper.
   '@deepseek-ai/dsh-subprocess-local@file:packages/subprocess/subprocess-local': true
+  # ssh2's lifecycle script prepares its optional native accelerator
+  # (cpu-features). The accelerator itself is denied: its node-gyp compile
+  # needs platform toolchains, and ssh2 falls back to pure JS without it.
+  ssh2: true
+  cpu-features: false
 
 minimumReleaseAgeExclude:
   # Fresh pi-ai releases carry the model catalog updates that are the whole

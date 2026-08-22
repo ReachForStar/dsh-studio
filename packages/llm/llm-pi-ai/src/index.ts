@@ -241,17 +241,19 @@ export function apply(ctx: Context, config: Config): void {
    */
   const storedApiKey = async (provider: string | undefined): Promise<string | undefined> => {
     if (provider === undefined) return undefined
-    const profile = profiles().get(provider)
-    if (profile === undefined) return undefined
-    if (profile.apiKeyEnv !== undefined) return resolveApiKey(provider, profile)
-    // A route with no apiKeyEnv defers to pi-ai's provider-native discovery.
-    // A catalog gateway's ambient env still answers a listing probe the same
-    // way, so the fetch carries the key instead of 401ing: AMAX reads
-    // AMAX_API_KEY straight from the process environment.
+    // A catalog gateway's ambient env answers a listing probe even while its
+    // route is still being declared (no profile yet) — "fetch available
+    // models" runs before the provider is saved. AMAX reads AMAX_API_KEY
+    // straight from the process environment, so a fresh draft carries it.
     if (provider === AMAX_PROVIDER.id) {
       const ambient = process.env[AMAX_API_KEY_ENV]
       if (ambient !== undefined && ambient.length > 0) return ambient
     }
+    const profile = profiles().get(provider)
+    if (profile === undefined) return undefined
+    if (profile.apiKeyEnv !== undefined) return resolveApiKey(provider, profile)
+    // A route with no apiKeyEnv defers to pi-ai's provider-native discovery;
+    // the ambient read above is the AMAX-only exception to that rule.
     return undefined
   }
   // Interrogating an endpoint is a configuration-time action over a draft, so

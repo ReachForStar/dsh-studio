@@ -411,7 +411,9 @@ describe('probe key format', () => {
     expect(models.map(model => model.id)).toEqual(['deepseek-v4-flash'])
   })
 
-  it('authenticates the AMAX listing from AMAX_API_KEY when the route names no credential', async () => {
+  it('authenticates the AMAX listing from AMAX_API_KEY before the route is saved', async () => {
+    // "Fetch available models" runs on a draft: no profile exists yet, so the
+    // ambient env read must answer before the profile lookup is reached.
     process.env[AMAX_API_KEY_ENV] = 'amax-env-key'
     touchedEnv.push(AMAX_API_KEY_ENV)
     const requests: { headers: Headers }[] = []
@@ -428,9 +430,7 @@ describe('probe key format', () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(FileSettingsProvider, { path: join(dir, 'settings.yaml'), watch: false })
-    await ctx.plugin(LlmPiAi, {
-      providers: { amax: { api: 'openai-completions', models: [{ id: 'deepseek-v4-flash' }] } },
-    })
+    await ctx.plugin(LlmPiAi, {})
 
     const models = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'amax' })
 

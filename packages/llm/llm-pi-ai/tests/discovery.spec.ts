@@ -129,11 +129,36 @@ describe('draft-provider model discovery', () => {
 
     expect(models).toEqual([
       { id: 'acme-large', name: 'Acme Large', contextWindow: 65_536, maxTokens: 4096 },
-      { id: 'acme-small' },
+      // The OpenAI-compatible listing carries no display name, so the id is
+      // the row label the Models page renders.
+      { id: 'acme-small', name: 'acme-small' },
     ])
     expect(server.paths).toEqual(['/v1/models'])
     expect(server.headers[0]?.authorization).toBe('Bearer probe-key')
     expect(server.headers[0]?.['user-agent']).toBe(userAgent())
+  })
+
+  it('falls back to the id as the display name and reads common gateway name fields', async () => {
+    // The standard OpenAI listing (the AMAX gateway's shape) carries only
+    // id/object/created/owned_by; gateway extensions name the model variously.
+    const server = await listingServer({
+      body: JSON.stringify({
+        data: [
+          { id: 'deepseek-v4-flash', object: 'model', created: 0, owned_by: 'amax' },
+          { id: 'deepseek-v3', name: 'DeepSeek V3', display_name: 'V3 Label' },
+          { id: 'qwen-max', model_name: 'Qwen Max' },
+        ],
+      }),
+    })
+    const ctx = await harness()
+
+    const models = await ctx.llm.discoverModels('llm-pi-ai', { baseURL: server.url })
+
+    expect(models).toEqual([
+      { id: 'deepseek-v4-flash', name: 'deepseek-v4-flash' },
+      { id: 'deepseek-v3', name: 'DeepSeek V3' },
+      { id: 'qwen-max', name: 'Qwen Max' },
+    ])
   })
 
   it('keeps a deployment path instead of resolving it away', async () => {
@@ -214,7 +239,7 @@ describe('draft-provider model discovery', () => {
     const ctx = await harness()
 
     expect(await ctx.llm.discoverModels('llm-pi-ai', { baseURL: server.url }))
-      .toEqual([{ id: 'good' }, { id: 'zero-capacity' }])
+      .toEqual([{ id: 'good', name: 'good' }, { id: 'zero-capacity', name: 'zero-capacity' }])
   })
 
   it('points at the credential for a rejected one, and only then', async () => {

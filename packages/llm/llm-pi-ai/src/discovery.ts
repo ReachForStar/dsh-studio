@@ -52,9 +52,11 @@ const MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 /** One entry of an OpenAI-compatible `GET /models` reply. */
 interface ListingEntry {
   id?: unknown
-  /** Common gateway extensions; absent from the official listings. */
+  /** Common gateway extensions; absent from the official OpenAI listing. */
   name?: unknown
   display_name?: unknown
+  model_name?: unknown
+  title?: unknown
   context_window?: unknown
   context_length?: unknown
   max_tokens?: unknown
@@ -148,12 +150,15 @@ function readListing(body: unknown): LlmDiscoveredModel[] {
     const entry = raw as ListingEntry | null
     const id = label(entry?.id)
     if (id === undefined) continue
-    const name = label(entry?.name, entry?.display_name)
+    // The OpenAI-compatible listing carries no display name (only id), so the
+    // name falls back to the id — the Models page renders `name` as the row
+    // label with no id fallback of its own.
+    const name = label(entry?.name, entry?.display_name, entry?.model_name, entry?.title) ?? id
     const contextWindow = capacity(entry?.context_window, entry?.context_length)
     const maxTokens = capacity(entry?.max_output_tokens, entry?.max_tokens)
     models.push({
       id,
-      ...name === undefined ? {} : { name },
+      name,
       ...contextWindow === undefined ? {} : { contextWindow },
       ...maxTokens === undefined ? {} : { maxTokens },
     })

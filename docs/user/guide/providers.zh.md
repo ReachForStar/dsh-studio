@@ -18,6 +18,10 @@
 
 使用原生认证的提供方需要各自的原生凭据。Bedrock、Vertex、Azure 和 Codex 分别使用 AWS 凭据与区域、ADC 项目、`api-version` 和 OAuth；只填写 API 密钥字段无法完成配置。
 
+## 添加 AMAX Token Router
+
+本分支的目录额外提供 AMAX Token Router 网关。选择**添加提供方 → AMAX Token Router**，输入 API 密钥并保存；请求通过 `AMAX_API_KEY` 环境变量认证。路由器的模型取决于账号的 token 套餐，因此卡片默认不预置模型：打开提供方卡片并选择**获取可用模型**，从其 OpenAI 兼容的 `GET /models` 列表（`https://ai.amaxsmp.com/v1`）拉取当前清单。
+
 ## 添加自定义提供方
 
 对于公司网关、自建服务器或已安装目录中不存在的提供方，选择**添加自定义提供方**。提供小写 Provider ID、基础 URL、API 协议、凭据和至少一个模型。

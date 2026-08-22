@@ -12,6 +12,7 @@ import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import { getBuiltinModels } from '@earendil-works/pi-ai/providers/all'
 import { createModels, getSupportedThinkingLevels } from '@earendil-works/pi-ai'
 import type { Api, Model, OpenAICompletionsCompat, Provider } from '@earendil-works/pi-ai'
+import { catalogDisplayName, catalogModels, catalogProvider, catalogProviderIds } from '../src/catalog.ts'
 import { resolveProfiles } from '../src/config.ts'
 import { buildProvider, supportedProtocols } from '../src/provider.ts'
 import { assemble } from './assemble.ts'
@@ -1191,5 +1192,26 @@ describe('configurable-provider directory', () => {
       settingsPath: ['providers', 'openai-codex'],
       declared: false,
     })
+  })
+})
+
+describe('AMAX Token Router catalog', () => {
+  it('ships the AMAX gateway as a catalog route whose models come from its listing', () => {
+    expect(catalogProviderIds()).toContain('amax')
+    expect(catalogProvider('amax')?.baseUrl).toBe('https://ai.amaxsmp.com/v1')
+    expect(catalogModels('amax').size).toBe(0)
+  })
+
+  it('displays the gateway under its product name and nothing else', () => {
+    expect(catalogDisplayName('amax')).toBe('AMAX Token Router')
+    expect(catalogDisplayName('deepseek')).toBeUndefined()
+  })
+
+  it('serves an AMAX route once the profile names models and the route protocol', () => {
+    const resolved = resolveProfiles({
+      amax: { api: 'openai-completions', models: [{ id: 'deepseek-chat' }] },
+    })
+    const models = resolved.get('amax')?.piProvider.getModels() ?? []
+    expect(models.map(model => model.id)).toContain('deepseek-chat')
   })
 })

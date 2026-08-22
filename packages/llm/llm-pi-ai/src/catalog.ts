@@ -14,6 +14,8 @@
 
 import { builtinProviders, getBuiltinModels, getBuiltinProviders } from '@earendil-works/pi-ai/providers/all'
 import type { BuiltinProvider } from '@earendil-works/pi-ai/providers/all'
+import { createProvider, envApiKeyAuth } from '@earendil-works/pi-ai'
+import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy'
 import type {
   AnthropicMessagesCompat,
   Api,
@@ -149,13 +151,35 @@ export const CHAT_TEMPLATE_VARS = Object.keys(CHAT_TEMPLATE_VAR_GATE) as readonl
 let providerIndex: Map<string, Provider> | undefined
 
 /**
+ * The AMAX Token Router gateway, added to the installed catalog on top of the
+ * pi-ai built-ins. Its model list is deliberately empty: the router's models
+ * depend on the account's token plan, so the configuration surface fetches
+ * them from the OpenAI-compatible `GET /models` listing instead of shipping a
+ * guess that would go stale. The credential comes from the `AMAX_API_KEY`
+ * environment variable.
+ */
+export const AMAX_BASE_URL = 'https://ai.amaxsmp.com/v1'
+
+export const AMAX_PROVIDER: Provider<'openai-completions'> = createProvider<'openai-completions'>({
+  id: 'amax',
+  name: 'AMAX Token Router',
+  baseUrl: AMAX_BASE_URL,
+  auth: { apiKey: envApiKeyAuth('AMAX Token Router API key', ['AMAX_API_KEY']) },
+  models: [],
+  api: openAICompletionsApi(),
+})
+
+/**
  * Installed catalog providers by id, constructed once. Each entry owns the API
  * implementations for its own models, which is why a catalog route reuses this
  * provider instead of being rebuilt from parts.
  * @returns the catalog provider index.
  */
 function catalogProviders(): Map<string, Provider> {
-  providerIndex ??= new Map(builtinProviders().map(provider => [provider.id, provider]))
+  providerIndex ??= new Map([
+    ...builtinProviders().map(provider => [provider.id, provider] as const),
+    [AMAX_PROVIDER.id, AMAX_PROVIDER],
+  ])
   return providerIndex
 }
 
@@ -169,19 +193,33 @@ export function catalogProvider(provider: string): Provider | undefined {
 }
 
 /**
- * Every provider route the installed pi-ai catalog ships.
+ * Every provider route the installed pi-ai catalog ships, plus the AMAX Token
+ * Router gateway this build adds on top.
  * @returns the catalog provider ids.
  */
 export function catalogProviderIds(): readonly string[] {
-  return getBuiltinProviders()
+  return [...getBuiltinProviders(), AMAX_PROVIDER.id]
 }
 
 /**
- * The installed catalog models for one route, indexed by model id.
+ * The display name of one catalog route, when it differs from its id. The
+ * pi-ai built-ins keep their ids as display names; AMAX ships a proper name.
  * @param provider - provider route key.
- * @returns catalog models by id; empty for a route pi-ai does not ship.
+ * @returns the display name, or `undefined` to fall back to the provider id.
+ */
+export function catalogDisplayName(provider: string): string | undefined {
+  return provider === AMAX_PROVIDER.id ? AMAX_PROVIDER.name : undefined
+}
+
+/**
+ * The installed catalog models for one route, indexed by model id. The AMAX
+ * gateway ships none — its models come from the account's `GET /models`
+ * listing — so a route naming it must configure models explicitly.
+ * @param provider - provider route key.
+ * @returns catalog models by id; empty for a route pi-ai does not ship or for AMAX.
  */
 export function catalogModels(provider: string): Map<string, Model<Api>> {
+  if (provider === AMAX_PROVIDER.id) return new Map()
   if (!catalogProviders().has(provider)) return new Map()
   const models = getBuiltinModels(provider as BuiltinProvider) as Model<Api>[]
   return new Map(models.map(model => [model.id, model]))

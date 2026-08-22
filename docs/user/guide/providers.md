@@ -18,6 +18,10 @@ Choose **Add provider**, select a provider such as Anthropic or OpenAI, enter it
 
 Providers with native authentication need their native credentials instead. Bedrock, Vertex, Azure, and Codex use AWS credentials and a region, an ADC project, an `api-version`, and OAuth respectively; filling only the API-key field does not configure them.
 
+## Add the AMAX Token Router
+
+This fork's catalog adds the AMAX Token Router gateway. Choose **Add provider → AMAX Token Router**, enter the API key, and save; requests authenticate through the `AMAX_API_KEY` environment variable. The router's models depend on your account's token plan, so the card ships none by default: open the provider card and choose **Fetch available models** to pull the current list from its OpenAI-compatible `GET /models` listing (`https://ai.amaxsmp.com/v1`).
+
 ## Add a custom provider
 
 Choose **Add a custom provider** for a company gateway, self-hosted server, or provider absent from the installed catalog. Supply a lowercase Provider ID, base URL, API protocol, credential, and at least one model.

@@ -373,4 +373,15 @@ describe('probe key format', () => {
     const headers = new Headers(requests[0]?.headers)
     expect(headers.has('authorization')).toBe(false)
   })
+
+  it('interrogates the AMAX listing because its catalog ships no models', async () => {
+    const server = await listingServer({
+      body: JSON.stringify({ data: [{ id: 'deepseek-chat' }, { id: 'claude-sonnet-4' }] }),
+    })
+
+    const models = await discoverModels({ provider: 'amax', baseURL: server.url, apiKey: 'k' })
+
+    expect(models.map(model => model.id)).toEqual(['deepseek-chat', 'claude-sonnet-4'])
+    expect(server.paths).toEqual(['/models'])
+  })
 })

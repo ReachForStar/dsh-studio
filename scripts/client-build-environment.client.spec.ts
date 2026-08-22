@@ -20,12 +20,10 @@ const COMMIT_HASH = '0123456789abcdef0123456789abcdef01234567'
 const PROBE_KEY = `process.env.${PROBE_NAME}`
 const originalProbe = process.env[PROBE_NAME]
 const roots: string[] = []
+// The fork dropped the official CI/release workflows (build-exe, ci,
+// ci-master, sandbox) and keeps only the native landlock-run workflow.
 const dshBuildWorkflows = [
-  'build-exe-for-python-sdk.yml',
-  'ci.yml',
-  'ci-master.yml',
   'landlock-run.yml',
-  'sandbox.yml',
 ]
 
 afterEach(() => {

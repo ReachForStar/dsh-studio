@@ -781,6 +781,24 @@ describe('compat switches', () => {
     expect(models.get('dialect-odd')?.compat).toEqual({ thinkingFormat: 'openai', supportsReasoningEffort: false })
   })
 
+  it('keeps the AMAX gateway off the developer role unless explicitly configured', () => {
+    // 无 compat 配置：网关硬限制默认关闭 developer role（reasoning 模型回退 system）。
+    const defaults = modelsOf({
+      amax: { models: [{ id: 'deepseek-v4-flash' }, { id: 'gpt-5.4' }] },
+    }, 'amax')
+    expect(defaults.get('deepseek-v4-flash')?.compat).toMatchObject({ supportsDeveloperRole: false })
+    expect(defaults.get('gpt-5.4')?.compat).toMatchObject({ supportsDeveloperRole: false })
+
+    // 显式配置逐字段覆盖（网关升级支持后可开启）。
+    const enabled = modelsOf({
+      amax: {
+        compat: { supportsDeveloperRole: true },
+        models: [{ id: 'deepseek-v4-flash' }],
+      },
+    }, 'amax')
+    expect(enabled.get('deepseek-v4-flash')?.compat).toMatchObject({ supportsDeveloperRole: true })
+  })
+
   it('merges the switches over the catalog entry’s own compat instead of replacing it', () => {
     const [catalogModel] = getBuiltinModels('deepseek')
     if (catalogModel === undefined) throw new Error('the installed catalog ships no deepseek model')

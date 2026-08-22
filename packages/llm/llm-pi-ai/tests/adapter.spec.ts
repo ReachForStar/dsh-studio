@@ -1007,3 +1007,24 @@ describe('abort wiring', () => {
     expect(server.requests).toHaveLength(1)
   })
 })
+
+describe('amax developer-role fallback', () => {
+  it('sends the system prompt as system for a reasoning model when the AMAX route sets no compat', async () => {
+    const server = await mockServer([{ events: textEvents }])
+    vi.stubEnv('AMAX_API_KEY', 'test-key')
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LlmPiAi, {
+      providers: { amax: { baseURL: server.url, models: [{ id: 'deepseek-v4-flash' }] } },
+    })
+    await assemble(ctx, {
+      provider: 'amax',
+      model: 'deepseek-v4-flash',
+      messages: [],
+      system: 'you are helpful',
+    })
+    expect(server.requests[0]).toMatchObject({
+      messages: [{ role: 'system', content: 'you are helpful' }],
+    })
+  })
+})

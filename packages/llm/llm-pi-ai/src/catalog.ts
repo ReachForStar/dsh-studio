@@ -840,6 +840,13 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
   const { provider } = request
   const defaults = catalogModels(provider)
   const providerBaseUrl = catalogProvider(provider)?.baseUrl
+  // AMAX 网关（DeepSeek Token Router）的 OpenAI 兼容层不接受 `developer` role
+  // ——网关反序列化请求体即失败——而 pi-ai 的 baseURL 检测把非内置网关一律当
+  // 标准 OpenAI 默认开启。作为网关硬限制注入默认值；用户显式配置的 route
+  // compat 逐字段覆盖（网关升级支持后可显式开启）。
+  const routeCompat: PiAiCompatProfile | undefined = provider === AMAX_PROVIDER.id
+    ? { supportsDeveloperRole: false, ...request.compat }
+    : request.compat
   // An absent `models` key and an empty one are the same request: the config
   // schema materializes `[]` for the absent case, and an empty catalog could
   // serve no request anyway, so both mean "serve the installed catalog".
@@ -881,7 +888,7 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
   // Vocabulary before protocols: a withheld or undeclared switch is refused
   // wherever it is written, so it cannot look applied on a route whose models
   // never reach the protocol that would have taken it.
-  assertOfferedCompatFields(provider, 'route', request.compat)
+  assertOfferedCompatFields(provider, 'route', routeCompat)
   for (const entry of entries) {
     assertOfferedCompatFields(provider, `model "${entry.id}"`, entry.compat)
   }
@@ -933,14 +940,14 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
       contextWindow,
       maxTokens,
       ...resolveModelReasoning(provider, entry, base),
-      ...resolveModelCompat(provider, entry, request.compat, base, api),
+      ...resolveModelCompat(provider, entry, routeCompat, base, api),
     }
   })
   // Per field, not per block: a route may default a switch its completions
   // models take beside one only its anthropic models do, and neither should
   // fail for the other's sake. What is refused is a route default no model on
   // the route could ever read, which is a route that will not behave as written.
-  for (const [field] of configuredCompatEntries(request.compat)) {
+  for (const [field] of configuredCompatEntries(routeCompat)) {
     const takers = compatProtocols(field)
     if (models.some(model => takers.includes(model.api))) continue
     invalid(provider, `sets compat "${field}", but no model on the route speaks a protocol that takes it;`

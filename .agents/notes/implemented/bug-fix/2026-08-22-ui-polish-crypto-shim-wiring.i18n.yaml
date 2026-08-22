@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-22-ui-polish-crypto-shim-wiring.md
+2026-08-22-ui-polish-crypto-shim-wiring.md: e5c1ceae852095593562862d1efcf43b8de9d4ff
+2026-08-22-ui-polish-crypto-shim-wiring.zh.md: 49c82ceccf25a5cd4b213e2ee6a41e086fa97864

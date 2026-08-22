@@ -112,7 +112,7 @@ export function clientBundle(
   return ({ env }) => {
     const face = buildFace(env?.DSH_BUILD_FACE)
     const clientEntry = face === undefined ? 'src/client/index.ts' : 'lib/types/client/index.js'
-    const client = clientConfig(id, clientEntry)
+    const client = clientConfig(id, clientEntry, options.clientPlugins)
     const node = [lib, ...(options.companions ?? [])]
     if (face === 'host') return options.hostPhase === true ? node : [SKIP_WORKSPACE_BUILD]
     if (face === 'client') {
@@ -201,6 +201,8 @@ interface ClientBundleOptions {
   readonly companions?: readonly UserConfig[]
   /** Overrides for the package's primary Node-side library config. */
   readonly lib?: UserConfig
+  /** Extra plugins appended to the client bundle build (package-local concerns like node-builtin shims). */
+  readonly clientPlugins?: UserConfig['plugins']
 }
 
 type BuildFace = 'host' | 'client' | undefined
@@ -468,7 +470,10 @@ function matchesSpecifier(patterns: readonly RegExp[], specifier: string): boole
   return patterns.some(pattern => pattern.test(specifier))
 }
 
-function clientConfig(id: string, entry: string): UserConfig {
+function clientConfig(id: string, entry: string, clientPlugins: UserConfig['plugins'] = []): UserConfig {
+  // 归一化 tsdown 的 plugins 联合类型（false/单插件/数组）为可展开数组。
+  const extraPlugins = Array.isArray(clientPlugins) ? clientPlugins
+    : (clientPlugins === false || clientPlugins === undefined || clientPlugins === null) ? [] : [clientPlugins]
   const isRequested = (specifier: string): boolean => clientExternals(id).has(specifier)
   return {
     name: `${id}/client`,
@@ -529,7 +534,7 @@ function clientConfig(id: string, entry: string): UserConfig {
           + '(type-only imports are erased and never reach this gate)',
         )
       },
-    }, {
+    }, ...extraPlugins, {
       name: 'dsh-css-modules-inline',
       resolveId(source: string, importer: string | undefined) {
         if (!source.endsWith('.module.css')) return null

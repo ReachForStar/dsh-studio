@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write examples/pi-dsh/README.md
 README.md: 5f36ff392d42f71867de3625edf502e89b39c249
-README.zh.md: a484f0fa12d6c58cd9f8c0be41c48f25bcf82e95
+README.zh.md: 9d9c7e7d137632e3cbc3888776721e57986bb189

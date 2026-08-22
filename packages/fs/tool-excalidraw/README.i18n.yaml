@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fs/tool-excalidraw/README.md
 README.md: 227501fc12f36a86eb7d3e5bf0bdb83281e159de
-README.zh.md: 1d098a5a6d6b92e193fe3ad421258cfce645fa23
+README.zh.md: 992865e209e96fad721a0a8cf00de547bdbbbf7e

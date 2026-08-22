@@ -12,14 +12,14 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 | 包 | 本分支新增 |
 |---|---|
-| [`@deepseek-ai/dsh-client-ui-polish`](packages/client/ui-polish/README.md) | Web GUI 打磨：全局背景图片、按模型单价估算每条已结算消息费用的会话统计浮窗（模型费率卡可编辑）、会话视图内的就地文件与 git 面板、内嵌 Excalidraw 白板标签页（与模型的工具共享同一场景）、可配置的自动压缩上下文阈值。 |
-| [`@deepseek-ai/dsh-tool-excalidraw`](packages/fs/tool-excalidraw/README.md) | 模型面向的白板工具——`excalidraw_read`、`excalidraw_write`、`excalidraw_draw`、`excalidraw_export`——读写画布标签页渲染的同一工作区场景文件。 |
-| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.md) | 通过 RPC 模式把任务委派给 [Pi 编码 agent](https://github.com/earendil-works/pi) 的子代理提供方；[`pi-dsh` 示例](examples/pi-dsh/README.md)覆盖反向的 Pi→dsh 委派。 |
+| [`@deepseek-ai/dsh-client-ui-polish`](packages/client/ui-polish/README.zh.md) | Web GUI 打磨：全局背景图片、按模型单价估算每条已结算消息费用的会话统计浮窗（模型费率卡可编辑）、会话视图内的就地文件与 git 面板、内嵌 Excalidraw 白板标签页（与模型的工具共享同一场景）、可配置的自动压缩上下文阈值。 |
+| [`@deepseek-ai/dsh-tool-excalidraw`](packages/fs/tool-excalidraw/README.zh.md) | 模型面向的白板工具——`excalidraw_read`、`excalidraw_write`、`excalidraw_draw`、`excalidraw_export`——读写画布标签页渲染的同一工作区场景文件。 |
+| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.zh.md) | 通过 RPC 模式把任务委派给 [Pi 编码 agent](https://github.com/earendil-works/pi) 的子代理提供方；[`pi-dsh` 示例](examples/pi-dsh/README.zh.md)覆盖反向的 Pi→dsh 委派。 |
 
 ## 核心特性
 
 - **插件优先的架构。** 每一项能力——agent 循环、工具、沙箱、存储、Web UI——都是一个 Cordis 插件，由 `cordis.yml` patch 层组合而成。部署通过组合而非 fork 来选择自己的技术栈。
-- **多运行表面。** 同一棵组合树驱动 [Web UI](docs/user/guide/index.md)、CLI、一次性 headless 任务、ACP 自动化服务器、JSON-RPC SDK 与 Python SDK。
+- **多运行表面。** 同一棵组合树驱动 [Web UI](docs/user/guide/index.zh.md)、CLI、一次性 headless 任务、ACP 自动化服务器、JSON-RPC SDK 与 Python SDK。
 - **完整的 agent 栈。** 带持久化 JSONL 的会话、系统提示、工具注册表、agent 循环、子代理、后台任务、工作流定义与自动上下文压缩。
 - **沙箱化执行。** bash/pwsh shell、带 Code Mode 的代码执行运行时、由 bwrap、Landlock 与 Seatbelt 支撑的进程约束接缝——每一项都由逐会话审批与沙箱策略守护。
 - **工作区原生工具。** 带观察策略的文件系统读写编辑、git 工作流、模型与 UI 共享的 Excalidraw 白板、web 搜索与抓取、LSP 与技能注册表。
@@ -27,11 +27,13 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 - **可扩展表面。** 逐会话组合的 agent 预设、可安装的 `dsh --profile` bundle patch 层、Claude Code 与 Codex 的 hooks 桥、MCP 服务器集成与自修改扩展。
 - **用户平面。** 带文件后端的用户设置、凭据引用、人工反馈、目标、计划模式与交互式审批流程。
 
-包清单见 [packages/README.md](packages/README.md)，各部分如何组合见 [docs/architecture.md](docs/architecture.md)。
+包清单见 [packages/README.zh.md](packages/README.zh.md)，各部分如何组合见 [docs/architecture.zh.md](docs/architecture.zh.md)。
 
 ## 开发者预览
 
 DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
+
+<a id="run"></a>
 
 ## 运行
 
@@ -43,7 +45,9 @@ DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**
 npx @deepseek-ai/dsh web
 ```
 
-该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.md)。
+该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.zh.md)。
+
+<a id="run-from-source"></a>
 
 该路径安装的是官方构建；本分支的定制仅在本仓库源码中可用。
 
@@ -86,11 +90,11 @@ pnpm dsh web
 
 ## 参与贡献
 
-参见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+参见 [CONTRIBUTING.md](CONTRIBUTING.zh.md)。
 
 ## 开发
 
-请先阅读[开发指南](docs/development.md)与[架构文档](docs/architecture.md)。
+请先阅读[开发指南](docs/development.zh.md)与[架构文档](docs/architecture.zh.md)。
 
 面向 agent：请遵循 [AGENTS.md](AGENTS.md)。
 

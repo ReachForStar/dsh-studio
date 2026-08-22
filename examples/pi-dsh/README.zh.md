@@ -6,7 +6,7 @@
 
 | 方向 | 机制 | 位置 |
 |---|---|---|
-| dsh → Pi | `pi` 子代理提供方启动 `pi --mode rpc` 并委托一个任务 | [`@deepseek-ai/dsh-subagent-pi`](../../packages/subagent/subagent-pi/README.md) |
+| dsh → Pi | `pi` 子代理提供方启动 `pi --mode rpc` 并委托一个任务 | [`@deepseek-ai/dsh-subagent-pi`](../../packages/subagent/subagent-pi/README.zh.md) |
 | Pi → dsh | Pi Agent Skill 运行 `dsh-delegate.mjs`，它启动一个 dsh JSON-RPC Agent 运行时并返回最终答案 | `skills/dsh/SKILL.md` + `bin/dsh-delegate.mjs` |
 
 ## dsh 委托给 Pi

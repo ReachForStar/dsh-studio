@@ -37,7 +37,7 @@
 
 #### What the model sees
 
-模型看到生成的 [`excalidraw_read`、`excalidraw_write`、`excalidraw_draw`、`excalidraw_export` schemas](../../../docs/tool-catalog.md#deepseek-aidsh-tool-excalidraw)：`excalidraw_read` 返回场景摘要（按类型统计的元素数、文本元素、主题）加完整场景 JSON（文件较小时）；`excalidraw_write` 用完整场景 JSON 字符串覆盖工作区场景；`excalidraw_draw` 用高层描述（`type`、位置、尺寸、可选的 text/points/样式）添加或替换形状，并填充 Excalidraw 渲染所需的全部字段，模型无需手写内部字段；`excalidraw_export` 将场景渲染为工作区内的 SVG 文件（纯 node 侧，无 canvas）。模型不会看到其未创作的 Excalidraw 内部元素字段；`excalidraw_draw` 只接受文档化的形状词汇并拒绝未知元素类型。
+模型看到生成的 [`excalidraw_read`、`excalidraw_write`、`excalidraw_draw`、`excalidraw_export` schemas](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-excalidraw)：`excalidraw_read` 返回场景摘要（按类型统计的元素数、文本元素、主题）加完整场景 JSON（文件较小时）；`excalidraw_write` 用完整场景 JSON 字符串覆盖工作区场景；`excalidraw_draw` 用高层描述（`type`、位置、尺寸、可选的 text/points/样式）添加或替换形状，并填充 Excalidraw 渲染所需的全部字段，模型无需手写内部字段；`excalidraw_export` 将场景渲染为工作区内的 SVG 文件（纯 node 侧，无 canvas）。模型不会看到其未创作的 Excalidraw 内部元素字段；`excalidraw_draw` 只接受文档化的形状词汇并拒绝未知元素类型。
 
 #### Token effect
 

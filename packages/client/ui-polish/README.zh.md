@@ -22,7 +22,7 @@ host 半在 host webserver 上注册 `/git`、`/bg`、`/scene` 路由前缀，�
   name: '@deepseek-ai/dsh-client-ui-polish'
 ```
 
-模型面向的白板工具（`excalidraw_read`/`write`/`draw`/`export`）位于独立的 [`@deepseek-ai/dsh-tool-excalidraw`](../../fs/tool-excalidraw/README.md) 包中，通过 agent-preset 行挂载（内置 `standard` preset 已包含该行）：
+模型面向的白板工具（`excalidraw_read`/`write`/`draw`/`export`）位于独立的 [`@deepseek-ai/dsh-tool-excalidraw`](../../fs/tool-excalidraw/README.zh.md) 包中，通过 agent-preset 行挂载（内置 `standard` preset 已包含该行）：
 
 ```yaml ignore-check
 - id: tool-excalidraw

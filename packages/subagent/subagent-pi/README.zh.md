@@ -2,11 +2,11 @@
 
 [English](README.md) | 中文
 
-本包注册固定的 `pi` 子代理提供方。每个被接受的 run 都会在委托方 Session 的工作目录中启动 [Pi 编码 Agent](https://github.com/earendil-works/pi)（`@earendil-works/pi-coding-agent`）的 RPC 模式，通过 Pi 的逐行 JSON stdio 协议提交一个自包含的文本任务，并仅通过共享的 [`dsh-subagent`](../subagent/README.md) 结果契约返回最终答案。
+本包注册固定的 `pi` 子代理提供方。每个被接受的 run 都会在委托方 Session 的工作目录中启动 [Pi 编码 Agent](https://github.com/earendil-works/pi)（`@earendil-works/pi-coding-agent`）的 RPC 模式，通过 Pi 的逐行 JSON stdio 协议提交一个自包含的文本任务，并仅通过共享的 [`dsh-subagent`](../subagent/README.zh.md) 结果契约返回最终答案。
 
 ## 启动与所有权
 
-`start(request)` 只接受非空文本块序列，并从父 Session 推导子进程 cwd。随后通过 [`dsh-subprocess`](../../subprocess/subprocess/README.md) 启动固定的 `pi --mode rpc` 命令，仅在 RPC 服务器应答了 `get_state` 就绪探测后发布 run。发布前的失败或取消会先关闭线、终止受管理的进程树、等待其退出，再拒绝 `start()`。
+`start(request)` 只接受非空文本块序列，并从父 Session 推导子进程 cwd。随后通过 [`dsh-subprocess`](../../subprocess/subprocess/README.zh.md) 启动固定的 `pi --mode rpc` 命令，仅在 RPC 服务器应答了 `get_state` 就绪探测后发布 run。发布前的失败或取消会先关闭线、终止受管理的进程树、等待其退出，再拒绝 `start()`。
 
 已发布的 `run.result` 恰好开启一个 turn。它发送 `prompt` 命令，等待流式 `agent_settled` 事件，再用 `get_last_assistant_text` 读取终态答案——最后一条非空 assistant 文本。Pi 的 RPC 响应不暴露已提交的中间输出投影，因此取消与失败以空输出快照结算。结算后无答案、`prompt` 响应为 `success: false`、协议失败或进程失败都映射为 `error`；本提供方不产生 `max-tokens` 与 `refusal`。
 
@@ -21,8 +21,8 @@
 | 键 | 默认 | 含义 |
 |---|---|---|
 | `env` | `{}` | 显式子进程环境，叠加在 subprocess 接缝的凭据擦除父环境之上。Pi 凭据（例如 `DEEPSEEK_API_KEY`）与任何 Pi 扩展变量都应放在这里。 |
-| `disposeEofGraceMs` | `6000` | 正有限毫秒宽限，不大于 [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md)，介于 Pi 的 stdin-EOF 关闭请求与共享进程树终止升级之间。 |
-| `disposeGraceMs` | `3000` | 正有限毫秒宽限，不大于 [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md)，介于共享进程树所有者的终止层级之间。 |
+| `disposeEofGraceMs` | `6000` | 正有限毫秒宽限，不大于 [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.zh.md)，介于 Pi 的 stdin-EOF 关闭请求与共享进程树终止升级之间。 |
+| `disposeGraceMs` | `3000` | 正有限毫秒宽限，不大于 [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.zh.md)，介于共享进程树所有者的终止层级之间。 |
 | `command` | `pi` | Pi 可执行文件（`PATH` 上的裸名称）或测试 fixture 启动器。Windows 上 argv 会被包进 `cmd.exe /d /s /c`，因为 npm 与 pnpm 安装暴露的是 `pi.cmd`。 |
 | `args` | `['--mode', 'rpc']` | 追加在可执行文件后的固定参数；该数组整体替换默认值，因此覆盖时必须重申 `--mode rpc`。部署可在此钉住 Pi 的模型，例如 `['--mode', 'rpc', '--provider', 'deepseek']`。 |
 | `agentDir` | 未设置 | 绝对 `PI_CODING_AGENT_DIR` 覆盖，指定 Pi 保存 agent 设置与信任状态的位置；省略时 Pi 使用其原生 home（`~/.pi/agent`）。优先于 `env.PI_CODING_AGENT_DIR` 条目。 |

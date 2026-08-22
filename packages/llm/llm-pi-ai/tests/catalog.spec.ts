@@ -1220,6 +1220,13 @@ describe('AMAX Token Router catalog', () => {
     expect(profile?.displayName).toBe('amax')
     expect(profile?.piProvider.baseUrl).toBe('https://ai.amaxsmp.com/v1')
     const [model] = profile?.piProvider.getModels() ?? []
+    expect(model).toBeDefined()
     expect(model).toMatchObject({ id: 'gpt-5.4', api: 'openai-completions', contextWindow: 131_072 })
+    // The gateway's OpenAI-compatible endpoint takes the standard
+    // reasoning_effort parameter, so its models reason by default: the select
+    // offers the base levels even though discovery reported no reasoning
+    // metadata.
+    expect(model!.reasoning).toBe(true)
+    expect(getSupportedThinkingLevels(model!)).toEqual(expect.arrayContaining(['off', 'low', 'medium', 'high']))
   })
 })

@@ -708,8 +708,12 @@ function resolveModelReasoning(
     // would make pi-ai advertise effort levels with no `thinkingLevelMap` to
     // spell them, and no listing endpoint reports a model's reasoning
     // protocol. The entry's map (when any) arrives through the `...base`
-    // spread in the model literal.
-    return { reasoning: base?.reasoning ?? false }
+    // spread in the model literal. A fork-registered catalog route (the AMAX
+    // gateway) is the exception: its endpoint is OpenAI-compatible and
+    // reasoning_effort is a standard parameter there, so its models reason by
+    // default — pi-ai sends the level's own spelling (low/medium/high) when
+    // no map is present.
+    return { reasoning: base?.reasoning ?? CATALOG_ROUTE_APIS[provider] !== undefined }
   }
   // The installed entry's map may ride along through `...base`; pi-ai never
   // reads it on a non-reasoning model, so stripping it is not worth a field

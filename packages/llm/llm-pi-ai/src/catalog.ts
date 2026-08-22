@@ -173,6 +173,18 @@ export const AMAX_PROVIDER: Provider<'openai-completions'> = createProvider<'ope
 })
 
 /**
+ * Declared wire protocol for a fork-registered catalog route whose provider
+ * speaks exactly one protocol. pi-ai's `Provider` exposes no api name, so a
+ * catalog route's models — which the installed catalog does not describe —
+ * inherit the protocol from this map instead of being refused for a missing
+ * `api`. A route not listed here (a hand-declared one) still requires an
+ * explicit `api`, and a pi-ai catalog route keeps its catalog-derived one.
+ */
+export const CATALOG_ROUTE_APIS: Readonly<Record<string, string>> = {
+  [AMAX_PROVIDER.id]: 'openai-completions',
+}
+
+/**
  * Installed catalog providers by id, constructed once. Each entry owns the API
  * implementations for its own models, which is why a catalog route reuses this
  * provider instead of being rebuilt from parts.
@@ -861,7 +873,7 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
     invalid(provider, 'resolves no models; the installed catalog does not describe this route, so its models'
       + ' must be listed in configuration')
   }
-  const routeApi = sharedCatalogApi(defaults)
+  const routeApi = sharedCatalogApi(defaults) ?? CATALOG_ROUTE_APIS[provider]
   // Vocabulary before protocols: a withheld or undeclared switch is refused
   // wherever it is written, so it cannot look applied on a route whose models
   // never reach the protocol that would have taken it.

@@ -1207,11 +1207,19 @@ describe('AMAX Token Router catalog', () => {
     expect(catalogDisplayName('deepseek')).toBeUndefined()
   })
 
-  it('serves an AMAX route once the profile names models and the route protocol', () => {
+  it('serves an AMAX route whose discovered models name no api, inheriting the gateway protocol', () => {
+    // The Models page writes the discovered listing (ids + capacities) and no
+    // api; the gateway is a catalog route whose provider speaks exactly
+    // openai-completions, which the model resolver inherits.
     const resolved = resolveProfiles({
-      amax: { api: 'openai-completions', models: [{ id: 'deepseek-chat' }] },
+      amax: { apiKeyEnv: 'AMAX_API_KEY', models: [{ id: 'gpt-5.4', contextWindow: 131_072 }] },
     })
-    const models = resolved.get('amax')?.piProvider.getModels() ?? []
-    expect(models.map(model => model.id)).toContain('deepseek-chat')
+    const profile = resolved.get('amax')
+    // The profile's display name is the route key by default; the directory
+    // card shows the product name through catalogDisplayName instead.
+    expect(profile?.displayName).toBe('amax')
+    expect(profile?.piProvider.baseUrl).toBe('https://ai.amaxsmp.com/v1')
+    const [model] = profile?.piProvider.getModels() ?? []
+    expect(model).toMatchObject({ id: 'gpt-5.4', api: 'openai-completions', contextWindow: 131_072 })
   })
 })

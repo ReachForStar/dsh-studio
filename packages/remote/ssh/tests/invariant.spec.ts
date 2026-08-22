@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
 import * as SshInvariant from '../src/invariant.ts'
@@ -54,6 +55,13 @@ describe('ssh invariants', () => {
         },
       })
     }).toThrow(/duplicate connection ids/)
+  })
+
+  it('ignores settings/updated emissions for other namespaces', async () => {
+    const { ctx } = await setup(true)
+    expect(() => {
+      ctx.emit('settings/updated', settingsNamespace('other'), {}, {}, 'update')
+    }).not.toThrow()
   })
 
   it('accepts a well-formed external document', async () => {

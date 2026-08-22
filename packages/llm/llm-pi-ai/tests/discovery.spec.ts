@@ -1,15 +1,22 @@
 import { createServer } from 'node:http'
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { userAgent } from '@deepseek-ai/dsh-llm'
 import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai'
+import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
 import { getBuiltinModels } from '@earendil-works/pi-ai/providers/all'
+import { AMAX_API_KEY_ENV } from '../src/catalog.ts'
 import { discoverModels } from '../src/discovery.ts'
 
 const servers: Server[] = []
 /** Credential variables a test set, cleared so the next one starts unset. */
 const touchedEnv: string[] = []
+/** Throwaway $DSH_HOME directories a test created, removed at teardown. */
+const homes: string[] = []
 
 afterEach(async () => {
   // A no-op when the test never stubbed `fetch`; only 'probe key format'
@@ -17,6 +24,7 @@ afterEach(async () => {
   vi.unstubAllGlobals()
   for (const name of touchedEnv.splice(0)) Reflect.deleteProperty(process.env, name)
   await Promise.all(servers.splice(0).map(server => new Promise(resolve => server.close(resolve))))
+  await Promise.all(homes.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
 
 interface ListingServer {
@@ -383,5 +391,50 @@ describe('probe key format', () => {
 
     expect(models.map(model => model.id)).toEqual(['deepseek-chat', 'claude-sonnet-4'])
     expect(server.paths).toEqual(['/models'])
+  })
+
+  it('uses the AMAX catalog endpoint when the request carries no baseURL', async () => {
+    // init 在 exactOptionalPropertyTypes 下不能显式传 undefined 给可选属性，
+    // 声明为必填但可空（调用方 stub 的 fetch 签名允许省略 init）。
+    const requests: { url: string | URL; init: RequestInit | undefined }[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      requests.push({ url, init })
+      return new Response(JSON.stringify({ data: [{ id: 'deepseek-v4-flash' }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    const models = await discoverModels({ provider: 'amax', apiKey: 'k' })
+
+    expect(String(requests[0]?.url)).toBe('https://ai.amaxsmp.com/v1/models')
+    expect(models.map(model => model.id)).toEqual(['deepseek-v4-flash'])
+  })
+
+  it('authenticates the AMAX listing from AMAX_API_KEY when the route names no credential', async () => {
+    process.env[AMAX_API_KEY_ENV] = 'amax-env-key'
+    touchedEnv.push(AMAX_API_KEY_ENV)
+    const requests: { headers: Headers }[] = []
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      requests.push({ headers: new Headers(init?.headers) })
+      return new Response(JSON.stringify({ data: [{ id: 'deepseek-v4-flash' }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+    const dir = await mkdtemp(join(tmpdir(), 'dsh-pi-amax-'))
+    homes.push(dir)
+    await writeFile(join(dir, 'settings.yaml'), '')
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FileSettingsProvider, { path: join(dir, 'settings.yaml'), watch: false })
+    await ctx.plugin(LlmPiAi, {
+      providers: { amax: { api: 'openai-completions', models: [{ id: 'deepseek-v4-flash' }] } },
+    })
+
+    const models = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'amax' })
+
+    expect(models.map(model => model.id)).toEqual(['deepseek-v4-flash'])
+    expect(requests[0]?.headers.get('authorization')).toBe('Bearer amax-env-key')
   })
 })

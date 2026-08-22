@@ -160,11 +160,14 @@ let providerIndex: Map<string, Provider> | undefined
  */
 export const AMAX_BASE_URL = 'https://ai.amaxsmp.com/v1'
 
+/** The environment variable the AMAX gateway authenticates through. */
+export const AMAX_API_KEY_ENV = 'AMAX_API_KEY'
+
 export const AMAX_PROVIDER: Provider<'openai-completions'> = createProvider<'openai-completions'>({
   id: 'amax',
   name: 'AMAX Token Router',
   baseUrl: AMAX_BASE_URL,
-  auth: { apiKey: envApiKeyAuth('AMAX Token Router API key', ['AMAX_API_KEY']) },
+  auth: { apiKey: envApiKeyAuth('AMAX Token Router API key', [AMAX_API_KEY_ENV]) },
   models: [],
   api: openAICompletionsApi(),
 })

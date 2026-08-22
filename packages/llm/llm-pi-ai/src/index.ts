@@ -62,7 +62,7 @@ import type { AdapterRegistrationHandle, DirectoryRegistrationHandle, LlmConfigu
 import { deepEqualJson, installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { PiAiAdapter } from './adapter.ts'
 import { authContextFrom, credentialStoreFrom } from './auth.ts'
-import { catalogDisplayName, catalogProviderIds } from './catalog.ts'
+import { AMAX_API_KEY_ENV, AMAX_PROVIDER, catalogDisplayName, catalogProviderIds } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from './config.ts'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { discoverModels } from './discovery.ts'
@@ -243,7 +243,16 @@ export function apply(ctx: Context, config: Config): void {
     if (provider === undefined) return undefined
     const profile = profiles().get(provider)
     if (profile === undefined) return undefined
-    return resolveApiKey(provider, profile)
+    if (profile.apiKeyEnv !== undefined) return resolveApiKey(provider, profile)
+    // A route with no apiKeyEnv defers to pi-ai's provider-native discovery.
+    // A catalog gateway's ambient env still answers a listing probe the same
+    // way, so the fetch carries the key instead of 401ing: AMAX reads
+    // AMAX_API_KEY straight from the process environment.
+    if (provider === AMAX_PROVIDER.id) {
+      const ambient = process.env[AMAX_API_KEY_ENV]
+      if (ambient !== undefined && ambient.length > 0) return ambient
+    }
+    return undefined
   }
   // Interrogating an endpoint is a configuration-time action over a draft, so
   // it is offered for the whole namespace rather than per route: the provider

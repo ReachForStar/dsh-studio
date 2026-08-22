@@ -88,4 +88,27 @@ describe('SshConnectionsStore', () => {
     await store.load()
     expect(store.store.getSnapshot().status).toBe('idle')
   })
+
+  it('strings a non-Error load rejection instead of crashing on messageOf', async () => {
+    // The rejection value is a plain object, so messageOf must fall back to
+    // String(error) rather than reading error.message.
+    const store = new SshConnectionsStore(remote({ list: vi.fn(async () => { throw { wire: 'down' } }) }))
+    await store.load()
+    const state = store.store.getSnapshot()
+    expect(state.status).toBe('error')
+    expect(state.error).toBe('[object Object]')
+  })
+
+  it('ignores a stale load that rejects after a newer one commits', async () => {
+    const deferred = Promise.withResolvers<{ connections: SshRemoteDefinition[] }>()
+    const api = remote({ list: vi.fn().mockReturnValueOnce(deferred.promise).mockResolvedValueOnce({ connections: [] }) })
+    const store = new SshConnectionsStore(api)
+    const first = store.load()
+    await store.load()
+    deferred.reject(new Error('late boom'))
+    await expect(first).resolves.toBeUndefined()
+    // The stale failure must not flip the ready state into error.
+    expect(store.store.getSnapshot().status).toBe('ready')
+    expect(store.store.getSnapshot().connections).toEqual([])
+  })
 })

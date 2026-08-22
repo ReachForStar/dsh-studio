@@ -11,4 +11,10 @@ describe('ui-ssh host half', () => {
     expect(typeof UiSsh.apply).toBe('function')
     expect('default' in UiSsh).toBe(false)
   })
+
+  it('applies the plugin body without throwing', () => {
+    // The host half contributes nothing beyond the browser bundle; apply is
+    // invoked directly so its empty body is covered as executable code.
+    UiSsh.apply()
+  })
 })

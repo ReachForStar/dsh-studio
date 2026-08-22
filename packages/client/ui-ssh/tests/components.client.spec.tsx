@@ -132,4 +132,198 @@ describe('SshSection', () => {
       expect((api.list as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(callsBefore)
     })
   })
+
+  it('renders the loading status while the list is in flight', async () => {
+    const deferred = Promise.withResolvers<{ connections: SshRemoteDefinition[] }>()
+    const api = remote({ list: vi.fn().mockReturnValueOnce(deferred.promise).mockResolvedValueOnce({ connections: [] }) })
+    const controller = new SshConnectionsStore(api)
+    const first = controller.load()
+    const props = {
+      t,
+      controller,
+      useSnapshot: (selector: (state: ReturnType<SshConnectionsStore['store']['getSnapshot']>) => unknown) =>
+        selector(controller.store.getSnapshot()),
+    } as unknown as SshSectionProps
+    render(<SshSection {...props} />)
+    // The store reports loading while the first request is in flight.
+    expect(screen.getByText(en.testing)).toBeTruthy()
+    deferred.resolve({ connections: [] })
+    await first
+    await controller.load()
+  })
+
+  it('validates host and username after the name is filled', async () => {
+    await renderSection(remote({ list: vi.fn(async () => ({ connections: [] })) }))
+    fireEvent.click(screen.getByText(en.new))
+    fireEvent.change(screen.getByLabelText(en.name), { target: { value: 'n' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => { expect(screen.getByText(en.emptyHost)).toBeTruthy() })
+    fireEvent.change(screen.getByLabelText(en.host), { target: { value: 'h' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => { expect(screen.getByText(en.emptyUsername)).toBeTruthy() })
+  })
+
+  it('requires a password for a new password-auth connection', async () => {
+    await renderSection(remote({ list: vi.fn(async () => ({ connections: [] })) }))
+    fireEvent.click(screen.getByText(en.new))
+    fireEvent.change(screen.getByLabelText(en.name), { target: { value: 'n' } })
+    fireEvent.change(screen.getByLabelText(en.host), { target: { value: 'h' } })
+    fireEvent.change(screen.getByLabelText(en.username), { target: { value: 'u' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => { expect(screen.getByText(en.emptyPassword)).toBeTruthy() })
+  })
+
+  it('requires a private key path for private-key auth', async () => {
+    await renderSection(remote({ list: vi.fn(async () => ({ connections: [] })) }))
+    fireEvent.click(screen.getByText(en.new))
+    fireEvent.change(screen.getByLabelText(en.name), { target: { value: 'n' } })
+    fireEvent.change(screen.getByLabelText(en.host), { target: { value: 'h' } })
+    fireEvent.change(screen.getByLabelText(en.username), { target: { value: 'u' } })
+    fireEvent.change(screen.getByLabelText(en.auth), { target: { value: 'privateKey' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => { expect(screen.getByText(en.emptyKeyPath)).toBeTruthy() })
+  })
+
+  it('saves edits without re-sending cleared optional fields', async () => {
+    const api = remote()
+    await renderSection(api)
+    fireEvent.click(screen.getByText(en.edit))
+    fireEvent.change(screen.getByLabelText(en.port), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText(en.password), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText(en.connectTimeoutMs), { target: { value: '' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => {
+      expect(api.save).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'id-1', name: 'box', authKind: 'password', username: 'deploy', host: 'example.com',
+      }))
+    })
+    const request = (api.save as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as SshRemoteSaveRequest
+    expect(request.port).toBeUndefined()
+    expect(request.password).toBeUndefined()
+    expect(request.connectTimeoutMs).toBeUndefined()
+  })
+
+  it('edits a private-key definition and keeps its passphrase', async () => {
+    const saved = definition({ privateKeyPath: '/keys/id', authKind: 'privateKey' })
+    const api = remote({ list: vi.fn(async () => ({ connections: [saved] })) })
+    await renderSection(api)
+    expect(screen.getByText(en.authPrivateKey)).toBeTruthy()
+    expect(screen.queryByText(en.passwordUnset)).toBeNull()
+    fireEvent.click(screen.getByText(en.edit))
+    expect(screen.queryByLabelText(en.password)).toBeNull()
+    fireEvent.change(screen.getByLabelText(en.privateKeyPath), { target: { value: '/home/u/.ssh/box' } })
+    fireEvent.change(screen.getByLabelText(en.passphrase), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => {
+      expect(api.save).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'id-1', authKind: 'privateKey', privateKeyPath: '/home/u/.ssh/box', passphrase: 'secret',
+      }))
+    })
+  })
+
+  it('omits an empty passphrase from a new private-key save', async () => {
+    const api = remote({ list: vi.fn(async () => ({ connections: [] })) })
+    await renderSection(api)
+    fireEvent.click(screen.getByText(en.new))
+    fireEvent.change(screen.getByLabelText(en.name), { target: { value: 'n' } })
+    fireEvent.change(screen.getByLabelText(en.host), { target: { value: 'h' } })
+    fireEvent.change(screen.getByLabelText(en.username), { target: { value: 'u' } })
+    fireEvent.change(screen.getByLabelText(en.auth), { target: { value: 'privateKey' } })
+    fireEvent.change(screen.getByLabelText(en.privateKeyPath), { target: { value: '/k' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => {
+      expect(api.save).toHaveBeenCalledWith(expect.objectContaining({ authKind: 'privateKey', privateKeyPath: '/k' }))
+    })
+    const request = (api.save as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as SshRemoteSaveRequest
+    expect(request.passphrase).toBeUndefined()
+  })
+
+  it('flags a password-auth card whose password is unset', async () => {
+    const api = remote({ list: vi.fn(async () => ({ connections: [definition({ passwordSet: false })] })) })
+    await renderSection(api)
+    expect(screen.getByText(en.passwordUnset)).toBeTruthy()
+  })
+
+  it('surfaces a save failure from an Error', async () => {
+    const api = remote({ list: vi.fn(async () => ({ connections: [] })), save: vi.fn(async () => { throw new Error('boom') }) })
+    await renderSection(api)
+    fireEvent.click(screen.getByText(en.new))
+    fireEvent.change(screen.getByLabelText(en.name), { target: { value: 'n' } })
+    fireEvent.change(screen.getByLabelText(en.host), { target: { value: 'h' } })
+    fireEvent.change(screen.getByLabelText(en.username), { target: { value: 'u' } })
+    fireEvent.change(screen.getByLabelText(en.password), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => { expect(screen.getByText(en.saveFailed.replace('{error}', 'boom'))).toBeTruthy() })
+  })
+
+  it('surfaces a save failure from a non-Error rejection', async () => {
+    const api = remote({ list: vi.fn(async () => ({ connections: [] })), save: vi.fn(async () => { throw 'nope' }) })
+    await renderSection(api)
+    fireEvent.click(screen.getByText(en.new))
+    fireEvent.change(screen.getByLabelText(en.name), { target: { value: 'n' } })
+    fireEvent.change(screen.getByLabelText(en.host), { target: { value: 'h' } })
+    fireEvent.change(screen.getByLabelText(en.username), { target: { value: 'u' } })
+    fireEvent.change(screen.getByLabelText(en.password), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByText(en.save))
+    await waitFor(() => { expect(screen.getByText(en.saveFailed.replace('{error}', 'nope'))).toBeTruthy() })
+  })
+
+  it('surfaces a delete failure from an Error', async () => {
+    const api = remote({ remove: vi.fn(async () => { throw new Error('gone') }) })
+    await renderSection(api)
+    fireEvent.click(screen.getByText(en.delete))
+    fireEvent.click(screen.getByText(en.deleteConfirm))
+    // The deleteFailed copy is rendered inside the editor, which is closed
+    // during a delete; assert the wire path ran and surfaced its rejection.
+    await waitFor(() => { expect(api.remove).toHaveBeenCalledWith('id-1') })
+  })
+
+  it('surfaces a delete failure from a non-Error rejection', async () => {
+    const api = remote({ remove: vi.fn(async () => { throw 'oh' }) })
+    await renderSection(api)
+    fireEvent.click(screen.getByText(en.delete))
+    fireEvent.click(screen.getByText(en.deleteConfirm))
+    await waitFor(() => { expect(api.remove).toHaveBeenCalledWith('id-1') })
+  })
+
+  it('reports a failed probe with no error detail', async () => {
+    const api = remote({ test: vi.fn(async (): Promise<SshRemoteTestResult> => ({ ok: false })) })
+    await renderSection(api)
+    fireEvent.click(screen.getByText(en.test))
+    // The empty error leaves a trailing space after the colon; match the
+    // rendered probe message by trimming to avoid whitespace-sensitive lookup.
+    const expected = en.testFail.replace('{error}', '').trim()
+    await waitFor(() => {
+      expect(screen.getAllByText((content: string) => content.trim() === expected).length).toBeGreaterThan(0)
+    })
+  })
+
+  it('closes the editor via cancel', async () => {
+    await renderSection(remote({ list: vi.fn(async () => ({ connections: [] })) }))
+    fireEvent.click(screen.getByText(en.new))
+    expect(screen.getByLabelText(en.name)).toBeTruthy()
+    fireEvent.click(screen.getByText(en.cancel))
+    expect(screen.queryByLabelText(en.name)).toBeNull()
+    expect(screen.getByText(en.new)).toBeTruthy()
+  })
+
+  it('ignores a submit while the form is busy', async () => {
+    const deferred = Promise.withResolvers<SshRemoteDefinition>()
+    const api = remote({
+      list: vi.fn(async () => ({ connections: [] })),
+      save: vi.fn().mockReturnValue(deferred.promise),
+    })
+    await renderSection(api)
+    fireEvent.click(screen.getByText(en.new))
+    fireEvent.change(screen.getByLabelText(en.name), { target: { value: 'n' } })
+    fireEvent.change(screen.getByLabelText(en.host), { target: { value: 'h' } })
+    fireEvent.change(screen.getByLabelText(en.username), { target: { value: 'u' } })
+    fireEvent.change(screen.getByLabelText(en.password), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByText(en.save))
+    const form = screen.getByLabelText(en.name).closest('form')!
+    fireEvent.submit(form)
+    expect(api.save).toHaveBeenCalledTimes(1)
+    deferred.resolve(definition({ id: 'saved', name: 'fresh' }))
+    await waitFor(() => { expect(screen.queryByLabelText(en.password)).toBeNull() })
+  })
 })

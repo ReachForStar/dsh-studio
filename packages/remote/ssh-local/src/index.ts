@@ -11,9 +11,10 @@ import { createHash } from 'node:crypto'
 import { readFile, rm, stat } from 'node:fs/promises'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { basename, dirname } from 'node:path'
+import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { Client, type ConnectConfig, type SFTPWrapper, type Stats } from 'ssh2'
+import { Client, type ClientChannel, type ConnectConfig, type SFTPWrapper, type Stats } from 'ssh2'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { clampTimeout } from '@deepseek-ai/dsh-timeout'
 import { SshConnectionId, SshError, SshService } from '@deepseek-ai/dsh-ssh'
@@ -24,8 +25,13 @@ import type {
   SshConnectionDefinition,
   SshExecRequest,
   SshExecSpec,
+  SshPtyExitInfo,
+  SshPtyOptions,
+  SshPtySession,
+  SshReadableFile,
   SshRunResult,
   SshSftp,
+  SshWritableFile,
 } from '@deepseek-ai/dsh-ssh'
 
 /** SFTP v3 status code for "no such file"; ssh2 errors carry it as `code`. */
@@ -325,10 +331,92 @@ async function resolveAuth(auth: SshAuth, strictPrivateKeyPermissions: boolean):
   }
 }
 
+/** One live interactive PTY session over a shell channel. */
+class LocalPtySession implements SshPtySession {
+  /** Output chunks in arrival order, replayed to subscribers that attach later. */
+  private readonly buffer: Uint8Array[] = []
+  private readonly outputListeners = new Set<(data: Uint8Array) => void>()
+  private readonly exitListeners = new Set<(info: SshPtyExitInfo) => void>()
+  private exitInfo: SshPtyExitInfo | undefined
+  /** True once the session terminated (remote exit, drop, or local close). */
+  closed = false
+
+  constructor(
+    private readonly shell: ClientChannel,
+    private readonly onEnded: () => void,
+  ) {
+    const deliver = (chunk: Buffer): void => {
+      this.buffer.push(chunk)
+      for (const listener of [...this.outputListeners]) listener(chunk)
+    }
+    this.shell.on('data', deliver)
+    this.shell.stderr.on('data', deliver)
+    const onExit = (code: number | null, signal?: string): void => {
+      this.finish({
+        exitCode: typeof code === 'number' ? code : null,
+        signal: typeof signal === 'string' ? signal : null,
+        dropped: false,
+      })
+    }
+    this.shell.on('exit', onExit)
+    const drop = (): void => {
+      this.finish({ exitCode: null, signal: null, dropped: true })
+    }
+    this.shell.on('error', drop)
+    this.shell.on('close', () => {
+      drop()
+      this.onEnded()
+    })
+  }
+
+  write(data: Uint8Array): void {
+    if (this.closed) throw new SshError('SSH_PTY_CLOSED', 'ssh pty session is closed')
+    this.shell.write(data)
+  }
+
+  resize(cols: number, rows: number): void {
+    if (this.closed) throw new SshError('SSH_PTY_CLOSED', 'ssh pty session is closed')
+    this.shell.setWindow(rows, cols, 0, 0)
+  }
+
+  onOutput(callback: (data: Uint8Array) => void): () => void {
+    // Replay history that arrived before this subscriber attached, then go live.
+    for (const chunk of [...this.buffer]) callback(chunk)
+    this.outputListeners.add(callback)
+    return () => {
+      this.outputListeners.delete(callback)
+    }
+  }
+
+  onExit(callback: (info: SshPtyExitInfo) => void): () => void {
+    this.exitListeners.add(callback)
+    if (this.exitInfo !== undefined) callback(this.exitInfo)
+    return () => {
+      this.exitListeners.delete(callback)
+    }
+  }
+
+  close(): Promise<void> {
+    if (this.closed) return Promise.resolve()
+    this.finish({ exitCode: null, signal: null, dropped: true })
+    this.shell.destroy()
+    return Promise.resolve()
+  }
+
+  private finish(info: SshPtyExitInfo): void {
+    if (this.closed) return
+    this.closed = true
+    this.exitInfo = info
+    for (const listener of [...this.exitListeners]) listener(info)
+  }
+}
+
 /** One live connection: the client, its cached SFTP channel, and teardown. */
 class LocalConnection implements SshConnection {
   private closed = false
   private sftpPromise: Promise<SFTPWrapper> | undefined
+  /** Live PTY sessions, closed on connection close. */
+  private readonly ptySessions = new Set<LocalPtySession>()
 
   constructor(
     readonly id: SshConnectionId,
@@ -493,6 +581,9 @@ class LocalConnection implements SshConnection {
     /* v8 ignore next -- the idempotent second close is exercised by the close-twice test */
     if (this.closed) return
     this.closed = true
+    for (const session of [...this.ptySessions]) {
+      session.close()
+    }
     await new Promise<void>((resolve) => {
       const done = (): void => { resolve() }
       this.client.once('close', done)
@@ -504,6 +595,27 @@ class LocalConnection implements SshConnection {
       }, 1_000).unref()
     })
     this.onDrop()
+  }
+
+  async openPty(options: SshPtyOptions): Promise<SshPtySession> {
+    this.assertOpen()
+    return new Promise<SshPtySession>((resolve, reject) => {
+      this.client.shell({
+        term: options.term ?? 'xterm-256color',
+        cols: options.cols,
+        rows: options.rows,
+      }, (error, shell) => {
+        if (error !== undefined) {
+          reject(new SshError('SSH_PTY_FAILED', `ssh pty open failed: ${error.message}`))
+          return
+        }
+        const session = new LocalPtySession(shell, () => {
+          this.ptySessions.delete(session)
+        })
+        this.ptySessions.add(session)
+        resolve(session)
+      })
+    })
   }
 }
 
@@ -860,6 +972,87 @@ class LocalSftp implements SshSftp {
         resolve()
       })
     })
+  }
+
+  async openRead(remotePath: string): Promise<SshReadableFile> {
+    const sftp = await this.channel()
+    let size: number | null
+    try {
+      const entry = await this.statRaw(sftp, remotePath)
+      if (entry.type !== 'file') throw new Error('not a regular file')
+      size = entry.size
+    } catch (error) {
+      throw sftpError('openRead', remotePath, error)
+    }
+    const stream = sftp.createReadStream(remotePath)
+    let released = false
+    return {
+      size,
+      stream,
+      close: async () => {
+        if (released) return
+        released = true
+        await new Promise<void>((resolve) => {
+          if (stream.destroyed) {
+            resolve()
+            return
+          }
+          stream.once('close', () => resolve())
+          stream.destroy()
+        })
+      },
+    }
+  }
+
+  async openWrite(remotePath: string): Promise<SshWritableFile> {
+    const sftp = await this.channel()
+    const output = sftp.createWriteStream(remotePath)
+    const input = new PassThrough()
+    input.pipe(output)
+    let bytes = 0
+    input.on('data', (chunk: Buffer) => {
+      bytes += chunk.length
+    })
+    type Settled = { ok: true; bytes: number } | { ok: false; error: Error }
+    let settled: Settled | undefined
+    const waiters: Array<(value: Settled) => void> = []
+    const settle = (value: Settled): void => {
+      /* v8 ignore next -- event ordering guarantees one winner; the guard is defensive */
+      if (settled !== undefined) return
+      settled = value
+      for (const wake of waiters.splice(0)) wake(value)
+    }
+    output.on('error', (error: Error) => {
+      settle({ ok: false, error: sftpError('openWrite', remotePath, error) })
+      input.destroy()
+    })
+    input.on('error', (error: Error) => {
+      settle({ ok: false, error })
+      output.destroy()
+    })
+    input.on('close', () => {
+      if (settled === undefined && !input.writableFinished) {
+        settle({ ok: false, error: new SshError('SSH_SFTP_FAILED', `ssh openWrite aborted before completion for "${remotePath}"`) })
+        output.destroy()
+      }
+    })
+    output.on('close', () => {
+      if (settled === undefined) settle({ ok: true, bytes })
+    })
+    return {
+      stream: input,
+      done: () => {
+        if (settled !== undefined) {
+          return settled.ok ? Promise.resolve({ bytes: settled.bytes }) : Promise.reject(settled.error)
+        }
+        return new Promise<{ bytes: number }>((resolve, reject) => {
+          waiters.push((value) => {
+            if (value.ok) resolve({ bytes: value.bytes })
+            else reject(value.error)
+          })
+        })
+      },
+    }
   }
 }
 

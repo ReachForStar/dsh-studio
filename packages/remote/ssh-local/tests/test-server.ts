@@ -281,10 +281,18 @@ export class SftpTestServer {
   }
 }
 
+
+
 /** One running test server: SSH transport plus SFTP and shell execution. */
 export class TestSshServer {
   /** Client disconnection count (teardown assertions). */
   disconnects = 0
+  /** When true, shell requests are rejected (PTY open-failure tests). */
+  rejectShell = false
+  /** PTY allocation requests received (cols/rows). */
+  readonly ptyRequests: Array<{ cols: number; rows: number }> = []
+  /** Window-change reports received on shell channels. */
+  readonly windows: Array<{ rows: number; cols: number }> = []
   readonly sftp: SftpTestServer
   readonly root: string
   /** Live exec child processes, force-killed on stop. */
@@ -326,6 +334,24 @@ export class TestSshServer {
             const channel = execAccept()
             channel.on('error', () => undefined)
             void harness.runRemoteCommand(info.command, channel)
+          })
+          session.on('pty', (accept, _reject, info) => {
+            harness.ptyRequests.push({ cols: info.cols, rows: info.rows })
+            accept()
+          })
+          session.on('window-change', (_accept, _reject, info) => {
+            // ssh2 sends the client window-change with want_reply=0; a reply
+            // would desynchronize the protocol, so just record it.
+            harness.windows.push({ rows: info.rows, cols: info.cols })
+          })
+          session.on('shell', (shellAccept, shellReject) => {
+            if (harness.rejectShell) {
+              shellReject()
+              return
+            }
+            const channel = shellAccept()
+            channel.on('error', () => undefined)
+            void harness.runPseudoShell(channel)
           })
           session.on('sftp', (sftpAccept) => {
             const sftpChannel = sftpAccept()
@@ -398,8 +424,42 @@ export class TestSshServer {
     channel.on('close', drop)
     channel.on('eof', drop)
   }
-}
 
+  /**
+   * Drive one deterministic in-memory pseudo-shell on a shell channel: prints
+   * a READY banner, echoes each line as `ECHO <line>`, exits with 0 on
+   * `exit`, with 3 on `code3`, and sends an exit-signal on `sigkill`.
+   */
+  private runPseudoShell(channel: ServerChannel): void {
+    let buf = ''
+    channel.write('READY\n')
+    channel.on('data', (data: Buffer) => {
+      buf += data.toString('utf8')
+      for (;;) {
+        const i = buf.indexOf('\n')
+        if (i < 0) break
+        const line = buf.slice(0, i).replace(/\r$/, '')
+        buf = buf.slice(i + 1)
+        if (line === 'exit') {
+          channel.exit(0)
+          channel.close()
+          return
+        }
+        if (line === 'code3') {
+          channel.exit(3)
+          channel.close()
+          return
+        }
+        if (line === 'sigkill') {
+          channel.exit('KILL')
+          channel.close()
+          return
+        }
+        channel.write(`ECHO ${line}\n`)
+      }
+    })
+  }
+}
 /** Kill one process and its children, settling once the tree is gone. */
 function killTree(pid: number | undefined): Promise<void> {
   if (pid === undefined) return Promise.resolve()

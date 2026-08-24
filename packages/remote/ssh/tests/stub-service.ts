@@ -36,6 +36,9 @@ export class StubSshService extends SshService {
         stderrTruncated: false,
         durationMs: 1,
       }),
+      openPty: async () => {
+        throw new SshError('SSH_PTY_FAILED', 'ssh pty is not supported by the stub provider')
+      },
       sftp: {} as SshSftp,
       close: async () => {
         this.connected = undefined

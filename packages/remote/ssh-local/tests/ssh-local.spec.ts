@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
-import { SshConnectionId } from '@deepseek-ai/dsh-ssh'
+import { SshConnectionId, SshError, type SshPtyExitInfo, type SshPtySession, type SshSftp } from '@deepseek-ai/dsh-ssh'
 import LocalSshService, { shellQuote } from '../src/index.ts'
 import { TEST_SSH_PASSWORD, TEST_SSH_USERNAME, TestSshServer } from './test-server.ts'
 
@@ -543,5 +543,277 @@ describe('ssh-local provider configuration', () => {
     }))
     const handle = await ctx.ssh.connect(SshConnectionId('encrypted'))
     await expect(handle.exec(ctx.ssh.resolveExec({ command: 'echo keyed' }))).resolves.toMatchObject({ exitCode: 0 })
+  })
+})
+
+describe('ssh-local pty sessions', () => {
+  beforeEach(async () => {
+    await startServer()
+  })
+
+  async function openPty(cols = 80, rows = 24): Promise<SshPtySession> {
+    const ctx = await setup()
+    const saved = await ctx.ssh.save(saveInput())
+    const handle = await ctx.ssh.connect(saved.id)
+    return handle.openPty({ cols, rows })
+  }
+
+  function collectOutput(pty: SshPtySession): string[] {
+    const chunks: string[] = []
+    pty.onOutput((data) => { chunks.push(Buffer.from(data).toString('utf8')) })
+    return chunks
+  }
+
+  async function waitFor(predicate: () => boolean, label: string): Promise<void> {
+    const deadline = Date.now() + 5000
+    while (!predicate()) {
+      if (Date.now() > deadline) throw new Error(`timed out waiting for ${label}`)
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+  }
+
+  it('relays input and output, resizes the window, and reports a clean exit', async () => {
+    const pty = await openPty()
+    const output = collectOutput(pty)
+    const exit = new Promise<SshPtyExitInfo>((resolve) => {
+      pty.onExit(resolve)
+    })
+    await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
+    pty.write(Buffer.from('hello\n'))
+    await waitFor(() => output.join('').includes('ECHO hello'), 'pty echo')
+    pty.resize(120, 40)
+    await waitFor(() => server!.windows.some(w => w.rows === 40 && w.cols === 120), 'window change')
+    pty.write(Buffer.from('exit\n'))
+    expect(await exit).toEqual({ exitCode: 0, signal: null, dropped: false })
+    expect(pty.closed).toBe(true)
+    expect(server!.ptyRequests[0]).toEqual({ cols: 80, rows: 24 })
+  })
+
+  it('reports the remote exit code for a failing shell', async () => {
+    const pty = await openPty()
+    const output = collectOutput(pty)
+    const exit = new Promise<SshPtyExitInfo>((resolve) => {
+      pty.onExit(resolve)
+    })
+    await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
+    pty.write(Buffer.from('code3\n'))
+    expect(await exit).toEqual({ exitCode: 3, signal: null, dropped: false })
+  })
+
+  it('reports a signal termination as a null exit code', async () => {
+    const pty = await openPty()
+    const output = collectOutput(pty)
+    const exit = new Promise<SshPtyExitInfo>((resolve) => {
+      pty.onExit(resolve)
+    })
+    await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
+    pty.write(Buffer.from('sigkill\n'))
+    expect(await exit).toEqual({ exitCode: null, signal: 'SIGKILL', dropped: false })
+  })
+
+  it('rejects writes and resizes after the session ended', async () => {
+    const pty = await openPty()
+    const output = collectOutput(pty)
+    const exit = new Promise<SshPtyExitInfo>((resolve) => {
+      pty.onExit(resolve)
+    })
+    await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
+    pty.write(Buffer.from('exit\n'))
+    await exit
+    let writeError: unknown
+    try {
+      pty.write(Buffer.from('x\n'))
+    } catch (error) {
+      writeError = error
+    }
+    expect(writeError).toMatchObject({ code: 'SSH_PTY_CLOSED' })
+    expect(() => pty.resize(10, 10)).toThrow(SshError)
+    // close() after termination is idempotent.
+    await pty.close()
+  })
+
+  it('replays the exit report to subscribers that attach after termination', async () => {
+    const pty = await openPty()
+    const output = collectOutput(pty)
+    const exit = new Promise<SshPtyExitInfo>((resolve) => {
+      pty.onExit(resolve)
+    })
+    await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
+    pty.write(Buffer.from('exit\n'))
+    await exit
+    let replayed: SshPtyExitInfo | undefined
+    pty.onExit((info) => {
+      replayed = info
+    })
+    expect(replayed).toEqual({ exitCode: 0, signal: null, dropped: false })
+  })
+
+  it('detaches output and exit subscriptions via their returned disposers', async () => {
+    const pty = await openPty()
+    const output: string[] = []
+    const unsubOutput = pty.onOutput((data) => { output.push(Buffer.from(data).toString('utf8')) })
+    const exits: SshPtyExitInfo[] = []
+    const unsubExit = pty.onExit((info) => { exits.push(info) })
+    await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
+    // Detach both subscriptions.
+    unsubOutput()
+    unsubExit()
+    // The detached output subscription must stop receiving data.
+    pty.write(Buffer.from('code3\n'))
+    // Give the channel a tick; the detached subscriber must not see the exit.
+    await new Promise(r => setTimeout(r, 50))
+    expect(exits).toEqual([])
+    // close() after detach reports dropped to nobody.
+    await pty.close()
+  })
+
+  it('closes a live session locally and reports it as dropped', async () => {
+    const pty = await openPty()
+    const output = collectOutput(pty)
+    const exit = new Promise<SshPtyExitInfo>((resolve) => {
+      pty.onExit(resolve)
+    })
+    await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
+    await pty.close()
+    expect(pty.closed).toBe(true)
+    expect(await exit).toEqual({ exitCode: null, signal: null, dropped: true })
+    await pty.close()
+  })
+
+  it('closes live pty sessions when the connection closes', async () => {
+    const ctx = await setup()
+    const saved = await ctx.ssh.save(saveInput())
+    const handle = await ctx.ssh.connect(saved.id)
+    const pty = await handle.openPty({ cols: 80, rows: 24 })
+    const output = collectOutput(pty)
+    await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
+    await ctx.ssh.close(saved.id)
+    expect(pty.closed).toBe(true)
+  })
+
+  it('fails openPty on a closed connection', async () => {
+    const ctx = await setup()
+    const saved = await ctx.ssh.save(saveInput())
+    const handle = await ctx.ssh.connect(saved.id)
+    await ctx.ssh.close(saved.id)
+    await expect(handle.openPty({ cols: 80, rows: 24 })).rejects.toMatchObject({ code: 'SSH_CLOSED' })
+  })
+
+  it('reports SSH_PTY_FAILED when the server rejects the shell request', async () => {
+    server!.rejectShell = true
+    const ctx = await setup()
+    const saved = await ctx.ssh.save(saveInput())
+    const handle = await ctx.ssh.connect(saved.id)
+    await expect(handle.openPty({ cols: 80, rows: 24 })).rejects.toMatchObject({ code: 'SSH_PTY_FAILED' })
+  })
+})
+
+describe('ssh-local sftp streaming', () => {
+  beforeEach(async () => {
+    await startServer()
+  })
+
+  async function connectSftp(): Promise<SshSftp> {
+    const ctx = await setup()
+    const saved = await ctx.ssh.save(saveInput())
+    const handle = await ctx.ssh.connect(saved.id)
+    return handle.sftp
+  }
+
+  async function seedRemoteFile(sftp: SshSftp, name: string, content: string): Promise<void> {
+    localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-local-'))
+    const upload = join(localRoot, name)
+    await writeFile(upload, content)
+    await sftp.writeFile(upload, name)
+  }
+
+  it('streams a remote file to the caller with openRead', async () => {
+    const sftp = await connectSftp()
+    await seedRemoteFile(sftp, 'payload.txt', 'remote me')
+
+    const file = await sftp.openRead('payload.txt')
+    expect(file.size).toBe(9)
+    const chunks: Buffer[] = []
+    for await (const chunk of file.stream) {
+      chunks.push(chunk as Buffer)
+    }
+    expect(Buffer.concat(chunks).toString('utf8')).toBe('remote me')
+    await file.close()
+    await file.close()
+  })
+
+  it('rejects openRead for missing paths and directories', async () => {
+    const sftp = await connectSftp()
+    await expect(sftp.openRead('missing.txt')).rejects.toMatchObject({ code: 'SSH_SFTP_FAILED' })
+    await sftp.mkdir('adir')
+    await expect(sftp.openRead('adir')).rejects.toMatchObject({ code: 'SSH_SFTP_FAILED' })
+  })
+
+  it('releases the remote handle early with openRead close', async () => {
+    const sftp = await connectSftp()
+    await seedRemoteFile(sftp, 'payload.txt', 'remote me')
+
+    const file = await sftp.openRead('payload.txt')
+    const closed = new Promise<void>((resolve) => {
+      file.stream.on('close', () => resolve())
+    })
+    await file.close()
+    await closed
+  })
+
+  it('resolves openRead close immediately for a destroyed stream', async () => {
+    const sftp = await connectSftp()
+    await seedRemoteFile(sftp, 'payload.txt', 'remote me')
+
+    const file = await sftp.openRead('payload.txt')
+    file.stream.destroy()
+    await file.close()
+  })
+
+  it('streams an upload with openWrite and reports the byte count', async () => {
+    const sftp = await connectSftp()
+    const target = await sftp.openWrite('upload.txt')
+    const pending = target.done()
+    target.stream.write(Buffer.from('remote '))
+    target.stream.write(Buffer.from('me'))
+    target.stream.end()
+    const result = await pending
+    expect(result.bytes).toBe(9)
+
+    const back = await sftp.openRead('upload.txt')
+    const chunks: Buffer[] = []
+    for await (const chunk of back.stream) {
+      chunks.push(chunk as Buffer)
+    }
+    expect(Buffer.concat(chunks).toString('utf8')).toBe('remote me')
+    await back.close()
+
+    // done() after settlement resolves again with the same count.
+    expect(await target.done()).toEqual({ bytes: 9 })
+  })
+
+  it('rejects openWrite when the remote path is invalid', async () => {
+    const sftp = await connectSftp()
+    const target = await sftp.openWrite('missing-dir/upload.txt')
+    target.stream.write(Buffer.from('x'))
+    target.stream.end()
+    await expect(target.done()).rejects.toMatchObject({ code: 'SSH_SFTP_FAILED' })
+    // done() after settlement rejects again with the same error.
+    await expect(target.done()).rejects.toMatchObject({ code: 'SSH_SFTP_FAILED' })
+  })
+
+  it('reports an aborted upload when the input stream is destroyed', async () => {
+    const sftp = await connectSftp()
+    const target = await sftp.openWrite('abort.txt')
+    target.stream.write(Buffer.from('x'))
+    target.stream.destroy()
+    await expect(target.done()).rejects.toMatchObject({ code: 'SSH_SFTP_FAILED' })
+  })
+
+  it('propagates input stream errors from the upload', async () => {
+    const sftp = await connectSftp()
+    const target = await sftp.openWrite('err.txt')
+    target.stream.destroy(new Error('upload failed'))
+    await expect(target.done()).rejects.toThrow('upload failed')
   })
 })

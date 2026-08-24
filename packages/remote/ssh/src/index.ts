@@ -41,10 +41,15 @@ export type {
   SshErrorCode,
   SshExecRequest,
   SshExecSpec,
+  SshPtyExitInfo,
+  SshPtyOptions,
+  SshPtySession,
+  SshReadableFile,
   SshRunResult,
   SshSftp,
   SshStoredDefinition,
   SshTestResult,
+  SshWritableFile,
 } from './types.ts'
 
 /** Settings namespace of the connection-definition registry. */

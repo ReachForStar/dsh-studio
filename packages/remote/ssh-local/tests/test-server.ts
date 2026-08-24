@@ -351,7 +351,7 @@ export class TestSshServer {
             }
             const channel = shellAccept()
             channel.on('error', () => undefined)
-            void harness.runPseudoShell(channel)
+            harness.runPseudoShell(channel)
           })
           session.on('sftp', (sftpAccept) => {
             const sftpChannel = sftpAccept()

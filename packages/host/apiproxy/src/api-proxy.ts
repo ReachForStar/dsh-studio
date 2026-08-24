@@ -3648,31 +3648,31 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         }
       },
 
-      async ptyWrite(request, signal) {
+      ptyWrite(request, signal) {
         const { ptyId, data } = request.payload
         const pty = ptySessions.get(ptyId)
-        if (pty === undefined) return ptyNotFound(request, ptyId)
+        if (pty === undefined) return Promise.resolve(ptyNotFound(request, ptyId))
         try {
           pty.write(Buffer.from(data, 'base64'))
           signal.throwIfAborted()
-          return ok(request, { accepted: true })
+          return Promise.resolve(ok(request, { accepted: true }))
         } catch (error: unknown) {
           if (signal.aborted) throw signal.reason ?? error
-          return err(request, sshRpcError(error))
+          return Promise.resolve(err(request, sshRpcError(error)))
         }
       },
 
-      async ptyResize(request, signal) {
+      ptyResize(request, signal) {
         const { ptyId, cols, rows } = request.payload
         const pty = ptySessions.get(ptyId)
-        if (pty === undefined) return ptyNotFound(request, ptyId)
+        if (pty === undefined) return Promise.resolve(ptyNotFound(request, ptyId))
         try {
           pty.resize(cols, rows)
           signal.throwIfAborted()
-          return ok(request, { accepted: true })
+          return Promise.resolve(ok(request, { accepted: true }))
         } catch (error: unknown) {
           if (signal.aborted) throw signal.reason ?? error
-          return err(request, sshRpcError(error))
+          return Promise.resolve(err(request, sshRpcError(error)))
         }
       },
 
@@ -3763,7 +3763,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           const filename = remotePath.split('/').pop() ?? 'download'
           // Adapt the node Readable to a web ReadableStream for the Response.
           const { Readable } = await import('node:stream')
-          const webStream = Readable.toWeb(file.stream as import('node:stream').Readable) as ReadableStream<Uint8Array>
+          const webStream = Readable.toWeb(file.stream) as ReadableStream<Uint8Array>
           return new Response(webStream, {
             headers: {
               'content-type': 'application/octet-stream',
@@ -3787,9 +3787,9 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             const { done, value } = await reader.read()
             if (done) break
             signal.throwIfAborted()
-            const buf = value ? Buffer.from(value) : Buffer.alloc(0)
+            const buf = Buffer.from(value)
             if (!file.stream.write(buf)) {
-              await new Promise<void>((resolve) => { file.stream.once('drain', () => resolve()) })
+              await new Promise<void>((resolve) => { file.stream.once('drain', () => { resolve() }) })
             }
           }
           file.stream.end()

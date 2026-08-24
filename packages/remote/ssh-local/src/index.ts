@@ -582,7 +582,7 @@ class LocalConnection implements SshConnection {
     if (this.closed) return
     this.closed = true
     for (const session of [...this.ptySessions]) {
-      session.close()
+      void session.close().catch(() => undefined)
     }
     await new Promise<void>((resolve) => {
       const done = (): void => { resolve() }
@@ -997,7 +997,7 @@ class LocalSftp implements SshSftp {
             resolve()
             return
           }
-          stream.once('close', () => resolve())
+          stream.once('close', () => { resolve() })
           stream.destroy()
         })
       },

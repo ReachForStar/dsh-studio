@@ -6,6 +6,10 @@
  * file transfer uses the host-only download channel (GET) and a carrier
  * POST upload route.
  */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment,
+ *   @typescript-eslint/no-unsafe-member-access,
+ *   @typescript-eslint/no-unsafe-argument,
+ *   typescript/no-confusing-void-expression */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -58,8 +62,8 @@ export function SshPanel({ t }: SshPanelProps) {
     void (async () => {
       try {
         const res = await fetch('/api/ssh.list')
-        const json = await res.json()
-        if (json.result?.ok) setConnections(json.result.value.connections)
+        const json = (await res.json()) as { result?: { ok: boolean; value?: { connections: SshConnectionView[] } } }
+        if (json.result?.ok) setConnections(json.result.value?.connections ?? [])
       } catch { /* connection list is optional */ }
     })()
   }, [])
@@ -74,12 +78,12 @@ export function SshPanel({ t }: SshPanelProps) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ connectionId: selectedConn, cols: 80, rows: 24 }),
       })
-      const json = await res.json()
+      const json = (await res.json()) as { result?: { ok: boolean; value?: { ptyId: string }; error?: { message: string } } }
       if (!json.result?.ok) {
         setPtyError(json.result?.error?.message ?? 'failed to open PTY')
         return
       }
-      const { ptyId } = json.result.value
+      const ptyId: string = json.result.value?.ptyId ?? ''
       ptyIdRef.current = ptyId
 
       const term = new Terminal({
@@ -96,11 +100,11 @@ export function SshPanel({ t }: SshPanelProps) {
       termRef.current = term
       fitRef.current = fit
 
-      term.onData((data) => {
+      term.onData((data: string) => {
         void fetch('/api/ssh.pty.write', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ ptyId, data: btoa(unescape(encodeURIComponent(data))) }),
+          body: JSON.stringify({ ptyId, data: btoa(String.fromCharCode(...new TextEncoder().encode(data))) }),
         })
       })
 

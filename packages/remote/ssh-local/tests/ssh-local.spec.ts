@@ -627,7 +627,7 @@ describe('ssh-local pty sessions', () => {
       writeError = error
     }
     expect(writeError).toMatchObject({ code: 'SSH_PTY_CLOSED' })
-    expect(() => pty.resize(10, 10)).toThrow(SshError)
+    expect(() => { pty.resize(10, 10) }).toThrow(SshError)
     // close() after termination is idempotent.
     await pty.close()
   })
@@ -755,7 +755,7 @@ describe('ssh-local sftp streaming', () => {
 
     const file = await sftp.openRead('payload.txt')
     const closed = new Promise<void>((resolve) => {
-      file.stream.on('close', () => resolve())
+      file.stream.on('close', () => { resolve() })
     })
     await file.close()
     await closed

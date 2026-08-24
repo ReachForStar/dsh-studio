@@ -2441,6 +2441,12 @@ importers:
       '@excalidraw/excalidraw':
         specifier: ^0.18.1
         version: 0.18.1(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(immer@10.2.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@xterm/addon-fit':
+        specifier: ^0.11.0
+        version: 0.11.0
+      '@xterm/xterm':
+        specifier: ^6.0.0
+        version: 6.0.0
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -5220,6 +5226,9 @@ importers:
       '@deepseek-ai/dsh-skill':
         specifier: workspace:^
         version: link:../../skill/skill
+      '@deepseek-ai/dsh-ssh':
+        specifier: workspace:^
+        version: link:../../remote/ssh
       '@deepseek-ai/dsh-subagent':
         specifier: workspace:^
         version: link:../../subagent/subagent
@@ -12775,6 +12784,12 @@ packages:
   '@vueuse/shared@12.8.2':
     resolution: {integrity: sha512-dznP38YzxZoNloI0qpEfpkms8knDtaoQ6Y/sfS0L7Yki4zh40LFHEhur0odJC6xTHG5dxWVPiUWBXn+wCG2s5w==}
 
+  '@xterm/addon-fit@0.11.0':
+    resolution: {integrity: sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==}
+
+  '@xterm/xterm@6.0.0':
+    resolution: {integrity: sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==}
+
   '@yarnpkg/cli-dist@4.17.1':
     resolution: {integrity: sha512-2tiSQuJNl/L3QwTdrq6lKWDpkcnp9MGvCT/rIldHcbu3SWfnLdmehvt3eulX1hT7FFt1Gjfq3CesF+kvhFip6g==}
     engines: {node: '>=18.12.0'}
@@ -18958,6 +18973,10 @@ snapshots:
       vue: 3.5.39(typescript@6.0.3)
     transitivePeerDependencies:
       - typescript
+
+  '@xterm/addon-fit@0.11.0': {}
+
+  '@xterm/xterm@6.0.0': {}
 
   '@yarnpkg/cli-dist@4.17.1': {}
 

@@ -25,6 +25,8 @@ import { SubagentError } from '@deepseek-ai/dsh-subagent'
 import type { SubagentListEntry as CatalogSubagentListEntry } from '@deepseek-ai/dsh-subagent'
 import { isUserInvocable } from '@deepseek-ai/dsh-skill'
 import type { Workspace, WorkspaceRecord } from '@deepseek-ai/dsh-workspace'
+import { SshError } from '@deepseek-ai/dsh-ssh'
+import type { SshConnection, SftpEntry, SshPtySession } from '@deepseek-ai/dsh-ssh'
 import {
   workspaceDomainState, workspaceRecord, WorkspaceId as brandWorkspaceId,
   WorkspaceMoveInvalidError, WorkspaceOrderInvalidError, WorkspaceUnknownSessionError,
@@ -1038,6 +1040,59 @@ function changedWorkspaceView(workspaceId: string, value: unknown): WorkspaceVie
   }
 }
 
+/** Project one SftpEntry to the wire view. */
+function sftpEntryView(entry: SftpEntry, dirPath: string): {
+  name: string
+  path: string
+  type: 'file' | 'directory' | 'symlink' | 'other'
+  size: number
+  mtime: number
+} {
+  const name = entry.name
+  const path = dirPath === '/' ? `/${name}` : `${dirPath}/${name}`
+  const type = entry.type === 'dir' ? 'directory' as const
+    : entry.type === 'symlink' ? 'symlink' as const
+      : entry.type === 'file' ? 'file' as const
+        : 'other' as const
+  return { name, path, type, size: entry.size, mtime: entry.mtimeMs }
+}
+
+/** Resolve a named SSH connection by id, throwing SSH_NOT_FOUND on miss. */
+async function resolveSshConnection(
+  ctx: Context,
+  connectionId: string,
+  signal: AbortSignal,
+): Promise<SshConnection> {
+  const definition = ctx.ssh.resolve(connectionId)
+  signal.throwIfAborted()
+  return ctx.ssh.connect(definition.id)
+}
+
+/** Map an SshError (or unknown) to the RPC error envelope. */
+function sshRpcError(error: unknown): RpcError {
+  if (error instanceof SshError) {
+    return {
+      code: 'internal',
+      message: error.message,
+      details: {},
+    }
+  }
+  return {
+    code: 'internal',
+    message: error instanceof Error ? error.message : String(error),
+    details: {},
+  }
+}
+
+/** Shared PTY-not-found RPC error response. */
+function ptyNotFound<T>(request: RpcRequest<unknown>, ptyId: string): RpcResponse<T> {
+  return err(request, {
+    code: 'internal',
+    message: `ssh pty session "${ptyId}" was not found or has already terminated`,
+    details: {},
+  })
+}
+
 /**
  * Implement ApiProxy over a composed host context.
  * @param ctx - a context with the Host spine and Workspace registry mounted.
@@ -1071,6 +1126,9 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   const pendingQuestions = new Map<RpcId, PendingQuestion>()
   const pendingApprovals = new Map<RpcId, PendingApproval>()
   const muxQueues = new Set<FrameQueue<RpcRequest<MuxFrame>>>()
+  const hostQueues = new Set<FrameQueue<RpcRequest<HostFrame>>>()
+  /** Live PTY sessions: ptyId → session. The SSH domain pushes output/exit frames to hostQueues. */
+  const ptySessions = new Map<string, SshPtySession>()
   const imageAdmissionChains = new WeakMap<Agent, Promise<void>>()
 
   /** Serialize image admission with model selection for one agent. */
@@ -3431,6 +3489,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
       host(_request, signal) {
         const queue = new FrameQueue<RpcRequest<HostFrame>>()
+        hostQueues.add(queue)
         const committedWorkspaces = ctx.workspaceRegistry.list()
         const committedWorkspaceIds = new Set(
           committedWorkspaces.map(workspace => String(workspace.id)),
@@ -3530,7 +3589,220 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             }),
           )),
         ]
-        return queue.iterate(signal, () => { for (const dispose of disposers) dispose() })
+        return queue.iterate(signal, () => {
+          hostQueues.delete(queue)
+          for (const dispose of disposers) dispose()
+        })
+      },
+    },
+
+    ssh: {
+      list(request) {
+        return Promise.resolve(ok(request, {
+          connections: ctx.ssh.list().map((definition) => {
+            const view = ctx.ssh.toView(definition)
+            return {
+              id: String(view.id),
+              name: view.name,
+              host: view.host,
+              port: view.port,
+              user: view.username,
+              authKind: view.auth.kind,
+            }
+          }),
+        }))
+      },
+
+      async ptyOpen(request, signal) {
+        const { connectionId, cols, rows, cwd } = request.payload
+        try {
+          const definition = ctx.ssh.resolve(connectionId)
+          const connection = await ctx.ssh.connect(definition.id)
+          signal.throwIfAborted()
+          const pty = await connection.openPty({ cols, rows, ...(cwd !== undefined ? { cwd } : {}) })
+          signal.throwIfAborted()
+          const ptyId = crypto.randomUUID()
+          ptySessions.set(ptyId, pty)
+          pty.onOutput((data) => {
+            const chunk = Buffer.from(data).toString('base64')
+            for (const queue of hostQueues) {
+              queue.push(frame({ type: 'ssh/pty/output', ptyId, data: chunk }))
+            }
+          })
+          pty.onExit((info) => {
+            for (const queue of hostQueues) {
+              queue.push(frame({
+                type: 'ssh/pty/exit',
+                ptyId,
+                exitCode: info.exitCode,
+                signal: info.signal,
+                dropped: info.dropped,
+              }))
+            }
+            ptySessions.delete(ptyId)
+          })
+          return ok(request, { ptyId })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async ptyWrite(request, signal) {
+        const { ptyId, data } = request.payload
+        const pty = ptySessions.get(ptyId)
+        if (pty === undefined) return ptyNotFound(request, ptyId)
+        try {
+          pty.write(Buffer.from(data, 'base64'))
+          signal.throwIfAborted()
+          return ok(request, { accepted: true })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async ptyResize(request, signal) {
+        const { ptyId, cols, rows } = request.payload
+        const pty = ptySessions.get(ptyId)
+        if (pty === undefined) return ptyNotFound(request, ptyId)
+        try {
+          pty.resize(cols, rows)
+          signal.throwIfAborted()
+          return ok(request, { accepted: true })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async ptyClose(request, signal) {
+        const { ptyId } = request.payload
+        const pty = ptySessions.get(ptyId)
+        if (pty === undefined) return ptyNotFound(request, ptyId)
+        try {
+          await pty.close()
+          signal.throwIfAborted()
+          return ok(request, { closed: true })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async sftpList(request, signal) {
+        const { connectionId, path } = request.payload
+        try {
+          const connection = await resolveSshConnection(ctx, connectionId, signal)
+          const entries = await connection.sftp.list(path)
+          signal.throwIfAborted()
+          return ok(request, { entries: entries.map(entry => sftpEntryView(entry, path)) })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async sftpStat(request, signal) {
+        const { connectionId, path } = request.payload
+        try {
+          const connection = await resolveSshConnection(ctx, connectionId, signal)
+          const entry = await connection.sftp.stat(path)
+          signal.throwIfAborted()
+          return ok(request, { entry: sftpEntryView(entry, path) })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async sftpMkdir(request, signal) {
+        const { connectionId, path, recursive } = request.payload
+        try {
+          const connection = await resolveSshConnection(ctx, connectionId, signal)
+          await connection.sftp.mkdir(path, { recursive: recursive === true })
+          signal.throwIfAborted()
+          return ok(request, { path })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async sftpRemove(request, signal) {
+        const { connectionId, path } = request.payload
+        try {
+          const connection = await resolveSshConnection(ctx, connectionId, signal)
+          await connection.sftp.remove(path)
+          signal.throwIfAborted()
+          return ok(request, { removed: true })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async sftpRename(request, signal) {
+        const { connectionId, path, toPath } = request.payload
+        try {
+          const connection = await resolveSshConnection(ctx, connectionId, signal)
+          await connection.sftp.rename(path, toPath)
+          signal.throwIfAborted()
+          return ok(request, { path: toPath })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async sftpDownload(connectionId, remotePath, signal) {
+        try {
+          const connection = await resolveSshConnection(ctx, connectionId, signal)
+          const file = await connection.sftp.openRead(remotePath)
+          signal.throwIfAborted()
+          const filename = remotePath.split('/').pop() ?? 'download'
+          // Adapt the node Readable to a web ReadableStream for the Response.
+          const { Readable } = await import('node:stream')
+          const webStream = Readable.toWeb(file.stream as import('node:stream').Readable) as ReadableStream<Uint8Array>
+          return new Response(webStream, {
+            headers: {
+              'content-type': 'application/octet-stream',
+              'content-disposition': `attachment; filename="${filename}"`,
+              'content-length': String(file.size),
+            },
+          })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          const message = error instanceof Error ? error.message : String(error)
+          return new Response(`sftp download failed: ${message}`, { status: 500 })
+        }
+      },
+
+      async sftpUpload(connectionId, remotePath, body, signal) {
+        try {
+          const connection = await resolveSshConnection(ctx, connectionId, signal)
+          const file = await connection.sftp.openWrite(remotePath)
+          const reader = body.getReader()
+          for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            signal.throwIfAborted()
+            const buf = value ? Buffer.from(value) : Buffer.alloc(0)
+            if (!file.stream.write(buf)) {
+              await new Promise<void>((resolve) => { file.stream.once('drain', () => resolve()) })
+            }
+          }
+          file.stream.end()
+          const { bytes } = await file.done()
+          signal.throwIfAborted()
+          return new Response(JSON.stringify({ bytes }), {
+            headers: { 'content-type': 'application/json' },
+          })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          const message = error instanceof Error ? error.message : String(error)
+          return new Response(`sftp upload failed: ${message}`, { status: 500 })
+        }
       },
     },
 

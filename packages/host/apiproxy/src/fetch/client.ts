@@ -62,6 +62,12 @@ import {
 } from '../api/credentials.schema.ts'
 import { llmDiscoverModelsValueSchema, llmModelsValueSchema, llmProvidersValueSchema } from '../api/llm.schema.ts'
 import {
+  sshListValueSchema, sshPtyOpenValueSchema, sshPtyWriteValueSchema,
+  sshPtyResizeValueSchema, sshPtyCloseValueSchema,
+  sshSftpListValueSchema, sshSftpStatValueSchema, sshSftpMkdirValueSchema,
+  sshSftpRemoveValueSchema, sshSftpRenameValueSchema,
+} from '../api/ssh.schema.ts'
+import {
   subagentHistoryValueSchema,
   subagentInterruptValueSchema,
   subagentListValueSchema,
@@ -161,6 +167,18 @@ export interface IApiClient {
     models(payload: RequestPayload<'llm.models'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'llm.models'>>>
     discoverModels(payload: RequestPayload<'llm.discoverModels'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'llm.discoverModels'>>>
   }
+  ssh: {
+    list(payload: RequestPayload<'ssh.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.list'>>>
+    ptyOpen(payload: RequestPayload<'ssh.pty.open'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.pty.open'>>>
+    ptyWrite(payload: RequestPayload<'ssh.pty.write'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.pty.write'>>>
+    ptyResize(payload: RequestPayload<'ssh.pty.resize'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.pty.resize'>>>
+    ptyClose(payload: RequestPayload<'ssh.pty.close'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.pty.close'>>>
+    sftpList(payload: RequestPayload<'ssh.sftp.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.sftp.list'>>>
+    sftpStat(payload: RequestPayload<'ssh.sftp.stat'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.sftp.stat'>>>
+    sftpMkdir(payload: RequestPayload<'ssh.sftp.mkdir'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.sftp.mkdir'>>>
+    sftpRemove(payload: RequestPayload<'ssh.sftp.remove'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.sftp.remove'>>>
+    sftpRename(payload: RequestPayload<'ssh.sftp.rename'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.sftp.rename'>>>
+  }
   /** client-response passthrough (rpcId is a backfill of the server-request's id — never minted here). */
   respond(message: ClientResponse, signal?: AbortSignal): Promise<RpcReceipt>
 }
@@ -222,6 +240,16 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'llm.providers': llmProvidersValueSchema,
   'llm.models': llmModelsValueSchema,
   'llm.discoverModels': llmDiscoverModelsValueSchema,
+  'ssh.list': sshListValueSchema,
+  'ssh.pty.open': sshPtyOpenValueSchema,
+  'ssh.pty.write': sshPtyWriteValueSchema,
+  'ssh.pty.resize': sshPtyResizeValueSchema,
+  'ssh.pty.close': sshPtyCloseValueSchema,
+  'ssh.sftp.list': sshSftpListValueSchema,
+  'ssh.sftp.stat': sshSftpStatValueSchema,
+  'ssh.sftp.mkdir': sshSftpMkdirValueSchema,
+  'ssh.sftp.remove': sshSftpRemoveValueSchema,
+  'ssh.sftp.rename': sshSftpRenameValueSchema,
 }
 
 /** Default timeout for bounded unary calls (rpc-compare 2026-07-19: a hung host must not leave callers pending forever). */
@@ -498,6 +526,19 @@ export abstract class AbstractApiClient implements IApiClient {
     providers: (payload, signal) => this.callUnary('llm.providers', payload, signal),
     models: (payload, signal) => this.callUnary('llm.models', payload, signal),
     discoverModels: (payload, signal) => this.callUnary('llm.discoverModels', payload, signal),
+  }
+
+  readonly ssh: IApiClient['ssh'] = {
+    list: (payload, signal) => this.callUnary('ssh.list', payload, signal),
+    ptyOpen: (payload, signal) => this.callUnary('ssh.pty.open', payload, signal),
+    ptyWrite: (payload, signal) => this.callUnary('ssh.pty.write', payload, signal),
+    ptyResize: (payload, signal) => this.callUnary('ssh.pty.resize', payload, signal),
+    ptyClose: (payload, signal) => this.callUnary('ssh.pty.close', payload, signal),
+    sftpList: (payload, signal) => this.callUnary('ssh.sftp.list', payload, signal),
+    sftpStat: (payload, signal) => this.callUnary('ssh.sftp.stat', payload, signal),
+    sftpMkdir: (payload, signal) => this.callUnary('ssh.sftp.mkdir', payload, signal),
+    sftpRemove: (payload, signal) => this.callUnary('ssh.sftp.remove', payload, signal),
+    sftpRename: (payload, signal) => this.callUnary('ssh.sftp.rename', payload, signal),
   }
 
   readonly events: IApiClient['events'] = {

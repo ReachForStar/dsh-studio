@@ -278,6 +278,19 @@ export class FakeApiClient implements IApiClient {
     discoverModels: payload => this.record('llm.discoverModels', payload, Promise.resolve(ok({ models: [] }))),
   }
 
+  readonly ssh: IApiClient['ssh'] = {
+    list: () => Promise.resolve(ok({ connections: [] })),
+    ptyOpen: () => Promise.resolve(ok({ ptyId: 'stub' })),
+    ptyWrite: () => Promise.resolve(ok({ accepted: true as const })),
+    ptyResize: () => Promise.resolve(ok({ accepted: true as const })),
+    ptyClose: () => Promise.resolve(ok({ closed: true as const })),
+    sftpList: () => Promise.resolve(ok({ entries: [] })),
+    sftpStat: () => Promise.resolve(ok({ entry: { name: 'x', path: '/x', type: 'file' as const, size: 0, mtime: 0 } })),
+    sftpMkdir: () => Promise.resolve(ok({ path: '/' })),
+    sftpRemove: () => Promise.resolve(ok({ removed: true as const })),
+    sftpRename: () => Promise.resolve(ok({ path: '/' })),
+  }
+
   /** When true, streams never fire onOpen (misbehaving-carrier material for the handshake timeout guard). */
   suppressStreamOpen = false
 

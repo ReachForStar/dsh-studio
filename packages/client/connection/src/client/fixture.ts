@@ -3056,6 +3056,20 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         models: fixtureModelGroups().flatMap(group => group.models.map(model => ({ id: model.id, name: model.name }))),
       }),
     },
+    ssh: {
+      list: request => ok(request, { connections: [] }),
+      ptyOpen: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      ptyWrite: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      ptyResize: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      ptyClose: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      sftpList: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      sftpStat: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      sftpMkdir: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      sftpRemove: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      sftpRename: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
+      sftpDownload: () => Promise.resolve(new Response('fixture does not serve SSH', { status: 404 })),
+      sftpUpload: () => Promise.resolve(new Response('fixture does not serve SSH', { status: 404 })),
+    },
     respond(message: ClientResponse): Promise<RpcReceipt> {
       // Same routing discipline as the host: rpcId first, then the payload's
       // audit correlation; a settled or unknown id is not-pending.
@@ -3227,6 +3241,16 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'llm.providers': return this.api.llm.providers(request)
       case 'llm.models': return this.api.llm.models(request)
       case 'llm.discoverModels': return this.api.llm.discoverModels(request, signal)
+      case 'ssh.list': return this.api.ssh.list(request)
+      case 'ssh.pty.open': return this.api.ssh.ptyOpen(request, signal)
+      case 'ssh.pty.write': return this.api.ssh.ptyWrite(request, signal)
+      case 'ssh.pty.resize': return this.api.ssh.ptyResize(request, signal)
+      case 'ssh.pty.close': return this.api.ssh.ptyClose(request, signal)
+      case 'ssh.sftp.list': return this.api.ssh.sftpList(request, signal)
+      case 'ssh.sftp.stat': return this.api.ssh.sftpStat(request, signal)
+      case 'ssh.sftp.mkdir': return this.api.ssh.sftpMkdir(request, signal)
+      case 'ssh.sftp.remove': return this.api.ssh.sftpRemove(request, signal)
+      case 'ssh.sftp.rename': return this.api.ssh.sftpRename(request, signal)
     }
   }
 

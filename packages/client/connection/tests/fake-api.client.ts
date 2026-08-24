@@ -30,6 +30,10 @@ export function ok<T>(value: T): RpcResponse<T> {
   return { rpcId: RpcId(`fake-${nextRpc++}`), result: { ok: true, value } }
 }
 
+export function err(error: { code: string; message: string; details: Record<string, unknown> }): RpcResponse<never> {
+  return { rpcId: RpcId(`fake-${nextRpc++}`), result: { ok: false, error } as never }
+}
+
 
 type StreamItem<F> = { kind: 'frame'; envelope: RpcRequest<F> } | { kind: 'end' } | { kind: 'fail'; error: unknown }
 
@@ -223,6 +227,19 @@ export class FakeApiClient implements IApiClient {
     providers: payload => this.record('llm.providers', payload, Promise.resolve(ok({ providers: [] }))),
     models: payload => this.record('llm.models', payload, Promise.resolve(ok({ groups: [], failures: [] }))),
     discoverModels: payload => this.record('llm.discoverModels', payload, Promise.resolve(ok({ models: [] }))),
+  }
+
+  readonly ssh: IApiClient['ssh'] = {
+    list: () => Promise.resolve(ok({ connections: [] })),
+    ptyOpen: () => Promise.resolve(err({ code: 'internal', message: 'stub', details: {} })),
+    ptyWrite: () => Promise.resolve(err({ code: 'internal', message: 'stub', details: {} })),
+    ptyResize: () => Promise.resolve(err({ code: 'internal', message: 'stub', details: {} })),
+    ptyClose: () => Promise.resolve(err({ code: 'internal', message: 'stub', details: {} })),
+    sftpList: () => Promise.resolve(ok({ entries: [] })),
+    sftpStat: () => Promise.resolve(err({ code: 'internal', message: 'stub', details: {} })),
+    sftpMkdir: () => Promise.resolve(ok({ path: '/' })),
+    sftpRemove: () => Promise.resolve(ok({ removed: true as const })),
+    sftpRename: () => Promise.resolve(ok({ path: '/' })),
   }
 
   /** When true, streams never fire onOpen (misbehaving-carrier material for the handshake timeout guard). */

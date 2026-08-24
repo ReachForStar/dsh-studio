@@ -383,6 +383,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Root interface of the unified API. New client-request domain = one new file pair + one field here + one map row.',
     methods: [
       {
+        signature: 'ssh: SshApi',
+        description: 'Interactive PTY sessions and streaming SFTP over a named SSH connection.',
+        parameters: [],
+      },
+      {
         signature: 'downloads: DownloadsApi',
         description: 'Host-only download surfaces (GET, no wire envelope); absent from IApiClient.',
         parameters: [],
@@ -4073,6 +4078,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type RpcReceipt = {\n    accepted: true;\n} | {\n    accepted: false;\n    reason: \'not-pending\' | \'bad-response\';\n};',
   },
   {
+    name: 'RpcRequest',
+    declaration: 'export interface RpcRequest<P> {\n    rpcId: RpcId;\n    payload: P;\n}',
+  },
+  {
+    name: 'RpcResponse',
+    declaration: 'export interface RpcResponse<T> {\n    rpcId: RpcId;\n    result: RpcResult<T>;\n}',
+  },
+  {
     name: 'RpcResult',
     declaration: 'export type RpcResult<T> = {\n    ok: true;\n    value: T;\n} | {\n    ok: false;\n    error: RpcError;\n};',
   },
@@ -4433,6 +4446,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SftpEntryType = \'file\' | \'dir\' | \'symlink\' | \'other\';',
   },
   {
+    name: 'SftpEntryView',
+    declaration: 'export interface SftpEntryView {\n    name: string;\n    path: string;\n    type: \'file\' | \'directory\' | \'symlink\' | \'other\';\n    size: number;\n    mtime: number;\n}',
+  },
+  {
     name: 'ShellExecRequest',
     declaration: 'export interface ShellExecRequest {\n    command: string;\n    workdir?: string | undefined;\n    timeoutMs?: number | undefined;\n    stdoutMaxBytes?: number | undefined;\n    signal?: AbortSignal | undefined;\n    stdin?: string | undefined;\n    env?: Record<string, string> | undefined;\n    dshEnv?: DshEnvironment | undefined;\n    sandboxPolicy?: SandboxExecutionPolicy | undefined;\n}',
   },
@@ -4537,12 +4554,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SpillSource {\n    toolName: string;\n    callId: CallId;\n    label: string;\n}',
   },
   {
+    name: 'SshApi',
+    declaration: 'export interface SshApi {\n    list(request: RpcRequest<{}>): Promise<RpcResponse<{\n        connections: SshConnectionView[];\n    }>>;\n    ptyOpen(request: RpcRequest<SshPtyOpenRequest>, signal: AbortSignal): Promise<RpcResponse<SshPtyOpenResult>>;\n    ptyWrite(request: RpcRequest<SshPtyWriteRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        accepted: true;\n    }>>;\n    ptyResize(request: RpcRequest<SshPtyResizeRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        accepted: true;\n    }>>;\n    ptyClose(request: RpcRequest<SshPtyCloseRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        closed: true;\n    }>>;\n    sftpList(request: RpcRequest<SshSftpRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        entries: SftpEntryView[];\n    }>>;\n    sftpStat(request: RpcRequest<SshSftpRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        entry: SftpEntryView;\n    }>>;\n    sftpMkdir(request: RpcRequest<SshSftpMkdirRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        path: string;\n    }>>;\n    sftpRemove(request: RpcRequest<SshSftpRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        removed: true;\n    }>>;\n    sftpRename(request: RpcRequest<SshSftpRenameRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        path: string;\n    }>>;\n    sftpDownload(connectionId: string, remotePath: string, signal: AbortSignal): Promise<Response>;\n    sftpUpload(connectionId: string, remotePath: string, body: ReadableStream<Uint8Array>, signal /* …truncated — full shape in source */',
+  },
+  {
     name: 'SshAuth',
     declaration: 'export type SshAuth = {\n    kind: \'password\';\n    password: string;\n} | {\n    kind: \'privateKey\';\n    privateKeyPath: string;\n    passphrase?: string;\n};',
   },
   {
     name: 'SshConnection',
-    declaration: 'export interface SshConnection {\n    readonly id: SshConnectionId;\n    exec(spec: SshExecSpec): Promise<SshRunResult>;\n    readonly sftp: SshSftp;\n    close(): Promise<void>;\n}',
+    declaration: 'export interface SshConnection {\n    readonly id: SshConnectionId;\n    exec(spec: SshExecSpec): Promise<SshRunResult>;\n    openPty(options: SshPtyOptions): Promise<SshPtySession>;\n    readonly sftp: SshSftp;\n    close(): Promise<void>;\n}',
   },
   {
     name: 'SshConnectionDefinition',
@@ -4551,6 +4572,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SshConnectionId',
     declaration: 'export type SshConnectionId = Branded<\'SshConnectionId\'>;',
+  },
+  {
+    name: 'SshConnectionView',
+    declaration: 'export interface SshConnectionView {\n    id: string;\n    name: string;\n    host: string;\n    port: number;\n    user: string;\n    authKind: \'password\' | \'privateKey\';\n}',
   },
   {
     name: 'SshDefinitionView',
@@ -4565,16 +4590,68 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SshExecSpec {\n    command: string;\n    timeoutMs: number;\n    cwd?: string;\n    signal?: AbortSignal;\n    outputMaxBytes: number;\n}',
   },
   {
+    name: 'SshPtyCloseRequest',
+    declaration: 'export interface SshPtyCloseRequest {\n    ptyId: string;\n}',
+  },
+  {
+    name: 'SshPtyExitInfo',
+    declaration: 'export interface SshPtyExitInfo {\n    exitCode: number | null;\n    signal: string | null;\n    dropped: boolean;\n}',
+  },
+  {
+    name: 'SshPtyOpenRequest',
+    declaration: 'export interface SshPtyOpenRequest {\n    connectionId: string;\n    cols: number;\n    rows: number;\n    cwd?: string;\n}',
+  },
+  {
+    name: 'SshPtyOpenResult',
+    declaration: 'export interface SshPtyOpenResult {\n    ptyId: string;\n}',
+  },
+  {
+    name: 'SshPtyOptions',
+    declaration: 'export interface SshPtyOptions {\n    cols: number;\n    rows: number;\n    term?: string;\n}',
+  },
+  {
+    name: 'SshPtyResizeRequest',
+    declaration: 'export interface SshPtyResizeRequest {\n    ptyId: string;\n    cols: number;\n    rows: number;\n}',
+  },
+  {
+    name: 'SshPtySession',
+    declaration: 'export interface SshPtySession {\n    write(data: Uint8Array): void;\n    resize(cols: number, rows: number): void;\n    onOutput(callback: (data: Uint8Array) => void): () => void;\n    onExit(callback: (info: SshPtyExitInfo) => void): () => void;\n    readonly closed: boolean;\n    close(): Promise<void>;\n}',
+  },
+  {
+    name: 'SshPtyWriteRequest',
+    declaration: 'export interface SshPtyWriteRequest {\n    ptyId: string;\n    data: string;\n}',
+  },
+  {
+    name: 'SshReadableFile',
+    declaration: 'export interface SshReadableFile {\n    size: number | null;\n    stream: Readable;\n    close(): Promise<void>;\n}',
+  },
+  {
     name: 'SshRunResult',
     declaration: 'export interface SshRunResult {\n    exitCode: number | null;\n    signal: string | null;\n    timedOut: boolean;\n    aborted: boolean;\n    timeoutMs: number;\n    stdout: string;\n    stdoutTruncated: boolean;\n    stderr: string;\n    stderrTruncated: boolean;\n    durationMs: number;\n}',
   },
   {
     name: 'SshSftp',
-    declaration: 'export interface SshSftp {\n    list(path: string): Promise<SftpEntry[]>;\n    stat(path: string): Promise<SftpEntry>;\n    readFile(remotePath: string, localPath: string, options?: {\n        overwrite?: boolean;\n    }): Promise<{\n        bytes: number;\n    }>;\n    writeFile(localPath: string, remotePath: string): Promise<{\n        bytes: number;\n    }>;\n    mkdir(path: string, options?: {\n        recursive?: boolean;\n    }): Promise<void>;\n    remove(path: string, options?: {\n        recursive?: boolean;\n    }): Promise<void>;\n    rename(fromPath: string, toPath: string): Promise<void>;\n}',
+    declaration: 'export interface SshSftp {\n    list(path: string): Promise<SftpEntry[]>;\n    stat(path: string): Promise<SftpEntry>;\n    readFile(remotePath: string, localPath: string, options?: {\n        overwrite?: boolean;\n    }): Promise<{\n        bytes: number;\n    }>;\n    writeFile(localPath: string, remotePath: string): Promise<{\n        bytes: number;\n    }>;\n    mkdir(path: string, options?: {\n        recursive?: boolean;\n    }): Promise<void>;\n    remove(path: string, options?: {\n        recursive?: boolean;\n    }): Promise<void>;\n    rename(fromPath: string, toPath: string): Promise<void>;\n    openRead(remotePath: string): Promise<SshReadableFile>;\n    openWrite(remotePath: string): Promise<SshWritableFile>;\n}',
+  },
+  {
+    name: 'SshSftpMkdirRequest',
+    declaration: 'export interface SshSftpMkdirRequest extends SshSftpRequest {\n    recursive?: boolean;\n}',
+  },
+  {
+    name: 'SshSftpRenameRequest',
+    declaration: 'export interface SshSftpRenameRequest extends SshSftpRequest {\n    toPath: string;\n}',
+  },
+  {
+    name: 'SshSftpRequest',
+    declaration: 'export interface SshSftpRequest {\n    connectionId: string;\n    path: string;\n}',
   },
   {
     name: 'SshTestResult',
     declaration: 'export interface SshTestResult {\n    ok: true;\n    latencyMs: number;\n}',
+  },
+  {
+    name: 'SshWritableFile',
+    declaration: 'export interface SshWritableFile {\n    stream: Writable;\n    done(): Promise<{\n        bytes: number;\n    }>;\n}',
   },
   {
     name: 'StorageBackend',

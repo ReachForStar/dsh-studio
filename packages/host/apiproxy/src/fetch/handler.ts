@@ -65,6 +65,12 @@ import {
 } from '../api/credentials.schema.ts'
 import { llmDiscoverModelsRequestSchema, llmModelsRequestSchema, llmProvidersRequestSchema } from '../api/llm.schema.ts'
 import {
+  sshListRequestSchema, sshPtyOpenRequestSchema, sshPtyWriteRequestSchema,
+  sshPtyResizeRequestSchema, sshPtyCloseRequestSchema,
+  sshSftpListRequestSchema, sshSftpStatRequestSchema, sshSftpMkdirRequestSchema,
+  sshSftpRemoveRequestSchema, sshSftpRenameRequestSchema,
+} from '../api/ssh.schema.ts'
+import {
   subagentHistoryRequestSchema,
   subagentInterruptRequestSchema,
   subagentListRequestSchema,
@@ -140,6 +146,16 @@ const UNARY_ROUTES: UnaryRoutes = {
   'llm.providers': { schema: llmProvidersRequestSchema, invoke: (api, r) => api.llm.providers(r) },
   'llm.models': { schema: llmModelsRequestSchema, invoke: (api, r) => api.llm.models(r) },
   'llm.discoverModels': { schema: llmDiscoverModelsRequestSchema, invoke: (api, r, signal) => api.llm.discoverModels(r, signal) },
+  'ssh.list': { schema: sshListRequestSchema, invoke: (api, r) => api.ssh.list(r) },
+  'ssh.pty.open': { schema: sshPtyOpenRequestSchema, invoke: (api, r, signal) => api.ssh.ptyOpen(r, signal) },
+  'ssh.pty.write': { schema: sshPtyWriteRequestSchema, invoke: (api, r, signal) => api.ssh.ptyWrite(r, signal) },
+  'ssh.pty.resize': { schema: sshPtyResizeRequestSchema, invoke: (api, r, signal) => api.ssh.ptyResize(r, signal) },
+  'ssh.pty.close': { schema: sshPtyCloseRequestSchema, invoke: (api, r, signal) => api.ssh.ptyClose(r, signal) },
+  'ssh.sftp.list': { schema: sshSftpListRequestSchema, invoke: (api, r, signal) => api.ssh.sftpList(r, signal) },
+  'ssh.sftp.stat': { schema: sshSftpStatRequestSchema, invoke: (api, r, signal) => api.ssh.sftpStat(r, signal) },
+  'ssh.sftp.mkdir': { schema: sshSftpMkdirRequestSchema, invoke: (api, r, signal) => api.ssh.sftpMkdir(r, signal) },
+  'ssh.sftp.remove': { schema: sshSftpRemoveRequestSchema, invoke: (api, r, signal) => api.ssh.sftpRemove(r, signal) },
+  'ssh.sftp.rename': { schema: sshSftpRenameRequestSchema, invoke: (api, r, signal) => api.ssh.sftpRename(r, signal) },
 }
 
 /** Route lookup that narrows an arbitrary path segment to a map key (single cast point for the string→key refinement). */
@@ -268,6 +284,30 @@ export function toFetchHandler(api: ApiProxy): { fetch: typeof fetch } {
         if (req.method === 'GET') return response
         await response.body?.cancel()
         return new Response(null, { status: response.status, headers: response.headers })
+      }
+
+      // SSH SFTP download: host-only GET stream (no wire envelope).
+      if (path === '/api/ssh/sftp/download' && req.method === 'GET') {
+        const connId = url.searchParams.get('connectionId')
+        const remotePath = url.searchParams.get('path')
+        if (!connId || !remotePath) {
+          return new Response('missing connectionId or path query parameter', { status: 400 })
+        }
+        return api.ssh.sftpDownload(connId, remotePath, req.signal)
+      }
+
+      // SSH SFTP upload: carrier POST stream (no wire envelope).
+      if (path === '/api/ssh/sftp/upload' && req.method === 'POST') {
+        const connId = url.searchParams.get('connectionId')
+        const remotePath = url.searchParams.get('path')
+        if (!connId || !remotePath) {
+          return new Response('missing connectionId or path query parameter', { status: 400 })
+        }
+        const body = req.body
+        if (!body) {
+          return new Response('missing request body', { status: 400 })
+        }
+        return api.ssh.sftpUpload(connId, remotePath, body, req.signal)
       }
 
       if (req.method !== 'POST' || !path.startsWith('/api/')) {

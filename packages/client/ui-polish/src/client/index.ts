@@ -33,6 +33,7 @@ import { SEED_RATE_CARD } from './cost.ts'
 import { StatsFloat } from './StatsFloat.tsx'
 import { GitPanel } from './GitPanel.tsx'
 import { ExcalidrawPanel } from './ExcalidrawPanel.tsx'
+import { SshPanel } from './SshPanel.tsx'
 import { MutationDiffPanel } from './MutationDiffPanel.tsx'
 import { en, zh, type PolishKey } from './locales.ts'
 
@@ -215,5 +216,13 @@ export function apply(ctx: ClientContext): void {
       locale: NS,
       label: () => t('excalidraw.title'),
     }, ExcalidrawPanel)
+    // SSH/SFTP: interactive PTY terminal + streaming file manager.
+    yield ctx.slots.register({
+      name: 'conversation.view',
+      id: 'ssh',
+      order: 30,
+      locale: NS,
+      label: () => t('ssh.title'),
+    }, SshPanel)
   })
 }

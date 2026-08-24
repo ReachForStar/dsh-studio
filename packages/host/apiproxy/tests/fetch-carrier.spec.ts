@@ -289,6 +289,20 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
     async respond(message: ClientResponse): Promise<RpcReceipt> {
       return message.rpcId === 'known' ? { accepted: true } : { accepted: false, reason: 'not-pending' }
     },
+    ssh: {
+      list: async () => ({ rpcId: RpcId('test'), result: { ok: true as const, value: { connections: [] } } }),
+      ptyOpen: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      ptyWrite: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      ptyResize: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      ptyClose: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      sftpList: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      sftpStat: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      sftpMkdir: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      sftpRemove: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      sftpRename: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      sftpDownload: async () => new Response('stub', { status: 404 }),
+      sftpUpload: async () => new Response('stub', { status: 404 }),
+    },
     downloads: {
       async sessionLog() {
         return new Response('stub', { status: 404 })

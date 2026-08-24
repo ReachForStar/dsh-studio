@@ -95,7 +95,7 @@ describe('ui-polish apply', () => {
     await fiber.await()
     expect(b.slots.entries(GENERAL).map(e => e.options.id)).toEqual(['polish-background', 'polish-compaction', 'polish-pricing'])
     expect(b.slots.entries(DOCK).map(e => e.options.id)).toEqual(['polish-stats'])
-    expect(b.slots.entries('conversation.view').map(e => e.options.id)).toEqual(['files', 'git', 'excalidraw'])
+    expect(b.slots.entries('conversation.view').map(e => e.options.id)).toEqual(['files', 'git', 'excalidraw', 'ssh'])
     expect(b.slots.entries(GENERAL).find(e => e.component === BackgroundRow)!.locale).toBe(NS)
     expect(b.slots.entries(GENERAL).find(e => e.component === CompactionRow)!.locale).toBe(NS)
     expect(b.slots.entries(GENERAL).find(e => e.component === PricingRow)!.locale).toBe(NS)

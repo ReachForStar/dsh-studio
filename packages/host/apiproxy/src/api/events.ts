@@ -152,4 +152,15 @@ export type HostFrame =
    * per-event frame variant.
    */
   | { type: 'host/remote-event'; event: string; args: JsonValue[] }
+  /**
+   * One PTY output chunk (base64-encoded). `ptyId` correlates to the
+   * `ssh.ptyOpen` response; the client routes chunks to the matching
+   * xterm.js instance. Chunks are ≤16 KiB on the wire.
+   */
+  | { type: 'ssh/pty/output'; ptyId: string; data: string }
+  /**
+   * One PTY termination report. Fired exactly once per PTY session: on
+   * remote exit, on local close, or on transport drop.
+   */
+  | { type: 'ssh/pty/exit'; ptyId: string; exitCode: number | null; signal: string | null; dropped: boolean }
   | { type: 'stream/error'; error: RpcError }

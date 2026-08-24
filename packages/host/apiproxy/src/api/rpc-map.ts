@@ -14,6 +14,7 @@ import type { SettingsApi } from './settings.ts'
 import type { CredentialsApi } from './credentials.ts'
 import type { LlmApi } from './llm.ts'
 import type { SubagentsApi } from './subagents.ts'
+import type { SshApi } from './ssh.ts'
 import type { RpcResponse } from './rpc.ts'
 
 /**
@@ -74,6 +75,16 @@ export interface RpcMethodMap {
   'llm.providers': LlmApi['providers']
   'llm.models': LlmApi['models']
   'llm.discoverModels': LlmApi['discoverModels']
+  'ssh.list': SshApi['list']
+  'ssh.pty.open': SshApi['ptyOpen']
+  'ssh.pty.write': SshApi['ptyWrite']
+  'ssh.pty.resize': SshApi['ptyResize']
+  'ssh.pty.close': SshApi['ptyClose']
+  'ssh.sftp.list': SshApi['sftpList']
+  'ssh.sftp.stat': SshApi['sftpStat']
+  'ssh.sftp.mkdir': SshApi['sftpMkdir']
+  'ssh.sftp.remove': SshApi['sftpRemove']
+  'ssh.sftp.rename': SshApi['sftpRename']
 }
 
 /** Business request payload of method K (reaches through the RpcRequest narrow form to payload). */

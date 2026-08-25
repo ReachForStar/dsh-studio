@@ -39,6 +39,32 @@ interface SftpEntryView {
 }
 
 /**
+ * Send a unary RPC to the apiproxy carrier. The carrier expects POST with
+ * a JSON `ClientRequest` envelope; the response is a `ServerResponse`
+ * envelope whose `result` carries the ok/err payload.
+ */
+async function rpc(
+  method: string,
+  payload: Record<string, unknown>,
+): Promise<{ ok: boolean; value?: unknown; error?: { message: string } }> {
+  const rpcId = crypto.randomUUID()
+  const res = await fetch(`/api/${method}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'client-request', rpcId, method, payload }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    return { ok: false, error: { message: `${res.status}: ${text}` } }
+  }
+  const body = await res.json()
+  const result = body.result as { ok: true; value: unknown } | { ok: false; error: { message: string } } | undefined
+  if (result === undefined) return { ok: false, error: { message: 'malformed response' } }
+  if (result.ok) return { ok: true, value: result.value }
+  return { ok: false, error: result.error }
+}
+
+/**
  * Render the SSH/SFTP panel as a conversation view tab.
  */
 export function SshPanel({ t }: SshPanelProps) {
@@ -51,6 +77,7 @@ export function SshPanel({ t }: SshPanelProps) {
   const [sftpError, setSftpError] = useState<string | null>(null)
   const [ptyError, setPtyError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [connectionsLoaded, setConnectionsLoaded] = useState(false)
 
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -61,10 +88,13 @@ export function SshPanel({ t }: SshPanelProps) {
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch('/api/ssh.list')
-        const json = (await res.json()) as { result?: { ok: boolean; value?: { connections: SshConnectionView[] } } }
-        if (json.result?.ok) setConnections(json.result.value?.connections ?? [])
+        const result = await rpc('ssh.list', {})
+        if (result.ok) {
+          const value = result.value as { connections: SshConnectionView[] } | undefined
+          setConnections(value?.connections ?? [])
+        }
       } catch { /* connection list is optional */ }
+      finally { setConnectionsLoaded(true) }
     })()
   }, [])
 
@@ -73,17 +103,14 @@ export function SshPanel({ t }: SshPanelProps) {
     if (!selectedConn || !terminalEl) return
     setPtyError(null)
     try {
-      const res = await fetch('/api/ssh.pty.open', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ connectionId: selectedConn, cols: 80, rows: 24 }),
+      const result = await rpc('ssh.pty.open', {
+        connectionId: selectedConn, cols: 80, rows: 24,
       })
-      const json = (await res.json()) as { result?: { ok: boolean; value?: { ptyId: string }; error?: { message: string } } }
-      if (!json.result?.ok) {
-        setPtyError(json.result?.error?.message ?? 'failed to open PTY')
+      if (!result.ok) {
+        setPtyError(result.error?.message ?? 'failed to open PTY')
         return
       }
-      const ptyId: string = json.result.value?.ptyId ?? ''
+      const ptyId = (result.value as { ptyId: string } | undefined)?.ptyId ?? ''
       ptyIdRef.current = ptyId
 
       const term = new Terminal({
@@ -101,20 +128,13 @@ export function SshPanel({ t }: SshPanelProps) {
       fitRef.current = fit
 
       term.onData((data: string) => {
-        void fetch('/api/ssh.pty.write', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ ptyId, data: btoa(String.fromCharCode(...new TextEncoder().encode(data))) }),
-        })
+        const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(data)))
+        void rpc('ssh.pty.write', { ptyId, data: b64 })
       })
 
       fitInterval.current = setInterval(() => {
         fit.fit()
-        void fetch('/api/ssh.pty.resize', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ ptyId, cols: term.cols, rows: term.rows }),
-        })
+        void rpc('ssh.pty.resize', { ptyId, cols: term.cols, rows: term.rows })
       }, 2000)
 
       term.focus()
@@ -128,11 +148,7 @@ export function SshPanel({ t }: SshPanelProps) {
     return () => {
       if (fitInterval.current) clearInterval(fitInterval.current)
       if (ptyIdRef.current) {
-        void fetch('/api/ssh.pty.close', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ ptyId: ptyIdRef.current }),
-        })
+        void rpc('ssh.pty.close', { ptyId: ptyIdRef.current }).catch(() => undefined)
       }
       termRef.current?.dispose()
       termRef.current = null
@@ -146,17 +162,15 @@ export function SshPanel({ t }: SshPanelProps) {
     setSftpLoading(true)
     setSftpError(null)
     try {
-      const res = await fetch('/api/ssh.sftp.list', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ connectionId: selectedConn, path }),
+      const result = await rpc('ssh.sftp.list', {
+        connectionId: selectedConn, path,
       })
-      const json = await res.json()
-      if (json.result?.ok) {
-        setSftpEntries(json.result.value.entries)
+      if (result.ok) {
+        const value = result.value as { entries: SftpEntryView[] } | undefined
+        setSftpEntries(value?.entries ?? [])
         setSftpPath(path)
       } else {
-        setSftpError(json.result?.error?.message ?? 'failed to list directory')
+        setSftpError(result.error?.message ?? 'failed to list directory')
       }
     } catch (error) {
       setSftpError(error instanceof Error ? error.message : String(error))
@@ -221,14 +235,8 @@ export function SshPanel({ t }: SshPanelProps) {
     const path = sftpPath === '/' ? `/${name}` : `${sftpPath}/${name}`
     void (async () => {
       try {
-        const res = await fetch('/api/ssh.sftp.mkdir', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ connectionId: selectedConn, path }),
-        })
-        const json = await res.json()
-        if (json.result?.ok) void listDir(sftpPath)
-        else setSftpError(json.result?.error?.message ?? 'failed to create directory')
+        const result = await rpc('ssh.sftp.mkdir', { connectionId: selectedConn, path })
+        if (result.ok) { void listDir(sftpPath) } else { setSftpError(result.error?.message ?? 'failed to create directory') }
       } catch (error) {
         setSftpError(error instanceof Error ? error.message : String(error))
       }
@@ -239,14 +247,8 @@ export function SshPanel({ t }: SshPanelProps) {
   const removeEntry = useCallback(async (entry: SftpEntryView) => {
     if (!selectedConn) return
     try {
-      const res = await fetch('/api/ssh.sftp.remove', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ connectionId: selectedConn, path: entry.path }),
-      })
-      const json = await res.json()
-      if (json.result?.ok) void listDir(sftpPath)
-      else setSftpError(json.result?.error?.message ?? 'failed to remove')
+      const result = await rpc('ssh.sftp.remove', { connectionId: selectedConn, path: entry.path })
+      if (result.ok) { void listDir(sftpPath) } else { setSftpError(result.error?.message ?? 'failed to remove') }
     } catch (error) {
       setSftpError(error instanceof Error ? error.message : String(error))
     }
@@ -259,14 +261,8 @@ export function SshPanel({ t }: SshPanelProps) {
     if (newName === null || newName === entry.name) return
     const toPath = sftpPath === '/' ? `/${newName}` : `${sftpPath}/${newName}`
     try {
-      const res = await fetch('/api/ssh.sftp.rename', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ connectionId: selectedConn, path: entry.path, toPath }),
-      })
-      const json = await res.json()
-      if (json.result?.ok) void listDir(sftpPath)
-      else setSftpError(json.result?.error?.message ?? 'failed to rename')
+      const result = await rpc('ssh.sftp.rename', { connectionId: selectedConn, path: entry.path, toPath })
+      if (result.ok) { void listDir(sftpPath) } else { setSftpError(result.error?.message ?? 'failed to rename') }
     } catch (error) {
       setSftpError(error instanceof Error ? error.message : String(error))
     }
@@ -280,9 +276,13 @@ export function SshPanel({ t }: SshPanelProps) {
           className={css.select}
           value={selectedConn ?? ''}
           onChange={e => setSelectedConn(e.target.value || null)}
-          disabled={connections.length === 0}
+          disabled={!connectionsLoaded || connections.length === 0}
         >
-          <option value="">{t('ssh.selectConnection')}</option>
+          <option value="">
+            {connectionsLoaded && connections.length === 0
+              ? t('ssh.noConnections')
+              : t('ssh.selectConnection')}
+          </option>
           {connections.map(conn => (
             <option key={conn.id} value={conn.id}>
               {conn.name} ({conn.host}:{conn.port})
@@ -301,15 +301,11 @@ export function SshPanel({ t }: SshPanelProps) {
       {/* PTY terminal */}
       <div className={css.terminal} style={{ display: terminalEl ? 'block' : 'none' }}>
         <div ref={(el) => { if (el) setTerminalEl(el) }} className={css.terminalInner} />
-        {ptyIdRef.current && (
+        {ptyIdRef.current !== null && (
           <button
             className={css.closeButton}
             onClick={() => {
-              void fetch('/api/ssh.pty.close', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ ptyId: ptyIdRef.current }),
-              })
+              void rpc('ssh.pty.close', { ptyId: ptyIdRef.current }).catch(() => undefined)
               termRef.current?.dispose()
               termRef.current = null
               ptyIdRef.current = null

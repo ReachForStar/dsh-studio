@@ -67,6 +67,7 @@ export const zh = {
   // SSH/SFTP tab.
   'ssh.title': 'SSH',
   'ssh.selectConnection': '选择连接…',
+  'ssh.noConnections': '暂无已保存的 SSH 连接',
   'ssh.openTerminal': '打开终端',
   'ssh.closeTerminal': '关闭',
   'ssh.refresh': '刷新',
@@ -148,6 +149,7 @@ export const en = {
   'diff.preview': 'Preview · images are read-only',
   'ssh.title': 'SSH',
   'ssh.selectConnection': 'Select connection…',
+  'ssh.noConnections': 'No saved SSH connections',
   'ssh.openTerminal': 'Open terminal',
   'ssh.closeTerminal': 'Close',
   'ssh.refresh': 'Refresh',

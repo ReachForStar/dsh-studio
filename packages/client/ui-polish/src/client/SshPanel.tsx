@@ -2,18 +2,14 @@
  * SSH/SFTP panel: a conversation.view tab providing an interactive PTY
  * terminal (xterm.js) and a streaming SFTP file manager. The connection
  * selector lists stored SSH connections; the PTY and SFTP operate on the
- * selected connection. PTY output arrives on the host frame stream; SFTP
- * file transfer uses the host-only download channel (GET) and a carrier
- * POST upload route.
+ * selected connection.
  *
- * The SFTP file manager follows the terminal's working directory: a prompt
- * tracker parses each PTY output chunk for the shell prompt and extracts the
- * cwd, so `cd` in the terminal automatically switches the SFTP view.
+ * PTY output arrives on the host SSE frame stream (`/api/events.host`, a
+ * Server-Sent Events channel — NOT a WebSocket). The SFTP file manager
+ * follows the terminal's working directory: a prompt tracker parses each
+ * PTY output chunk for the shell prompt and extracts the cwd, so `cd` in
+ * the terminal automatically switches the SFTP view.
  */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment,
- *   @typescript-eslint/no-unsafe-member-access,
- *   @typescript-eslint/no-unsafe-argument,
- *   typescript/no-confusing-void-expression */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -42,6 +38,7 @@ interface SftpEntryView {
   mtime: number
 }
 
+/** One PTY frame projected off the SSE `data:` payload. */
 interface HostFrameLike {
   type: string
   ptyId?: string
@@ -71,8 +68,10 @@ async function rpc(
     console.error(`[SshPanel] RPC ${method} failed: ${res.status}`, text)
     return { ok: false, error: { message: `${res.status}: ${text}` } }
   }
-  const body = await res.json()
-  const result = body.result as { ok: true; value: unknown } | { ok: false; error: { message: string } } | undefined
+  const body = (await res.json()) as {
+    result?: { ok: true; value: unknown } | { ok: false; error: { message: string } }
+  }
+  const result = body.result
   if (result === undefined) {
     console.error(`[SshPanel] RPC ${method} malformed response:`, body)
     return { ok: false, error: { message: 'malformed response' } }
@@ -83,75 +82,34 @@ async function rpc(
 }
 
 /**
- * Subscribe to the host frame stream for PTY output/exit frames.
- * Returns an unsubscribe function.
+ * Subscribe to the host SSE frame stream for PTY output/exit frames.
+ *
+ * The carrier serves `/api/events.host` as a Server-Sent Events channel:
+ * each `data:` line is `{ type: 'server-request', rpcId, method, payload }`
+ * where `payload` is the HostFrame. This driver parses the SSE lines and
+ * forwards only `ssh/pty/*` frames; unsubscribe closes the connection.
  */
 function subscribeHostFrames(
   onFrame: (frame: HostFrameLike) => void,
   onDrop: (ptyId: string) => void,
 ): () => void {
-  const ac = new AbortController()
-  const url = new URL('/api/events.host', window.location.origin)
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-  const socket = new WebSocket(url.toString())
-  const inbox: HostFrameLike[] = []
-  let wake: (() => void) | undefined
-  let stopped = false
-
-  const enqueue = (frame: HostFrameLike): void => {
-    inbox.push(frame)
-    wake?.()
-    wake = undefined
-  }
-
+  const source = new EventSource('/api/events.host')
   const handleMessage = (event: MessageEvent): void => {
     try {
-      const full = JSON.parse(String(event.data))
-      const frame = full.payload as HostFrameLike | undefined
+      const full = JSON.parse(String(event.data)) as { payload?: HostFrameLike }
+      const frame = full.payload
       if (frame === undefined) return
-      if (frame.type === 'ssh/pty/output' || frame.type === 'ssh/pty/exit') {
-        enqueue(frame)
+      if (frame.type === 'ssh/pty/output' && frame.ptyId && frame.data) {
+        onFrame(frame)
+      } else if (frame.type === 'ssh/pty/exit' && frame.ptyId) {
+        onDrop(frame.ptyId)
       }
-    } catch { /* malformed frame — ignore */ }
+    } catch { /* malformed SSE line — ignore */ }
   }
-
-  const handleClose = (): void => {
-    stopped = true
-    wake?.()
-  }
-
-  socket.addEventListener('open', () => {
-    void pump()
-  })
-  socket.addEventListener('message', handleMessage)
-  socket.addEventListener('close', handleClose, { once: true })
-  ac.signal.addEventListener('abort', () => {
-    if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
-      socket.close()
-    }
-  }, { once: true })
-
-  async function pump(): Promise<void> {
-    while (!stopped) {
-      while (inbox.length > 0) {
-        const frame = inbox.shift() as HostFrameLike
-        if (frame.type === 'ssh/pty/output' && frame.ptyId && frame.data) {
-          onFrame(frame)
-        } else if (frame.type === 'ssh/pty/exit' && frame.ptyId) {
-          onDrop(frame.ptyId)
-        }
-      }
-      await new Promise<void>((resolve) => { wake = resolve })
-    }
-  }
-
+  source.addEventListener('message', handleMessage)
   return () => {
-    stopped = true
-    ac.abort()
-    socket.removeEventListener('message', handleMessage)
-    socket.removeEventListener('close', handleClose)
-    wake?.()
-    wake = undefined
+    source.removeEventListener('message', handleMessage)
+    source.close()
   }
 }
 
@@ -160,11 +118,8 @@ function subscribeHostFrames(
  * terminal output so that prompt parsing operates on clean text.
  */
 function stripAnsi(text: string): string {
-  // CSI sequences: ESC [ ... letter
   let result = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
-  // OSC sequences: ESC ] ... (BEL or ESC \)
   result = result.replace(/\x1b\][^\x07]*(\x07|\x1b\\)/g, '')
-  // Bare ESC followed by a single char
   result = result.replace(/\x1b./g, '')
   return result
 }
@@ -180,20 +135,16 @@ function stripAnsi(text: string): string {
  */
 function extractCwdFromPrompt(raw: string): string | null {
   const clean = stripAnsi(raw)
-  // Split into lines; scan from the end for a prompt pattern.
   const lines = clean.split('\n')
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = (lines[i] ?? '').trimEnd()
     if (line === '') continue
-    // Match: [user@host:]path[$|#] at end of line.
     const m = line.match(/^(?:[\w.]+@[\w.-]+:)?(\S+)\s*[$#]\s*$/)
     if (m === null) continue
     let cwd = (m[1] ?? '').trim()
     if (cwd === '') continue
-    // Expand tilde to absolute path.
     if (cwd === '~') cwd = '/root'
     else if (cwd.startsWith('~/')) cwd = '/root' + cwd.slice(1)
-    // Must be an absolute path.
     if (!cwd.startsWith('/')) continue
     return cwd
   }
@@ -238,13 +189,14 @@ export function SshPanel({ t }: SshPanelProps) {
   const [sftpError, setSftpError] = useState<string | null>(null)
   const [ptyError, setPtyError] = useState<string | null>(null)
   const [ptyOpen, setPtyOpen] = useState(false)
+  const [ptyStarting, setPtyStarting] = useState(false)
   const [downloading, setDownloading] = useState<string | null>(null)
   const [connectionsLoaded, setConnectionsLoaded] = useState(false)
 
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const ptyIdRef = useRef<string | null>(null)
-  const fitInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const resizeObserver = useRef<ResizeObserver | null>(null)
   const hostUnsubRef = useRef<(() => void) | null>(null)
   const promptTrackerRef = useRef<{ feed: (chunk: string) => void; reset: () => void } | null>(null)
   const sftpPathRef = useRef(sftpPath)
@@ -264,7 +216,7 @@ export function SshPanel({ t }: SshPanelProps) {
     })()
   }, [])
 
-  // Subscribe to host frames for PTY output/exit.
+  // Subscribe to host SSE frames for PTY output/exit.
   useEffect(() => {
     const unsub = subscribeHostFrames(
       (frame) => {
@@ -281,11 +233,12 @@ export function SshPanel({ t }: SshPanelProps) {
       (ptyId) => {
         if (ptyId !== ptyIdRef.current) return
         ptyIdRef.current = null
+        promptTrackerRef.current = null
         setPtyOpen(false)
-        if (fitInterval.current) { clearInterval(fitInterval.current); fitInterval.current = null }
+        resizeObserver.current?.disconnect()
+        resizeObserver.current = null
         termRef.current?.dispose()
         termRef.current = null
-        setTerminalEl(null)
       },
     )
     hostUnsubRef.current = unsub
@@ -319,10 +272,12 @@ export function SshPanel({ t }: SshPanelProps) {
     }
   }, [selectedConn])
 
-  // Open PTY when a connection is selected.
+  // Open a PTY session on the selected connection. The xterm view is
+  // mounted by a separate effect once `terminalEl` + `ptyOpen` are ready.
   const openPty = useCallback(async () => {
-    if (!selectedConn || !terminalEl) return
+    if (!selectedConn) return
     setPtyError(null)
+    setPtyStarting(true)
     try {
       const result = await rpc('ssh.pty.open', {
         connectionId: selectedConn, cols: 80, rows: 24,
@@ -333,56 +288,77 @@ export function SshPanel({ t }: SshPanelProps) {
       }
       const ptyId = (result.value as { ptyId: string } | undefined)?.ptyId ?? ''
       ptyIdRef.current = ptyId
+      // Reset the prompt tracker: the next prompt (after this open) seeds
+      // the SFTP manager at the initial working directory.
+      promptTrackerRef.current?.reset()
       setPtyOpen(true)
-
-      const term = new Terminal({
-        cursorBlink: true,
-        fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace",
-        fontSize: 14,
-        theme: { background: '#1e1e2e', foreground: '#cdd6f4', cursor: '#f5e0dc' },
-        convertEol: false,
-      })
-      const fit = new FitAddon()
-      term.loadAddon(fit)
-      term.open(terminalEl)
-      fit.fit()
-      termRef.current = term
-      fitRef.current = fit
-
-      term.onData((data: string) => {
-        const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(data)))
-        void rpc('ssh.pty.write', { ptyId, data: b64 })
-      })
-
-      fitInterval.current = setInterval(() => {
-        fit.fit()
-        void rpc('ssh.pty.resize', { ptyId, cols: term.cols, rows: term.rows })
-      }, 2000)
-
-      term.focus()
-
-      // Seed the SFTP file manager at /; the prompt tracker will follow
-      // terminal navigation to the correct directory.
-      setSftpPath('/')
-      void listDir('/').catch((e: unknown) => {
-        console.error('[SshPanel] initial sftp list failed:', e)
-      })
-
-      promptTrackerRef.current = createPromptTracker((cwd) => {
-        const current = sftpPathRef.current
-        if (cwd === current) return
-        setSftpPath(cwd)
-        void listDir(cwd)
-      })
     } catch (error) {
       setPtyError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPtyStarting(false)
     }
-  }, [selectedConn, terminalEl, listDir])
+  }, [selectedConn])
 
-  // Clean up PTY on unmount.
+  // Mount xterm once the PTY is open and the terminal container is ready.
+  useEffect(() => {
+    if (!ptyOpen || terminalEl === null || termRef.current !== null) return
+    const ptyId = ptyIdRef.current
+    if (ptyId === null) return
+
+    const term = new Terminal({
+      cursorBlink: true,
+      fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace",
+      fontSize: 14,
+      theme: { background: '#1e1e2e', foreground: '#cdd6f4', cursor: '#f5e0dc' },
+      convertEol: false,
+    })
+    const fit = new FitAddon()
+    term.loadAddon(fit)
+    term.open(terminalEl)
+    fit.fit()
+    termRef.current = term
+    fitRef.current = fit
+
+    term.onData((data: string) => {
+      const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(data)))
+      void rpc('ssh.pty.write', { ptyId, data: b64 })
+    })
+
+    // Fit + resize only when the container actually changes size, avoiding
+    // the runaway feedback of a fixed-interval fit loop.
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => {
+        fit.fit()
+        void rpc('ssh.pty.resize', { ptyId, cols: term.cols, rows: term.rows })
+      })
+      observer.observe(terminalEl)
+      resizeObserver.current = observer
+    }
+
+    term.focus()
+
+    // Seed a prompt tracker that follows the terminal working directory.
+    promptTrackerRef.current = createPromptTracker((cwd) => {
+      const current = sftpPathRef.current
+      if (cwd === current) return
+      setSftpPath(cwd)
+      void listDir(cwd)
+    })
+
+    return () => {
+      resizeObserver.current?.disconnect()
+      resizeObserver.current = null
+      term.dispose()
+      termRef.current = null
+      promptTrackerRef.current = null
+    }
+  }, [ptyOpen, terminalEl, listDir])
+
+  // Clean up the PTY on unmount.
   useEffect(() => {
     return () => {
-      if (fitInterval.current) clearInterval(fitInterval.current)
+      resizeObserver.current?.disconnect()
+      resizeObserver.current = null
       if (ptyIdRef.current) {
         void rpc('ssh.pty.close', { ptyId: ptyIdRef.current }).catch(() => undefined)
       }
@@ -494,7 +470,7 @@ export function SshPanel({ t }: SshPanelProps) {
         <select
           className={css.select}
           value={selectedConn ?? ''}
-          onChange={e => setSelectedConn(e.target.value || null)}
+          onChange={(e) => { setSelectedConn(e.target.value || null) }}
           disabled={!connectionsLoaded || connections.length === 0}
         >
           <option value="">
@@ -509,18 +485,18 @@ export function SshPanel({ t }: SshPanelProps) {
           ))}
         </select>
         {selectedConn && (
-          <button className={css.button} onClick={() => void openPty()}>
-            {t('ssh.openTerminal')}
+          <button className={css.button} disabled={ptyStarting} onClick={() => void openPty()}>
+            {ptyStarting ? t('ssh.opening') : t('ssh.openTerminal')}
           </button>
         )}
       </div>
 
       {ptyError && <div className={css.error}>{ptyError}</div>}
 
-      {/* PTY terminal */}
-      <div className={css.terminal} style={{ display: terminalEl ? 'block' : 'none' }}>
+      {/* PTY terminal — always mounted so xterm gets a measurable size. */}
+      <div className={css.terminal}>
         <div ref={(el) => { if (el) setTerminalEl(el) }} className={css.terminalInner} />
-        {ptyOpen && (
+        {ptyOpen && termRef.current && (
           <button
             className={css.closeButton}
             onClick={() => {
@@ -528,10 +504,11 @@ export function SshPanel({ t }: SshPanelProps) {
               if (id) void rpc('ssh.pty.close', { ptyId: id }).catch(() => undefined)
               ptyIdRef.current = null
               setPtyOpen(false)
-              if (fitInterval.current) { clearInterval(fitInterval.current); fitInterval.current = null }
+              resizeObserver.current?.disconnect()
+              resizeObserver.current = null
               termRef.current?.dispose()
               termRef.current = null
-              setTerminalEl(null)
+              promptTrackerRef.current = null
             }}
           >
             {t('ssh.closeTerminal')}
@@ -580,12 +557,12 @@ export function SshPanel({ t }: SshPanelProps) {
                 </tr>
               )}
               {sftpEntries.map(entry => (
-                <tr key={entry.path} onClick={() => navigateDir(entry)} className={entry.type === 'directory' ? css.dirRow : undefined}>
+                <tr key={entry.path} onClick={() => { navigateDir(entry) }} className={entry.type === 'directory' ? css.dirRow : undefined}>
                   <td>{entry.name}</td>
                   <td>{entry.type}</td>
                   <td>{entry.type === 'file' ? formatSize(entry.size) : '—'}</td>
                   <td>{new Date(entry.mtime).toLocaleString()}</td>
-                  <td className={css.rowActions} onClick={e => e.stopPropagation()}>
+                  <td className={css.rowActions} onClick={(e) => { e.stopPropagation() }}>
                     {entry.type === 'file' && (
                       <button className={css.actionBtn} disabled={downloading === entry.name} onClick={() => void downloadFile(entry)}>
                         {downloading === entry.name ? t('ssh.downloading') : t('ssh.download')}

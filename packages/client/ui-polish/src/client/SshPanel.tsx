@@ -214,7 +214,9 @@ const CWD_HOOK_PREFIX = '__DSH_CWD__'
  */
 function extractCwdFromHook(chunk: string): string | null {
   const clean = stripAnsi(chunk).replace(/\r/g, '')
-  const start = clean.indexOf(CWD_HOOK_PREFIX)
+  // Use the last occurrence (the buffer holds recent scrollback, so an older
+  // marker from an earlier cd could otherwise shadow the current one).
+  const start = clean.lastIndexOf(CWD_HOOK_PREFIX)
   if (start === -1) return null
   const afterStart = start + CWD_HOOK_PREFIX.length
   // The hook prints the path immediately after the prefix, up to the line end.
@@ -438,12 +440,12 @@ export function SshPanel({ t }: SshPanelProps) {
   const injectCwdHook = useCallback(() => {
     const write = ptyWriteRef.current
     if (write === null) return
-    // Keep the user's existing PROMPT_COMMAND; prepend the marker emission.
-    // The shell command needs both quote kinds, so it lives in a template
-    // literal; the stylistic quotes rule would otherwise reject the inner
-    // quotes it contains.
-    // eslint-disable-next-line @stylistic/quotes
-    const cmd = `export __DSH_HOOKED=1; if [ -z "$__DSH_HOOKED_BEFORE" ]; then export __DSH_HOOKED_BEFORE=1; export PROMPT_COMMAND="echo -n '__DSH_CWD__'; pwd;\${PROMPT_COMMAND:-}"; fi`
+    // Remember the user's original PROMPT_COMMAND once, then prepend our
+    // marker emission. Using a saved copy avoids self-reference (a
+    // \${PROMPT_COMMAND:-} inside PROMPT_COMMAND re-expands itself and
+    // floods the terminal). The marker prints __DSH_CWD__<pwd> before each
+    // prompt so the SFTP follow reads a reliable cwd.
+    const cmd = 'if [ -z "$__DSH_HOOKED_BEFORE" ]; then export __DSH_HOOKED_BEFORE=1; export __DSH_ORIG_PC="$PROMPT_COMMAND"; fi; export PROMPT_COMMAND="echo -n \'__DSH_CWD__\'; pwd;${__DSH_ORIG_PC}"'
     write(`${cmd}\r`)
   }, [])
 

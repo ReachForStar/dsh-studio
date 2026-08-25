@@ -38,6 +38,15 @@ interface SftpEntryView {
   mtime: number
 }
 
+interface HostFrameLike {
+  type: string
+  ptyId?: string
+  data?: string
+  exitCode?: number | null
+  signal?: string | null
+  dropped?: boolean
+}
+
 /**
  * Send a unary RPC to the apiproxy carrier. The carrier expects POST with
  * a JSON `ClientRequest` envelope; the response is a `ServerResponse`
@@ -65,17 +74,92 @@ async function rpc(
 }
 
 /**
+ * Subscribe to the host frame stream for PTY output/exit frames.
+ * Returns an unsubscribe function.
+ */
+function subscribeHostFrames(
+  onFrame: (frame: HostFrameLike) => void,
+  onDrop: (ptyId: string) => void,
+): () => void {
+  const ac = new AbortController()
+  const url = new URL('/api/events.host', window.location.origin)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  const socket = new WebSocket(url.toString())
+  const inbox: HostFrameLike[] = []
+  let wake: (() => void) | undefined
+  let stopped = false
+
+  const enqueue = (frame: HostFrameLike): void => {
+    inbox.push(frame)
+    wake?.()
+    wake = undefined
+  }
+
+  const handleMessage = (event: MessageEvent): void => {
+    try {
+      const full = JSON.parse(String(event.data))
+      const frame = full.payload as HostFrameLike | undefined
+      if (frame === undefined) return
+      if (frame.type === 'ssh/pty/output' || frame.type === 'ssh/pty/exit') {
+        enqueue(frame)
+      }
+    } catch { /* malformed frame — ignore */ }
+  }
+
+  const handleClose = (): void => {
+    stopped = true
+    wake?.()
+  }
+
+  socket.addEventListener('open', () => {
+    // Stream is open; start pumping.
+    void pump()
+  })
+  socket.addEventListener('message', handleMessage)
+  socket.addEventListener('close', handleClose, { once: true })
+  ac.signal.addEventListener('abort', () => {
+    if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
+      socket.close()
+    }
+  }, { once: true })
+
+  async function pump(): Promise<void> {
+    while (!stopped) {
+      while (inbox.length > 0) {
+        const frame = inbox.shift() as HostFrameLike
+        if (frame.type === 'ssh/pty/output' && frame.ptyId && frame.data) {
+          onFrame(frame)
+        } else if (frame.type === 'ssh/pty/exit' && frame.ptyId) {
+          onDrop(frame.ptyId)
+        }
+      }
+      await new Promise<void>((resolve) => { wake = resolve })
+    }
+  }
+
+  return () => {
+    stopped = true
+    ac.abort()
+    socket.removeEventListener('message', handleMessage)
+    socket.removeEventListener('close', handleClose)
+    wake?.()
+    wake = undefined
+  }
+}
+
+/**
  * Render the SSH/SFTP panel as a conversation view tab.
  */
 export function SshPanel({ t }: SshPanelProps) {
   const [connections, setConnections] = useState<SshConnectionView[]>([])
   const [selectedConn, setSelectedConn] = useState<string | null>(null)
   const [terminalEl, setTerminalEl] = useState<HTMLElement | null>(null)
-  const [sftpPath, setSftpPath] = useState('/')
+  const [sftpPath, setSftpPath] = useState('/root')
   const [sftpEntries, setSftpEntries] = useState<SftpEntryView[]>([])
   const [sftpLoading, setSftpLoading] = useState(false)
   const [sftpError, setSftpError] = useState<string | null>(null)
   const [ptyError, setPtyError] = useState<string | null>(null)
+  const [ptyOpen, setPtyOpen] = useState(false)
   const [downloading, setDownloading] = useState<string | null>(null)
   const [connectionsLoaded, setConnectionsLoaded] = useState(false)
 
@@ -83,6 +167,9 @@ export function SshPanel({ t }: SshPanelProps) {
   const fitRef = useRef<FitAddon | null>(null)
   const ptyIdRef = useRef<string | null>(null)
   const fitInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const hostUnsubRef = useRef<(() => void) | null>(null)
+  const sftpPathRef = useRef(sftpPath)
+  sftpPathRef.current = sftpPath
 
   // Load connections on mount.
   useEffect(() => {
@@ -96,6 +183,32 @@ export function SshPanel({ t }: SshPanelProps) {
       } catch { /* connection list is optional */ }
       finally { setConnectionsLoaded(true) }
     })()
+  }, [])
+
+  // Subscribe to host frames for PTY output/exit.
+  useEffect(() => {
+    const unsub = subscribeHostFrames(
+      (frame) => {
+        if (frame.ptyId !== ptyIdRef.current) return
+        const term = termRef.current
+        if (term === null || frame.data === undefined) return
+        const bytes = atob(frame.data)
+        const bytesArr = new Uint8Array(bytes.length)
+        for (let i = 0; i < bytes.length; i++) bytesArr[i] = bytes.charCodeAt(i)
+        term.write(bytesArr)
+      },
+      (ptyId) => {
+        if (ptyId !== ptyIdRef.current) return
+        ptyIdRef.current = null
+        setPtyOpen(false)
+        if (fitInterval.current) { clearInterval(fitInterval.current); fitInterval.current = null }
+        termRef.current?.dispose()
+        termRef.current = null
+        setTerminalEl(null)
+      },
+    )
+    hostUnsubRef.current = unsub
+    return () => { unsub(); hostUnsubRef.current = null }
   }, [])
 
   // Open PTY when a connection is selected.
@@ -112,6 +225,7 @@ export function SshPanel({ t }: SshPanelProps) {
       }
       const ptyId = (result.value as { ptyId: string } | undefined)?.ptyId ?? ''
       ptyIdRef.current = ptyId
+      setPtyOpen(true)
 
       const term = new Terminal({
         cursorBlink: true,
@@ -138,23 +252,27 @@ export function SshPanel({ t }: SshPanelProps) {
       }, 2000)
 
       term.focus()
+
+      // After opening, resolve the home directory for SFTP initial path.
+      void (async () => {
+        try {
+          const homeResult = await rpc('ssh.sftp.stat', {
+            connectionId: selectedConn, path: '~',
+          })
+          if (homeResult.ok) {
+            const value = homeResult.value as { entry?: SftpEntryView } | undefined
+            const homePath = value?.entry?.path
+            if (homePath && homePath.startsWith('/')) {
+              setSftpPath(homePath)
+              void listDir(homePath)
+            }
+          }
+        } catch { /* cwd detection is best-effort */ }
+      })()
     } catch (error) {
       setPtyError(error instanceof Error ? error.message : String(error))
     }
   }, [selectedConn, terminalEl])
-
-  // Clean up PTY on unmount.
-  useEffect(() => {
-    return () => {
-      if (fitInterval.current) clearInterval(fitInterval.current)
-      if (ptyIdRef.current) {
-        void rpc('ssh.pty.close', { ptyId: ptyIdRef.current }).catch(() => undefined)
-      }
-      termRef.current?.dispose()
-      termRef.current = null
-      ptyIdRef.current = null
-    }
-  }, [])
 
   // SFTP: list directory.
   const listDir = useCallback(async (path: string) => {
@@ -179,10 +297,29 @@ export function SshPanel({ t }: SshPanelProps) {
     }
   }, [selectedConn])
 
+  // Clean up PTY on unmount.
+  useEffect(() => {
+    return () => {
+      if (fitInterval.current) clearInterval(fitInterval.current)
+      if (ptyIdRef.current) {
+        void rpc('ssh.pty.close', { ptyId: ptyIdRef.current }).catch(() => undefined)
+      }
+      termRef.current?.dispose()
+      termRef.current = null
+      ptyIdRef.current = null
+    }
+  }, [])
+
   // SFTP: navigate into a directory.
   const navigateDir = useCallback((entry: SftpEntryView) => {
     if (entry.type === 'directory') void listDir(entry.path)
   }, [listDir])
+
+  // SFTP: go to parent directory.
+  const goParent = useCallback(() => {
+    const parent = sftpPath === '/' ? '/' : sftpPath.replace(/\/[^/]+$/, '') || '/'
+    void listDir(parent)
+  }, [sftpPath, listDir])
 
   // SFTP: download a file via the host-only GET channel.
   const downloadFile = useCallback(async (entry: SftpEntryView) => {
@@ -301,14 +438,17 @@ export function SshPanel({ t }: SshPanelProps) {
       {/* PTY terminal */}
       <div className={css.terminal} style={{ display: terminalEl ? 'block' : 'none' }}>
         <div ref={(el) => { if (el) setTerminalEl(el) }} className={css.terminalInner} />
-        {ptyIdRef.current !== null && (
+        {ptyOpen && (
           <button
             className={css.closeButton}
             onClick={() => {
-              void rpc('ssh.pty.close', { ptyId: ptyIdRef.current }).catch(() => undefined)
+              const id = ptyIdRef.current
+              if (id) void rpc('ssh.pty.close', { ptyId: id }).catch(() => undefined)
+              ptyIdRef.current = null
+              setPtyOpen(false)
+              if (fitInterval.current) { clearInterval(fitInterval.current); fitInterval.current = null }
               termRef.current?.dispose()
               termRef.current = null
-              ptyIdRef.current = null
               setTerminalEl(null)
             }}
           >
@@ -320,6 +460,9 @@ export function SshPanel({ t }: SshPanelProps) {
       {/* SFTP file manager */}
       <div className={css.sftp}>
         <div className={css.sftpHeader}>
+          <button className={css.button} disabled={!selectedConn || sftpPath === '/'} onClick={goParent} style={{ marginRight: 8 }}>
+            ..
+          </button>
           <span className={css.sftpPath}>{sftpPath}</span>
           <div className={css.sftpActions}>
             <button className={css.button} disabled={!selectedConn || sftpLoading} onClick={() => void listDir(sftpPath)}>
@@ -347,6 +490,13 @@ export function SshPanel({ t }: SshPanelProps) {
               </tr>
             </thead>
             <tbody>
+              {sftpEntries.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', opacity: 0.5 }}>
+                    {selectedConn ? t('ssh.empty') : t('ssh.selectConnection')}
+                  </td>
+                </tr>
+              )}
               {sftpEntries.map(entry => (
                 <tr key={entry.path} onClick={() => navigateDir(entry)} className={entry.type === 'directory' ? css.dirRow : undefined}>
                   <td>{entry.name}</td>

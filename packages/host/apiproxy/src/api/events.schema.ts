@@ -89,5 +89,15 @@ export const hostFrameSchema = z.discriminatedUnion('type', [
   // structural contract belongs to the owner package's cordis `Events`
   // declaration — the host validated JSON-safety before forwarding.
   z.object({ type: z.literal('host/remote-event'), event: z.string().min(1), args: z.array(z.unknown()) }),
+  // Interactive PTY byte stream for the browser SSH terminal: base64 chunks
+  // (<=16 KiB per frame), routed by ptyId on the client.
+  z.object({ type: z.literal('ssh/pty/output'), ptyId: z.string().min(1), data: z.string() }),
+  z.object({
+    type: z.literal('ssh/pty/exit'),
+    ptyId: z.string().min(1),
+    exitCode: z.number().int().nullable(),
+    signal: z.string().nullable(),
+    dropped: z.boolean(),
+  }),
   z.object({ type: z.literal('stream/error'), error: rpcErrorSchema }),
 ]) as unknown as z.ZodType<HostFrame>

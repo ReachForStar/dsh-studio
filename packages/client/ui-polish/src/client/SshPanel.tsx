@@ -82,21 +82,31 @@ async function rpc(
 }
 
 /**
- * Subscribe to the host SSE frame stream for PTY output/exit frames.
+ * Subscribe to the host WebSocket stream for PTY output/exit frames.
  *
- * The carrier serves `/api/events.host` as a Server-Sent Events channel:
- * each `data:` line is `{ type: 'server-request', rpcId, method, payload }`
- * where `payload` is the HostFrame. This driver parses the SSE lines and
- * forwards only `ssh/pty/*` frames; unsubscribe closes the connection.
+ * The carrier serves `/api/events.host` as a WebSocket downlink (asking a
+ * plain GET returns 426 Upgrade Required). Each inbound message is a
+ * `server-request` envelope `{ type, rpcId, method, payload }` where `payload`
+ * is the HostFrame. This driver parses the envelope and forwards only
+ * `ssh/pty/*` frames; unsubscribe closes the socket.
  */
 function subscribeHostFrames(
   onFrame: (frame: HostFrameLike) => void,
   onDrop: (ptyId: string) => void,
 ): () => void {
-  const source = new EventSource('/api/events.host')
+  const url = new URL('/api/events.host', window.location.origin)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  const socket = new WebSocket(url.toString())
+  socket.addEventListener('open', () => {
+    console.debug('[SshPanel] host frames WebSocket opened')
+  })
+  socket.addEventListener('error', () => {
+    console.error('[SshPanel] host frames WebSocket error')
+  })
   const handleMessage = (event: MessageEvent): void => {
     try {
-      const full = JSON.parse(String(event.data)) as { payload?: HostFrameLike }
+      if (typeof event.data !== 'string') return
+      const full = JSON.parse(event.data) as { payload?: HostFrameLike; type?: string }
       const frame = full.payload
       if (frame === undefined) return
       if (frame.type === 'ssh/pty/output' && frame.ptyId && frame.data) {
@@ -104,12 +114,16 @@ function subscribeHostFrames(
       } else if (frame.type === 'ssh/pty/exit' && frame.ptyId) {
         onDrop(frame.ptyId)
       }
-    } catch { /* malformed SSE line — ignore */ }
+    } catch (error) {
+      console.error('[SshPanel] malformed host frame:', error)
+    }
   }
-  source.addEventListener('message', handleMessage)
+  socket.addEventListener('message', handleMessage)
   return () => {
-    source.removeEventListener('message', handleMessage)
-    source.close()
+    socket.removeEventListener('message', handleMessage)
+    if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
+      socket.close()
+    }
   }
 }
 

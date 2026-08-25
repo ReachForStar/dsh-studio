@@ -68,12 +68,17 @@ async function rpc(
   })
   if (!res.ok) {
     const text = await res.text()
+    console.error(`[SshPanel] RPC ${method} failed: ${res.status}`, text)
     return { ok: false, error: { message: `${res.status}: ${text}` } }
   }
   const body = await res.json()
   const result = body.result as { ok: true; value: unknown } | { ok: false; error: { message: string } } | undefined
-  if (result === undefined) return { ok: false, error: { message: 'malformed response' } }
+  if (result === undefined) {
+    console.error(`[SshPanel] RPC ${method} malformed response:`, body)
+    return { ok: false, error: { message: 'malformed response' } }
+  }
   if (result.ok) return { ok: true, value: result.value }
+  console.error(`[SshPanel] RPC ${method} error:`, result.error.message)
   return { ok: false, error: result.error }
 }
 
@@ -301,10 +306,14 @@ export function SshPanel({ t }: SshPanelProps) {
         setSftpEntries(value?.entries ?? [])
         setSftpPath(path)
       } else {
-        setSftpError(result.error?.message ?? 'failed to list directory')
+        const msg = result.error?.message ?? 'failed to list directory'
+        console.error('[SshPanel] sftp list failed:', path, msg)
+        setSftpError(msg)
       }
     } catch (error) {
-      setSftpError(error instanceof Error ? error.message : String(error))
+      const msg = error instanceof Error ? error.message : String(error)
+      console.error('[SshPanel] sftp list exception:', path, msg)
+      setSftpError(msg)
     } finally {
       setSftpLoading(false)
     }
@@ -331,7 +340,7 @@ export function SshPanel({ t }: SshPanelProps) {
         fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace",
         fontSize: 14,
         theme: { background: '#1e1e2e', foreground: '#cdd6f4', cursor: '#f5e0dc' },
-        convertEol: true,
+        convertEol: false,
       })
       const fit = new FitAddon()
       term.loadAddon(fit)
@@ -355,7 +364,9 @@ export function SshPanel({ t }: SshPanelProps) {
       // Seed the SFTP file manager at /; the prompt tracker will follow
       // terminal navigation to the correct directory.
       setSftpPath('/')
-      void listDir('/')
+      void listDir('/').catch((e: unknown) => {
+        console.error('[SshPanel] initial sftp list failed:', e)
+      })
 
       promptTrackerRef.current = createPromptTracker((cwd) => {
         const current = sftpPathRef.current

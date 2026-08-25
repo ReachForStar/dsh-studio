@@ -1,65 +1,93 @@
+/* SSH + SFTP panel: a conversation.view tab with a real PTY terminal and a
+   streaming SFTP file manager. Visual language follows the developer-tool
+   dark-first dsw alias tokens used by the sibling panels (Excalidraw,
+   Git): --dsw-alias-* semantics, 150ms ease-out micro-interactions, visible
+   focus rings, status-coded file rows. */
+
 .view {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
   height: 100%;
   min-height: 0;
-  gap: 0.5rem;
-  padding: 0.75rem;
+  padding: 8px 12px;
   overflow: hidden;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .header {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: baseline;
+  gap: 12px;
+  flex: none;
   flex-shrink: 0;
 }
 
 .title {
+  font-size: 15px;
   font-weight: 600;
-  font-size: 0.9rem;
+  color: var(--dsw-alias-label-primary);
 }
 
 .select {
   flex: 1;
   max-width: 280px;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  border: 1px solid var(--color-border, #444);
-  background: var(--color-surface, #2a2a3a);
-  color: var(--color-text, #eee);
-  font-size: 0.8rem;
+  padding: 4px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -1px;
 }
 
 .button {
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  border: 1px solid var(--color-border, #444);
-  background: var(--color-surface, #3a3a4a);
-  color: var(--color-text, #eee);
-  font-size: 0.8rem;
+  padding: 4px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-button-floating-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
   cursor: pointer;
+  transition: border-color 150ms ease-out, background-color 150ms ease-out, opacity 150ms ease-out;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--dsw-alias-accent);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -1px;
 }
 
 .button:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  cursor: default;
 }
 
 .button.active {
-  background: var(--color-accent, #4a6cf7);
-  border-color: var(--color-accent, #4a6cf7);
-  color: #fff;
-}
-
-.button:hover:not(:disabled) {
-  background: var(--color-surface-hover, #4a4a5a);
+  background: color-mix(in srgb, var(--dsw-alias-accent) 16%, transparent);
+  border-color: var(--dsw-alias-accent);
+  color: var(--dsw-alias-accent);
+  font-weight: 600;
 }
 
 .error {
-  color: #f38ba8;
-  font-size: 0.8rem;
-  padding: 0.25rem;
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-error) 12%, transparent);
+  color: var(--dsw-alias-error);
+  overflow-wrap: anywhere;
 }
 
 .terminal {
@@ -67,8 +95,10 @@
   min-height: 200px;
   max-height: 45vh;
   position: relative;
-  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
   overflow: hidden;
+  background: var(--dsw-alias-bg-base);
 }
 
 .terminalInner {
@@ -80,15 +110,25 @@
 
 .closeButton {
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  border: 1px solid var(--color-border, #444);
-  background: var(--color-surface, #3a3a4a);
-  color: var(--color-text, #eee);
-  font-size: 0.7rem;
+  top: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: var(--dsw-alias-button-floating-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
   cursor: pointer;
+  transition: border-color 150ms ease-out, opacity 150ms ease-out;
+}
+
+.closeButton:hover:not(:disabled) {
+  border-color: var(--dsw-alias-accent);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -1px;
 }
 
 .sftp {
@@ -96,8 +136,8 @@
   min-height: 150px;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--color-border, #444);
-  padding-top: 0.5rem;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  padding-top: 8px;
   overflow: hidden;
 }
 
@@ -105,22 +145,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 8px;
+  flex: none;
   flex-shrink: 0;
-}
-
-.sftpPath {
-  font-size: 0.8rem;
-  font-family: monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .crumbs {
   display: flex;
   align-items: center;
-  gap: 0.15rem;
+  gap: 2px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -128,18 +161,25 @@
 }
 
 .crumb {
-  padding: 0.1rem 0.3rem;
-  border-radius: 3px;
+  padding: 2px 5px;
+  border-radius: 5px;
   border: none;
   background: transparent;
-  color: var(--color-text, #eee);
-  font-family: monospace;
-  font-size: 0.8rem;
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--dsw-font-mono);
+  font-size: 12px;
   cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
 }
 
 .crumb:hover:not(:disabled) {
-  background: var(--color-surface-hover, #3a3a4a);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.crumb:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -1px;
 }
 
 .crumb:disabled {
@@ -148,57 +188,70 @@
 
 .crumbCurrent {
   font-weight: 600;
-  color: var(--color-accent, #4a6cf7);
+  color: var(--dsw-alias-accent);
 }
 
 .crumbSep {
-  color: var(--color-text-dim, #888);
-  font-family: monospace;
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--dsw-font-mono);
 }
 
 .filter {
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid var(--color-border, #444);
-  background: var(--color-surface, #2a2a3a);
-  color: var(--color-text, #eee);
-  font-size: 0.75rem;
-  width: 8rem;
+  padding: 4px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  width: 9rem;
+}
+
+.filter::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.filter:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -1px;
 }
 
 .sftpActions {
   display: flex;
-  gap: 0.25rem;
+  align-items: baseline;
+  gap: 8px;
+  flex: none;
   flex-shrink: 0;
 }
 
 .loading {
-  font-size: 0.8rem;
-  color: var(--color-text-dim, #888);
-  padding: 0.5rem;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  padding: 8px;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.75rem;
+  font-size: 13px;
   flex: 1;
   overflow-y: auto;
 }
 
 .table th {
   text-align: left;
-  padding: 0.3rem 0.5rem;
-  border-bottom: 1px solid var(--color-border, #444);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
   font-weight: 600;
   position: sticky;
   top: 0;
-  background: var(--color-surface, #2a2a3a);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
 }
 
 .table td {
-  padding: 0.3rem 0.5rem;
-  border-bottom: 1px solid var(--color-border-subtle, #333);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  color: var(--dsw-alias-label-primary);
 }
 
 .dirRow {
@@ -206,7 +259,7 @@
 }
 
 .dirRow:hover {
-  background: var(--color-surface-hover, #3a3a4a);
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 
 .rowActions {
@@ -214,16 +267,28 @@
 }
 
 .actionBtn {
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  border: 1px solid var(--color-border, #444);
+  padding: 2px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
   background: transparent;
-  color: var(--color-text, #eee);
-  font-size: 0.7rem;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
   cursor: pointer;
-  margin-right: 0.2rem;
+  margin-right: 4px;
+  transition: border-color 150ms ease-out, background-color 150ms ease-out, color 150ms ease-out, opacity 150ms ease-out;
 }
 
 .actionBtn:hover:not(:disabled) {
-  background: var(--color-surface-hover, #4a4a5a);
+  border-color: var(--dsw-alias-accent);
+  color: var(--dsw-alias-label-primary);
+}
+
+.actionBtn:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -1px;
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

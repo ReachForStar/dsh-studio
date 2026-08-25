@@ -85,3 +85,11 @@ manager).
   tracker prefers that marker over PS1 text parsing (reliable across `~`,
   bracket, and no-path prompts). Removed a self-referencing
   `\${PROMPT_COMMAND:-}` that re-expanded and flooded the terminal.
+- **lstat/stat wire shape**: `openRead` stats the file before streaming; the
+  `statRaw` helper previously treated the `lstat` callback argument as a NAME
+  array and read `stats[0].attrs`. Real OpenSSH answers STAT/LSTAT with a
+  single ATTRS (`Stats` object), so `stats[0]` was `undefined` and every
+  download failed with "no entry" (the in-memory test server answered with a
+  NAME array, masking the bug). `statRaw` now uses the callback `Stats`
+  directly, and the test server answers STAT/LSTAT/FSTAT via `attrs()` so the
+  real wire shape is exercised.

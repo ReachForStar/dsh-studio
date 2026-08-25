@@ -21,7 +21,7 @@ import {
   unlink,
   writeFile,
 } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { Stats } from 'node:fs'
 import {
@@ -182,8 +182,8 @@ export class SftpTestServer {
       }
       // The handle path is already absolute; never resolve it again.
       void stat(entry.path).then((stats) => {
-        process.stderr.write(`[test-server] FSTAT name() for ${entry.path}\n`)
-        channel.name(reqId, [{ filename: basename(entry.path), longname: entry.path, attrs: attrsOf(stats) }])
+        process.stderr.write(`[test-server] FSTAT attrs() for ${entry.path}\n`)
+        channel.attrs(reqId, attrsOf(stats))
       }).catch((error: unknown) => {
         process.stderr.write(`[test-server] FSTAT error ${error instanceof Error ? error.message : String(error)}\n`)
         channel.status(reqId, this.codeOf(error), this.messageOf(error))
@@ -245,14 +245,15 @@ export class SftpTestServer {
     })
   }
 
-  /** Reply to a stat-style request with a one-entry NAME packet. */
+  /** Reply to a stat-style request with a single ATTRS packet (as a real
+   * OpenSSH SFTP server does for STAT/LSTAT). */
   private async statOne(channel: SFTPWrapper, reqId: number, path: string): Promise<void> {
     try {
       const absolute = this.resolve(path)
       const stats = await stat(absolute)
       process.stderr.write(`[test-server] statOne ${path} -> ${absolute} isDir=${String(stats.isDirectory())}\n`)
-      channel.name(reqId, [{ filename: basename(absolute), longname: absolute, attrs: attrsOf(stats) }])
-      process.stderr.write(`[test-server] statOne ${path} name() sent\n`)
+      channel.attrs(reqId, attrsOf(stats))
+      process.stderr.write(`[test-server] statOne ${path} attrs() sent\n`)
     } catch (error) {
       process.stderr.write(`[test-server] statOne ${path} error ${error instanceof Error ? error.message : String(error)}\n`)
       channel.status(reqId, this.codeOf(error), this.messageOf(error))

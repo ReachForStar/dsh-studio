@@ -651,9 +651,12 @@ class LocalSftp implements SshSftp {
 
   /**
    * Stat without wrapping the error, so callers can read the SFTP status code.
-   * ssh2 1.17 delivers NAME responses to `lstat`/`stat` callbacks as an entry
-   * array (the same shape `readdir` uses), despite the older type definitions
-   * claiming a single Stats; the first entry's attrs are the stat result.
+   * ssh2's `lstat`/`stat` callbacks deliver a single ATTRS response as a
+   * `Stats` object (`RESPONSE.ATTRS`), unlike `readdir` which returns a NAME
+   * array. The current code previously misread it as an array and rejected
+   * every real server stat as "no entry"; the test server now answers
+   * STAT/LSTAT with `attrs()` so this path is exercised against the true
+   * wire shape.
    */
   private statRaw(sftp: SFTPWrapper, path: string): Promise<SftpEntry> {
     return new Promise<SftpEntry>((resolve, reject) => {
@@ -662,14 +665,7 @@ class LocalSftp implements SshSftp {
           reject(error)
           return
         }
-        const entries = stats as unknown as Array<{ attrs: Stats }>
-        const first = entries[0]
-        // v8 ignore next -- a well-formed server always returns exactly one entry
-        if (first === undefined) {
-          reject(new Error(`ssh sftp stat returned no entry for "${path}"`))
-          return
-        }
-        resolve(toEntry(basename(path), first.attrs))
+        resolve(toEntry(basename(path), stats))
       })
     })
   }

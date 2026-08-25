@@ -148,13 +148,51 @@ function subscribeHostFrames(
 }
 
 /**
+ * Resolve the remote home directory by running `echo $HOME` over the
+ * connection. Returns null when the probe fails (the caller falls back to
+ * `/`).
+ */
+function extractCwdFromPrompt(chunk: string): string | null {
+  const match = chunk.match(/(?:^|\n)(?:\S+@\S+:)?([^\n]+)(?:\s*[$#])\s*$/)
+  if (match === null) return null
+  const raw = (match[1] ?? '').trim()
+  if (raw === '' || !raw.startsWith('/')) return null
+  return raw
+}
+
+/**
+ * Create a streaming prompt tracker that accumulates PTY output and extracts
+ * the current working directory from prompt lines. Calls `onCwd` whenever a
+ * new cwd is detected.
+ */
+function createPromptTracker(onCwd: (cwd: string) => void): { feed: (chunk: string) => void; reset: () => void } {
+  let buffer = ''
+  let lastCwd: string | null = null
+  return {
+    feed(chunk: string) {
+      buffer += chunk
+      if (buffer.length > 4096) buffer = buffer.slice(-4096)
+      const cwd = extractCwdFromPrompt(buffer)
+      if (cwd !== null && cwd !== lastCwd) {
+        lastCwd = cwd
+        onCwd(cwd)
+      }
+    },
+    reset() {
+      buffer = ''
+      lastCwd = null
+    },
+  }
+}
+
+/**
  * Render the SSH/SFTP panel as a conversation view tab.
  */
 export function SshPanel({ t }: SshPanelProps) {
   const [connections, setConnections] = useState<SshConnectionView[]>([])
   const [selectedConn, setSelectedConn] = useState<string | null>(null)
   const [terminalEl, setTerminalEl] = useState<HTMLElement | null>(null)
-  const [sftpPath, setSftpPath] = useState('/root')
+  const [sftpPath, setSftpPath] = useState('/')
   const [sftpEntries, setSftpEntries] = useState<SftpEntryView[]>([])
   const [sftpLoading, setSftpLoading] = useState(false)
   const [sftpError, setSftpError] = useState<string | null>(null)
@@ -168,6 +206,7 @@ export function SshPanel({ t }: SshPanelProps) {
   const ptyIdRef = useRef<string | null>(null)
   const fitInterval = useRef<ReturnType<typeof setInterval> | null>(null)
   const hostUnsubRef = useRef<(() => void) | null>(null)
+  const promptTrackerRef = useRef<{ feed: (chunk: string) => void; reset: () => void } | null>(null)
   const sftpPathRef = useRef(sftpPath)
   sftpPathRef.current = sftpPath
 
@@ -196,6 +235,7 @@ export function SshPanel({ t }: SshPanelProps) {
         const bytesArr = new Uint8Array(bytes.length)
         for (let i = 0; i < bytes.length; i++) bytesArr[i] = bytes.charCodeAt(i)
         term.write(bytesArr)
+        promptTrackerRef.current?.feed(new TextDecoder().decode(bytesArr))
       },
       (ptyId) => {
         if (ptyId !== ptyIdRef.current) return
@@ -253,22 +293,18 @@ export function SshPanel({ t }: SshPanelProps) {
 
       term.focus()
 
-      // After opening, resolve the home directory for SFTP initial path.
-      void (async () => {
-        try {
-          const homeResult = await rpc('ssh.sftp.stat', {
-            connectionId: selectedConn, path: '~',
-          })
-          if (homeResult.ok) {
-            const value = homeResult.value as { entry?: SftpEntryView } | undefined
-            const homePath = value?.entry?.path
-            if (homePath && homePath.startsWith('/')) {
-              setSftpPath(homePath)
-              void listDir(homePath)
-            }
-          }
-        } catch { /* cwd detection is best-effort */ }
-      })()
+      // Resolve the remote home directory for the SFTP initial path, then
+      // Seed the SFTP file manager at / (the prompt tracker will follow
+      // terminal navigation to the correct directory).
+      setSftpPath('/')
+      void listDir('/')
+
+      promptTrackerRef.current = createPromptTracker((cwd) => {
+        const current = sftpPathRef.current
+        if (cwd === current) return
+        setSftpPath(cwd)
+        void listDir(cwd)
+      })
     } catch (error) {
       setPtyError(error instanceof Error ? error.message : String(error))
     }

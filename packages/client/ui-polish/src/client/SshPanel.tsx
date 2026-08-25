@@ -13,7 +13,6 @@
  * switches the SFTP view — but manual SFTP navigation pauses that follow to
  * avoid yanking the view back.
  */
-/* eslint-disable typescript/no-confusing-void-expression */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'

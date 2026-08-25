@@ -203,6 +203,26 @@ function extractCwdFromPrompt(raw: string, homeDir: string): string | null {
   return null
 }
 
+/** Hook marker emitted by the injected PROMPT_COMMAND before each prompt. */
+const CWD_HOOK_PREFIX = '__DSH_CWD__'
+
+/**
+ * Parse the cwd from a PROMPT_COMMAND hook line. The hook prints
+ * `__DSH_CWD__<path>` on its own line before each prompt; this parser extracts
+ * the path that follows the prefix. More reliable than parsing the prompt
+ * itself, which varies across shells and PS1 configurations.
+ */
+function extractCwdFromHook(chunk: string): string | null {
+  const clean = stripAnsi(chunk).replace(/\r/g, '')
+  const start = clean.indexOf(CWD_HOOK_PREFIX)
+  if (start === -1) return null
+  const afterStart = start + CWD_HOOK_PREFIX.length
+  // The hook prints the path immediately after the prefix, up to the line end.
+  const end = clean.indexOf('\n', afterStart)
+  const raw = (end === -1 ? clean.slice(afterStart) : clean.slice(afterStart, end)).trim()
+  return raw.startsWith('/') ? raw : null
+}
+
 /** Streaming prompt tracker: accumulates PTY output and reports cwd changes. */
 function createPromptTracker(onCwd: (cwd: string) => void, homeDir: string): { feed: (chunk: string) => void; reset: () => void } {
   let buffer = ''
@@ -211,7 +231,8 @@ function createPromptTracker(onCwd: (cwd: string) => void, homeDir: string): { f
     feed(chunk: string) {
       buffer += chunk
       if (buffer.length > 8192) buffer = buffer.slice(-8192)
-      const cwd = extractCwdFromPrompt(buffer, homeDir)
+      // Prefer the PROMPT_COMMAND hook marker — reliable across PS1 variants.
+      const cwd = extractCwdFromHook(buffer) ?? extractCwdFromPrompt(buffer, homeDir)
       if (cwd !== null && cwd !== lastCwd) {
         lastCwd = cwd
         onCwd(cwd)
@@ -407,6 +428,25 @@ export function SshPanel({ t }: SshPanelProps) {
     }, 1500)
   }, [])
 
+  /**
+   * Inject a PROMPT_COMMAND hook (bash) so each new prompt emits a
+   * `__DSH_CWD__<path>` marker before it. The SFTP follow then reads the
+   * marker instead of guessing from the prompt text, which is far more
+   * reliable. Idempotent: guarded by `__DSH_HOOKED` so re-opening or a
+   * nested shell does not re-wrap PROMPT_COMMAND.
+   */
+  const injectCwdHook = useCallback(() => {
+    const write = ptyWriteRef.current
+    if (write === null) return
+    // Keep the user's existing PROMPT_COMMAND; prepend the marker emission.
+    // The shell command needs both quote kinds, so it lives in a template
+    // literal; the stylistic quotes rule would otherwise reject the inner
+    // quotes it contains.
+    // eslint-disable-next-line @stylistic/quotes
+    const cmd = `export __DSH_HOOKED=1; if [ -z "$__DSH_HOOKED_BEFORE" ]; then export __DSH_HOOKED_BEFORE=1; export PROMPT_COMMAND="echo -n '__DSH_CWD__'; pwd;\${PROMPT_COMMAND:-}"; fi`
+    write(`${cmd}\r`)
+  }, [])
+
   // Load the selected connection's directory as soon as it is picked, so the
   // SFTP browser is usable without opening the terminal. Prefer the remote
   // home directory; fall back to '/' when the probe fails.
@@ -504,12 +544,17 @@ export function SshPanel({ t }: SshPanelProps) {
       void listDir(cwd)
     }, homeDir)
 
+    // Inject the PROMPT_COMMAND hook so each prompt emits a cwd marker the
+    // tracker can read reliably (independent of the PS1 format).
+    const hookTimer = window.setTimeout(() => { injectCwdHook() }, 300)
+
     // Wait for the shell to settle, then probe the exact cwd so the SFTP view
     // lands where the terminal actually is (prompt parsing is best-effort).
     const initialProbe = window.setTimeout(() => { probeCwd() }, 600)
 
     return () => {
       window.clearTimeout(initialProbe)
+      window.clearTimeout(hookTimer)
       resizeObserver.current?.disconnect()
       resizeObserver.current = null
       term.dispose()
@@ -518,7 +563,7 @@ export function SshPanel({ t }: SshPanelProps) {
       ptyWriteRef.current = null
       cwdProbeRef.current = null
     }
-  }, [ptyOpen, terminalEl, listDir, homeDir, probeCwd])
+  }, [ptyOpen, terminalEl, listDir, homeDir, probeCwd, injectCwdHook])
 
   // Clean up the PTY on unmount.
   useEffect(() => {

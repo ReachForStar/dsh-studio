@@ -5,6 +5,10 @@
  * selected connection. PTY output arrives on the host frame stream; SFTP
  * file transfer uses the host-only download channel (GET) and a carrier
  * POST upload route.
+ *
+ * The SFTP file manager follows the terminal's working directory: a prompt
+ * tracker parses each PTY output chunk for the shell prompt and extracts the
+ * cwd, so `cd` in the terminal automatically switches the SFTP view.
  */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment,
  *   @typescript-eslint/no-unsafe-member-access,
@@ -112,7 +116,6 @@ function subscribeHostFrames(
   }
 
   socket.addEventListener('open', () => {
-    // Stream is open; start pumping.
     void pump()
   })
   socket.addEventListener('message', handleMessage)
@@ -148,16 +151,48 @@ function subscribeHostFrames(
 }
 
 /**
- * Resolve the remote home directory by running `echo $HOME` over the
- * connection. Returns null when the probe fails (the caller falls back to
- * `/`).
+ * Strip ANSI escape sequences (colors, cursor moves, etc.) from a chunk of
+ * terminal output so that prompt parsing operates on clean text.
  */
-function extractCwdFromPrompt(chunk: string): string | null {
-  const match = chunk.match(/(?:^|\n)(?:\S+@\S+:)?([^\n]+)(?:\s*[$#])\s*$/)
-  if (match === null) return null
-  const raw = (match[1] ?? '').trim()
-  if (raw === '' || !raw.startsWith('/')) return null
-  return raw
+function stripAnsi(text: string): string {
+  // CSI sequences: ESC [ ... letter
+  let result = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
+  // OSC sequences: ESC ] ... (BEL or ESC \)
+  result = result.replace(/\x1b\][^\x07]*(\x07|\x1b\\)/g, '')
+  // Bare ESC followed by a single char
+  result = result.replace(/\x1b./g, '')
+  return result
+}
+
+/**
+ * Extract the working directory from the last shell prompt in a chunk of
+ * terminal output. Handles common PS1 formats:
+ *   - user@host:cwd$   (bash with \u@\h:\w\$)
+ *   - user@host:cwd#   (root)
+ *   - cwd$             (minimal prompt)
+ *   - ~/path$          (tilde-relative)
+ * Returns the absolute path or null when no prompt is found.
+ */
+function extractCwdFromPrompt(raw: string): string | null {
+  const clean = stripAnsi(raw)
+  // Split into lines; scan from the end for a prompt pattern.
+  const lines = clean.split('\n')
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = (lines[i] ?? '').trimEnd()
+    if (line === '') continue
+    // Match: [user@host:]path[$|#] at end of line.
+    const m = line.match(/^(?:[\w.]+@[\w.-]+:)?(\S+)\s*[$#]\s*$/)
+    if (m === null) continue
+    let cwd = (m[1] ?? '').trim()
+    if (cwd === '') continue
+    // Expand tilde to absolute path.
+    if (cwd === '~') cwd = '/root'
+    else if (cwd.startsWith('~/')) cwd = '/root' + cwd.slice(1)
+    // Must be an absolute path.
+    if (!cwd.startsWith('/')) continue
+    return cwd
+  }
+  return null
 }
 
 /**
@@ -171,7 +206,7 @@ function createPromptTracker(onCwd: (cwd: string) => void): { feed: (chunk: stri
   return {
     feed(chunk: string) {
       buffer += chunk
-      if (buffer.length > 4096) buffer = buffer.slice(-4096)
+      if (buffer.length > 8192) buffer = buffer.slice(-8192)
       const cwd = extractCwdFromPrompt(buffer)
       if (cwd !== null && cwd !== lastCwd) {
         lastCwd = cwd
@@ -235,6 +270,7 @@ export function SshPanel({ t }: SshPanelProps) {
         const bytesArr = new Uint8Array(bytes.length)
         for (let i = 0; i < bytes.length; i++) bytesArr[i] = bytes.charCodeAt(i)
         term.write(bytesArr)
+        // Feed the prompt tracker so the SFTP path follows terminal cd.
         promptTrackerRef.current?.feed(new TextDecoder().decode(bytesArr))
       },
       (ptyId) => {
@@ -250,6 +286,29 @@ export function SshPanel({ t }: SshPanelProps) {
     hostUnsubRef.current = unsub
     return () => { unsub(); hostUnsubRef.current = null }
   }, [])
+
+  // SFTP: list directory.
+  const listDir = useCallback(async (path: string) => {
+    if (!selectedConn) return
+    setSftpLoading(true)
+    setSftpError(null)
+    try {
+      const result = await rpc('ssh.sftp.list', {
+        connectionId: selectedConn, path,
+      })
+      if (result.ok) {
+        const value = result.value as { entries: SftpEntryView[] } | undefined
+        setSftpEntries(value?.entries ?? [])
+        setSftpPath(path)
+      } else {
+        setSftpError(result.error?.message ?? 'failed to list directory')
+      }
+    } catch (error) {
+      setSftpError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setSftpLoading(false)
+    }
+  }, [selectedConn])
 
   // Open PTY when a connection is selected.
   const openPty = useCallback(async () => {
@@ -293,9 +352,8 @@ export function SshPanel({ t }: SshPanelProps) {
 
       term.focus()
 
-      // Resolve the remote home directory for the SFTP initial path, then
-      // Seed the SFTP file manager at / (the prompt tracker will follow
-      // terminal navigation to the correct directory).
+      // Seed the SFTP file manager at /; the prompt tracker will follow
+      // terminal navigation to the correct directory.
       setSftpPath('/')
       void listDir('/')
 
@@ -308,30 +366,7 @@ export function SshPanel({ t }: SshPanelProps) {
     } catch (error) {
       setPtyError(error instanceof Error ? error.message : String(error))
     }
-  }, [selectedConn, terminalEl])
-
-  // SFTP: list directory.
-  const listDir = useCallback(async (path: string) => {
-    if (!selectedConn) return
-    setSftpLoading(true)
-    setSftpError(null)
-    try {
-      const result = await rpc('ssh.sftp.list', {
-        connectionId: selectedConn, path,
-      })
-      if (result.ok) {
-        const value = result.value as { entries: SftpEntryView[] } | undefined
-        setSftpEntries(value?.entries ?? [])
-        setSftpPath(path)
-      } else {
-        setSftpError(result.error?.message ?? 'failed to list directory')
-      }
-    } catch (error) {
-      setSftpError(error instanceof Error ? error.message : String(error))
-    } finally {
-      setSftpLoading(false)
-    }
-  }, [selectedConn])
+  }, [selectedConn, terminalEl, listDir])
 
   // Clean up PTY on unmount.
   useEffect(() => {

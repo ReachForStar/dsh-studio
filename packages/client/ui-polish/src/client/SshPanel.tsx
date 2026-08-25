@@ -173,23 +173,30 @@ function stripAnsi(text: string): string {
 /**
  * Extract the working directory from the last shell prompt in a chunk of
  * terminal output. Handles common PS1 formats:
- *   - user@host:cwd$ / user@host:cwd#   (bash \u@\h:\w\$)
- *   - cwd$                             (minimal prompt)
- *   - ~/path$                          (tilde-relative)
+ *   - [user@host ~]#            (RHEL/CentOS, bracketed)
+ *   - user@host:cwd$ / user@host:cwd# (bash \u@\h:\w\$)
+ *   - cwd$                      (minimal prompt)
+ *   - ~/path$                   (tilde-relative, expanded with `homeDir`)
+ * `homeDir` is the remote home used to expand `~`; it is passed by the caller
+ * (from `ssh.exec echo $HOME`) so a non-root user resolves to its real home.
  * Returns the absolute path or null when no prompt is found.
  */
-function extractCwdFromPrompt(raw: string): string | null {
-  const clean = stripAnsi(raw)
+function extractCwdFromPrompt(raw: string, homeDir: string): string | null {
+  const clean = stripAnsi(raw).replace(/\r/g, '')
   const lines = clean.split('\n')
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = (lines[i] ?? '').trimEnd()
     if (line === '') continue
-    const m = line.match(/^(?:[\w.]+@[\w.-]+:)?(\S+)\s*[$#]\s*$/)
-    if (m === null) continue
-    let cwd = (m[1] ?? '').trim()
-    if (cwd === '') continue
-    if (cwd === '~') cwd = '/root'
-    else if (cwd.startsWith('~/')) cwd = '/root' + cwd.slice(1)
+    // RHEL/CentOS bracketed prompt: [user@host dir]#
+    const bracket = line.match(/^\[((?:[\w.-]+@[\w.-]+)?\s*)([^\]]+)\]\s*[$#]\s*$/)
+    // bash \u@\h:\w\$ and minimal dir$ prompts.
+    const plain = line.match(/^(?:[\w.-]+@[\w.-]+:)?(\S+)\s*[$#]\s*$/)
+    let cwd: string | null = null
+    if (bracket !== null) cwd = (bracket[2] ?? '').trim()
+    else if (plain !== null) cwd = (plain[1] ?? '').trim()
+    if (cwd === null || cwd === '') continue
+    if (cwd === '~' || cwd === '~/') cwd = homeDir
+    else if (cwd.startsWith('~/')) cwd = homeDir + cwd.slice(1)
     if (!cwd.startsWith('/')) continue
     return cwd
   }
@@ -197,14 +204,14 @@ function extractCwdFromPrompt(raw: string): string | null {
 }
 
 /** Streaming prompt tracker: accumulates PTY output and reports cwd changes. */
-function createPromptTracker(onCwd: (cwd: string) => void): { feed: (chunk: string) => void; reset: () => void } {
+function createPromptTracker(onCwd: (cwd: string) => void, homeDir: string): { feed: (chunk: string) => void; reset: () => void } {
   let buffer = ''
   let lastCwd: string | null = null
   return {
     feed(chunk: string) {
       buffer += chunk
       if (buffer.length > 8192) buffer = buffer.slice(-8192)
-      const cwd = extractCwdFromPrompt(buffer)
+      const cwd = extractCwdFromPrompt(buffer, homeDir)
       if (cwd !== null && cwd !== lastCwd) {
         lastCwd = cwd
         onCwd(cwd)
@@ -215,6 +222,26 @@ function createPromptTracker(onCwd: (cwd: string) => void): { feed: (chunk: stri
       lastCwd = null
     },
   }
+}
+
+/** Marker sequence emitted by the cwd probe command. */
+const CWD_PROBE_START = '__DSH_CWD_START__'
+const CWD_PROBE_END = '__DSH_CWD_END__'
+
+/**
+ * Parse the cwd out of a probe response. The probe writes a command that
+ * prints `<start>$(pwd)<end>`; this parser extracts the path between the
+ * markers regardless of the surrounding terminal output (echoed command,
+ * prompt, etc.).
+ */
+function extractCwdFromProbe(chunk: string): string | null {
+  const start = chunk.indexOf(CWD_PROBE_START)
+  if (start === -1) return null
+  const afterStart = start + CWD_PROBE_START.length
+  const end = chunk.indexOf(CWD_PROBE_END, afterStart)
+  if (end === -1) return null
+  const cwd = chunk.slice(afterStart, end).trim()
+  return cwd.startsWith('/') ? cwd : null
 }
 
 /**
@@ -232,6 +259,7 @@ export function SshPanel({ t }: SshPanelProps) {
   const [ptyOpen, setPtyOpen] = useState(false)
   const [ptyStarting, setPtyStarting] = useState(false)
   const [followCwd, setFollowCwd] = useState(true)
+  const [homeDir, setHomeDir] = useState('/root')
   const [downloading, setDownloading] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [busyAction, setBusyAction] = useState<number | null>(null)
@@ -245,6 +273,8 @@ export function SshPanel({ t }: SshPanelProps) {
   const followCwdRef = useRef(followCwd)
   followCwdRef.current = followCwd
   const promptTrackerRef = useRef<{ feed: (chunk: string) => void; reset: () => void } | null>(null)
+  const cwdProbeRef = useRef<{ buffer: string; onResult: (cwd: string | null) => void } | null>(null)
+  const ptyWriteRef = useRef<((text: string) => void) | null>(null)
   const sftpPathRef = useRef(sftpPath)
   sftpPathRef.current = sftpPath
 
@@ -273,8 +303,19 @@ export function SshPanel({ t }: SshPanelProps) {
         const bytesArr = new Uint8Array(bytes.length)
         for (let i = 0; i < bytes.length; i++) bytesArr[i] = bytes.charCodeAt(i)
         term.write(bytesArr)
+        const text = new TextDecoder().decode(bytesArr)
         // Feed the prompt tracker so the SFTP path can follow terminal cd.
-        promptTrackerRef.current?.feed(new TextDecoder().decode(bytesArr))
+        promptTrackerRef.current?.feed(text)
+        // Feed any in-flight cwd probe so it can parse the marker response.
+        const probe = cwdProbeRef.current
+        if (probe !== null) {
+          probe.buffer += text
+          const cwd = extractCwdFromProbe(probe.buffer)
+          if (cwd !== null) {
+            probe.onResult(cwd)
+            cwdProbeRef.current = null
+          }
+        }
       },
       (ptyId) => {
         if (ptyId !== ptyIdRef.current) return
@@ -318,6 +359,54 @@ export function SshPanel({ t }: SshPanelProps) {
     }
   }, [selectedConn])
 
+  // Latest listDir for the cwd probe callback (avoids stale selectedConn).
+  const listDirRef = useRef(listDir)
+  listDirRef.current = listDir
+
+  /**
+   * Write a cwd-probe command to the PTY and resolve the current working
+   * directory from a marked response. Falls back to prompt parsing when the
+   * probe times out or the terminal is not open.
+   */
+  const probeCwd = useCallback((onDone?: (cwd: string | null) => void) => {
+    const ptyId = ptyIdRef.current
+    if (ptyId === null) {
+      onDone?.(null)
+      return
+    }
+    const write = ptyWriteRef.current
+    if (write === null) {
+      onDone?.(null)
+      return
+    }
+    cwdProbeRef.current = {
+      buffer: '',
+      onResult: (cwd) => {
+        if (cwd === null) {
+          onDone?.(null)
+          return
+        }
+        if (followCwdRef.current) {
+          const current = sftpPathRef.current
+          if (cwd !== current) {
+            setSftpPath(cwd)
+            void listDirRef.current(cwd)
+          }
+        }
+        onDone?.(cwd)
+      },
+    }
+    // The probe survives in the PTY history; reset it on the next open.
+    const cmd = `printf '\\n${CWD_PROBE_START}'; pwd; printf '${CWD_PROBE_END}\\n'`
+    write(`${cmd}\r`)
+    // Fall back to prompt parsing if the probe does not answer quickly.
+    window.setTimeout(() => {
+      if (cwdProbeRef.current?.buffer.includes(CWD_PROBE_END)) return
+      cwdProbeRef.current = null
+      onDone?.(null)
+    }, 1500)
+  }, [])
+
   // Load the selected connection's directory as soon as it is picked, so the
   // SFTP browser is usable without opening the terminal. Prefer the remote
   // home directory; fall back to '/' when the probe fails.
@@ -329,6 +418,7 @@ export function SshPanel({ t }: SshPanelProps) {
     void (async () => {
       const home = await resolveHomeDir(selectedConn, ac.signal)
       if (ac.signal.aborted) return
+      if (home !== null) setHomeDir(home)
       const initial = home ?? '/'
       setSftpPath(initial)
       void listDir(initial)
@@ -385,6 +475,11 @@ export function SshPanel({ t }: SshPanelProps) {
       const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(data)))
       void rpc('ssh.pty.write', { ptyId, data: b64 })
     })
+    // Programmatic PTY write for the cwd probe (user keystrokes go via onData).
+    ptyWriteRef.current = (text: string) => {
+      const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(text)))
+      void rpc('ssh.pty.write', { ptyId, data: b64 })
+    }
 
     // Fit + resize only when the container actually changes size, avoiding
     // the runaway feedback of a fixed-interval fit loop.
@@ -407,16 +502,23 @@ export function SshPanel({ t }: SshPanelProps) {
       if (cwd === current) return
       setSftpPath(cwd)
       void listDir(cwd)
-    })
+    }, homeDir)
+
+    // Wait for the shell to settle, then probe the exact cwd so the SFTP view
+    // lands where the terminal actually is (prompt parsing is best-effort).
+    const initialProbe = window.setTimeout(() => { probeCwd() }, 600)
 
     return () => {
+      window.clearTimeout(initialProbe)
       resizeObserver.current?.disconnect()
       resizeObserver.current = null
       term.dispose()
       termRef.current = null
       promptTrackerRef.current = null
+      ptyWriteRef.current = null
+      cwdProbeRef.current = null
     }
-  }, [ptyOpen, terminalEl, listDir])
+  }, [ptyOpen, terminalEl, listDir, homeDir, probeCwd])
 
   // Clean up the PTY on unmount.
   useEffect(() => {
@@ -626,7 +728,7 @@ export function SshPanel({ t }: SshPanelProps) {
               onClick={() => {
                 const next = !followCwd
                 setFollowCwd(next)
-                if (next) void listDir(sftpPath)
+                if (next) probeCwd()
               }}
             >
               {t('ssh.followCwd')}

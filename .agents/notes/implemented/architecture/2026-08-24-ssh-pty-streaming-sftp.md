@@ -65,3 +65,23 @@ manager).
 
 - 3 unhandled `No response from server` errors from ssh2 SFTP
   `cleanupRequests` during test teardown. Exit code 0; CI does not fail.
+
+## Follow-up fixes (SFTP reliability + UX)
+
+- **Upload refresh race**: the post-upload `listDir` cached a stale
+  `sftpPath` closure and could lose a concurrent refresh. The upload handler
+  now reads `sftpPathRef.current` (live path) and `await`-refresh in
+  `finally`, so a partial write still refreshes; `listDir` gained a monotonic
+  `listSeqRef` token so a slow older response cannot clobber the latest one.
+- **Multi-file upload**: the upload input sets `multiple`, uploading each
+  selected file and collecting per-file failures.
+- **Breadcrumb navigation**: the SFTP path bar renders clickable segments
+  (`pathSegments`) that jump directly to any ancestor, in addition to the
+  `..` button.
+- **Name filter**: a client-side search box filters the current directory by
+  basename, without a round trip to the host.
+- **PROMPT_COMMAND cwd marker (bash)**: opening a PTY injects an idempotent
+  hook that prints `__DSH_CWD__<pwd>` before each prompt; the SFTP cwd
+  tracker prefers that marker over PS1 text parsing (reliable across `~`,
+  bracket, and no-path prompts). Removed a self-referencing
+  `\${PROMPT_COMMAND:-}` that re-expanded and flooded the terminal.

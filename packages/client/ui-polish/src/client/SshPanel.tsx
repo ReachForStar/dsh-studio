@@ -100,6 +100,23 @@ function parentOf(path: string): string {
   return trimmed.slice(0, idx)
 }
 
+/**
+ * Split an absolute path into clickable breadcrumb segments (prefix + label).
+ * `/var/log` becomes `[{ prefix: '/', label: '/' }, { prefix: '/var', label: 'var' }]`.
+ */
+function pathSegments(path: string): Array<{ prefix: string; label: string }> {
+  if (path === '/' || path === '') return [{ prefix: '/', label: '/' }]
+  const trimmed = path.replace(/\/+$/, '')
+  const parts = trimmed.split('/').filter(p => p !== '')
+  const segments: Array<{ prefix: string; label: string }> = [{ prefix: '/', label: '/' }]
+  let acc = ''
+  for (const part of parts) {
+    acc += `/${part}`
+    segments.push({ prefix: acc, label: part })
+  }
+  return segments
+}
+
 /** Resolve the remote home directory by running `echo $HOME`. Returns null on failure. */
 async function resolveHomeDir(connectionId: string, signal?: AbortSignal): Promise<string | null> {
   try {
@@ -287,6 +304,7 @@ export function SshPanel({ t }: SshPanelProps) {
   const [uploading, setUploading] = useState(false)
   const [busyAction, setBusyAction] = useState<number | null>(null)
   const [connectionsLoaded, setConnectionsLoaded] = useState(false)
+  const [filterText, setFilterText] = useState('')
 
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -300,6 +318,9 @@ export function SshPanel({ t }: SshPanelProps) {
   const ptyWriteRef = useRef<((text: string) => void) | null>(null)
   const sftpPathRef = useRef(sftpPath)
   sftpPathRef.current = sftpPath
+  // Monotonic token so a stale `listDir` response cannot clobber a newer
+  // one (e.g. the post-upload refresh racing a follow-cwd refresh).
+  const listSeqRef = useRef(0)
 
   // Load connections on mount.
   useEffect(() => {
@@ -358,12 +379,15 @@ export function SshPanel({ t }: SshPanelProps) {
   // SFTP: list directory.
   const listDir = useCallback(async (path: string) => {
     if (!selectedConn) return
+    const seq = ++listSeqRef.current
     setSftpLoading(true)
     setSftpError(null)
     try {
       const result = await rpc('ssh.sftp.list', {
         connectionId: selectedConn, path,
       })
+      // Ignore this response if a newer list call arrived while we awaited.
+      if (seq !== listSeqRef.current) return
       if (result.ok) {
         const value = result.value as { entries: SftpEntryView[] } | undefined
         setSftpEntries(value?.entries ?? [])
@@ -374,11 +398,13 @@ export function SshPanel({ t }: SshPanelProps) {
         setSftpError(msg)
       }
     } catch (error) {
+      if (seq !== listSeqRef.current) return
       const msg = error instanceof Error ? error.message : String(error)
       console.error('[SshPanel] sftp list exception:', path, msg)
       setSftpError(msg)
     } finally {
-      setSftpLoading(false)
+      // Only the newest caller clears the spinner; an older one must not.
+      if (seq === listSeqRef.current) setSftpLoading(false)
     }
   }, [selectedConn])
 
@@ -626,32 +652,44 @@ export function SshPanel({ t }: SshPanelProps) {
   const handleUploadClick = useCallback(() => {
     const input = document.createElement('input')
     input.type = 'file'
+    input.multiple = true
     input.onchange = async () => {
-      const file = input.files?.[0]
-      if (file === undefined || !selectedConn) return
+      const files = Array.from(input.files ?? [])
+      if (files.length === 0 || !selectedConn) return
       setUploading(true)
       setSftpError(null)
-      const targetPath = joinPath(sftpPath, file.name)
+      // Use the live path ref so a concurrent cwd follow does not send the
+      // file (or the post-upload refresh) to a stale directory.
+      const currentDir = sftpPathRef.current
+      const failures: string[] = []
       try {
-        const response = await fetch(
-          `/api/ssh/sftp/upload?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(targetPath)}`,
-          { method: 'POST', body: file },
-        )
-        if (!response.ok) {
-          const text = await response.text()
-          throw new Error(`上传失败 (${response.status}): ${text}`)
+        for (const file of files) {
+          const targetPath = joinPath(currentDir, file.name)
+          const response = await fetch(
+            `/api/ssh/sftp/upload?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(targetPath)}`,
+            { method: 'POST', body: file },
+          )
+          if (!response.ok) {
+            const text = await response.text()
+            failures.push(`${file.name} (${response.status}): ${text}`)
+          }
         }
-        void listDir(sftpPath)
+        if (failures.length > 0) {
+          throw new Error(failures.join('; '))
+        }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
         setSftpError(msg)
-        console.error('[SshPanel] sftp upload failed:', targetPath, msg)
+        console.error('[SshPanel] sftp upload failed:', currentDir, msg)
       } finally {
+        // Refresh in every case: a failed status may still have written part
+        // of the file, and a stale directory hides a successful upload.
+        await listDir(currentDir)
         setUploading(false)
       }
     }
     input.click()
-  }, [selectedConn, sftpPath, listDir])
+  }, [selectedConn, listDir])
 
   // SFTP: mkdir.
   const handleMkdir = useCallback(() => {
@@ -766,8 +804,28 @@ export function SshPanel({ t }: SshPanelProps) {
           <button className={css.button} disabled={!selectedConn || sftpPath === '/'} onClick={goParent} style={{ marginRight: 8 }}>
             ..
           </button>
-          <span className={css.sftpPath}>{sftpPath}</span>
+          <div className={css.crumbs}>
+            {pathSegments(sftpPath).map((seg, idx) => (
+              <span key={seg.prefix}>
+                {idx > 0 && <span className={css.crumbSep}>/</span>}
+                <button
+                  className={`${css.crumb}${idx === pathSegments(sftpPath).length - 1 ? ` ${css.crumbCurrent}` : ''}`}
+                  disabled={!selectedConn || idx === pathSegments(sftpPath).length - 1}
+                  onClick={() => { setFollowCwd(false); void listDir(seg.prefix) }}
+                >
+                  {seg.label}
+                </button>
+              </span>
+            ))}
+          </div>
           <div className={css.sftpActions}>
+            <input
+              className={css.filter}
+              type="search"
+              value={filterText}
+              placeholder={t('ssh.filter')}
+              onChange={(e) => { setFilterText(e.target.value) }}
+            />
             <button
               className={`${css.button}${followCwd ? ` ${css.active}` : ''}`}
               disabled={!selectedConn || !ptyOpen}
@@ -809,34 +867,44 @@ export function SshPanel({ t }: SshPanelProps) {
               </tr>
             </thead>
             <tbody>
-              {sftpEntries.length === 0 && (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', opacity: 0.5 }}>
-                    {selectedConn ? t('ssh.empty') : t('ssh.selectConnection')}
-                  </td>
-                </tr>
-              )}
-              {sftpEntries.map(entry => (
-                <tr key={entry.path} onClick={() => { navigateDir(entry) }} className={entry.type === 'directory' ? css.dirRow : undefined}>
-                  <td>{entry.name}</td>
-                  <td>{entry.type}</td>
-                  <td>{entry.type === 'file' ? formatSize(entry.size) : '—'}</td>
-                  <td>{new Date(entry.mtime).toLocaleString()}</td>
-                  <td className={css.rowActions} onClick={(e) => { e.stopPropagation() }}>
-                    {entry.type === 'file' && (
-                      <button className={css.actionBtn} disabled={downloading === entry.name} onClick={() => { void downloadFile(entry) }}>
-                        {downloading === entry.name ? t('ssh.downloading') : t('ssh.download')}
+              {(() => {
+                const needle = filterText.trim().toLowerCase()
+                const visible = needle === '' ? sftpEntries : sftpEntries.filter(e => e.name.toLowerCase().includes(needle))
+                if (visible.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', opacity: 0.5 }}>
+                        {selectedConn ? t('ssh.empty') : t('ssh.selectConnection')}
+                      </td>
+                    </tr>
+                  )
+                }
+                return visible.map(entry => (
+                  <tr key={entry.path} onClick={() => { navigateDir(entry) }} className={entry.type === 'directory' ? css.dirRow : undefined}>
+                    <td>{entry.name}</td>
+                    <td>{entry.type}</td>
+                    <td>{entry.type === 'file' ? formatSize(entry.size) : '—'}</td>
+                    <td>{new Date(entry.mtime).toLocaleString()}</td>
+                    <td className={css.rowActions} onClick={(e) => { e.stopPropagation() }}>
+                      {entry.type === 'file' && (
+                        <button
+                          className={css.actionBtn}
+                          disabled={downloading === entry.name}
+                          onClick={() => { void downloadFile(entry) }}
+                        >
+                          {downloading === entry.name ? t('ssh.downloading') : t('ssh.download')}
+                        </button>
+                      )}
+                      <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void renameEntry(entry) }}>
+                        {t('ssh.rename')}
                       </button>
-                    )}
-                    <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void renameEntry(entry) }}>
-                      {t('ssh.rename')}
-                    </button>
-                    <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void removeEntry(entry) }}>
-                      {t('ssh.remove')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void removeEntry(entry) }}>
+                        {t('ssh.remove')}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              })()}
             </tbody>
           </table>
         )}

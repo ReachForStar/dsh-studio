@@ -117,6 +117,55 @@
   white-space: nowrap;
 }
 
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.crumb {
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  border: none;
+  background: transparent;
+  color: var(--color-text, #eee);
+  font-family: monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.crumb:hover:not(:disabled) {
+  background: var(--color-surface-hover, #3a3a4a);
+}
+
+.crumb:disabled {
+  cursor: default;
+}
+
+.crumbCurrent {
+  font-weight: 600;
+  color: var(--color-accent, #4a6cf7);
+}
+
+.crumbSep {
+  color: var(--color-text-dim, #888);
+  font-family: monospace;
+}
+
+.filter {
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #444);
+  background: var(--color-surface, #2a2a3a);
+  color: var(--color-text, #eee);
+  font-size: 0.75rem;
+  width: 8rem;
+}
+
 .sftpActions {
   display: flex;
   gap: 0.25rem;

@@ -3730,10 +3730,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       },
 
       async sftpRemove(request, signal) {
-        const { connectionId, path } = request.payload
+        const { connectionId, path, recursive } = request.payload
         try {
           const connection = await resolveSshConnection(ctx, connectionId, signal)
-          await connection.sftp.remove(path)
+          await connection.sftp.remove(path, { recursive: recursive === true })
           signal.throwIfAborted()
           return ok(request, { removed: true })
         } catch (error: unknown) {
@@ -3749,6 +3749,32 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           await connection.sftp.rename(path, toPath)
           signal.throwIfAborted()
           return ok(request, { path: toPath })
+        } catch (error: unknown) {
+          if (signal.aborted) throw signal.reason ?? error
+          return err(request, sshRpcError(error))
+        }
+      },
+
+      async exec(request, signal) {
+        const { connectionId, command, cwd, timeoutMs } = request.payload
+        try {
+          const connection = await resolveSshConnection(ctx, connectionId, signal)
+          const spec = ctx.ssh.resolveExec({
+            command,
+            ...(cwd !== undefined ? { cwd } : {}),
+            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+            signal,
+          })
+          const result = await connection.exec(spec)
+          signal.throwIfAborted()
+          return ok(request, {
+            exitCode: result.exitCode,
+            signal: result.signal,
+            timedOut: result.timedOut,
+            aborted: result.aborted,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          })
         } catch (error: unknown) {
           if (signal.aborted) throw signal.reason ?? error
           return err(request, sshRpcError(error))

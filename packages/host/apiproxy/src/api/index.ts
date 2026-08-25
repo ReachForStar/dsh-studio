@@ -67,7 +67,8 @@ export type { ConfigurableProviderView, DiscoveredModelView, LlmApi } from './ll
 export type {
   SshApi, SshConnectionView, SftpEntryView, SshPtyOpenRequest, SshPtyOpenResult,
   SshPtyWriteRequest, SshPtyResizeRequest, SshPtyCloseRequest, SshSftpRequest,
-  SshSftpMkdirRequest, SshSftpRenameRequest,
+  SshSftpMkdirRequest, SshSftpRenameRequest, SshSftpRemoveRequest,
+  SshExecRequest, SshExecResult,
 } from './ssh.ts'
 export type { DownloadsApi } from './downloads.ts'
 export type { ApprovalResponsePayload } from './approvals.ts'

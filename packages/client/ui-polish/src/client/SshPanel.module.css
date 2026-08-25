@@ -46,6 +46,12 @@
   cursor: not-allowed;
 }
 
+.button.active {
+  background: var(--color-accent, #4a6cf7);
+  border-color: var(--color-accent, #4a6cf7);
+  color: #fff;
+}
+
 .button:hover:not(:disabled) {
   background: var(--color-surface-hover, #4a4a5a);
 }

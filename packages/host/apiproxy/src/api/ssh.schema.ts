@@ -5,7 +5,7 @@
 import { z } from 'zod'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
-import type { SftpEntryView, SshConnectionView, SshPtyOpenResult } from './ssh.ts'
+import type { SftpEntryView, SshConnectionView, SshExecResult, SshPtyOpenResult } from './ssh.ts'
 
 /** SshConnectionView row of ssh.list response. */
 export const sshConnectionViewSchema = z.object({
@@ -83,7 +83,9 @@ export const sshSftpMkdirRequestSchema = sshSftpRequestSchema.extend({
 }) satisfies z.ZodType<Wire<RequestPayload<'ssh.sftp.mkdir'>>>
 
 /** ssh.sftp.remove request payload. */
-export const sshSftpRemoveRequestSchema = sshSftpRequestSchema satisfies z.ZodType<Wire<RequestPayload<'ssh.sftp.remove'>>>
+export const sshSftpRemoveRequestSchema = sshSftpRequestSchema.extend({
+  recursive: z.boolean().optional(),
+}) satisfies z.ZodType<Wire<RequestPayload<'ssh.sftp.remove'>>>
 
 /** ssh.sftp.rename request payload. */
 export const sshSftpRenameRequestSchema = sshSftpRequestSchema.extend({
@@ -117,6 +119,24 @@ export const sshSftpRemoveValueSchema = z.object({
 export const sshSftpRenameValueSchema = z.object({
   path: z.string(),
 }) satisfies z.ZodType<Wire<ResponseValue<'ssh.sftp.rename'>>>
+
+/** ssh.exec request payload. */
+export const sshExecRequestSchema = z.object({
+  connectionId: z.string(),
+  command: z.string().min(1),
+  cwd: z.string().optional(),
+  timeoutMs: z.number().int().positive().optional(),
+}) satisfies z.ZodType<Wire<RequestPayload<'ssh.exec'>>>
+
+/** ssh.exec response value. */
+export const sshExecValueSchema = z.object({
+  exitCode: z.number().nullable(),
+  signal: z.string().nullable(),
+  timedOut: z.boolean(),
+  aborted: z.boolean(),
+  stdout: z.string(),
+  stderr: z.string(),
+}) satisfies z.ZodType<Wire<SshExecResult>>
 
 /** ssh.pty.write response value. */
 export const sshPtyWriteValueSchema = sshPtyAcceptValueSchema satisfies z.ZodType<Wire<ResponseValue<'ssh.pty.write'>>>

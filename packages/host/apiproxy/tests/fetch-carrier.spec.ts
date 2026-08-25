@@ -302,6 +302,7 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       sftpRename: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
       sftpDownload: async () => new Response('stub', { status: 404 }),
       sftpUpload: async () => new Response('stub', { status: 404 }),
+      exec: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
     },
     downloads: {
       async sessionLog() {

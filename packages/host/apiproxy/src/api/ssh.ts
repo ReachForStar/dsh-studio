@@ -99,10 +99,42 @@ export interface SshSftpMkdirRequest extends SshSftpRequest {
   recursive?: boolean
 }
 
+/** ssh.exec request payload. */
+export interface SshExecRequest {
+  /** The connection id to run the command on. */
+  connectionId: string
+  /** The remote command to run. */
+  command: string
+  /** Optional remote working directory. */
+  cwd?: string
+  /** Timeout override in milliseconds. */
+  timeoutMs?: number
+}
+
+/** ssh.exec response value. */
+export interface SshExecResult {
+  /** Exit code; null when the stream closed without a remote exit status. */
+  exitCode: number | null
+  /** Terminating signal name (e.g. 'SIGKILL'); null on normal exit. */
+  signal: string | null
+  /** True when the provider's own deadline cut the command short first. */
+  timedOut: boolean
+  /** True when the caller's AbortSignal cut the command short first. */
+  aborted: boolean
+  stdout: string
+  stderr: string
+}
+
 /** ssh.sftp.rename request payload. */
 export interface SshSftpRenameRequest extends SshSftpRequest {
   /** New remote path. */
   toPath: string
+}
+
+/** ssh.sftp.remove request payload. */
+export interface SshSftpRemoveRequest extends SshSftpRequest {
+  /** Whether to remove a directory recursively. */
+  recursive?: boolean
 }
 
 /** Host-level SSH methods: interactive PTY + streaming SFTP. */
@@ -174,10 +206,10 @@ export interface SshApi {
   ): Promise<RpcResponse<{ path: string }>>
 
   /**
-   * Remove a remote file or directory (non-recursive for directories).
+   * Remove a remote file or directory (recursive removes a directory tree).
    */
   sftpRemove(
-    request: RpcRequest<SshSftpRequest>,
+    request: RpcRequest<SshSftpRemoveRequest>,
     signal: AbortSignal,
   ): Promise<RpcResponse<{ removed: true }>>
 
@@ -188,6 +220,16 @@ export interface SshApi {
     request: RpcRequest<SshSftpRenameRequest>,
     signal: AbortSignal,
   ): Promise<RpcResponse<{ path: string }>>
+
+  /**
+   * Run one foreground command on the named connection. Use for lightweight
+   * probes such as resolving the remote home directory; interactive sessions
+   * go through {@link ptyOpen}.
+   */
+  exec(
+    request: RpcRequest<SshExecRequest>,
+    signal: AbortSignal,
+  ): Promise<RpcResponse<SshExecResult>>
 
   /**
    * Stream one remote file as an attachment response (host-only GET, no wire

@@ -34,9 +34,24 @@ manager).
   into the SFTP write stream with backpressure. Neither uses the RPC
   envelope.
 
+- **`ssh.exec` unary RPC**: a lightweight foreground command runner for
+  probes (e.g. resolving `$HOME`). `resolveExec` fills defaults/caps, the
+  apiproxy routes it through `ctx.ssh`; the result carries exitCode, stdout,
+  stderr, and timeout/abort flags. SFTP initializes its directory from
+  `echo $HOME` so the browser lands in the remote home instead of `/`.
+
+- **SFTP remove is recursive for directories**: the `ssh.sftp.remove` payload
+  accepts an optional `recursive` flag; the host drops it through to
+  `sftp.remove`. The browser passes `recursive: true` for directory entries
+  so a non-empty tree can be deleted.
+
 - **Browser UI in `ui-polish`**: the SSH tab (order 30) uses xterm.js for the
   PTY terminal and a fetch-based SFTP file manager. The connection selector
-  reads `ctx.remote.ssh.list()` via the `ssh.list` RPC.
+  reads `ctx.remote.ssh.list()` via the `ssh.list` RPC. The SFTP manager is
+  independent of the terminal: picking a connection lists its home
+  immediately. When the terminal is open, a prompt tracker optionally follows
+  the shell cwd (a "Follow terminal" switch); manual SFTP navigation pauses
+  that follow.
 
 ## Testing
 

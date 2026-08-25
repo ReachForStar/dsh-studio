@@ -1,15 +1,19 @@
 /**
  * SSH/SFTP panel: a conversation.view tab providing an interactive PTY
- * terminal (xterm.js) and a streaming SFTP file manager. The connection
- * selector lists stored SSH connections; the PTY and SFTP operate on the
- * selected connection.
+ * terminal (xterm.js) and a streaming SFTP file manager.
  *
- * PTY output arrives on the host SSE frame stream (`/api/events.host`, a
- * Server-Sent Events channel — NOT a WebSocket). The SFTP file manager
- * follows the terminal's working directory: a prompt tracker parses each
- * PTY output chunk for the shell prompt and extracts the cwd, so `cd` in
- * the terminal automatically switches the SFTP view.
+ * The connection selector lists stored SSH connections. The PTY and SFTP
+ * operate on the selected connection. PTY output arrives on the host
+ * WebSocket frame stream (`/api/events.host`); SFTP file transfer uses the
+ * host-only download channel (GET) and a carrier POST upload route.
+ *
+ * The SFTP file manager is an independent, always-usable browser: selecting a
+ * connection loads its directory immediately. When the terminal is open, a
+ * prompt tracker optionally follows the shell cwd so `cd` in the terminal
+ * switches the SFTP view — but manual SFTP navigation pauses that follow to
+ * avoid yanking the view back.
  */
+/* eslint-disable typescript/no-confusing-void-expression */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -38,7 +42,7 @@ interface SftpEntryView {
   mtime: number
 }
 
-/** One PTY frame projected off the SSE `data:` payload. */
+/** One PTY frame projected off the WebSocket `server-request` payload. */
 interface HostFrameLike {
   type: string
   ptyId?: string
@@ -56,12 +60,14 @@ interface HostFrameLike {
 async function rpc(
   method: string,
   payload: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<{ ok: boolean; value?: unknown; error?: { message: string } }> {
   const rpcId = crypto.randomUUID()
   const res = await fetch(`/api/${method}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ type: 'client-request', rpcId, method, payload }),
+    ...(signal !== undefined ? { signal } : {}),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -79,6 +85,36 @@ async function rpc(
   if (result.ok) return { ok: true, value: result.value }
   console.error(`[SshPanel] RPC ${method} error:`, result.error.message)
   return { ok: false, error: result.error }
+}
+
+/** Join a directory and a child name into an absolute remote path. */
+function joinPath(dir: string, name: string): string {
+  return dir === '/' ? `/${name}` : `${dir}/${name}`
+}
+
+/** Parent of an absolute path ('/' stays '/'). */
+function parentOf(path: string): string {
+  if (path === '/' || path === '') return '/'
+  const trimmed = path.replace(/\/+$/, '')
+  const idx = trimmed.lastIndexOf('/')
+  if (idx <= 0) return '/'
+  return trimmed.slice(0, idx)
+}
+
+/** Resolve the remote home directory by running `echo $HOME`. Returns null on failure. */
+async function resolveHomeDir(connectionId: string, signal?: AbortSignal): Promise<string | null> {
+  try {
+    const result = await rpc('ssh.exec', { connectionId, command: 'echo $HOME' }, signal)
+    if (!result.ok) return null
+    const value = result.value as { exitCode?: number | null; stdout?: string } | undefined
+    if (value === undefined || value.exitCode !== 0) return null
+    const home = (value.stdout ?? '').trim()
+    return home.startsWith('/') ? home : null
+  } catch (error) {
+    if (signal?.aborted) return null
+    console.error('[SshPanel] resolveHomeDir failed:', error)
+    return null
+  }
 }
 
 /**
@@ -106,7 +142,7 @@ function subscribeHostFrames(
   const handleMessage = (event: MessageEvent): void => {
     try {
       if (typeof event.data !== 'string') return
-      const full = JSON.parse(event.data) as { payload?: HostFrameLike; type?: string }
+      const full = JSON.parse(event.data) as { payload?: HostFrameLike }
       const frame = full.payload
       if (frame === undefined) return
       if (frame.type === 'ssh/pty/output' && frame.ptyId && frame.data) {
@@ -127,10 +163,7 @@ function subscribeHostFrames(
   }
 }
 
-/**
- * Strip ANSI escape sequences (colors, cursor moves, etc.) from a chunk of
- * terminal output so that prompt parsing operates on clean text.
- */
+/** Strip ANSI escape sequences (colors, cursor moves, etc.) from terminal output. */
 function stripAnsi(text: string): string {
   let result = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
   result = result.replace(/\x1b\][^\x07]*(\x07|\x1b\\)/g, '')
@@ -141,10 +174,9 @@ function stripAnsi(text: string): string {
 /**
  * Extract the working directory from the last shell prompt in a chunk of
  * terminal output. Handles common PS1 formats:
- *   - user@host:cwd$   (bash with \u@\h:\w\$)
- *   - user@host:cwd#   (root)
- *   - cwd$             (minimal prompt)
- *   - ~/path$          (tilde-relative)
+ *   - user@host:cwd$ / user@host:cwd#   (bash \u@\h:\w\$)
+ *   - cwd$                             (minimal prompt)
+ *   - ~/path$                          (tilde-relative)
  * Returns the absolute path or null when no prompt is found.
  */
 function extractCwdFromPrompt(raw: string): string | null {
@@ -165,11 +197,7 @@ function extractCwdFromPrompt(raw: string): string | null {
   return null
 }
 
-/**
- * Create a streaming prompt tracker that accumulates PTY output and extracts
- * the current working directory from prompt lines. Calls `onCwd` whenever a
- * new cwd is detected.
- */
+/** Streaming prompt tracker: accumulates PTY output and reports cwd changes. */
 function createPromptTracker(onCwd: (cwd: string) => void): { feed: (chunk: string) => void; reset: () => void } {
   let buffer = ''
   let lastCwd: string | null = null
@@ -204,7 +232,10 @@ export function SshPanel({ t }: SshPanelProps) {
   const [ptyError, setPtyError] = useState<string | null>(null)
   const [ptyOpen, setPtyOpen] = useState(false)
   const [ptyStarting, setPtyStarting] = useState(false)
+  const [followCwd, setFollowCwd] = useState(true)
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [busyAction, setBusyAction] = useState<number | null>(null)
   const [connectionsLoaded, setConnectionsLoaded] = useState(false)
 
   const termRef = useRef<Terminal | null>(null)
@@ -212,6 +243,8 @@ export function SshPanel({ t }: SshPanelProps) {
   const ptyIdRef = useRef<string | null>(null)
   const resizeObserver = useRef<ResizeObserver | null>(null)
   const hostUnsubRef = useRef<(() => void) | null>(null)
+  const followCwdRef = useRef(followCwd)
+  followCwdRef.current = followCwd
   const promptTrackerRef = useRef<{ feed: (chunk: string) => void; reset: () => void } | null>(null)
   const sftpPathRef = useRef(sftpPath)
   sftpPathRef.current = sftpPath
@@ -230,7 +263,7 @@ export function SshPanel({ t }: SshPanelProps) {
     })()
   }, [])
 
-  // Subscribe to host SSE frames for PTY output/exit.
+  // Subscribe to host WebSocket frames for PTY output/exit.
   useEffect(() => {
     const unsub = subscribeHostFrames(
       (frame) => {
@@ -241,7 +274,7 @@ export function SshPanel({ t }: SshPanelProps) {
         const bytesArr = new Uint8Array(bytes.length)
         for (let i = 0; i < bytes.length; i++) bytesArr[i] = bytes.charCodeAt(i)
         term.write(bytesArr)
-        // Feed the prompt tracker so the SFTP path follows terminal cd.
+        // Feed the prompt tracker so the SFTP path can follow terminal cd.
         promptTrackerRef.current?.feed(new TextDecoder().decode(bytesArr))
       },
       (ptyId) => {
@@ -286,6 +319,24 @@ export function SshPanel({ t }: SshPanelProps) {
     }
   }, [selectedConn])
 
+  // Load the selected connection's directory as soon as it is picked, so the
+  // SFTP browser is usable without opening the terminal. Prefer the remote
+  // home directory; fall back to '/' when the probe fails.
+  useEffect(() => {
+    if (selectedConn === null) return
+    const ac = new AbortController()
+    setSftpEntries([])
+    setSftpError(null)
+    void (async () => {
+      const home = await resolveHomeDir(selectedConn, ac.signal)
+      if (ac.signal.aborted) return
+      const initial = home ?? '/'
+      setSftpPath(initial)
+      void listDir(initial)
+    })()
+    return () => { ac.abort() }
+  }, [selectedConn, listDir])
+
   // Open a PTY session on the selected connection. The xterm view is
   // mounted by a separate effect once `terminalEl` + `ptyOpen` are ready.
   const openPty = useCallback(async () => {
@@ -302,8 +353,6 @@ export function SshPanel({ t }: SshPanelProps) {
       }
       const ptyId = (result.value as { ptyId: string } | undefined)?.ptyId ?? ''
       ptyIdRef.current = ptyId
-      // Reset the prompt tracker: the next prompt (after this open) seeds
-      // the SFTP manager at the initial working directory.
       promptTrackerRef.current?.reset()
       setPtyOpen(true)
     } catch (error) {
@@ -351,8 +400,10 @@ export function SshPanel({ t }: SshPanelProps) {
 
     term.focus()
 
-    // Seed a prompt tracker that follows the terminal working directory.
+    // Seed a prompt tracker that follows the terminal working directory,
+    // but only when the user keeps the follow switch on.
     promptTrackerRef.current = createPromptTracker((cwd) => {
+      if (!followCwdRef.current) return
       const current = sftpPathRef.current
       if (cwd === current) return
       setSftpPath(cwd)
@@ -382,15 +433,17 @@ export function SshPanel({ t }: SshPanelProps) {
     }
   }, [])
 
-  // SFTP: navigate into a directory.
+  // SFTP: navigate into a directory (manual navigation pauses cwd follow).
   const navigateDir = useCallback((entry: SftpEntryView) => {
-    if (entry.type === 'directory') void listDir(entry.path)
+    if (entry.type !== 'directory') return
+    setFollowCwd(false)
+    void listDir(entry.path)
   }, [listDir])
 
-  // SFTP: go to parent directory.
+  // SFTP: go to parent directory (manual navigation pauses cwd follow).
   const goParent = useCallback(() => {
-    const parent = sftpPath === '/' ? '/' : sftpPath.replace(/\/[^/]+$/, '') || '/'
-    void listDir(parent)
+    setFollowCwd(false)
+    void listDir(parentOf(sftpPath))
   }, [sftpPath, listDir])
 
   // SFTP: download a file via the host-only GET channel.
@@ -400,38 +453,53 @@ export function SshPanel({ t }: SshPanelProps) {
     try {
       const url = `/api/ssh/sftp/download?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(entry.path)}`
       const response = await fetch(url)
-      if (!response.ok) throw new Error(`download failed: ${response.status}`)
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(`下载失败 (${response.status}): ${text}`)
+      }
       const blob = await response.blob()
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
       a.download = entry.name
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(a.href)
     } catch (error) {
-      setSftpError(error instanceof Error ? error.message : String(error))
+      const msg = error instanceof Error ? error.message : String(error)
+      setSftpError(msg)
+      console.error('[SshPanel] sftp download failed:', entry.path, msg)
     } finally {
       setDownloading(null)
     }
   }, [selectedConn])
 
-  // SFTP: upload via file input.
+  // SFTP: upload via file input (carrier POST, raw file body).
   const handleUploadClick = useCallback(() => {
     const input = document.createElement('input')
     input.type = 'file'
     input.onchange = async () => {
       const file = input.files?.[0]
-      if (file && selectedConn) {
-        const targetPath = sftpPath === '/' ? `/${file.name}` : `${sftpPath}/${file.name}`
-        try {
-          const response = await fetch(
-            `/api/ssh/sftp/upload?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(targetPath)}`,
-            { method: 'POST', body: file },
-          )
-          if (!response.ok) throw new Error(`upload failed: ${response.status}`)
-          void listDir(sftpPath)
-        } catch (error) {
-          setSftpError(error instanceof Error ? error.message : String(error))
+      if (file === undefined || !selectedConn) return
+      setUploading(true)
+      setSftpError(null)
+      const targetPath = joinPath(sftpPath, file.name)
+      try {
+        const response = await fetch(
+          `/api/ssh/sftp/upload?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(targetPath)}`,
+          { method: 'POST', body: file },
+        )
+        if (!response.ok) {
+          const text = await response.text()
+          throw new Error(`上传失败 (${response.status}): ${text}`)
         }
+        void listDir(sftpPath)
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        setSftpError(msg)
+        console.error('[SshPanel] sftp upload failed:', targetPath, msg)
+      } finally {
+        setUploading(false)
       }
     }
     input.click()
@@ -440,26 +508,36 @@ export function SshPanel({ t }: SshPanelProps) {
   // SFTP: mkdir.
   const handleMkdir = useCallback(() => {
     const name = window.prompt(t('ssh.mkdirPrompt'))
-    if (!name) return
-    const path = sftpPath === '/' ? `/${name}` : `${sftpPath}/${name}`
+    if (name === null || name.trim() === '') return
+    const path = joinPath(sftpPath, name.trim())
     void (async () => {
+      setSftpError(null)
       try {
         const result = await rpc('ssh.sftp.mkdir', { connectionId: selectedConn, path })
-        if (result.ok) { void listDir(sftpPath) } else { setSftpError(result.error?.message ?? 'failed to create directory') }
+        if (result.ok) { void listDir(sftpPath) }
+        else { setSftpError(result.error?.message ?? '创建目录失败') }
       } catch (error) {
         setSftpError(error instanceof Error ? error.message : String(error))
       }
     })()
   }, [selectedConn, sftpPath, listDir, t])
 
-  // SFTP: remove.
+  // SFTP: remove (recursive for directories).
   const removeEntry = useCallback(async (entry: SftpEntryView) => {
     if (!selectedConn) return
+    setBusyAction(nextActionId())
+    setSftpError(null)
+    const recursive = entry.type === 'directory'
     try {
-      const result = await rpc('ssh.sftp.remove', { connectionId: selectedConn, path: entry.path })
-      if (result.ok) { void listDir(sftpPath) } else { setSftpError(result.error?.message ?? 'failed to remove') }
+      const result = await rpc('ssh.sftp.remove', {
+        connectionId: selectedConn, path: entry.path, recursive,
+      })
+      if (result.ok) { void listDir(sftpPath) }
+      else { setSftpError(result.error?.message ?? `删除失败: ${entry.name}`) }
     } catch (error) {
       setSftpError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusyAction(null)
     }
   }, [selectedConn, sftpPath, listDir])
 
@@ -467,11 +545,15 @@ export function SshPanel({ t }: SshPanelProps) {
   const renameEntry = useCallback(async (entry: SftpEntryView) => {
     if (!selectedConn) return
     const newName = window.prompt(t('ssh.renamePrompt'), entry.name)
-    if (newName === null || newName === entry.name) return
-    const toPath = sftpPath === '/' ? `/${newName}` : `${sftpPath}/${newName}`
+    if (newName === null || newName === entry.name || newName.trim() === '') return
+    const toPath = joinPath(parentOf(entry.path), newName.trim())
+    setSftpError(null)
     try {
-      const result = await rpc('ssh.sftp.rename', { connectionId: selectedConn, path: entry.path, toPath })
-      if (result.ok) { void listDir(sftpPath) } else { setSftpError(result.error?.message ?? 'failed to rename') }
+      const result = await rpc('ssh.sftp.rename', {
+        connectionId: selectedConn, path: entry.path, toPath,
+      })
+      if (result.ok) { void listDir(sftpPath) }
+      else { setSftpError(result.error?.message ?? `重命名失败: ${entry.name}`) }
     } catch (error) {
       setSftpError(error instanceof Error ? error.message : String(error))
     }
@@ -538,14 +620,30 @@ export function SshPanel({ t }: SshPanelProps) {
           </button>
           <span className={css.sftpPath}>{sftpPath}</span>
           <div className={css.sftpActions}>
-            <button className={css.button} disabled={!selectedConn || sftpLoading} onClick={() => void listDir(sftpPath)}>
+            <button
+              className={`${css.button}${followCwd ? ` ${css.active}` : ''}`}
+              disabled={!selectedConn || !ptyOpen}
+              title={t('ssh.followCwd')}
+              onClick={() => {
+                const next = !followCwd
+                setFollowCwd(next)
+                if (next) void listDir(sftpPath)
+              }}
+            >
+              {t('ssh.followCwd')}
+            </button>
+            <button
+              className={css.button}
+              disabled={!selectedConn || sftpLoading}
+              onClick={() => { setFollowCwd(false); void listDir(sftpPath) }}
+            >
               {t('ssh.refresh')}
             </button>
             <button className={css.button} disabled={!selectedConn} onClick={handleMkdir}>
               {t('ssh.mkdir')}
             </button>
-            <button className={css.button} disabled={!selectedConn} onClick={handleUploadClick}>
-              {t('ssh.upload')}
+            <button className={css.button} disabled={!selectedConn || uploading} onClick={handleUploadClick}>
+              {uploading ? t('ssh.uploading') : t('ssh.upload')}
             </button>
           </div>
         </div>
@@ -578,12 +676,16 @@ export function SshPanel({ t }: SshPanelProps) {
                   <td>{new Date(entry.mtime).toLocaleString()}</td>
                   <td className={css.rowActions} onClick={(e) => { e.stopPropagation() }}>
                     {entry.type === 'file' && (
-                      <button className={css.actionBtn} disabled={downloading === entry.name} onClick={() => void downloadFile(entry)}>
+                      <button className={css.actionBtn} disabled={downloading === entry.name} onClick={() => { void downloadFile(entry) }}>
                         {downloading === entry.name ? t('ssh.downloading') : t('ssh.download')}
                       </button>
                     )}
-                    <button className={css.actionBtn} onClick={() => void renameEntry(entry)}>{t('ssh.rename')}</button>
-                    <button className={css.actionBtn} onClick={() => void removeEntry(entry)}>{t('ssh.remove')}</button>
+                    <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void renameEntry(entry) }}>
+                      {t('ssh.rename')}
+                    </button>
+                    <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void removeEntry(entry) }}>
+                      {t('ssh.remove')}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -593,6 +695,13 @@ export function SshPanel({ t }: SshPanelProps) {
       </div>
     </div>
   )
+}
+
+// Monotonic counter for per-row busy state labels (no React state identity needs).
+let actionCounter = 0
+function nextActionId(): number {
+  actionCounter += 1
+  return actionCounter
 }
 
 /** Format a byte count for display. */

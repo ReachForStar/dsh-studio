@@ -289,6 +289,7 @@ export class FakeApiClient implements IApiClient {
     sftpMkdir: () => Promise.resolve(ok({ path: '/' })),
     sftpRemove: () => Promise.resolve(ok({ removed: true as const })),
     sftpRename: () => Promise.resolve(ok({ path: '/' })),
+    exec: () => Promise.resolve(ok({ exitCode: 0, signal: null, timedOut: false, aborted: false, stdout: '', stderr: '' })),
   }
 
   /** When true, streams never fire onOpen (misbehaving-carrier material for the handshake timeout guard). */

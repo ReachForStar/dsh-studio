@@ -28,6 +28,7 @@ function scriptedApi(overrides: {
   settings?: Partial<ApiProxy['settings']>
   credentials?: Partial<ApiProxy['credentials']>
   llm?: Partial<ApiProxy['llm']>
+  ssh?: Partial<ApiProxy['ssh']>
   respond?: ApiProxy['respond']
 } = {}): ApiProxy {
   async function *empty<F>(): AsyncGenerator<RpcRequest<F>> { /* no frames */ }
@@ -142,6 +143,8 @@ function scriptedApi(overrides: {
       sftpRename: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
       sftpDownload: async () => new Response('stub', { status: 404 }),
       sftpUpload: async () => new Response('stub', { status: 404 }),
+      exec: async () => ({ rpcId: RpcId('test'), result: { ok: false as const, error: { code: 'internal', message: 'stub', details: {} } } }),
+      ...overrides.ssh,
     },
     respond: overrides.respond ?? (() => Promise.resolve({ accepted: false as const, reason: 'not-pending' as const })),
     downloads: { sessionLog: async () => new Response('stub', { status: 404 }) },
@@ -451,6 +454,32 @@ describe('workspace domain round trip', () => {
 
   it('rejects a pathless create payload at the handler schema', async () => {
     const response = await client(scriptedApi()).workspace.create({} as never)
+    expect(response.result.ok).toBe(false)
+    if (!response.result.ok) expect(response.result.error.code).toBe('bad-request')
+  })
+})
+
+describe('ssh domain round trip', () => {
+  it('routes ssh.exec through its handler row and value schema', async () => {
+    let seen: RpcRequest<{ connectionId: string; command: string }> | undefined
+    const api = scriptedApi({
+      ssh: {
+        exec: (r) => {
+          seen = r
+          return ok(r, { exitCode: 0, signal: null, timedOut: false, aborted: false, stdout: '/root\n', stderr: '' })
+        },
+      },
+    })
+    const response = await client(api).ssh.exec({ connectionId: 'c1', command: 'echo $HOME' })
+    expect(seen?.payload).toEqual({ connectionId: 'c1', command: 'echo $HOME' })
+    expect(response.result).toEqual({
+      ok: true,
+      value: { exitCode: 0, signal: null, timedOut: false, aborted: false, stdout: '/root\n', stderr: '' },
+    })
+  })
+
+  it('rejects a missing command payload at the handler schema', async () => {
+    const response = await client(scriptedApi()).ssh.exec({ connectionId: 'c1' } as never)
     expect(response.result.ok).toBe(false)
     if (!response.result.ok) expect(response.result.error.code).toBe('bad-request')
   })

@@ -85,6 +85,7 @@ export interface RpcMethodMap {
   'ssh.sftp.mkdir': SshApi['sftpMkdir']
   'ssh.sftp.remove': SshApi['sftpRemove']
   'ssh.sftp.rename': SshApi['sftpRename']
+  'ssh.exec': SshApi['exec']
 }
 
 /** Business request payload of method K (reaches through the RpcRequest narrow form to payload). */

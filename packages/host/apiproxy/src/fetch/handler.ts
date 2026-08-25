@@ -68,7 +68,7 @@ import {
   sshListRequestSchema, sshPtyOpenRequestSchema, sshPtyWriteRequestSchema,
   sshPtyResizeRequestSchema, sshPtyCloseRequestSchema,
   sshSftpListRequestSchema, sshSftpStatRequestSchema, sshSftpMkdirRequestSchema,
-  sshSftpRemoveRequestSchema, sshSftpRenameRequestSchema,
+  sshSftpRemoveRequestSchema, sshSftpRenameRequestSchema, sshExecRequestSchema,
 } from '../api/ssh.schema.ts'
 import {
   subagentHistoryRequestSchema,
@@ -156,6 +156,7 @@ const UNARY_ROUTES: UnaryRoutes = {
   'ssh.sftp.mkdir': { schema: sshSftpMkdirRequestSchema, invoke: (api, r, signal) => api.ssh.sftpMkdir(r, signal) },
   'ssh.sftp.remove': { schema: sshSftpRemoveRequestSchema, invoke: (api, r, signal) => api.ssh.sftpRemove(r, signal) },
   'ssh.sftp.rename': { schema: sshSftpRenameRequestSchema, invoke: (api, r, signal) => api.ssh.sftpRename(r, signal) },
+  'ssh.exec': { schema: sshExecRequestSchema, invoke: (api, r, signal) => api.ssh.exec(r, signal) },
 }
 
 /** Route lookup that narrows an arbitrary path segment to a map key (single cast point for the string→key refinement). */

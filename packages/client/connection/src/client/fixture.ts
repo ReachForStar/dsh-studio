@@ -3069,6 +3069,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       sftpRename: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
       sftpDownload: () => Promise.resolve(new Response('fixture does not serve SSH', { status: 404 })),
       sftpUpload: () => Promise.resolve(new Response('fixture does not serve SSH', { status: 404 })),
+      exec: request => err(request, { code: 'internal', message: 'fixture does not serve SSH', details: {} }),
     },
     respond(message: ClientResponse): Promise<RpcReceipt> {
       // Same routing discipline as the host: rpcId first, then the payload's
@@ -3251,6 +3252,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'ssh.sftp.mkdir': return this.api.ssh.sftpMkdir(request, signal)
       case 'ssh.sftp.remove': return this.api.ssh.sftpRemove(request, signal)
       case 'ssh.sftp.rename': return this.api.ssh.sftpRename(request, signal)
+      case 'ssh.exec': return this.api.ssh.exec(request, signal)
     }
   }
 

@@ -65,7 +65,7 @@ import {
   sshListValueSchema, sshPtyOpenValueSchema, sshPtyWriteValueSchema,
   sshPtyResizeValueSchema, sshPtyCloseValueSchema,
   sshSftpListValueSchema, sshSftpStatValueSchema, sshSftpMkdirValueSchema,
-  sshSftpRemoveValueSchema, sshSftpRenameValueSchema,
+  sshSftpRemoveValueSchema, sshSftpRenameValueSchema, sshExecValueSchema,
 } from '../api/ssh.schema.ts'
 import {
   subagentHistoryValueSchema,
@@ -178,6 +178,7 @@ export interface IApiClient {
     sftpMkdir(payload: RequestPayload<'ssh.sftp.mkdir'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.sftp.mkdir'>>>
     sftpRemove(payload: RequestPayload<'ssh.sftp.remove'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.sftp.remove'>>>
     sftpRename(payload: RequestPayload<'ssh.sftp.rename'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.sftp.rename'>>>
+    exec(payload: RequestPayload<'ssh.exec'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'ssh.exec'>>>
   }
   /** client-response passthrough (rpcId is a backfill of the server-request's id — never minted here). */
   respond(message: ClientResponse, signal?: AbortSignal): Promise<RpcReceipt>
@@ -250,6 +251,7 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'ssh.sftp.mkdir': sshSftpMkdirValueSchema,
   'ssh.sftp.remove': sshSftpRemoveValueSchema,
   'ssh.sftp.rename': sshSftpRenameValueSchema,
+  'ssh.exec': sshExecValueSchema,
 }
 
 /** Default timeout for bounded unary calls (rpc-compare 2026-07-19: a hung host must not leave callers pending forever). */
@@ -539,6 +541,7 @@ export abstract class AbstractApiClient implements IApiClient {
     sftpMkdir: (payload, signal) => this.callUnary('ssh.sftp.mkdir', payload, signal),
     sftpRemove: (payload, signal) => this.callUnary('ssh.sftp.remove', payload, signal),
     sftpRename: (payload, signal) => this.callUnary('ssh.sftp.rename', payload, signal),
+    exec: (payload, signal) => this.callUnary('ssh.exec', payload, signal),
   }
 
   readonly events: IApiClient['events'] = {

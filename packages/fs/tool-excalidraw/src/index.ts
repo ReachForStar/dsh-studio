@@ -231,6 +231,23 @@ function randomInt(): number {
 }
 
 /**
+ * Deterministic pseudo-seed for an element id. The same id always yields the
+ * same seed, so normalizing an on-disk scene is idempotent: re-reading never
+ * changes an element's seed. The scene fingerprint compares id/type/text
+ * only, so stability never perturbs the frontend's poll reload.
+ * @param id - the element id, if any.
+ * @returns a non-negative seed usable by roughjs.
+ */
+function stableSeedFor(id: unknown): number {
+  const text = typeof id === 'string' ? id : String(id)
+  let hash = 0
+  for (let i = 0; i < text.length; i += 1) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash) % 0x7fffffff
+}
+
+/**
  * A fractional index for scene ordering (the same scheme Excalidraw uses via
  * fractional-indexing: strings compare alphabetically, `a0` < `a1` < `b0`…).
  * Elements without an `index` can be dropped as invalid by Excalidraw's scene
@@ -244,6 +261,55 @@ function fractionalIndex(): string {
   const base = Math.floor(Date.now() / 1000).toString(36)
   const tail = randomBytes(3).readUIntBE(0, 3).toString(36)
   return `a${base}${tail}`
+}
+
+/**
+ * Repair an Excalidraw scene payload before it is persisted or rendered.
+ *
+ * Malformed elements make the canvas crash on click, which the slot error
+ * boundary turns into an unmounted panel: a missing `seed` (roughjs throws
+ * during path generation), `version: null` (breaks optimistic-concurrency and
+ * binding), a `pending`/file-less `image` (no data source to render), or
+ * missing shape-geometry defaults. Repair is idempotent — well-formed elements
+ * pass through untouched. Marks dropped image elements in place by removing
+ * them from the returned element array.
+ * @param scene - the parsed scene payload (an object with an `elements` array).
+ * @returns the repaired scene payload.
+ */
+export function sanitizeScene(scene: unknown): unknown {
+  if (typeof scene !== 'object' || scene === null || !('elements' in scene)) {
+    return scene
+  }
+  const record = scene as Record<string, unknown>
+  const elements = record['elements']
+  if (!Array.isArray(elements)) {
+    return scene
+  }
+  record['elements'] = elements.map((raw): unknown => {
+    if (typeof raw !== 'object' || raw === null) {
+      return raw
+    }
+    const element = raw as Record<string, unknown>
+    if (element['type'] === 'image' &&
+        (element['status'] === 'pending' ||
+          typeof element['fileId'] !== 'string' ||
+          element['fileId'].length === 0)) {
+      // Cannot render a file-less image; clicking it throws.
+      return null
+    }
+    if (element['seed'] === undefined) element['seed'] = stableSeedFor(element['id'])
+    if (element['version'] === null || element['version'] === undefined) element['version'] = 1
+    if (element['angle'] === undefined) element['angle'] = 0
+    if (element['isDeleted'] === undefined) element['isDeleted'] = false
+    if (element['groupIds'] === undefined) element['groupIds'] = []
+    if (element['frameId'] === undefined) element['frameId'] = null
+    if (element['boundElements'] === undefined) element['boundElements'] = null
+    if (element['link'] === undefined) element['link'] = null
+    if (element['locked'] === undefined) element['locked'] = false
+    if (element['roundness'] === undefined) element['roundness'] = null
+    return element
+  }).filter(element => element !== null)
+  return scene
 }
 
 /**
@@ -600,9 +666,14 @@ export function apply(ctx: Context): void {
         if (!Array.isArray(record['elements']) || typeof record['appState'] !== 'object' || record['appState'] === null) {
           throw new Error('excalidraw_write: `scene` must contain an `elements` array and an `appState` object')
         }
+        // Repair malformed elements (missing seed, version:null, file-less
+        // image) before persistence so the canvas never receives a scene it
+        // crashes on — same normalization the web `/scene` routes apply.
+        const repaired = sanitizeScene(record)
         await mkdir(dirname(location.path), { recursive: true })
-        await writeFile(location.path, JSON.stringify(parsed), 'utf8')
-        return { ok: true, cwd: location.workspace, elementCount: (record['elements'] as unknown[]).length }
+        await writeFile(location.path, JSON.stringify(repaired), 'utf8')
+        const repairedRecord = repaired as Record<string, unknown>
+        return { ok: true, cwd: location.workspace, elementCount: (repairedRecord['elements'] as unknown[]).length }
       },
       presentCall: args => ({
         card: 'generic',

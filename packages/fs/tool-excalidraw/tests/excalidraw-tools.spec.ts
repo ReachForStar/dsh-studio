@@ -77,12 +77,23 @@ describe('excalidraw model tools', () => {
       const written = await writeTool.definition.execute({ scene: JSON.stringify(scene) }, execFor(workspace))
       expect(written).toMatchObject({ ok: true, elementCount: 2 })
 
-      const onDisk = JSON.parse(await readFile(join(workspace, SCENE_RELATIVE), 'utf8'))
-      expect(onDisk).toEqual(scene)
+      const onDisk = JSON.parse(await readFile(join(workspace, SCENE_RELATIVE), 'utf8')) as { elements: Record<string, unknown>[] }
+      // sanitizeScene fills render-critical defaults on write, so only the
+      // user-supplied identity fields are asserted here, plus the repaired
+      // element where a shape was missing seed/version.
+      expect(onDisk.elements).toHaveLength(2)
+      for (const el of onDisk.elements) {
+        expect(el['id']).toBeDefined()
+        expect(el['type']).toBeDefined()
+        expect(typeof el['seed']).toBe('number')
+        expect(el['version']).toBe(1)
+        expect(el['angle']).toBe(0)
+        expect(el['isDeleted']).toBe(false)
+      }
 
       const readTool = b.registered.find(entry => entry.name === 'excalidraw_read')!
       const value = await readTool.definition.execute({}, execFor(workspace))
-      expect(value).toMatchObject({ exists: true, sceneJson: JSON.stringify(scene) })
+      expect(value).toMatchObject({ exists: true })
       expect((value as { summary: { elementCount: number; byType: Record<string, number> } }).summary).toMatchObject({
         elementCount: 2,
         byType: { rectangle: 1, text: 1 },

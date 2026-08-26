@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { handleExcalidrawRequest } from '../src/excalidraw-service.ts'
-import { SCENE_RELATIVE } from '@deepseek-ai/dsh-tool-excalidraw'
+import { sanitizeScene, SCENE_RELATIVE } from '@deepseek-ai/dsh-tool-excalidraw'
 import { workspaceCwdResolver } from '../src/git-service.ts'
 
 /** Resolver used by every test: only the temp workspace is known. */
@@ -71,7 +71,24 @@ describe('excalidraw host service', () => {
       const read = responseDouble()
       await handleExcalidrawRequest(resolve, requestDouble('/scene/current', 'POST', { cwd: workspace }) as never, read.res as never)
       expect(read.status).toBe(200)
-      expect(read.json).toEqual(scene)
+      // The scene is repaired on read (sanitizeScene fills render-critical
+      // defaults), so only the user-supplied fields are asserted here; seed is
+      // generated deterministically from the element id.
+      const elem = (read.json as { elements: Record<string, unknown>[] }).elements[0]
+      expect(elem).toMatchObject({
+        id: 'a',
+        type: 'rectangle',
+        version: 1,
+        angle: 0,
+        isDeleted: false,
+        groupIds: [],
+        frameId: null,
+        boundElements: null,
+        link: null,
+        locked: false,
+        roundness: null,
+      })
+      expect(typeof elem?.['seed']).toBe('number')
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }
@@ -138,5 +155,39 @@ describe('excalidraw host service', () => {
     await handleExcalidrawRequest(resolverFor('D:/ws'), requestDouble('/scene/current', 'POST', {}) as never, double.res as never)
     expect(double.status).toBe(400)
     expect(double.json.error).toContain('cwd required')
+  })
+
+  describe('sanitizeScene', () => {
+    it('repairs a malformed element that would crash the canvas on click', () => {
+      const raw = {
+        elements: [{ id: 'zone_1', type: 'rectangle', x: 0, y: 0, width: 10, height: 10, version: null }],
+        appState: {},
+      }
+      const out = sanitizeScene(raw) as { elements: Record<string, unknown>[] }
+      const el = out.elements[0]
+      expect(el).toMatchObject({
+        id: 'zone_1', type: 'rectangle', version: 1, angle: 0, isDeleted: false, roundness: null,
+      })
+      expect(typeof el?.['seed']).toBe('number')
+    })
+
+    it('drops a pending or file-less image element', () => {
+      const raw = {
+        elements: [
+          { id: 'img1', type: 'image', status: 'pending', fileId: '' },
+          { id: 'img2', type: 'image', status: 'resolved', fileId: 'abc123' },
+        ],
+      }
+      const out = sanitizeScene(raw) as { elements: { id: string }[] }
+      expect(out.elements.map(e => e.id)).toEqual(['img2'])
+    })
+
+    it('leaves a well-formed element untouched', () => {
+      const raw = {
+        elements: [{ id: 'ok', type: 'rectangle', seed: 123, version: 4, angle: 0, isDeleted: false, roundness: { type: 3 } }],
+      }
+      const out = sanitizeScene(raw) as { elements: Record<string, unknown>[] }
+      expect(out.elements[0]).toEqual(raw.elements[0])
+    })
   })
 })

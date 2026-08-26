@@ -18,7 +18,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { SCENE_RELATIVE } from '@deepseek-ai/dsh-tool-excalidraw'
+import { sanitizeScene, SCENE_RELATIVE } from '@deepseek-ai/dsh-tool-excalidraw'
 import { normalizeSlashes, type GitCwdResolver } from './git-service.ts'
 
 /**
@@ -91,7 +91,7 @@ export async function handleExcalidrawRequest(
         json(res, 500, { error: 'excalidraw: corrupted scene file' })
         return
       }
-      json(res, 200, scene)
+      json(res, 200, sanitizeScene(scene))
       return
     }
 
@@ -116,7 +116,7 @@ export async function handleExcalidrawRequest(
       // Validate it parses before persisting.
       let normalized: string
       try {
-        normalized = JSON.stringify(JSON.parse(scene))
+        normalized = JSON.stringify(sanitizeScene(JSON.parse(scene)))
       } catch {
         json(res, 400, { error: 'excalidraw: scene is not valid JSON' })
         return

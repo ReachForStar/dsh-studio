@@ -1329,7 +1329,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-polish MutationDiffPanel id \'files\'',
       'client-ui-polish GitPanel id \'git\'',
       'client-ui-polish ExcalidrawPanel id \'excalidraw\'',
-      'client-ui-chat ChatView id \'chat\',
+      'client-ui-chat ChatView id \'chat\'',
       'client-ui-trajectory TrajectoryView id \'trajectory\'',
     ],
     replaceRisk: 'none',

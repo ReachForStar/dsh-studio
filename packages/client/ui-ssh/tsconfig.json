@@ -24,6 +24,9 @@
       "path": "../ui-settings"
     },
     {
+      "path": "../ui-renderer"
+    },
+    {
       "path": "../ui-primitives"
     },
     {
@@ -31,9 +34,6 @@
     },
     {
       "path": "../../runtime-diagnostics/invariants"
-    },
-    {
-      "path": "../../host/ssh-remotes"
     }
   ]
 }

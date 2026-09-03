@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import type { SnapshotStore } from '@reachforstar/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SshRemoteDefinition, SshRemoteSaveRequest } from '@reachforstar/dsh-host-ssh-remotes/types'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SshConnectionsState } from './ssh-store.ts'

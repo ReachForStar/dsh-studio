@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-ssh-local
+# @reachforstar/dsh-ssh-local
 
 English | [中文](README.zh.md)
 
@@ -8,7 +8,7 @@ Local Service Provider of the `ctx.ssh` seam over [`ssh2`](https://www.npmjs.com
 
 ```yaml
 - id: ssh
-  name: '@deepseek-ai/dsh-ssh-local'
+  name: '@reachforstar/dsh-ssh-local'
   config:
     defaultExecTimeoutMs: 60000       # default foreground command timeout
     maxExecTimeoutMs: 600000          # cap for per-call overrides
@@ -30,7 +30,7 @@ Local Service Provider of the `ctx.ssh` seam over [`ssh2`](https://www.npmjs.com
 
 ## Model Experience
 
-Indirectly, through @deepseek-ai/dsh-tool-ssh, which surfaces the seam's connections, exec results, and SFTP operations to the model.
+Indirectly, through @reachforstar/dsh-tool-ssh, which surfaces the seam's connections, exec results, and SFTP operations to the model.
 
 #### KV Cache effect
 

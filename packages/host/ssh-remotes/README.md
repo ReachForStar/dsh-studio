@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-host-ssh-remotes
+# @reachforstar/dsh-host-ssh-remotes
 
 English | [中文](README.zh.md)
 

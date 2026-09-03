@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-ssh
+# @reachforstar/dsh-ssh
 
 English | [中文](README.zh.md)
 
@@ -35,7 +35,7 @@ Typed `SshError` with stable `code`s: `SSH_NOT_FOUND`, `SSH_NAME_EXISTS`, `SSH_I
 
 ## Model Experience
 
-Indirectly, through @deepseek-ai/dsh-tool-ssh, which surfaces the seam's definitions, connections, exec results, and SFTP operations to the model.
+Indirectly, through @reachforstar/dsh-tool-ssh, which surfaces the seam's definitions, connections, exec results, and SFTP operations to the model.
 
 #### KV Cache effect
 

@@ -7,22 +7,22 @@ import { createElement, useLayoutEffect, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, hydrateRoot, type Root } from 'react-dom/client'
 import type { Context } from '@deepseek-ai/cordis'
-import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import { createSlotRenderer } from './scoped-slots.tsx'
 import { buildRenderApp } from './app.tsx'
 import { bindSnapshotSelector } from './bind.ts'
+import { SlotRegistry } from './registry.ts'
 
-/** Selector hook over a session's conversation snapshot. */
-export type UseSession<Snap extends object = object> = SnapshotSelectorHook<Snap>
+export { SlotRegistry } from './registry.ts'
+export type { RootOwnerProps } from './registry.ts'
 
 /** Bind a host observable to a selector hook (the merged web-react binding). */
 export { bindSnapshotSelector }
 
 export type {
-  ChainRenderOpts, HostObservable, RenderOpts, SessionProvideInfo, SnapshotSelectorHook,
-  SlotRenderer, SlotRendererHost, StoreInstanceLike,
+  ChainRenderOpts, HostObservable, RenderOpts, SnapshotSelectorHook, SlotRenderer,
+  ScopedStandardSourceBinding, SlotRendererHost, SlotScopeAdapter,
+  StandardSourceBinding, StoreInstanceLike,
 } from '@deepseek-ai/dsh-client-ui-slots'
-export type { SessionProviderProps } from './session-provider.tsx'
 
 /** Mount operation exposed to the framework-free boot kernel. */
 export interface UiRendererService {
@@ -35,14 +35,24 @@ export interface UiRendererService {
 }
 
 declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * A slot declaration or registration set changed.
+     * @mode emit
+     * @param key - mutated SlotMap key.
+     */
+    'slots/changed'(key: string): void
+  }
   interface Context {
+    /** Renderer-owned UI composition registry. */
+    slots: SlotRegistry
     /** Mount face provided after the UI renderer activates. */
     uiRenderer: UiRendererService
   }
 }
 
 /** Services required before application assembly. */
-export const inject = ['slots', 'sessions']
+export const inject: string[] = []
 
 interface BootSnapshot {
   className: string
@@ -80,7 +90,8 @@ function mountApp(container: HTMLElement, app: () => ReactNode): Root {
  * @param ctx - Plugin context.
  */
 export function apply(ctx: Context): void {
-  ctx.slots.install(createSlotRenderer())
+  const slots = new SlotRegistry(ctx)
+  slots.install(createSlotRenderer())
   ctx.reflect.provide('uiRenderer', {
     mount: (container: HTMLElement): (() => void) => {
       const root = mountApp(container, buildRenderApp({ ctx }))

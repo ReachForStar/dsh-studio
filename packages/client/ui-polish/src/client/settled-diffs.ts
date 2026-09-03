@@ -3,7 +3,7 @@
 // write/edit family) or the `card: 'read'` intent (the read tool) names files
 // worth opening. Reads only the runtime block's own view fields.
 
-import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConversationSnapshot } from '@reachforstar/dsh-client-runtime/client'
 import type { DiffHunk } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatNode } from '@deepseek-ai/dsh-client-ui-conversation/client'
 

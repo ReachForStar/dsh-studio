@@ -18,8 +18,8 @@
  *
  * This package is the cordis plugin mounting the tools; the same scene file
  * convention (`SCENE_RELATIVE`) is shared with the web surface's `/scene`
- * routes in `@deepseek-ai/dsh-client-ui-polish`.
- * @module @deepseek-ai/dsh-tool-excalidraw
+ * routes in `@reachforstar/dsh-client-ui-polish`.
+ * @module @reachforstar/dsh-tool-excalidraw
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'

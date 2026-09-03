@@ -1,6 +1,6 @@
 /**
  * Wire-independent SSH/SFTP vocabulary of the `ctx.ssh` capability seam.
- * @module @deepseek-ai/dsh-ssh/types
+ * @module @reachforstar/dsh-ssh/types
  */
 
 import type { Readable, Writable } from 'node:stream'

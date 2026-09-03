@@ -2,7 +2,7 @@
  * Runtime helpers of the SSH capability: the branded id, the typed error, and
  * the pure definition normalization/view functions the registry, tools, and
  * wire gateways share.
- * @module @deepseek-ai/dsh-ssh/runtime
+ * @module @reachforstar/dsh-ssh/runtime
  */
 
 import { randomUUID } from 'node:crypto'

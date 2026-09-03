@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
-import { SshConnectionId, SshError, type SshPtyExitInfo, type SshPtySession, type SshSftp } from '@deepseek-ai/dsh-ssh'
+import { SshConnectionId, SshError, type SshPtyExitInfo, type SshPtySession, type SshSftp } from '@reachforstar/dsh-ssh'
 import LocalSshService, { shellQuote } from '../src/index.ts'
 import { TEST_SSH_PASSWORD, TEST_SSH_USERNAME, TestSshServer } from './test-server.ts'
 

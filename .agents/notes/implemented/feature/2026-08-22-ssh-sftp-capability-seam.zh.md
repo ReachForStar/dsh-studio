@@ -12,11 +12,11 @@ harness 此前没有任何途径让 agent（或 Web GUI 中的人）操作远程
 
 新增 `remote/` 包组，以标准三角色拆分交付 `ctx.ssh` 能力接缝：
 
-- `@deepseek-ai/dsh-ssh`（Service Definition）拥有 settings 支撑的连接定义注册表（`ssh` settings 命名空间：定义 + 记住的主机密钥表）、活动连接契约与 exec/SFTP 词汇；同时拥有可组合的 `test` 探测与只写秘密更新语义（省略已存秘密的保存继承存储值）。
-- `@deepseek-ai/dsh-ssh-local`（Service Provider）基于 `ssh2` 实现接缝：按定义 id 缓存一条连接、promise 包装的有界输出与自有超时 exec、完整 SFTP 操作面。主机密钥默认校验（`accept-new` 记住未知密钥、后续变更拒绝；`reject` 拒绝未知密钥；定义可钉扎 `SHA256:<base64>` 指纹）。握手限定现代算法，除非 `allowLegacyAlgorithms` 为老服务器退回 ssh2 默认。大文件传输在配置阈值以上走 ssh2 并行 `fastGet`/`fastPut`，并传入已知大小使 ssh2 跳过其 fstat（1.17 对 fstat 回调交付 NAME 数组，破坏 `fastXfer` 的单 attrs 假设）。
-- `@deepseek-ai/dsh-tool-ssh`（Consumer）注册十二个模型面工具：`ssh_connect`、`ssh_connections`、`ssh_disconnect`、`ssh_test`、`ssh_exec` 与七个 `sftp_*` 传输/浏览工具。
-- `@deepseek-ai/dsh-host-ssh-remotes` 以 Typert Remote 网关服务 Web GUI（`ctx.sshGateway`，wire 命名空间 `ssh`）：定义增删查与连通性探测，全部无秘密。
-- `@deepseek-ai/dsh-client-ui-ssh` 在该网关之上渲染设置页。
+- `@reachforstar/dsh-ssh`（Service Definition）拥有 settings 支撑的连接定义注册表（`ssh` settings 命名空间：定义 + 记住的主机密钥表）、活动连接契约与 exec/SFTP 词汇；同时拥有可组合的 `test` 探测与只写秘密更新语义（省略已存秘密的保存继承存储值）。
+- `@reachforstar/dsh-ssh-local`（Service Provider）基于 `ssh2` 实现接缝：按定义 id 缓存一条连接、promise 包装的有界输出与自有超时 exec、完整 SFTP 操作面。主机密钥默认校验（`accept-new` 记住未知密钥、后续变更拒绝；`reject` 拒绝未知密钥；定义可钉扎 `SHA256:<base64>` 指纹）。握手限定现代算法，除非 `allowLegacyAlgorithms` 为老服务器退回 ssh2 默认。大文件传输在配置阈值以上走 ssh2 并行 `fastGet`/`fastPut`，并传入已知大小使 ssh2 跳过其 fstat（1.17 对 fstat 回调交付 NAME 数组，破坏 `fastXfer` 的单 attrs 假设）。
+- `@reachforstar/dsh-tool-ssh`（Consumer）注册十二个模型面工具：`ssh_connect`、`ssh_connections`、`ssh_disconnect`、`ssh_test`、`ssh_exec` 与七个 `sftp_*` 传输/浏览工具。
+- `@reachforstar/dsh-host-ssh-remotes` 以 Typert Remote 网关服务 Web GUI（`ctx.sshGateway`，wire 命名空间 `ssh`）：定义增删查与连通性探测，全部无秘密。
+- `@reachforstar/dsh-client-ui-ssh` 在该网关之上渲染设置页。
 
 组合：base bundle 挂载 provider 与工具；Web 表面禁用 `tool-ssh`、由 standard preset 按 agent 挂载，host 平面的 provider 与网关对每个会话保持活动。`ssh` settings 命名空间由 Service Definition 注册，providers、工具、网关与 GUI 共享同一份定义存储。
 

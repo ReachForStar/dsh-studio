@@ -5,8 +5,8 @@
  * list response.
  */
 
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@reachforstar/dsh-client-runtime/client'
+import { createSnapshotStore } from '@reachforstar/dsh-client-runtime/client'
 // The ssh Remote payload vocabulary is re-exported by the assembly: this is
 // the one place both planes legitimately meet, so the page never imports a
 // Host package.

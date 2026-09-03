@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-tool-ssh
+# @reachforstar/dsh-tool-ssh
 
 English | [中文](README.zh.md)
 

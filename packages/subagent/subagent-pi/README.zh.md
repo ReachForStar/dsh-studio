@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-subagent-pi
+# @reachforstar/dsh-subagent-pi
 
 [English](README.md) | 中文
 
@@ -34,7 +34,7 @@
 
 ```yaml
 - id: subagent-pi
-  name: '@deepseek-ai/dsh-subagent-pi'
+  name: '@reachforstar/dsh-subagent-pi'
   config:
     env:
       DEEPSEEK_API_KEY: !!js process.env.DEEPSEEK_API_KEY

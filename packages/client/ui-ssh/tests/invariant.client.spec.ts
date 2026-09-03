@@ -9,11 +9,11 @@ describe('ui-ssh invariant companion', () => {
     const ctx = new Context()
     await ctx.plugin(InvariantRegistry)
     const fiber = await ctx.plugin(SshInvariant)
-    expect(() => ctx.invariants.register('@deepseek-ai/dsh-client-ui-ssh', () => {}))
+    expect(() => ctx.invariants.register('@reachforstar/dsh-client-ui-ssh', () => {}))
       .toThrow(/already registered/)
     await fiber.dispose()
     // The reservation is released: re-registration succeeds.
-    ctx.invariants.register('@deepseek-ai/dsh-client-ui-ssh', () => {})
+    ctx.invariants.register('@reachforstar/dsh-client-ui-ssh', () => {})
     await ctx.fiber.dispose()
   })
 })

@@ -5,7 +5,7 @@
  * `ssh` settings namespace; authentication secrets live in that same document
  * (harness home, shell-equivalent trust) and leave it only through the
  * secret-free views this package exports.
- * @module @deepseek-ai/dsh-ssh
+ * @module @reachforstar/dsh-ssh
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'

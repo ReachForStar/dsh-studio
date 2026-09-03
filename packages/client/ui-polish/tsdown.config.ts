@@ -15,7 +15,7 @@ const CRYPTO_SHIM = resolve(fileURLToPath(new URL('.', import.meta.url)), 'src/c
  * canvas tab renders <Excalidraw> in-document, no iframe), so react/react-dom
  * come from the platform module table while Excalidraw is inlined.
  */
-export default clientBundle('@deepseek-ai/dsh-client-ui-polish', ['lib/types/index.js', 'lib/types/invariant.js'], {
+export default clientBundle('@reachforstar/dsh-client-ui-polish', ['lib/types/index.js', 'lib/types/invariant.js'], {
   clientPlugins: [{
     name: 'dsh-crypto-shim',
     resolveId(source: string) {

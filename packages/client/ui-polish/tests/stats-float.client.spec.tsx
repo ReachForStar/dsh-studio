@@ -6,7 +6,7 @@ import {
   createSnapshotStore, type AssistantMessageNode, type ConversationSnapshot,
   type SessionId, type SessionListState, type ToolResultNode, type UserMessageNode,
   type WorkspaceListState,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@reachforstar/dsh-client-runtime/client'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'

@@ -1,6 +1,6 @@
 /** Settled file-mutation detection and diff narrowing. */
 import { describe, expect, it } from 'vitest'
-import type { ConversationSnapshot, ToolResultNode } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConversationSnapshot, ToolResultNode } from '@reachforstar/dsh-client-runtime/client'
 import { narrowDiffs, settledDiffCalls } from '../src/client/settled-diffs.ts'
 
 function diffResult(callId: string, name = 'write'): ToolResultNode {

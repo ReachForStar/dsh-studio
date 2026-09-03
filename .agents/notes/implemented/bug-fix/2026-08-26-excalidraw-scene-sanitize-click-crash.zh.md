@@ -19,7 +19,7 @@ Excalidraw 在初次 `updateScene` 时容忍这些元素（图形能渲染），
 
 ## Decision
 
-在 `@deepseek-ai/dsh-tool-excalidraw`（场景契约方，`SCENE_RELATIVE` 所在）新增共享的 `sanitizeScene()` 规范化，并在场景的所有进出边界应用：
+在 `@reachforstar/dsh-tool-excalidraw`（场景契约方，`SCENE_RELATIVE` 所在）新增共享的 `sanitizeScene()` 规范化，并在场景的所有进出边界应用：
 
 - **`excalidraw_service.ts` `/scene/current`** —— 在场景到达面板的 `loadScene` 与 2 秒 poll 前修复，保证画布永远不会收到会让它崩溃的场景。
 - **`excalidraw_service.ts` `/scene/write`** —— 在前端自保存回写持久化前修复。
@@ -38,5 +38,5 @@ Excalidraw 在初次 `updateScene` 时容忍这些元素（图形能渲染），
 ## Consequences
 
 - 任何来源的场景（用户导入、模型 `excalidraw_write`、历史遗留文件）在面板渲染前都被规范化。
-- `sanitizeScene` 从 `@deepseek-ai/dsh-tool-excalidraw` 导出并被 web surface 复用，两条路径共享同一契约，不会漂移。
+- `sanitizeScene` 从 `@reachforstar/dsh-tool-excalidraw` 导出并被 web surface 复用，两条路径共享同一契约，不会漂移。
 - 两个原先断言磁盘内容字节相等的 round-trip 测试改为断言修复后（用户字段 + 默认补齐）的等价结果，并新增对畸形元素、被剔除 image、格式良好原样通过三类用例的单元测试。

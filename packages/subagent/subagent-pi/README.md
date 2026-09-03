@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-subagent-pi
+# @reachforstar/dsh-subagent-pi
 
 English | [中文](README.zh.md)
 
@@ -34,7 +34,7 @@ Shipped profiles load this provider once on the host and start no Pi process unt
 
 ```yaml
 - id: subagent-pi
-  name: '@deepseek-ai/dsh-subagent-pi'
+  name: '@reachforstar/dsh-subagent-pi'
   config:
     env:
       DEEPSEEK_API_KEY: !!js process.env.DEEPSEEK_API_KEY

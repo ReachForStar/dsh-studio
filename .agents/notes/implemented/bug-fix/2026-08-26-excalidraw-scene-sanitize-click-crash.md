@@ -19,7 +19,7 @@ The frontend's poll loop was ruled out: `sceneFingerprint` compares only `id:typ
 
 ## Decision
 
-Add a shared `sanitizeScene()` normalization in `@deepseek-ai/dsh-tool-excalidraw` (the scene contract owner, where `SCENE_RELATIVE` lives) and apply it at every scene ingress/egress:
+Add a shared `sanitizeScene()` normalization in `@reachforstar/dsh-tool-excalidraw` (the scene contract owner, where `SCENE_RELATIVE` lives) and apply it at every scene ingress/egress:
 
 - **`excalidraw_service.ts` `/scene/current`** — repair before the scene reaches the panel's `loadScene` and the 2s poll, so the canvas never receives a scene it crashes on.
 - **`excalidraw_service.ts` `/scene/write`** — repair before persisting the frontend's self-save round-trip.
@@ -38,5 +38,5 @@ A one-off script (run via node against the real scene file) repaired the existin
 ## Consequences
 
 - Scenes from any source (user import, model `excalidraw_write`, legacy files) are normalized before the panel renders them.
-- `sanitizeScene` is exported from `@deepseek-ai/dsh-tool-excalidraw` and re-used by the web surface, so the two paths share one contract (no drift).
+- `sanitizeScene` is exported from `@reachforstar/dsh-tool-excalidraw` and re-used by the web surface, so the two paths share one contract (no drift).
 - The two existing round-trip tests that asserted byte-equal on-disk content were updated to assert the repaired (user-supplied + default-filled) equivalent, plus new unit tests for the malformed-element, dropped-image, and well-formed-pass-through cases.

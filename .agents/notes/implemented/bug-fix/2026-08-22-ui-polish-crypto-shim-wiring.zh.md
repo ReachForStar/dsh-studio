@@ -12,7 +12,7 @@ Status: implemented
 
 `clientBundle` 共享 preset 新增 `clientPlugins` 注入点（追加到 client 构建的 plugins 数组，供包级自定义构建插件如 node builtin shim 使用）。ui-polish 在自身 `tsdown.config.ts` 中用 `resolveId` 把 `crypto` 与 `node:crypto` 解析为 `src/client/crypto-shim.ts`——该 shim 提供 named + default 导出（`randomFillSync`/`randomBytes`/`randomUUID`/`createHash` 等，用 Web Crypto 与纯 JS MD5/SHA-1 实现），顶层副作用兜底 `globalThis.Buffer`。内联后 shim 随工厂执行，require 不再落在模块表上。
 
-构建产物验证：`lib/client.js` 中 `require("crypto")`/`require("node:crypto")` 计数为 0。运行时验证：浏览器加载 15 秒无 console/page 错误，页面出现 6 个 `style[data-plugin="@deepseek-ai/dsh-client-ui-polish"]` 标签（materialize 成功）。
+构建产物验证：`lib/client.js` 中 `require("crypto")`/`require("node:crypto")` 计数为 0。运行时验证：浏览器加载 15 秒无 console/page 错误，页面出现 6 个 `style[data-plugin="@reachforstar/dsh-client-ui-polish"]` 标签（materialize 成功）。
 
 ## 备选方案
 

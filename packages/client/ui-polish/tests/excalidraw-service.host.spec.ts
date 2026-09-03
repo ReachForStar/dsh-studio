@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { handleExcalidrawRequest } from '../src/excalidraw-service.ts'
-import { sanitizeScene, SCENE_RELATIVE } from '@deepseek-ai/dsh-tool-excalidraw'
+import { sanitizeScene, SCENE_RELATIVE } from '@reachforstar/dsh-tool-excalidraw'
 import { workspaceCwdResolver } from '../src/git-service.ts'
 
 /** Resolver used by every test: only the temp workspace is known. */

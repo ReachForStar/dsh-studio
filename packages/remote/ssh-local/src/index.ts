@@ -4,7 +4,7 @@
  * closed or dropped; exec and SFTP operations are promise-wrapped with
  * bounded output capture and an owned timeout that kills the remote command.
  * Host keys are not verified (see the package README).
- * @module @deepseek-ai/dsh-ssh-local
+ * @module @reachforstar/dsh-ssh-local
  */
 
 import { createHash } from 'node:crypto'
@@ -17,7 +17,7 @@ import z from '@deepseek-ai/schemastery'
 import { Client, type ClientChannel, type ConnectConfig, type SFTPWrapper, type Stats } from 'ssh2'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { clampTimeout } from '@deepseek-ai/dsh-timeout'
-import { SshConnectionId, SshError, SshService } from '@deepseek-ai/dsh-ssh'
+import { SshConnectionId, SshError, SshService } from '@reachforstar/dsh-ssh'
 import type {
   SftpEntry,
   SshAuth,
@@ -32,7 +32,7 @@ import type {
   SshRunResult,
   SshSftp,
   SshWritableFile,
-} from '@deepseek-ai/dsh-ssh'
+} from '@reachforstar/dsh-ssh'
 
 /** SFTP v3 status code for "no such file"; ssh2 errors carry it as `code`. */
 const SFTP_STATUS_NO_SUCH_FILE = 2

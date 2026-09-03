@@ -1,6 +1,6 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-client-runtime`.
- * @module @deepseek-ai/dsh-client-runtime/invariant
+ * Package-owned invariant companion for `@reachforstar/dsh-client-runtime`.
+ * @module @reachforstar/dsh-client-runtime/invariant
  */
 
 /* jscpd:ignore-start */
@@ -12,7 +12,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-client-runtime'
+const PACKAGE_NAME = '@reachforstar/dsh-client-runtime'
 
 /** Cordis companion plugin name. */
 export const name = 'client-runtime-invariant'

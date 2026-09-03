@@ -18,7 +18,6 @@
       "path": "../ui-slots"
     },
     {
-      "path": "../../host/apiproxy"
     },
     {
       "path": "../../interaction/commands"

@@ -7,7 +7,7 @@
 import type {
   ConversationMatch, ConversationNodeContext, ConversationNodeDefinition,
   ConversationMatchResult,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@reachforstar/dsh-client-runtime/client'
 
 /** Minimal state machine: nothing to fold, the event is the whole fact. */
 type EmptyState = Record<string, never>

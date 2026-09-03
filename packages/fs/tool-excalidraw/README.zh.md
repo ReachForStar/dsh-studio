@@ -1,20 +1,20 @@
-# @deepseek-ai/dsh-tool-excalidraw
+# @reachforstar/dsh-tool-excalidraw
 
 [English](README.md) | 中文
 
-**模型面向的 Excalidraw 场景工具**——`excalidraw_read`、`excalidraw_write`、`excalidraw_draw` 与 `excalidraw_export`——作用于 web 画布标签页渲染的工作区场景文件。本包拥有工具名称、JSON schema、参数校验与结果格式化；场景文件位于 `<workspace>/.dsh/excalidraw/scene.json`（`SCENE_RELATIVE`），与 `@deepseek-ai/dsh-client-ui-polish` 的 `/scene` 路由持久化的是同一个文件。web 表面与模型由此编辑同一块画布。
+**模型面向的 Excalidraw 场景工具**——`excalidraw_read`、`excalidraw_write`、`excalidraw_draw` 与 `excalidraw_export`——作用于 web 画布标签页渲染的工作区场景文件。本包拥有工具名称、JSON schema、参数校验与结果格式化；场景文件位于 `<workspace>/.dsh/excalidraw/scene.json`（`SCENE_RELATIVE`），与 `@reachforstar/dsh-client-ui-polish` 的 `/scene` 路由持久化的是同一个文件。web 表面与模型由此编辑同一块画布。
 
 ```ts ignore-check
 // A preset composes the tools into an agent alongside the workspace registry.
 - id: tool-excalidraw
-  name: '@deepseek-ai/dsh-tool-excalidraw'
+  name: '@reachforstar/dsh-tool-excalidraw'
 ```
 
 在 agent 预设中挂载该行（内置 `standard` 预设已包含）。工具从调用 agent 的会话推导目标工作区：会话归属已知工作区时使用该工作区路径，否则使用会话 cwd；两者皆无的调用被拒绝。
 
 ## 场景文件
 
-四个工具读写同一个文件：`<workspace>/.dsh/excalidraw/scene.json`（`SCENE_RELATIVE` 导出），即含 `elements` 数组与 `appState` 对象的 Excalidraw 场景对象。文件位于工作区的隐藏 `.dsh` 目录下，不在可见工作树中，且正是 web 画布标签页（`@deepseek-ai/dsh-client-ui-polish` 的 `/scene` 路由）渲染的同一文件——因此模型绘制会实时出现在白板上，画布编辑也是下次工具调用读到的内容。
+四个工具读写同一个文件：`<workspace>/.dsh/excalidraw/scene.json`（`SCENE_RELATIVE` 导出），即含 `elements` 数组与 `appState` 对象的 Excalidraw 场景对象。文件位于工作区的隐藏 `.dsh` 目录下，不在可见工作树中，且正是 web 画布标签页（`@reachforstar/dsh-client-ui-polish` 的 `/scene` 路由）渲染的同一文件——因此模型绘制会实时出现在白板上，画布编辑也是下次工具调用读到的内容。
 
 场景是普通 JSON；工具实施以下边界：
 

@@ -6,7 +6,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import {
   createSnapshotStore, type ConversationSnapshot, type SessionId,
   type SessionListState, type WorkspaceListState,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@reachforstar/dsh-client-runtime/client'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { MutationDiffPanel, type MutationDiffPanelProps } from '../src/client/MutationDiffPanel.tsx'
 

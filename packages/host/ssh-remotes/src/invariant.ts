@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-host-ssh-remotes`.
- * @module @deepseek-ai/dsh-host-ssh-remotes/invariant
+ * Package-owned invariant companion for `@reachforstar/dsh-host-ssh-remotes`.
+ * @module @reachforstar/dsh-host-ssh-remotes/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-host-ssh-remotes'
+const PACKAGE_NAME = '@reachforstar/dsh-host-ssh-remotes'
 
 /** Cordis companion plugin name. */
 export const name = 'ssh-remotes-invariant'

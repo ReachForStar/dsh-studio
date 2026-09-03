@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-ssh
+# @reachforstar/dsh-ssh
 
 [English](README.md) | 中文
 
@@ -35,7 +35,7 @@ save 输入的 `id` 决定更新语义：连接必须存在；只写调用方（
 
 ## Model Experience
 
-间接地，经由 @deepseek-ai/dsh-tool-ssh——它把接缝的定义、连接、exec 结果与 SFTP 操作呈现给模型。
+间接地，经由 @reachforstar/dsh-tool-ssh——它把接缝的定义、连接、exec 结果与 SFTP 操作呈现给模型。
 
 #### KV Cache effect
 

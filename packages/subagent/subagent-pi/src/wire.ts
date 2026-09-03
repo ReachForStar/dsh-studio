@@ -8,7 +8,7 @@
  * extension-UI answers, and terminal-answer retrieval; the process lifecycle
  * lives in `run.ts`.
  *
- * @module @deepseek-ai/dsh-subagent-pi/wire
+ * @module @reachforstar/dsh-subagent-pi/wire
  */
 
 import type { Readable, Writable } from 'node:stream'

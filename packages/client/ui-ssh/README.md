@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-ssh
+# @reachforstar/dsh-client-ui-ssh
 
 English | [中文](README.zh.md)
 

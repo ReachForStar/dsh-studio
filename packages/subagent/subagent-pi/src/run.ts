@@ -3,7 +3,7 @@
  * through the subprocess seam, publish only after the RPC server is ready,
  * flatten post-publication failures, and dispose to whole-tree quiescence.
  *
- * @module @deepseek-ai/dsh-subagent-pi/run
+ * @module @reachforstar/dsh-subagent-pi/run
  */
 
 import { randomUUID } from 'node:crypto'

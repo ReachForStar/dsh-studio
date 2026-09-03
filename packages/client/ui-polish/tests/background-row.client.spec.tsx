@@ -2,7 +2,7 @@
 /** BackgroundRow behavior: upload / preview / remove with size and type checks. */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { createSnapshotStore, type SessionListState, type WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore, type SessionListState, type WorkspaceListState } from '@reachforstar/dsh-client-runtime/client'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { BackgroundRow } from '../src/client/BackgroundRow.tsx'
 import type { BackgroundRowComponentProps } from '../src/client/BackgroundRow.tsx'

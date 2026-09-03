@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-ssh-local
+# @reachforstar/dsh-ssh-local
 
 [English](README.md) | 中文
 
@@ -8,7 +8,7 @@
 
 ```yaml
 - id: ssh
-  name: '@deepseek-ai/dsh-ssh-local'
+  name: '@reachforstar/dsh-ssh-local'
   config:
     defaultExecTimeoutMs: 60000       # default foreground command timeout
     maxExecTimeoutMs: 600000          # cap for per-call overrides
@@ -30,7 +30,7 @@
 
 ## Model Experience
 
-间接地，经由 @deepseek-ai/dsh-tool-ssh——它把接缝的连接、exec 结果与 SFTP 操作呈现给模型。
+间接地，经由 @reachforstar/dsh-tool-ssh——它把接缝的连接、exec 结果与 SFTP 操作呈现给模型。
 
 #### KV Cache effect
 

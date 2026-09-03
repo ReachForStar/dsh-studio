@@ -17,7 +17,7 @@ import { CallId } from '@deepseek-ai/dsh-llm'
 import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import LocalSshService from '@deepseek-ai/dsh-ssh-local'
+import LocalSshService from '@reachforstar/dsh-ssh-local'
 import * as ToolSsh from '../src/index.ts'
 import { TEST_SSH_PASSWORD, TEST_SSH_USERNAME, TestSshServer } from '../../ssh-local/tests/test-server.ts'
 
@@ -53,11 +53,11 @@ describe('ssh tools through a real Loader composition', () => {
       '    debounceMs: 10',
       "- name: '@deepseek-ai/dsh-tools'",
       "- name: '@deepseek-ai/dsh-system-prompt'",
-      "- name: '@deepseek-ai/dsh-ssh-local'",
+      "- name: '@reachforstar/dsh-ssh-local'",
       '  config:',
       '    defaultExecTimeoutMs: 60000',
       '    outputMaxBytes: 65536',
-      "- name: '@deepseek-ai/dsh-tool-ssh'",
+      "- name: '@reachforstar/dsh-tool-ssh'",
       '',
     ].join('\n'))
 
@@ -70,8 +70,8 @@ describe('ssh tools through a real Loader composition', () => {
       ['@deepseek-ai/dsh-settings-file', FileSettingsProvider],
       ['@deepseek-ai/dsh-tools', ToolRuntime],
       ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
-      ['@deepseek-ai/dsh-ssh-local', LocalSshService],
-      ['@deepseek-ai/dsh-tool-ssh', ToolSsh],
+      ['@reachforstar/dsh-ssh-local', LocalSshService],
+      ['@reachforstar/dsh-tool-ssh', ToolSsh],
     ])
     ctx.loader.internal = {
       version: 'v2',

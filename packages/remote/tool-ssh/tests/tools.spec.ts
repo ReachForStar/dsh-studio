@@ -13,7 +13,7 @@ import { CallId } from '@deepseek-ai/dsh-llm'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
-import LocalSshService from '@deepseek-ai/dsh-ssh-local'
+import LocalSshService from '@reachforstar/dsh-ssh-local'
 import * as ToolSsh from '../src/index.ts'
 import { TEST_SSH_PASSWORD, TEST_SSH_USERNAME, TestSshServer } from '../../ssh-local/tests/test-server.ts'
 

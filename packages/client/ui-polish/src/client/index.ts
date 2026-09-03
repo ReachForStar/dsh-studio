@@ -12,7 +12,7 @@
  *    change at the right edge).
  */
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@reachforstar/dsh-client-runtime/client'
 // Type-only: pulls the settings scope Context merge (ctx.settingsScope).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the ui-settings-general SlotMap merge (the settings.general.item entry).

@@ -12,7 +12,7 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 // inlines this exact specifier into a <style> tag in the client bundle.
 import '@excalidraw/excalidraw/dist/prod/index.css'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { WorkspaceListState } from '@reachforstar/dsh-client-runtime/client'
 import css from './ExcalidrawPanel.module.css'
 
 /** Full component props: conversation view share + the ui-polish locale seat. */

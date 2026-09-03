@@ -18,7 +18,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { sanitizeScene, SCENE_RELATIVE } from '@deepseek-ai/dsh-tool-excalidraw'
+import { sanitizeScene, SCENE_RELATIVE } from '@reachforstar/dsh-tool-excalidraw'
 import { normalizeSlashes, type GitCwdResolver } from './git-service.ts'
 
 /**

@@ -6,7 +6,7 @@
  * `sftp_rename`). Local file paths on the transfer tools resolve against the
  * caller's session workspace; the remote side is the connection's SFTP
  * channel. Connections are shared per definition until `ssh_disconnect`.
- * @module @deepseek-ai/dsh-tool-ssh
+ * @module @reachforstar/dsh-tool-ssh
  */
 
 import { isAbsolute, resolve as resolvePath } from 'node:path'
@@ -16,8 +16,8 @@ import type { GenericResultView, TerminalCallView, TerminalResultView, ToolExecu
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-system-prompt'
-import { SshService } from '@deepseek-ai/dsh-ssh'
-import type { SshConnectionDefinition, SshRunResult } from '@deepseek-ai/dsh-ssh'
+import { SshService } from '@reachforstar/dsh-ssh'
+import type { SshConnectionDefinition, SshRunResult } from '@reachforstar/dsh-ssh'
 import { parseExitStatus } from '@deepseek-ai/dsh-shell'
 
 export const name = 'tool-ssh'

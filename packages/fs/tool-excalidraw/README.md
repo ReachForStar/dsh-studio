@@ -1,20 +1,20 @@
-# @deepseek-ai/dsh-tool-excalidraw
+# @reachforstar/dsh-tool-excalidraw
 
 English | [中文](README.zh.md)
 
-The **model-facing Excalidraw scene tools** — `excalidraw_read`, `excalidraw_write`, `excalidraw_draw`, and `excalidraw_export` — over the workspace scene file that the web canvas tab renders. This package owns tool names, JSON schemas, argument validation, and result formatting; the scene file itself lives at `<workspace>/.dsh/excalidraw/scene.json` (`SCENE_RELATIVE`), the same file the `/scene` routes of `@deepseek-ai/dsh-client-ui-polish` persist. The web surface and the model therefore edit one canvas.
+The **model-facing Excalidraw scene tools** — `excalidraw_read`, `excalidraw_write`, `excalidraw_draw`, and `excalidraw_export` — over the workspace scene file that the web canvas tab renders. This package owns tool names, JSON schemas, argument validation, and result formatting; the scene file itself lives at `<workspace>/.dsh/excalidraw/scene.json` (`SCENE_RELATIVE`), the same file the `/scene` routes of `@reachforstar/dsh-client-ui-polish` persist. The web surface and the model therefore edit one canvas.
 
 ```ts ignore-check
 // A preset composes the tools into an agent alongside the workspace registry.
 - id: tool-excalidraw
-  name: '@deepseek-ai/dsh-tool-excalidraw'
+  name: '@reachforstar/dsh-tool-excalidraw'
 ```
 
 Mount the row in an agent preset (the shipped `standard` preset already does). The tools derive their target workspace from the calling agent's session: a session owned by a known workspace uses that workspace's path, otherwise the session cwd; a caller with neither is rejected.
 
 ## Scene file
 
-All four tools read and write the same file: `<workspace>/.dsh/excalidraw/scene.json` (the `SCENE_RELATIVE` export), an Excalidraw scene object with an `elements` array and an `appState` object. The file lives under the workspace's hidden `.dsh` directory, out of the visible working tree, and is the exact file the web canvas tab (`@deepseek-ai/dsh-client-ui-polish`'s `/scene` routes) renders — so a model draw appears on the whiteboard live, and a canvas edit is what the next tool call reads.
+All four tools read and write the same file: `<workspace>/.dsh/excalidraw/scene.json` (the `SCENE_RELATIVE` export), an Excalidraw scene object with an `elements` array and an `appState` object. The file lives under the workspace's hidden `.dsh` directory, out of the visible working tree, and is the exact file the web canvas tab (`@reachforstar/dsh-client-ui-polish`'s `/scene` routes) renders — so a model draw appears on the whiteboard live, and a canvas edit is what the next tool call reads.
 
 The scene is plain JSON; the tools enforce the following boundaries:
 

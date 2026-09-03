@@ -1,5 +1,5 @@
 /**
- * Invariant companion of `@deepseek-ai/dsh-ssh`: a document edited externally
+ * Invariant companion of `@reachforstar/dsh-ssh`: a document edited externally
  * into duplicate ids or names must fail loud through the settings commit path.
  */
 

@@ -3,7 +3,7 @@
  * write-only: a saved request may carry a password or passphrase, but every
  * response reports only whether one is set. Shapes are deliberately flat (no
  * nested unions) for the generated Remote schemas.
- * @module @deepseek-ai/dsh-host-ssh-remotes/types
+ * @module @reachforstar/dsh-host-ssh-remotes/types
  */
 
 /** One connection definition as the browser may read it. */

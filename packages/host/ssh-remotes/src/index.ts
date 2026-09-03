@@ -2,13 +2,13 @@
  * Host Remote gateway for the SSH connection-management GUI: list, save, and
  * remove definitions plus the connectivity probe, all over the `ctx.ssh` seam.
  * Secrets are write-only — every response is a secret-free view.
- * @module @deepseek-ai/dsh-host-ssh-remotes
+ * @module @reachforstar/dsh-host-ssh-remotes
  */
 
 import { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
-import { SshError } from '@deepseek-ai/dsh-ssh'
-import type { SshConnectionDefinition } from '@deepseek-ai/dsh-ssh'
+import { SshError } from '@reachforstar/dsh-ssh'
+import type { SshConnectionDefinition } from '@reachforstar/dsh-ssh'
 import type {
   SshRemoteDefinition,
   SshRemoteSaveRequest,

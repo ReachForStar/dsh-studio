@@ -1,10 +1,10 @@
-/** Package-owned invariant companion. @module @deepseek-ai/dsh-client-ui-ssh/invariant */
+/** Package-owned invariant companion. @module @reachforstar/dsh-client-ui-ssh/invariant */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-client-ui-ssh'
+const PACKAGE_NAME = '@reachforstar/dsh-client-ui-ssh'
 
 /** Cordis companion plugin name. */
 export const name = 'client-ui-ssh-invariant'

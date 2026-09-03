@@ -11,7 +11,7 @@ vi.mock('@excalidraw/excalidraw', () => ({
   exportToBlob: () => Promise.resolve(new Blob()),
 }))
 vi.mock('@excalidraw/excalidraw/dist/prod/index.css', () => ({}))
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import { SlotRegistry } from '@reachforstar/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 // The settings plugin's client entry re-exports the binder as a type only;
@@ -19,8 +19,8 @@ import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import {
   apply as settingsApply, inject as settingsInject,
 } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { apply, inject, NS } from '@deepseek-ai/dsh-client-ui-polish/client'
-import type { BackgroundRowInjected } from '@deepseek-ai/dsh-client-ui-polish/client'
+import { apply, inject, NS } from '@reachforstar/dsh-client-ui-polish/client'
+import type { BackgroundRowInjected } from '@reachforstar/dsh-client-ui-polish/client'
 import { BACKGROUND_SETTINGS_NAMESPACE, PolishSettingsSchema } from '../src/background-settings.ts'
 import { BackgroundRow } from '../src/client/BackgroundRow.tsx'
 import { CompactionRow } from '../src/client/CompactionRow.tsx'

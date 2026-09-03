@@ -3,7 +3,7 @@
  * a fresh `pi --mode rpc` process in the delegating Session's workspace and
  * publishes only after the RPC server answered a readiness probe.
  *
- * @module @deepseek-ai/dsh-subagent-pi
+ * @module @reachforstar/dsh-subagent-pi
  */
 
 import { isAbsolute } from 'node:path'

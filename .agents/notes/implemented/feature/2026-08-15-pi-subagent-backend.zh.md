@@ -10,7 +10,7 @@ subagent 接缝支持向 Claude Code 与 Codex 的进程外委托，但不支持
 
 ## 决策
 
-`@deepseek-ai/dsh-subagent-pi` 在 `ctx.subagents` 上注册固定的 `pi` 提供方。每个被接受的 run 通过 subprocess 接缝在委托 Session 的工作目录中 spawn `pi --mode rpc`，用一条 `get_state` 命令证明就绪，用 `prompt` 提交一个文本任务，等待流式 `agent_settled` 事件，再用 `get_last_assistant_text` 读取终态答案——最后一条非空 assistant 文本。扩展 UI 对话框以 `cancelled` 自动应答，无人值守的 run 不会挂在本提供方并不拥有的 UI 上。销毁时关闭线、请求 Pi 协作式 EOF 关闭、等待 `disposeEofGraceMs`，再升级到共享的进程树终止阶梯。提供方不声明任何启动时能力，并报告 `inheritsParentContext: false`。
+`@reachforstar/dsh-subagent-pi` 在 `ctx.subagents` 上注册固定的 `pi` 提供方。每个被接受的 run 通过 subprocess 接缝在委托 Session 的工作目录中 spawn `pi --mode rpc`，用一条 `get_state` 命令证明就绪，用 `prompt` 提交一个文本任务，等待流式 `agent_settled` 事件，再用 `get_last_assistant_text` 读取终态答案——最后一条非空 assistant 文本。扩展 UI 对话框以 `cancelled` 自动应答，无人值守的 run 不会挂在本提供方并不拥有的 UI 上。销毁时关闭线、请求 Pi 协作式 EOF 关闭、等待 `disposeEofGraceMs`，再升级到共享的进程树终止阶梯。提供方不声明任何启动时能力，并报告 `inheritsParentContext: false`。
 
 线契约钉在 `@earendil-works/pi-coding-agent@0.84.2`（RPC 命令 `get_state`、`prompt`、`get_last_assistant_text`、`abort`；响应 `{ id, type: "response", command, success, data | error }`；`agent_settled` 事件）。停止原因映射：非空答案 → `completed`；无答案结算、`prompt` 失败、协议或进程失败 → `error`；本地取消 → `aborted`。经本提供方，Pi 不产生 `max-tokens` 与 `refusal`，且取消与失败以空输出快照结算，因为 Pi 的 RPC 协议不暴露已提交的部分输出投影。
 

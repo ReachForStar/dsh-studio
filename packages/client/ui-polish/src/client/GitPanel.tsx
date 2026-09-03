@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { WorkspaceListState } from '@reachforstar/dsh-client-runtime/client'
 import { gitFetch } from './git-client.ts'
 import css from './GitPanel.module.css'
 

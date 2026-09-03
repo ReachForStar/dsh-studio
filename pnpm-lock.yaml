@@ -1823,76 +1823,6 @@ importers:
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
 
-  packages/client/runtime:
-    dependencies:
-      immer:
-        specifier: ^10.1.1
-        version: 10.2.0
-      zustand:
-        specifier: ~4.4.7
-        version: 4.4.7(@types/react@18.3.31)(immer@10.2.0)(react@18.3.1)
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: workspace:^
-        version: link:../../../vendor/cordis
-      '@deepseek-ai/dsh-agent':
-        specifier: workspace:^
-        version: link:../../core/agent
-      '@deepseek-ai/dsh-api-remotes':
-        specifier: workspace:^
-        version: link:../../api/remotes
-      '@deepseek-ai/dsh-api-session-controller':
-        specifier: workspace:^
-        version: link:../../api/session-controller
-      '@deepseek-ai/dsh-attachment':
-        specifier: workspace:^
-        version: link:../../attachment/attachment
-      '@deepseek-ai/dsh-client-connection':
-        specifier: workspace:^
-        version: link:../connection
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: workspace:^
-        version: link:../ui-slots
-      '@deepseek-ai/dsh-commands':
-        specifier: workspace:^
-        version: link:../../interaction/commands
-      '@deepseek-ai/dsh-invariants':
-        specifier: workspace:^
-        version: link:../../runtime-diagnostics/invariants
-      '@deepseek-ai/dsh-llm':
-        specifier: workspace:^
-        version: link:../../llm/llm
-      '@deepseek-ai/dsh-llm-retry':
-        specifier: workspace:^
-        version: link:../../llm/llm-retry
-      '@deepseek-ai/dsh-session':
-        specifier: workspace:^
-        version: link:../../core/session
-      '@deepseek-ai/dsh-session-projection':
-        specifier: workspace:^
-        version: link:../../session/session-projection
-      '@deepseek-ai/dsh-session-title':
-        specifier: workspace:^
-        version: link:../../session/session-title
-      '@deepseek-ai/dsh-timeout':
-        specifier: workspace:^
-        version: link:../../util/timeout
-      '@deepseek-ai/dsh-tools':
-        specifier: workspace:^
-        version: link:../../core/tools
-      '@deepseek-ai/dsh-typert-protocol':
-        specifier: workspace:^
-        version: link:../../typert/protocol
-      '@deepseek-ai/dsh-typert-registry':
-        specifier: workspace:^
-        version: link:../../typert/registry
-      '@types/react':
-        specifier: ~18.3.1
-        version: 18.3.31
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-
   packages/client/store:
     dependencies:
       immer:
@@ -2954,9 +2884,6 @@ importers:
       '@deepseek-ai/dsh-workspace':
         specifier: workspace:^
         version: link:../../workspace/workspace
-      '@reachforstar/dsh-client-runtime':
-        specifier: workspace:^
-        version: link:../runtime
       '@reachforstar/dsh-tool-excalidraw':
         specifier: workspace:^
         version: link:../../fs/tool-excalidraw
@@ -3550,9 +3477,6 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
-      '@reachforstar/dsh-client-runtime':
-        specifier: workspace:^
-        version: link:../runtime
       '@testing-library/react':
         specifier: ^16.1.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

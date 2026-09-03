@@ -19,9 +19,6 @@
       "path": "../../../vendor/schemastery"
     },
     {
-      "path": "../runtime"
-    },
-    {
       "path": "../store"
     },
     {
@@ -35,6 +32,9 @@
     },
     {
       "path": "../ui-chat"
+    },
+    {
+      "path": "../ui-workspace"
     },
     {
       "path": "../ui-session"
@@ -53,6 +53,9 @@
     },
     {
       "path": "../../api/remotes/tsconfig.client.json"
+    },
+    {
+      "path": "../../api/workspace-controller/tsconfig.client.json"
     },
     {
       "path": "../../llm/token-meter"

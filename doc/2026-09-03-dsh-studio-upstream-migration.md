@@ -35,6 +35,20 @@
 - fork `WorkspaceListState`（runtime workspaces/service.ts）引用已删语义（RpcError/WorkspaceView）；ui-polish 三个面板实际通过 slot 注入的 `useSession/useWorkspaces` hooks 取数，`WorkspaceListState` 只用于推导 workspace 路径。
 - client-runtime 现被消费方：ui-polish（index/ExcalidrawPanel/GitPanel/MutationDiffPanel/StatsFloat/model-index/settled-diffs + tests）、runtime 自身 tsdown/tests。ui-ssh 已完全脱离。
 
+## 模型定价（StatsFloat）迁移关键发现（2026-09-03 续）
+
+- **ui-chat 的 'chat' 目标快照自带 `legacy.nodes: readonly ConversationNode[]`**（ui-chat/src/client/contract/snapshot.ts，`ChatSnapshot.legacy: LegacyConversationSlice`，merge 进 `ConversationViewSnapshotMap['chat']`）——正是 fork runtime 拷贝的同款形状（`StatsFloat` 用的 `chat.legacy.nodes`）。
+- upstream `AssistantMessageNode` **原生带 `usage`、`provenance: {provider, model}`、`timing`(stepStartTime/firstTokenTime/completedTime)、`messageId`、`time`/`turn`**；`ToolResultNode` 带 `time`/`callTime`。fork model-index 的前提（"upstream gap：节点无 model provenance"）在合并后的 upstream **已不成立**。
+- 结论：StatsFloat 迁移 = `useConversation(s => s.views.get('chat')?.legacy.nodes)`（dock 的 SessionStandardProps 提供 useConversation）+ 每 assistant 节点 `provenance?.model` 当 modelOf + usage 适配（usage 字段形状可能需对 dsh-llm TokenUsage）；**model-index.ts（createModelIndex/modelIndexDefinition + index.ts 里 `ctx.uiConversation.events.register` 段 + 其 spec）可整体删除**（含 32a714e41a 刚接上的注册段）。StatsFloat 需确认 useProjection 在 dock PropsRuntime 的可用性（ui-renderer 增广）。
+- 待办：删除 model-index 相关后，检查 index.ts 注入与 modelOf/card 注入契约变化。
+
+## StatsFloat/模型定价 src 迁移完成（2026-09-03 续 2）
+
+- StatsFloat.tsx 数据源改为 `useConversation(s => s.views.get('chat')?.legacy.nodes ?? [])`（dock 的 SessionStandardProps 由 ui-conversation 提供 useConversation；ui-chat 的 ChatSnapshot.legacy.nodes 即上游 ConversationNode[]）；每 assistant 节点用 `provenance?.model` 计价（不再需要 messageId→model 索引）；保留 useProjection('tokenUsage'/'sessionStats')（由 ui-session 增广提供，与 ui-renderer bindSnapshotSelector 无冲突）。
+- **删除 model-index.ts + 其 spec**；index.ts 删除 createModelIndex/注册段与 modelOf 注入（dock 只注入 card），并从 inject 列表移除 uiConversation。
+- ui-polish 引用新增 ui-chat/ui-session（增广来源，必须先引用否则 TS6059/TS6307 级联）；ui-polish src 0 错。
+- 遗留：4 个 ui-polish 测试 spec（stats-float/mutation-diff/background-row/apply）需按 upstream 夹具重写（dock PropsRuntime 的 useSession 现为 ui-session 的 SessionSnapshotSelector 而非 fork ConversationSnapshot——测试需构造 upstream SessionSnapshot + ConversationSnapshot(views.get('chat')→ChatSnapshot)，assistant 夹具带 provenance.model、ToolResultNode 去掉 callView/resultView 字段）；stats-float spec 的错误已由此暴露（TS2322 useSession 类型不匹配）。
+
 ## 剩余 client 类型错误（基线 65）
 
 - 60 个在 `packages/client/runtime/tests/*`（fake-api/slots-service/scope/client-apply/wire-events/session/queue-store）：退役 runtime 时随包删除。

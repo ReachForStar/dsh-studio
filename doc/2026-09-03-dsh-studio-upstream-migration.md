@@ -49,14 +49,12 @@
 - ui-polish 引用新增 ui-chat/ui-session（增广来源，必须先引用否则 TS6059/TS6307 级联）；ui-polish src 0 错。
 - 遗留：4 个 ui-polish 测试 spec（stats-float/mutation-diff/background-row/apply）需按 upstream 夹具重写（dock PropsRuntime 的 useSession 现为 ui-session 的 SessionSnapshotSelector 而非 fork ConversationSnapshot——测试需构造 upstream SessionSnapshot + ConversationSnapshot(views.get('chat')→ChatSnapshot)，assistant 夹具带 provenance.model、ToolResultNode 去掉 callView/resultView 字段）；stats-float spec 的错误已由此暴露（TS2322 useSession 类型不匹配）。
 
-## 剩余 client 类型错误（基线 65）
+## 迁移过程状态（历史，2026-09-03 当日推进）
 
-- 60 个在 `packages/client/runtime/tests/*`（fake-api/slots-service/scope/client-apply/wire-events/session/queue-store）：退役 runtime 时随包删除。
-- 4 个 ui-polish 测试（stats-float/mutation-diff/background-row/apply.client.spec）。
-- 1 个无文件归属 TS2878：**来自 runtime 项目自身**（程序构造错误，掩蔽其下 ~63 个遗留符号错误：connection **root/host 面**符号 SubagentAddress/JobView/DirectoryEntry/DirectoryListing/WorkspaceId/WorkspaceView/SessionId、api-remotes 的 ToolEventView、ui-slots 的 SessionMaybeProvideInfo 等在合并后 upstream 均不存在）。runtime 是待退役的 @reachforstar 包，无法在不整包迁移的前提下修绿；它被 ui-polish（面板+测试）与 ui-ssh 曾经的 tsconfig 引用拖入 client 图，直到 ui-polish 迁移完才能移除。
-- ui-polish src 已 0 错（settled-diffs 删除后 ChatNode/TS2305 清零）。
+- 退役前 client 契约基线 65 错：60 runtime 测试 + 4 ui-polish 测试 + 1 runtime TS2878（无归属，掩蔽 runtime 自身 ~63 遗留符号错：connection host 面符号、ToolEventMap 等均已在合并后 upstream 消失）。
+- 退役后（见下节“完成”）双侧 0 错。
 
-## 下一步（B：逐面板迁移到 upstream 数据源，每步跑通 client 契约再继续）
+## 迁移步骤（均已执行完毕，见“完成”节）
 
 1. StatsFloat/settled-diffs 的会话转录读取：弄清 StatsFloat 运行时从哪里拿 `ConversationSnapshot`（slot 注入？runtime hooks？），再对照 ui-conversation `ConversationNodeAssembler` + api-session-controller `SessionSnapshot` 重建；diff/read 卡语义需等 upstream 工具结果事件（host presentation 不下发到客户端）设计落地。
 2. MutationDiffPanel/GitPanel/ExcalidrawPanel/SshPanel：`useSession/useWorkspaces` 改连 upstream 会话/工作区 store（PropsRuntime<'conversation.view'> 由 ui-slots 定义）；确认上游工作区路径推导 API（ui-workspace）。
@@ -66,12 +64,19 @@
 6. 退役 `packages/client/runtime`（删包 + workspace/tsconfig/pnpm-lock 引用 + 移除 runtime 测试 60 错）前确保无面板 import 它（ui-polish 的 StatsFloat/三面板 + 4 测试文件）。
 7. 全绿 `pnpm run typecheck` 后 push。
 
-## 已知问题与风险
+## 完成：client-runtime 退役，typecheck 全绿（2026-09-03 终）
 
-- runtime 项目的独立 TS2878（无文件名）是程序构造错误，掩蔽其下 ~63 个遗留引用错误；未退役前会持续让 client 契约红 1 个错误。修复或退役 runtime 是唯一出路（本会话尝试将值导入改 /client 与补 references 均未根本解决，且会暴露被掩蔽的错误）。
-- tsconfig.base 手写区含 `@reachforstar/*` 别名（含指向 lib 产物的 /types、/remote 两条，属 artifact-plane 例外，仅用于生成/跨包类型；勿被 gen-tsconfig-paths 覆盖，其生成区在 `// BEGIN generated package aliases` 之后）。
-- 未 push；host 类型 0 错误；client 契约（tsc -b tsconfig.client.json）仍 65 错误（60 runtime 测试 + 4 ui-polish 测试 + 1 runtime TS2878）。
-- tmp/ 下有 typecheck 日志（clientcheck*.log、uipolish*.log、rt*.log 等）。
+- **ui-polish 三面板（Git/Excalidraw/MutationDiff）**：`WorkspaceListState`（fork runtime）→ `api-workspace-controller` 的 `WorkspaceView`；增广来源引用 ui-workspace/ui-session/ui-chat；props 的 useSession/useWorkspaces 现由 upstream 增广提供。
+- **4 个 ui-polish 测试 spec 全部迁移到 upstream 夹具**（stats-float/apply/background-row/mutation-diff），ui-polish + ui-ssh 共 16 文件 115 测试通过；apply spec 按 locale spec 范式（SlotRegistry 插件挂载 + TestRemote settings 事件）重写。
+- index.ts 的 inject 收敛为 `['slots','locale','settingsScope']`（connection/remote 不再被 apply 使用）。
+- **退役 `packages/client/runtime`**：删除包 + ui-polish/ui-ssh 的 package.json 依赖、tsconfig 引用与 dsh inject 条目 + tsconfig.base 别名 + pnpm-lock。其 60 个测试错误与无归属 TS2878 随包消失。
+- **`pnpm run typecheck`（build:lib:host + typecheck:contracts-ready）exit 0**；host/client 双侧 tsc 0 错误。lint（oxlint）对 ui-polish/ui-ssh 干净（SshPanel 换 `@deepseek-ai/dsh-util-crypto` 的 randomUUID，crypto-shim 保留平台豁免注释）。
+- 全部分支提交于 master；待 push（push 钩子 = pnpm run typecheck，已手动跑通）。
+
+## 里程碑状态
+
+B（彻底迁移）实质完成：SSH 面板、模型定价（StatsFloat，删 model-index）、Git/Excalidraw/MutationDiff 面板均已迁移到 upstream 客户端栈；client-runtime 已退役。剩余可选收尾：
+- `doc/` 后续演进记录；git-service/excalidraw-service 的 host 依赖核对（已在 host 契约绿）；SshPanel（ui-polish conversation.view 'ssh' 终端面板）与 ui-ssh（settings.section）为 fork 自研产品，已接 upstream 槽位，留意产品级回归测试。
 
 ## 复现与运行
 

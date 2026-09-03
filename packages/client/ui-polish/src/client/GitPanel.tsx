@@ -9,7 +9,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WorkspaceListState } from '@reachforstar/dsh-client-runtime/client'
+import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+// Type-only: pulls the session/workspace slot hooks (useSession/useWorkspaces).
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { gitFetch } from './git-client.ts'
 import css from './GitPanel.module.css'
 
@@ -56,7 +59,7 @@ function isUntracked(status: string): boolean {
 /** The workspace path owning the current session, if any. */
 function workspacePathOf(
   sessionId: string | undefined,
-  items: readonly WorkspaceListState['items'][number][],
+  items: readonly WorkspaceView[],
 ): string | undefined {
   if (sessionId === undefined) return undefined
   return items.find(item => item.sessionIds.includes(sessionId as never))?.path

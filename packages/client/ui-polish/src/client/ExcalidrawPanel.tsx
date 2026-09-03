@@ -12,7 +12,10 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 // inlines this exact specifier into a <style> tag in the client bundle.
 import '@excalidraw/excalidraw/dist/prod/index.css'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WorkspaceListState } from '@reachforstar/dsh-client-runtime/client'
+import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+// Type-only: pulls the session/workspace slot hooks (useSession/useWorkspaces).
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import css from './ExcalidrawPanel.module.css'
 
 /** Full component props: conversation view share + the ui-polish locale seat. */
@@ -21,7 +24,7 @@ export type ExcalidrawPanelProps = PropsRuntime<'conversation.view'> & PropsLoca
 /** The workspace path owning the current session, if any. */
 function workspacePathOf(
   sessionId: string | undefined,
-  items: readonly WorkspaceListState['items'][number][],
+  items: readonly WorkspaceView[],
 ): string | undefined {
   if (sessionId === undefined) return undefined
   return items.find(item => item.sessionIds.includes(sessionId as never))?.path

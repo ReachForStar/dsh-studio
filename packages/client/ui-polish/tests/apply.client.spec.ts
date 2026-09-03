@@ -11,11 +11,9 @@ vi.mock('@excalidraw/excalidraw', () => ({
   exportToBlob: () => Promise.resolve(new Blob()),
 }))
 vi.mock('@excalidraw/excalidraw/dist/prod/index.css', () => ({}))
-import { SlotRegistry } from '@reachforstar/dsh-client-runtime/client'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
-// The settings plugin's client entry re-exports the binder as a type only;
-// mount its apply instead (the rc.8 binder is constructed inside it).
 import {
   apply as settingsApply, inject as settingsInject,
 } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -45,21 +43,17 @@ async function bench() {
     secrets: [],
     revision: 0,
   })
-  const describe = vi.fn(() => Promise.resolve({
-    rpcId: 'polish-describe' as never,
-    result: { ok: true as const, value: { writable: true, hasDocument: true, namespaces: [namespace()] } },
+  const describe = vi.fn(async () => ({
+    ok: true as const,
+    value: { writable: true, hasDocument: true, namespaces: [namespace()] },
   }))
-  const mutate = vi.fn((request: { ops: { value: unknown }[] }) => {
-    const raw = request.ops[0]!.value
+  const mutate = vi.fn(async (_ns: string, ops: { value: unknown }[]) => {
+    const raw = ops[0]!.value
     // oxlint-disable-next-line typescript/no-base-to-string -- settings values are strings or null
     backgroundImage = raw === null ? undefined : String(raw)
-    return Promise.resolve({ rpcId: 'polish-mutate' as never, result: { ok: true as const, value: namespace() } })
+    return { ok: true as const, value: namespace() }
   })
-  ctx.provide('connection', { api: { settings: { describe, mutate } }, isLoopback: true } as never)
-  new TestRemote(ctx)
-  // The runtime plugin normally provides conversationEvents; stub its register
-  // face (the ui-polish apply only subscribes a model-index definition).
-  ctx.provide('conversationEvents', { register: () => () => {} } as never)
+  const events = new TestRemote(ctx, { settings: { describe, mutate } })
   // Mount the settings domain plugin (the rc.8 binder is a Service constructed
   // inside its apply, not a standalone plugin class).
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
@@ -75,7 +69,7 @@ async function bench() {
     } as never,
     () => null,
   )
-  return { ctx, slots, locale }
+  return { ctx, slots, locale, events }
 }
 
 afterEach(() => {
@@ -86,7 +80,7 @@ afterEach(() => {
 
 describe('ui-polish apply', () => {
   it('declares the required services', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'settingsScope', 'conversationEvents'])
+    expect(inject).toEqual(['slots', 'locale', 'settingsScope'])
   })
 
   it('registers the settings rows, dock entries, and view tabs, and unwinds on dispose', async () => {

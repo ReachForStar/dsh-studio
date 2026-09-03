@@ -76,7 +76,7 @@ body[data-ds-bg-image] {
 `
 
 /** Required services: settings transport plus slots/locale for the registrations. */
-export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope']
+export const inject = ['slots', 'locale', 'settingsScope']
 
 /**
  * Client plugin body: bind the background preference, paint the body, and

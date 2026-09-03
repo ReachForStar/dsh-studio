@@ -2,7 +2,6 @@
 /** BackgroundRow behavior: upload / preview / remove with size and type checks. */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { createSnapshotStore, type SessionListState, type WorkspaceListState } from '@reachforstar/dsh-client-runtime/client'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { BackgroundRow } from '../src/client/BackgroundRow.tsx'
 import type { BackgroundRowComponentProps } from '../src/client/BackgroundRow.tsx'
@@ -34,31 +33,16 @@ const COPY: Record<string, string> = {
   'background.notImage': 'Choose an image file',
 }
 
-function emptySessions() {
-  const store = createSnapshotStore<SessionListState>(
-    { ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined })
-  return bindSnapshotSelector(store)
-}
-function emptyWorkspaces() {
-  const store = createSnapshotStore<WorkspaceListState>({
-    items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
-    baselinesReady: true, recentWorkspaceId: undefined,
-  })
-  return bindSnapshotSelector(store)
-}
-
 function mount(backgroundImage: string | null = null) {
   const store = createBackgroundRowStore().create()
   store.actions.sync(backgroundImage, 0)
   const setBackgroundImage = vi.fn()
-  const props: BackgroundRowComponentProps = {
-    useSessions: emptySessions(),
-    useWorkspaces: emptyWorkspaces(),
+  const props = {
     useStore: bindSnapshotSelector(store),
     actions: store.actions,
     t: (key: string) => COPY[key] ?? key,
     setBackgroundImage,
-  }
+  } as unknown as BackgroundRowComponentProps
   render(<BackgroundRow {...props} />)
   return { store, setBackgroundImage }
 }

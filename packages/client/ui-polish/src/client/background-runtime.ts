@@ -5,7 +5,7 @@
 // retracted on clear and on dispose.
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { SettingsScope } from '@reachforstar/dsh-client-runtime/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { BACKGROUND_IMAGE_FIELD, type PolishSettings } from '../background-settings.ts'
 
 /** Body attribute marking that a whole-app background image is active. */

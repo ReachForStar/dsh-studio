@@ -24,6 +24,10 @@
   - `ctx.slots` 增广来自 `@deepseek-ai/dsh-client-ui-renderer/client`（type-only import + tsconfig 引用）。
   - ui-ssh 单项目编译 0 错误，彻底脱离 client-runtime。
 - `368e6e874c` ui-polish 的 `SettingsScope`（pricing-store.ts、background-runtime.ts）改从 `@deepseek-ai/dsh-client-ui-settings/client` 导入（fork 版是 upstream 的子集接口；消费方只用 getSnapshot/subscribe/set/unset，机械迁移）。
+- `index.ts` `ClientContext` → cordis `Context`（照 ui-ssh 范式；补 ui-renderer/client 的 ctx.slots 增广导入）。
+- `model-index.ts`：4 个类型改从 `ui-conversation/client`；定义改写为符合 `ConversationNodeDefinition`（State=unknown 默认，upstream register 不收泛型子类型）；注册从 fork `ctx.conversationEvents` 迁到 upstream `ctx.uiConversation.events`（upstream 无 conversationEvents 服务）。
+- 删除 `settled-diffs.ts` 与其 spec（无运行时消费者；基于将退役的 fork 转录模型；upstream `ToolResultNode` 不带 resultView.card/diffs 客户端视图，diff 卡语义只在 host 端 tool-fs presentation）。已记入本文件。
+- tsconfig 引用修复：ui-ssh/ui-polish 的 client 项目补 `../store`（client-store）、`../ui-renderer` 引用。
 
 ## 关键架构结论（决定剩余工作量）
 
@@ -31,28 +35,29 @@
 - fork `WorkspaceListState`（runtime workspaces/service.ts）引用已删语义（RpcError/WorkspaceView）；ui-polish 三个面板实际通过 slot 注入的 `useSession/useWorkspaces` hooks 取数，`WorkspaceListState` 只用于推导 workspace 路径。
 - client-runtime 现被消费方：ui-polish（index/ExcalidrawPanel/GitPanel/MutationDiffPanel/StatsFloat/model-index/settled-diffs + tests）、runtime 自身 tsdown/tests。ui-ssh 已完全脱离。
 
-## 剩余 client 类型错误（基线 ~66）
+## 剩余 client 类型错误（基线 65）
 
-- ~60 个在 `packages/client/runtime/tests/*`（fake-api/slots-service/scope/client-apply/wire-events/session/queue-store）：退役 runtime 时随包删除。
-- ui-polish src：settled-diffs 的 `ChatNode`（TS2305 + 独立 TS2878 跨项目）；测试 5 文件（stats-float/mutation-diff/background-row/apply.client.spec）。
-- ui-polish 尚依赖 runtime 的类型：`ConversationSnapshot`（fork 模型）、`WorkspaceListState`、`ClientContext`（index.ts）、model-index 多处符号。
+- 60 个在 `packages/client/runtime/tests/*`（fake-api/slots-service/scope/client-apply/wire-events/session/queue-store）：退役 runtime 时随包删除。
+- 4 个 ui-polish 测试（stats-float/mutation-diff/background-row/apply.client.spec）。
+- 1 个无文件归属 TS2878：**来自 runtime 项目自身**（程序构造错误，掩蔽其下 ~63 个遗留符号错误：connection **root/host 面**符号 SubagentAddress/JobView/DirectoryEntry/DirectoryListing/WorkspaceId/WorkspaceView/SessionId、api-remotes 的 ToolEventView、ui-slots 的 SessionMaybeProvideInfo 等在合并后 upstream 均不存在）。runtime 是待退役的 @reachforstar 包，无法在不整包迁移的前提下修绿；它被 ui-polish（面板+测试）与 ui-ssh 曾经的 tsconfig 引用拖入 client 图，直到 ui-polish 迁移完才能移除。
+- ui-polish src 已 0 错（settled-diffs 删除后 ChatNode/TS2305 清零）。
 
 ## 下一步（B：逐面板迁移到 upstream 数据源，每步跑通 client 契约再继续）
 
-1. index.ts：`ClientContext` → cordis `Context`（照 ui-ssh 已完成范式；需拉 ui-renderer/client 增广、处理 `ctx.conversationEvents`/`ctx.settingsScope` merge 来源）。
-2. settled-diffs/StatsFloat：把 fork 会话转录模型换到 upstream 会话/视图数据源。先弄清 StatsFloat/MutationDiff 运行时从哪里拿 `ConversationSnapshot`（slot 注入？runtime hooks？），再对照 ui-conversation `ConversationNodeAssembler` + api-session-controller `SessionSnapshot` 重建取数与 diff/read 卡语义（fork 产品价值）。
-3. MutationDiffPanel/GitPanel/ExcalidrawPanel：`useSession/useWorkspaces` 改连 upstream 会话/工作区 store（PropsRuntime<'conversation.view'> 由 ui-slots 定义）；确认上游工作区路径推导 API。
+1. StatsFloat/settled-diffs 的会话转录读取：弄清 StatsFloat 运行时从哪里拿 `ConversationSnapshot`（slot 注入？runtime hooks？），再对照 ui-conversation `ConversationNodeAssembler` + api-session-controller `SessionSnapshot` 重建；diff/read 卡语义需等 upstream 工具结果事件（host presentation 不下发到客户端）设计落地。
+2. MutationDiffPanel/GitPanel/ExcalidrawPanel/SshPanel：`useSession/useWorkspaces` 改连 upstream 会话/工作区 store（PropsRuntime<'conversation.view'> 由 ui-slots 定义）；确认上游工作区路径推导 API（ui-workspace）。
+3. StatsFloat 的模型定价：模型索引已注册到 ctx.uiConversation.events（本次完成），但需验证 upstream 汇编引擎对无 target 的 state-only Definition 是否真的会为每会话构建 Context（否则定价 feeder 失效需换实现）。
 4. 相关 host 服务（git-service/excalidraw-service/background-service 等）核对是否还依赖已删模块。
 5. 测试逐文件迁移/重写（keyless recorded-session snapshot 政策见 docs/testing.md）。
-6. 退役 `packages/client/runtime`（删包 + workspace/tsconfig/pnpm-lock 引用）前确保无面板 import 它。
+6. 退役 `packages/client/runtime`（删包 + workspace/tsconfig/pnpm-lock 引用 + 移除 runtime 测试 60 错）前确保无面板 import 它（ui-polish 的 StatsFloat/三面板 + 4 测试文件）。
 7. 全绿 `pnpm run typecheck` 后 push。
 
 ## 已知问题与风险
 
-- TS2878（无文件名）基线存在，与 settled-diffs 导入 ui-conversation/client（缺 ChatNode）跨项目解析相关；解决 ChatNode 后应消失，否则需追查。
+- runtime 项目的独立 TS2878（无文件名）是程序构造错误，掩蔽其下 ~63 个遗留引用错误；未退役前会持续让 client 契约红 1 个错误。修复或退役 runtime 是唯一出路（本会话尝试将值导入改 /client 与补 references 均未根本解决，且会暴露被掩蔽的错误）。
 - tsconfig.base 手写区含 `@reachforstar/*` 别名（含指向 lib 产物的 /types、/remote 两条，属 artifact-plane 例外，仅用于生成/跨包类型；勿被 gen-tsconfig-paths 覆盖，其生成区在 `// BEGIN generated package aliases` 之后）。
-- 未 push；host 类型 0 错误；client 契约（tsc -b tsconfig.client.json）仍 ~66 错误。
-- tmp/ 下有 typecheck 日志（clientcheck*.log、uipolish*.log 等）。
+- 未 push；host 类型 0 错误；client 契约（tsc -b tsconfig.client.json）仍 65 错误（60 runtime 测试 + 4 ui-polish 测试 + 1 runtime TS2878）。
+- tmp/ 下有 typecheck 日志（clientcheck*.log、uipolish*.log、rt*.log 等）。
 
 ## 复现与运行
 

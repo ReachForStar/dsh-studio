@@ -19,6 +19,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import type { PropsRuntime, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import css from './SshPanel.module.css'
 
 /** Full component props: conversation view share + the ui-polish locale seat. */
@@ -61,7 +62,7 @@ async function rpc(
   payload: Record<string, unknown>,
   signal?: AbortSignal,
 ): Promise<{ ok: boolean; value?: unknown; error?: { message: string } }> {
-  const rpcId = crypto.randomUUID()
+  const rpcId = randomUUID()
   const res = await fetch(`/api/${method}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

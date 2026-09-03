@@ -29,6 +29,7 @@ export function randomBytes(size: number): Uint8Array {
  * @returns UUID v4 字符串。
  */
 export function randomUUID(): string {
+  // oxlint-disable-next-line no-restricted-properties -- this module is the platform-crypto shim; the restriction guards app code
   return crypto.randomUUID()
 }
 

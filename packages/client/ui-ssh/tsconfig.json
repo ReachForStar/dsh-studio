@@ -21,6 +21,9 @@
       "path": "../runtime"
     },
     {
+      "path": "../store"
+    },
+    {
       "path": "../ui-settings"
     },
     {
@@ -34,6 +37,9 @@
     },
     {
       "path": "../../runtime-diagnostics/invariants"
+    },
+    {
+      "path": "../../host/ssh-remotes"
     }
   ]
 }

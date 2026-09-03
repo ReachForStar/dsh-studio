@@ -77,7 +77,7 @@ body[data-ds-bg-image] {
 `
 
 /** Required services: settings transport plus slots/locale for the registrations. */
-export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope', 'conversationEvents']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope', 'uiConversation']
 
 /**
  * Client plugin body: bind the background preference, paint the body, and
@@ -110,9 +110,9 @@ export function apply(ctx: ClientContext): void {
   // provenance — upstream gap). StatsFloat reads the index through its
   // injected `modelOf` face.
   const modelIndex = createModelIndex()
-  ctx.inject(['conversationEvents'], (scope: ClientContext) => {
-    const conversationEvents = scope.conversationEvents
-    scope.effect(() => conversationEvents.register(
+  ctx.inject(['uiConversation'], (scope: ClientContext) => {
+    const { events } = scope.uiConversation
+    scope.effect(() => events.register(
       modelIndexDefinition(modelIndex),
     ), 'ui-polish: model index definition')
   })

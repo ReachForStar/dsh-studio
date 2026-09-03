@@ -6,11 +6,8 @@
 
 import type {
   ConversationMatch, ConversationNodeContext, ConversationNodeDefinition,
-  ConversationMatchResult,
-} from '@reachforstar/dsh-client-runtime/client'
-
-/** Minimal state machine: nothing to fold, the event is the whole fact. */
-type EmptyState = Record<string, never>
+  ConversationMatchResult, ConversationStartMatch,
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
 
 /** Extract the message id and model from a settled assistant/message event. */
 /* oxlint-disable typescript/no-unnecessary-condition -- the match face may hand any session event */
@@ -60,7 +57,7 @@ export function createModelIndex(): ModelIndex {
  * @param index - the apply-owned model index to write.
  * @returns the Definition contribution.
  */
-export function modelIndexDefinition(index: ModelIndex): ConversationNodeDefinition<EmptyState> {
+export function modelIndexDefinition(index: ModelIndex): ConversationNodeDefinition {
   return {
     kind: 'ui-polish-model-index',
     match: (event): ConversationMatchResult | null => {
@@ -69,7 +66,7 @@ export function modelIndexDefinition(index: ModelIndex): ConversationNodeDefinit
         ? null
         : { id: facts.messageId, role: 'start' }
     },
-    start: (_context: ConversationNodeContext<EmptyState>, match): EmptyState => {
+    start: (_context: ConversationNodeContext, match: ConversationStartMatch): unknown => {
       const facts = assistantMessageFacts(match.event)
       if (facts !== null) index.record(facts.messageId, facts.model)
       return {}

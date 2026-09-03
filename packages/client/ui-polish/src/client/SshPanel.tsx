@@ -19,7 +19,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import type { PropsRuntime, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
+import { randomUUID } from './crypto-shim.ts'
 import css from './SshPanel.module.css'
 
 /** Full component props: conversation view share + the ui-polish locale seat. */

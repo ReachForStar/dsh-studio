@@ -5,8 +5,8 @@
  * list response.
  */
 
-import type { SnapshotStore } from '@reachforstar/dsh-client-runtime/client'
-import { createSnapshotStore } from '@reachforstar/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 // The ssh Remote payload vocabulary is re-exported by the assembly: this is
 // the one place both planes legitimately meet, so the page never imports a
 // Host package.
@@ -14,7 +14,7 @@ import type {
   SshRemoteDefinition,
   SshRemoteSaveRequest,
   SshRemoteTestResult,
-} from '@deepseek-ai/dsh-api-remotes/client'
+} from '@reachforstar/dsh-host-ssh-remotes/types'
 
 /** The wire face of the ssh Remote gateway. */
 export interface SshRemoteFace {

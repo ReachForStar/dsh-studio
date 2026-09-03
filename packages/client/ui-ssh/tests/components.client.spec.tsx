@@ -5,7 +5,7 @@ import { SshSection, type SshSectionProps } from '../src/client/SshSection.tsx'
 import { SshConnectionsStore, type SshRemoteFace } from '../src/client/ssh-store.ts'
 import { en, type SshLocaleKey } from '../src/client/locales.ts'
 import type {} from '../src/client/index.ts'
-import type { SshRemoteDefinition, SshRemoteSaveRequest, SshRemoteTestResult } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SshRemoteDefinition, SshRemoteSaveRequest, SshRemoteTestResult } from '@reachforstar/dsh-host-ssh-remotes/types'
 
 afterEach(cleanup)
 

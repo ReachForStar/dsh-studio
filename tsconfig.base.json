@@ -254,6 +254,7 @@
       "@reachforstar/dsh-client-ui-ssh/invariant": ["./packages/client/ui-ssh/src/invariant.ts"],
       "@reachforstar/dsh-host-ssh-remotes": ["./packages/host/ssh-remotes/src"],
       "@reachforstar/dsh-host-ssh-remotes/types": ["./packages/host/ssh-remotes/src/types.ts"],
+      "@reachforstar/dsh-host-ssh-remotes/remote": ["./packages/host/ssh-remotes/lib/typert.remote-client.d.ts"],
       "@reachforstar/dsh-host-ssh-remotes/invariant": ["./packages/host/ssh-remotes/src/invariant.ts"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
       "@deepseek-ai/dsh-acp": ["./packages/acp/acp/src"],

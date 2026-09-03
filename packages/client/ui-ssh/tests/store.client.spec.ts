@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { SshConnectionsStore, type SshRemoteFace } from '../src/client/ssh-store.ts'
-import type { SshRemoteDefinition, SshRemoteSaveRequest, SshRemoteTestResult } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SshRemoteDefinition, SshRemoteSaveRequest, SshRemoteTestResult } from '@reachforstar/dsh-host-ssh-remotes/types'
 
 function definition(overrides: Partial<SshRemoteDefinition> = {}): SshRemoteDefinition {
   return {

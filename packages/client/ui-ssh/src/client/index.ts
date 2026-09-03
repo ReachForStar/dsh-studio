@@ -3,12 +3,13 @@
  * settings section over the ssh Remote gateway. Export discipline:
  * packages/client/AGENTS.md.
  */
-import type { ClientContext } from '@reachforstar/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ctx.remote merge and the ssh payload vocabulary into
 // this program (the assembly is the one place both planes legitimately meet).
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@reachforstar/dsh-host-ssh-remotes/remote'
 import { SshSection, type SshSectionInjected } from './SshSection.tsx'
 import { SshConnectionsStore, type SshRemoteFace } from './ssh-store.ts'
 import { en, zh, type SshLocaleKey } from './locales.ts'
@@ -31,7 +32,7 @@ export const NS = 'settings.ssh'
 export const inject = ['slots', 'locale', 'remote', 'remote.ssh']
 
 /** Contribute the SSH connection-management section to Web Settings. */
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-ssh: dictionaries')
 
   const t = ctx.locale.bind(NS)

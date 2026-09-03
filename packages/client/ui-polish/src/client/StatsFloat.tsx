@@ -7,7 +7,7 @@
 
 import { Fragment, memo, useMemo, useState } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ConversationSnapshot } from '@reachforstar/dsh-client-runtime/client'
+import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-ui-conversation'
 // Type-only: merges the sessionStats key into SessionProjectionMap for useProjection.
 import type {} from '@deepseek-ai/dsh-session-stats/client'
 import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'

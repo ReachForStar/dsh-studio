@@ -5,7 +5,7 @@
 // {@link card}; writes only through {@link save} (validating) and {@link reset}.
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings'
+import type { SettingsScope } from '@reachforstar/dsh-client-runtime/client'
 import { MODEL_PRICING_FIELD, type PolishSettings } from '../background-settings.ts'
 import { parseRateCard, SEED_RATE_CARD, type RateCardData } from './cost.ts'
 

@@ -29,7 +29,6 @@ import { BackgroundRow, type BackgroundRowInjected } from './BackgroundRow.tsx'
 import { CompactionRow, type CompactionRowInjected } from './CompactionRow.tsx'
 import { PricingRow, type PricingRowInjected } from './PricingRow.tsx'
 import { createBackgroundRowStore } from './settings-store.ts'
-import { createModelIndex, modelIndexDefinition, type ModelIndex } from './model-index.ts'
 import { PricingRuntime } from './pricing-store.ts'
 import { SEED_RATE_CARD } from './cost.ts'
 import { StatsFloat } from './StatsFloat.tsx'
@@ -77,7 +76,7 @@ body[data-ds-bg-image] {
 `
 
 /** Required services: settings transport plus slots/locale for the registrations. */
-export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope', 'uiConversation']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope']
 
 /**
  * Client plugin body: bind the background preference, paint the body, and
@@ -103,19 +102,6 @@ export function apply(ctx: ClientContext): void {
 
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-polish: dictionaries')
   const t = ctx.locale.bind(NS)
-
-  // Per-model billing index: this plugin's own messageId → model record, fed
-  // by a state-only Conversation Definition over the same assistant/message
-  // events the core nodes fold (the core nodes carry usage but not model
-  // provenance — upstream gap). StatsFloat reads the index through its
-  // injected `modelOf` face.
-  const modelIndex = createModelIndex()
-  ctx.inject(['uiConversation'], (scope: ClientContext) => {
-    const { events } = scope.uiConversation
-    scope.effect(() => events.register(
-      modelIndexDefinition(modelIndex),
-    ), 'ui-polish: model index definition')
-  })
 
   const store = createBackgroundRowStore()
   let bound: BoundActions<typeof store> | undefined
@@ -182,8 +168,7 @@ export function apply(ctx: ClientContext): void {
       id: 'polish-stats',
       order: 0,
       locale: NS,
-      inject: (): { modelOf: ModelIndex['modelOf']; card: ReturnType<PricingRuntime['getCard']> } => ({
-        modelOf: modelIndex.modelOf,
+      inject: (): { card: ReturnType<PricingRuntime['getCard']> } => ({
         card: pricing.getCard(),
       }),
     }, StatsFloat)

@@ -34,6 +34,12 @@
       "path": "../ui-conversation"
     },
     {
+      "path": "../ui-chat"
+    },
+    {
+      "path": "../ui-session"
+    },
+    {
       "path": "../ui-primitives"
     },
     {

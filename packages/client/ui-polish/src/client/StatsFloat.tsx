@@ -7,7 +7,11 @@
 
 import { Fragment, memo, useMemo, useState } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ConversationSnapshot } from '@reachforstar/dsh-client-runtime/client'
+// Type-only: merges the chat target into ConversationViewSnapshotMap and the
+// session hooks (useSession/useProjection) into dock slot props.
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type { ConversationNode } from '@deepseek-ai/dsh-client-ui-conversation/client'
 // Type-only: merges the sessionStats key into SessionProjectionMap for useProjection.
 import type {} from '@deepseek-ai/dsh-session-stats/client'
 import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
@@ -64,14 +68,9 @@ function projectionFromNodeUsage(usage: unknown): TokenUsageProjection | null {
   return { uncachedInputTokens: uncached, outputTokens: output, cacheReadTokens: cacheRead, cacheWriteTokens: cacheWrite }
 }
 
-/** One assistant node's model id, via the plugin's messageId → model index. */
-function modelOfNode(
-  node: ConversationSnapshot['chat']['legacy']['nodes'][number],
-  modelOf: (messageId: string) => string | undefined,
-): string | undefined {
-  if (node.kind !== 'assistant') return undefined
-  if (node.messageId === undefined) return undefined
-  return modelOf(String(node.messageId))
+/** One assistant node's model id, from the node's own provenance record. */
+function modelOfNode(node: ConversationNode): string | undefined {
+  return node.kind === 'assistant' ? node.provenance?.model : undefined
 }
 
 /** One cost-attributable assistant message: usage, model, and settled time. */
@@ -89,18 +88,14 @@ export interface MessageCostInput {
  * bills each step at its own rate. Nodes without a model or without usage are
  * skipped; the caller falls back to the durable projection when nothing is
  * attributable.
- * @param nodes - the conversation snapshot's legacy nodes.
- * @param modelOf - the plugin's messageId → model index lookup.
+ * @param nodes - the conversation's settled nodes.
  * @returns per-message cost inputs; empty when no node carries both.
  */
-export function messageCosts(
-  nodes: readonly ConversationSnapshot['chat']['legacy']['nodes'][number][],
-  modelOf: (messageId: string) => string | undefined,
-): MessageCostInput[] {
+export function messageCosts(nodes: readonly ConversationNode[]): MessageCostInput[] {
   const messages: MessageCostInput[] = []
   for (const node of nodes) {
     if (node.kind !== 'assistant') continue
-    const model = modelOfNode(node, modelOf)
+    const model = modelOfNode(node)
     if (model === undefined) continue
     const usage = projectionFromNodeUsage(node.usage)
     if (usage === null) continue
@@ -119,7 +114,7 @@ interface WindowStats {
   ttftSteps: number
 }
 
-function windowStats(nodes: ConversationSnapshot['chat']['legacy']['nodes']): WindowStats {
+function windowStats(nodes: readonly ConversationNode[]): WindowStats {
   const turns = new Set<number>()
   let steps = 0
   let llmMs = 0
@@ -145,17 +140,15 @@ function windowStats(nodes: ConversationSnapshot['chat']['legacy']['nodes']): Wi
   return { turns: turns.size, steps, llmMs, toolMs, ttftMs, ttftSteps }
 }
 
-/** Full component props: session runtime share + the ui-polish locale seat + injected model index. */
+/** Full component props: dock standard hooks + the ui-polish locale seat + the rate card. */
 export type StatsFloatProps = PropsRuntime<'conversation.composer.dock'> & PropsLocale<'ui-polish'> & {
-  /** Resolve one settled assistant message's model id (plugin-owned index). */
-  modelOf: (messageId: string) => string | undefined
   /** The rate card pricing the float (the user card, or the built-in seed). */
   card: RateCardData
 }
 
-export const StatsFloat = memo(function StatsFloat({ useSession, useProjection, t, modelOf, card }: StatsFloatProps) {
+export const StatsFloat = memo(function StatsFloat({ useConversation, useProjection, t, card }: StatsFloatProps) {
   const [expanded, setExpanded] = useState(false)
-  const settledNodes = useSession(s => s.chat.legacy.nodes)
+  const settledNodes = useConversation(s => s.views.get('chat')?.legacy.nodes ?? [])
   const usage = useProjection('tokenUsage')
   const projected = useProjection('sessionStats')
   const stats = useMemo(
@@ -190,7 +183,7 @@ export const StatsFloat = memo(function StatsFloat({ useSession, useProjection, 
   // accumulated into total + input/output/cache buckets; when no settled node
   // carries attributable usage, fall back to the durable projection at the
   // default card so an estimate still shows.
-  const messages = useMemo(() => messageCosts(settledNodes, modelOf), [settledNodes, modelOf])
+  const messages = useMemo(() => messageCosts(settledNodes), [settledNodes])
   const bill = usage !== undefined && (billedInputTokens(usage) > 0 || usage.outputTokens > 0)
     ? usage
     : undefined

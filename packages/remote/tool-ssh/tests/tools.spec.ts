@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
@@ -35,7 +35,7 @@ async function setup(): Promise<Context> {
 function execute(ctx: Context, name: string, args: Record<string, unknown>, agent?: object) {
   return ctx.tools.execute({
     signal: new AbortController().signal,
-    callId: CallId(`ssh-tool-${name}`),
+    callId: ToolCallId(`ssh-tool-${name}`),
     name,
     arguments: args,
     ...agent !== undefined ? { agent } : {},
@@ -196,7 +196,7 @@ describe('ssh tools', () => {
     const controller = new AbortController()
     const running = ctx.tools.execute({
       signal: controller.signal,
-      callId: CallId('ssh-tool-abort'),
+      callId: ToolCallId('ssh-tool-abort'),
       name: 'ssh_exec',
       arguments: { connection: 'box', command: 'node -e "setTimeout(() => {}, 60000)"' },
     })

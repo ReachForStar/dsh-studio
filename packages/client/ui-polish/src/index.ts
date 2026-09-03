@@ -1,7 +1,6 @@
 /** Host registration for the ui-polish background-image preference and git panel. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 // Type-only: pulls the webserver Context merge (ctx.webServer).
 import type {} from '@deepseek-ai/dsh-host-webserver'
@@ -23,7 +22,7 @@ export { handleBackgroundRequest, BACKGROUND_IMAGE_FILE } from './background-ser
 export { handleExcalidrawRequest } from './excalidraw-service.ts'
 export { handleGitRequest, workspaceCwdResolver, type GitCwdResolver, type GitLogResult, type GitStatusEntry, type GitStatusResult } from './git-service.ts'
 
-const NAMESPACE = settingsNamespace(BACKGROUND_SETTINGS_NAMESPACE)
+const NAMESPACE = BACKGROUND_SETTINGS_NAMESPACE
 
 /** Host process working directory: the fallback repository when no workspace matches. */
 const FALLBACK_CWD = process.cwd()

@@ -10,7 +10,7 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { settingsNamespace, type SettingsScope } from '@deepseek-ai/dsh-settings'
+import type { SettingsScope } from '@deepseek-ai/dsh-settings'
 import {
   SshConnectionId,
   SshError,
@@ -53,7 +53,7 @@ export type {
 } from './types.ts'
 
 /** Settings namespace of the connection-definition registry. */
-export const SSH_SETTINGS_NAMESPACE = settingsNamespace('ssh')
+export const SSH_SETTINGS_NAMESPACE = 'ssh'
 
 const SshAuthSchema = z.union([
   z.object({

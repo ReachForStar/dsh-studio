@@ -5,8 +5,8 @@
 
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
 import * as SshInvariant from '../src/invariant.ts'
 import { SSH_SETTINGS_NAMESPACE } from '../src/index.ts'
@@ -25,7 +25,7 @@ describe('ssh invariants', () => {
   it('fails a settings/updated emission without a live ssh service', async () => {
     const { ctx } = await setup(false)
     expect(() => {
-      ctx.emit('settings/updated', SSH_SETTINGS_NAMESPACE, { connections: [] }, { connections: [] }, 'update')
+      ctx.emit('settings/updated', SSH_SETTINGS_NAMESPACE as SettingsNamespace, { connections: [] }, { connections: [] }, 'update')
     }).toThrow(/without a live ssh service/)
   })
 
@@ -60,7 +60,7 @@ describe('ssh invariants', () => {
   it('ignores settings/updated emissions for other namespaces', async () => {
     const { ctx } = await setup(true)
     expect(() => {
-      ctx.emit('settings/updated', settingsNamespace('other'), {}, {}, 'update')
+      ctx.emit('settings/updated', 'other' as SettingsNamespace, {}, {}, 'update')
     }).not.toThrow()
   })
 

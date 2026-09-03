@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
@@ -90,7 +90,7 @@ describe('ssh tools through a real Loader composition', () => {
 
     const execute = (name: string, args: Record<string, unknown>) => ctx.tools.execute({
       signal: new AbortController().signal,
-      callId: CallId(`loader-${name}`),
+      callId: ToolCallId(`loader-${name}`),
       name,
       arguments: args,
     })

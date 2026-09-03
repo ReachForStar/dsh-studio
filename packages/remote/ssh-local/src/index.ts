@@ -15,7 +15,8 @@ import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { Client, type ClientChannel, type ConnectConfig, type SFTPWrapper, type Stats } from 'ssh2'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+// Type-only: pulls the settings Context merge (ctx.settings).
+import type {} from '@deepseek-ai/dsh-settings'
 import { clampTimeout } from '@deepseek-ai/dsh-timeout'
 import { SshConnectionId, SshError, SshService } from '@reachforstar/dsh-ssh'
 import type {
@@ -38,7 +39,7 @@ import type {
 const SFTP_STATUS_NO_SUCH_FILE = 2
 
 /** Settings namespace of this provider's own execution defaults. */
-export const SSH_LOCAL_SETTINGS_NAMESPACE = settingsNamespace('ssh-local')
+export const SSH_LOCAL_SETTINGS_NAMESPACE = 'ssh-local'
 
 /** Configuration for the local SSH provider. */
 export interface Config {
@@ -1070,7 +1071,7 @@ export class LocalSshService extends SshService {
     const entry = resolveConfig(config)
     // v8 ignore next -- no test boots ssh-local without a settings service; the settings mount replaces this placeholder before any read
     this.source = () => entry
-    installSettingsSection(ctx, SSH_LOCAL_SETTINGS_NAMESPACE, Config, entry, {
+    ctx.settings.installSection(ctx, SSH_LOCAL_SETTINGS_NAMESPACE, Config, entry, {
       validate: (value) => {
         resolveConfig(value)
       },

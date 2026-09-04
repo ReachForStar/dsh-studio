@@ -7,6 +7,7 @@
  */
 
 import type {} from '@deepseek-ai/dsh-api-session-controller/remote-events'
+import type {} from '@reachforstar/dsh-host-ssh-remotes/types'
 import type { TypertForwardableEventEntry } from '@deepseek-ai/dsh-typert-protocol'
 
 /**
@@ -31,5 +32,7 @@ export const API_REMOTE_FORWARDED_EVENTS = [
   { event: 'cordis/inspect-query-resolved', mode: 'emit' },
   { event: 'llm/adapters-updated', mode: 'emit' },
   { event: 'settings/document-updated', mode: 'emit' },
+  { event: 'ssh/pty/exit', mode: 'emit' },
+  { event: 'ssh/pty/output', mode: 'emit' },
   { event: 'user-questions/request', mode: 'waterfall' },
 ] as const satisfies readonly TypertForwardableEventEntry[]

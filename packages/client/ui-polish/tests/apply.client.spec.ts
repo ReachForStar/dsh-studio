@@ -53,7 +53,26 @@ async function bench() {
     backgroundImage = raw === null ? undefined : String(raw)
     return { ok: true as const, value: namespace() }
   })
-  const events = new TestRemote(ctx, { settings: { describe, mutate } })
+  const sshMethod = async (..._args: unknown[]) => ({ ok: true as const, value: {} })
+  const events = new TestRemote(ctx, {
+    settings: { describe, mutate },
+    ssh: {
+      list: sshMethod,
+      save: sshMethod,
+      delete: sshMethod,
+      test: sshMethod,
+      exec: sshMethod,
+      ptyOpen: sshMethod,
+      ptyWrite: sshMethod,
+      ptyResize: sshMethod,
+      ptyClose: sshMethod,
+      sftpList: sshMethod,
+      sftpStat: sshMethod,
+      sftpMkdir: sshMethod,
+      sftpRemove: sshMethod,
+      sftpRename: sshMethod,
+    },
+  })
   // Mount the settings domain plugin (the rc.8 binder is a Service constructed
   // inside its apply, not a standalone plugin class).
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
@@ -80,7 +99,7 @@ afterEach(() => {
 
 describe('ui-polish apply', () => {
   it('declares the required services', () => {
-    expect(inject).toEqual(['slots', 'locale', 'settingsScope'])
+    expect(inject).toEqual(['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh'])
   })
 
   it('registers the settings rows, dock entries, and view tabs, and unwinds on dispose', async () => {

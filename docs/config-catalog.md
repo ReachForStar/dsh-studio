@@ -2179,50 +2179,6 @@ export interface Config {
 
 Source: [`packages/spill/spill-policy/src/index.ts:60`](../packages/spill/spill-policy/src/index.ts)
 
-<a id="deepseek-aidsh-ssh-local"></a>
-
-## `@reachforstar/dsh-ssh-local`
-
-```ts config-catalog
-/** Configuration for the local SSH provider. */
-export interface Config {
-  /** Default foreground command timeout in milliseconds (default 60000). */
-  defaultExecTimeoutMs?: number
-  /** Cap for per-call timeout overrides in milliseconds (default 600000). */
-  maxExecTimeoutMs?: number
-  /** Per-stream capture cap in bytes; overflow keeps the tail (default 65536). */
-  outputMaxBytes?: number
-  /**
-   * Host key policy: `accept-new` remembers an unknown key on first contact
-   * and rejects later changes; `reject` refuses any key that is neither
-   * pinned on the definition nor remembered. (Default `accept-new`.)
-   */
-  strictHostKey?: 'accept-new' | 'reject'
-  /**
-   * When true, use the ssh2 algorithm defaults (legacy kex/cipher/MAC
-   * fallbacks included) for maximum server compatibility. Default false
-   * restricts the handshake to modern algorithms.
-   */
-  allowLegacyAlgorithms?: boolean
-  /**
-   * SSH keep-alive interval in milliseconds (0 disables; default 0).
-   */
-  keepaliveIntervalMs?: number
-  /**
-   * Reject private keys whose POSIX permissions let group/others read them
-   * (OpenSSH behavior; Windows ACLs are not checked). Default true.
-   */
-  strictPrivateKeyPermissions?: boolean
-  /**
-   * SFTP transfers larger than this many bytes use the parallel
-   * fastGet/fastPut path (0 disables the fast path; default 1 MiB).
-   */
-  fastTransferThresholdBytes?: number
-}
-```
-
-Source: [`packages/remote/ssh-local/src/index.ts:38`](../packages/remote/ssh-local/src/index.ts)
-
 <a id="deepseek-aidsh-storage-domain"></a>
 
 ## `@deepseek-ai/dsh-storage-domain`
@@ -2499,49 +2455,6 @@ export interface Config {
 ```
 
 Source: [`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
-
-<a id="deepseek-aidsh-subagent-pi"></a>
-
-## `@reachforstar/dsh-subagent-pi`
-
-Requires: `subagents` · `subprocess`
-
-```ts config-catalog
-/** Deployment-owned environment, process-release bounds, and Pi directories. */
-export interface Config {
-  /**
-   * Explicit environment entries layered over the subprocess seam's
-   * credential-scrubbed parent environment. Pi credentials (for example
-   * `DEEPSEEK_API_KEY`) and any Pi extension variables belong here.
-   */
-  env?: Record<string, string>
-  /** Grace in milliseconds for Pi's cooperative EOF shutdown before termination. */
-  disposeEofGraceMs?: number
-  /** Grace in milliseconds for app-server process-tree termination. */
-  disposeGraceMs?: number
-  /**
-   * Pi executable (bare name on `PATH`) or a test fixture launcher; the
-   * provider appends `--mode rpc`.
-   */
-  command?: string
-  /** Fixed arguments appended after the Pi executable. */
-  args?: string[]
-  /**
-   * Absolute `PI_CODING_AGENT_DIR` override naming where Pi keeps agent
-   * settings and trust state. When omitted, Pi uses its native home
-   * (`~/.pi/agent`). Wins over an `env.PI_CODING_AGENT_DIR` entry.
-   */
-  agentDir?: string
-  /**
-   * Absolute `PI_CODING_AGENT_SESSION_DIR` override naming where Pi keeps
-   * session files. When omitted, Pi uses its native session location. Wins
-   * over an `env.PI_CODING_AGENT_SESSION_DIR` entry.
-   */
-  sessionDir?: string
-}
-```
-
-Source: [`packages/subagent/subagent-pi/src/index.ts:32`](../packages/subagent/subagent-pi/src/index.ts)
 
 <a id="deepseek-aidsh-subagent-spawn-in-process"></a>
 
@@ -3415,6 +3328,93 @@ export interface Config {
 
 Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages/workflow/workflow-worker-thread/src/index.ts)
 
+<a id="reachforstardsh-ssh-local"></a>
+
+## `@reachforstar/dsh-ssh-local`
+
+```ts config-catalog
+/** Configuration for the local SSH provider. */
+export interface Config {
+  /** Default foreground command timeout in milliseconds (default 60000). */
+  defaultExecTimeoutMs?: number
+  /** Cap for per-call timeout overrides in milliseconds (default 600000). */
+  maxExecTimeoutMs?: number
+  /** Per-stream capture cap in bytes; overflow keeps the tail (default 65536). */
+  outputMaxBytes?: number
+  /**
+   * Host key policy: `accept-new` remembers an unknown key on first contact
+   * and rejects later changes; `reject` refuses any key that is neither
+   * pinned on the definition nor remembered. (Default `accept-new`.)
+   */
+  strictHostKey?: 'accept-new' | 'reject'
+  /**
+   * When true, use the ssh2 algorithm defaults (legacy kex/cipher/MAC
+   * fallbacks included) for maximum server compatibility. Default false
+   * restricts the handshake to modern algorithms.
+   */
+  allowLegacyAlgorithms?: boolean
+  /**
+   * SSH keep-alive interval in milliseconds (0 disables; default 0).
+   */
+  keepaliveIntervalMs?: number
+  /**
+   * Reject private keys whose POSIX permissions let group/others read them
+   * (OpenSSH behavior; Windows ACLs are not checked). Default true.
+   */
+  strictPrivateKeyPermissions?: boolean
+  /**
+   * SFTP transfers larger than this many bytes use the parallel
+   * fastGet/fastPut path (0 disables the fast path; default 1 MiB).
+   */
+  fastTransferThresholdBytes?: number
+}
+```
+
+Source: [`packages/remote/ssh-local/src/index.ts:45`](../packages/remote/ssh-local/src/index.ts)
+
+<a id="reachforstardsh-subagent-pi"></a>
+
+## `@reachforstar/dsh-subagent-pi`
+
+Requires: `subagents` · `subprocess`
+
+```ts config-catalog
+/** Deployment-owned environment, process-release bounds, and Pi directories. */
+export interface Config {
+  /**
+   * Explicit environment entries layered over the subprocess seam's
+   * credential-scrubbed parent environment. Pi credentials (for example
+   * `DEEPSEEK_API_KEY`) and any Pi extension variables belong here.
+   */
+  env?: Record<string, string>
+  /** Grace in milliseconds for Pi's cooperative EOF shutdown before termination. */
+  disposeEofGraceMs?: number
+  /** Grace in milliseconds for app-server process-tree termination. */
+  disposeGraceMs?: number
+  /**
+   * Pi executable (bare name on `PATH`) or a test fixture launcher; the
+   * provider appends `--mode rpc`.
+   */
+  command?: string
+  /** Fixed arguments appended after the Pi executable. */
+  args?: string[]
+  /**
+   * Absolute `PI_CODING_AGENT_DIR` override naming where Pi keeps agent
+   * settings and trust state. When omitted, Pi uses its native home
+   * (`~/.pi/agent`). Wins over an `env.PI_CODING_AGENT_DIR` entry.
+   */
+  agentDir?: string
+  /**
+   * Absolute `PI_CODING_AGENT_SESSION_DIR` override naming where Pi keeps
+   * session files. When omitted, Pi uses its native session location. Wins
+   * over an `env.PI_CODING_AGENT_SESSION_DIR` entry.
+   */
+  sessionDir?: string
+}
+```
+
+Source: [`packages/subagent/subagent-pi/src/index.ts:32`](../packages/subagent/subagent-pi/src/index.ts)
+
 ## Loadable plugins with no config
 
 These load from a `cordis.yml` entry with no `config:` block; they declare no configuration API.
@@ -3445,7 +3445,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-client-ui-model-selection` ([`packages/client/ui-model-selection/src/index.ts`](../packages/client/ui-model-selection/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-permission-presets` ([`packages/client/ui-permission-presets/src/index.ts`](../packages/client/ui-permission-presets/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-plan` ([`packages/client/ui-plan/src/index.ts`](../packages/client/ui-plan/src/index.ts))
-- `@reachforstar/dsh-client-ui-polish` ([`packages/client/ui-polish/src/index.ts`](../packages/client/ui-polish/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-reference` ([`packages/client/ui-reference/src/index.ts`](../packages/client/ui-reference/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-renderer` ([`packages/client/ui-renderer/src/index.ts`](../packages/client/ui-renderer/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-schedule` ([`packages/client/ui-schedule/src/index.ts`](../packages/client/ui-schedule/src/index.ts))
@@ -3457,7 +3456,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-client-ui-settings-plugins` ([`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-sidebar` ([`packages/client/ui-sidebar/src/index.ts`](../packages/client/ui-sidebar/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-skill` ([`packages/client/ui-skill/src/index.ts`](../packages/client/ui-skill/src/index.ts))
-- `@reachforstar/dsh-client-ui-ssh` ([`packages/client/ui-ssh/src/index.ts`](../packages/client/ui-ssh/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-subagent` ([`packages/client/ui-subagent/src/index.ts`](../packages/client/ui-subagent/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-theme` ([`packages/client/ui-theme/src/index.ts`](../packages/client/ui-theme/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-tool` ([`packages/client/ui-tool/src/index.ts`](../packages/client/ui-tool/src/index.ts))
@@ -3478,7 +3476,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-host-directory-picker-auto` — requires `webServer` · `loader` ([`packages/host/directory-picker-auto/src/index.ts`](../packages/host/directory-picker-auto/src/index.ts))
 - `@deepseek-ai/dsh-host-directory-picker-native` ([`packages/host/directory-picker-native/src/index.ts`](../packages/host/directory-picker-native/src/index.ts))
 - `@deepseek-ai/dsh-host-plugin-inventory` — requires `loader` ([`packages/host/plugin-inventory/src/index.ts`](../packages/host/plugin-inventory/src/index.ts))
-- `@reachforstar/dsh-host-ssh-remotes` — requires `ssh` ([`packages/host/ssh-remotes/src/index.ts`](../packages/host/ssh-remotes/src/index.ts))
 - `@deepseek-ai/dsh-llm` ([`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts))
 - `@deepseek-ai/dsh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
 - `@deepseek-ai/dsh-schedule` — requires `agents` · `sessions` · `tools` · `sessionPersistence` ([`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts))
@@ -3495,12 +3492,15 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-tool-ask-user` — requires `tools` · `userQuestions` ([`packages/interaction/tool-ask-user/src/index.ts`](../packages/interaction/tool-ask-user/src/index.ts))
 - `@deepseek-ai/dsh-tool-call-timeout-policy` — requires `tools` ([`packages/guard/timeout-policy/src/index.ts`](../packages/guard/timeout-policy/src/index.ts))
 - `@deepseek-ai/dsh-tool-cordis` — requires `tools` · `systemPrompt` · `dynamicCordisRunner` · `cordisInspect` ([`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts))
-- `@reachforstar/dsh-tool-excalidraw` — requires `tools` ([`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts))
-- `@reachforstar/dsh-tool-ssh` — requires `tools` · `ssh` · `systemPrompt` ([`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts))
 - `@deepseek-ai/dsh-tool-subagent-control` — requires `tools` · `subagents` ([`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts))
 - `@deepseek-ai/dsh-user-questions` ([`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts))
 - `@deepseek-ai/dsh-webhook` — requires `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry` ([`packages/webhook/webhook/src/index.ts`](../packages/webhook/webhook/src/index.ts))
 - `@deepseek-ai/dsh-workspace` — requires `storageDomain` · `sessionPersistence` ([`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts))
+- `@reachforstar/dsh-client-ui-polish` ([`packages/client/ui-polish/src/index.ts`](../packages/client/ui-polish/src/index.ts))
+- `@reachforstar/dsh-client-ui-ssh` ([`packages/client/ui-ssh/src/index.ts`](../packages/client/ui-ssh/src/index.ts))
+- `@reachforstar/dsh-host-ssh-remotes` — requires `ssh` ([`packages/host/ssh-remotes/src/index.ts`](../packages/host/ssh-remotes/src/index.ts))
+- `@reachforstar/dsh-tool-excalidraw` — requires `tools` ([`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts))
+- `@reachforstar/dsh-tool-ssh` — requires `tools` · `ssh` · `systemPrompt` ([`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts))
 
 ## Seam packages (not directly loadable)
 
@@ -3520,9 +3520,9 @@ Abstract service classes — a deployment loads a concrete implementation packag
 - `@deepseek-ai/dsh-settings` — abstract `SettingsProvider` ([`packages/settings/settings/src/index.ts`](../packages/settings/settings/src/index.ts))
 - `@deepseek-ai/dsh-shell` — abstract `ShellExecutor` ([`packages/shell/shell/src/index.ts`](../packages/shell/shell/src/index.ts))
 - `@deepseek-ai/dsh-spill` — abstract `SpillStore` ([`packages/spill/spill/src/index.ts`](../packages/spill/spill/src/index.ts))
-- `@reachforstar/dsh-ssh` — abstract `SshService` ([`packages/remote/ssh/src/index.ts`](../packages/remote/ssh/src/index.ts))
 - `@deepseek-ai/dsh-subprocess` — abstract `SubprocessRuntime` ([`packages/subprocess/subprocess/src/index.ts`](../packages/subprocess/subprocess/src/index.ts))
 - `@deepseek-ai/dsh-workflow` — abstract `WorkflowEngine` ([`packages/workflow/workflow/src/index.ts`](../packages/workflow/workflow/src/index.ts))
+- `@reachforstar/dsh-ssh` — abstract `SshService` ([`packages/remote/ssh/src/index.ts`](../packages/remote/ssh/src/index.ts))
 
 ## Library packages (no plugin entry)
 

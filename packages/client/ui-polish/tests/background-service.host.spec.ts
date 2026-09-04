@@ -63,7 +63,7 @@ describe('background image service', () => {
     await handleBackgroundRequest(imagePath, MAX, requestDouble('POST', '/bg/upload', PNG) as never, up.res as never)
     expect(up.status).toBe(200)
     const body = JSON.parse(up.text()) as { url: string }
-    expect(body.url).toBe('/bg/current')
+    expect(body.url).toMatch(/^\/bg\/current\?v=/)
     expect((await readFile(imagePath)).equals(PNG)).toBe(true)
 
     const get = responseDouble()

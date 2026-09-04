@@ -207,6 +207,7 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'user-questions': 'user-questions.md',
   'webserver': 'web-server.md',
   'workflow': 'workflow.md',
+  'ssh': 'ssh.md',
 }
 
 /**
@@ -740,6 +741,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   SshConnection: 'ssh live connection handle is owned by packages/remote/ssh/README.md',
   SshSftp: 'ssh SFTP operation surface is owned by packages/remote/ssh/README.md',
   SftpEntry: 'ssh SFTP entry record is owned by packages/remote/ssh/README.md',
+  SshPtyOutputEvent: 'SSH PTY output event is owned by packages/host/ssh-remotes/README.md',
+  SshPtyExitEvent: 'SSH PTY exit event is owned by packages/host/ssh-remotes/README.md',
   SubagentRunInfo: 'event payload contract is owned by packages/subagent/subagent/src/types.ts',
   WorkflowAgentEndInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowAgentInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',

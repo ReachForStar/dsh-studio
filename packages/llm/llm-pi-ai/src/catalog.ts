@@ -165,6 +165,7 @@ export const AMAX_BASE_URL = 'https://ai.amaxsmp.com/v1'
 /** The environment variable the AMAX gateway authenticates through. */
 export const AMAX_API_KEY_ENV = 'AMAX_API_KEY'
 
+/** AMAX provider definition used for account-specific model discovery. */
 export const AMAX_PROVIDER: Provider<'openai-completions'> = createProvider<'openai-completions'>({
   id: 'amax',
   name: 'AMAX Token Router',

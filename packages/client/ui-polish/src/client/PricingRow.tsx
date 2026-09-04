@@ -7,16 +7,13 @@
 // JSON parses and every price is finite.
 
 import { useState } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { SEED_RATE_CARD } from './cost.ts'
+import type { createPricingRowStore } from './settings-store.ts'
 import css from './BackgroundRow.module.css'
 
-/** Injected business face: read the current card text and persist a change. */
+/** Injected business face: persist a change. */
 export interface PricingRowInjected {
-  /** Current card JSON text (the user card when set, else the formatted seed). */
-  currentJson: string
-  /** Whether a user card is currently set (false = the seed card applies). */
-  hasCustom: boolean
   /**
    * Validate and persist a card from JSON text.
    * @param json - rate card JSON text.
@@ -27,15 +24,18 @@ export interface PricingRowInjected {
   reset: () => void
 }
 
-/** Full component props: runtime share + locale seat + injected pricing face. */
+/** Full component props: runtime share + locale seat + store + injected pricing face. */
 export type PricingRowProps =
-  PropsRuntime<'settings.general.item'> & PropsLocale<'ui-polish'> & PricingRowInjected
+  PropsRuntime<'settings.general.item'> & PropsLocale<'ui-polish'>
+  & PropsStore<ReturnType<typeof createPricingRowStore>> & PricingRowInjected
 
 /**
  * Render the model rate card row.
  * @param props - composed slot props.
  */
-export function PricingRow({ t, currentJson, hasCustom, save, reset }: PricingRowProps) {
+export function PricingRow({ t, save, reset, useStore }: PricingRowProps) {
+  const currentJson = useStore(s => s.currentJson)
+  const hasCustom = useStore(s => s.hasCustom)
   const [text, setText] = useState(currentJson)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)

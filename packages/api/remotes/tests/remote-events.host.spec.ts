@@ -104,6 +104,17 @@ describe('Remote event Host source', () => {
       value: { event: 'settings/document-updated', args: ['ui-theme', 1] },
     })
 
+    const output = { ptyId: 'pty-1', data: 'YWJj' }
+    emitRaw(ctx, 'ssh/pty/output', [output])
+    await expect(first.next()).resolves.toEqual({
+      done: false,
+      value: { event: 'ssh/pty/output', args: [output] },
+    })
+    await expect(second.next()).resolves.toEqual({
+      done: false,
+      value: { event: 'ssh/pty/output', args: [output] },
+    })
+
     const firstDone = first.next()
     firstAbort.abort(new Error('first Client disconnected'))
     emitRaw(ctx, 'commands/change', [])

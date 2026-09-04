@@ -136,4 +136,42 @@ resolve(ref: SshConnectionId | string): SshConnectionDefinition
 ```
 
 Source: [`packages/remote/ssh/src/index.ts`](../../packages/remote/ssh/src/index.ts)
+
+<a id="ssh-events"></a>
+
+### `ssh/*` events
+
+<a id="sshptyexit--emit"></a>
+
+#### `ssh/pty/exit` — emit
+
+One PTY termination report.
+
+```ts cordis-catalog
+/**
+ * One PTY termination report.
+ * @param event - PTY identity and exit details.
+ * @mode emit
+ */
+'ssh/pty/exit'(event: SshPtyExitEvent): void
+```
+
+Source: [`packages/host/ssh-remotes/src/types.ts`](../../packages/host/ssh-remotes/src/types.ts)
+
+<a id="sshptyoutput--emit"></a>
+
+#### `ssh/pty/output` — emit
+
+One PTY output chunk, base64-encoded for JSON transport.
+
+```ts cordis-catalog
+/**
+ * One PTY output chunk, base64-encoded for JSON transport.
+ * @param event - PTY identity and output bytes.
+ * @mode emit
+ */
+'ssh/pty/output'(event: SshPtyOutputEvent): void
+```
+
+Source: [`packages/host/ssh-remotes/src/types.ts`](../../packages/host/ssh-remotes/src/types.ts)
 <!-- END GENERATED cordis-surface -->

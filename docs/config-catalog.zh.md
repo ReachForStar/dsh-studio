@@ -3330,10 +3330,96 @@ export interface Config {
 
 来源：[`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages/workflow/workflow-worker-thread/src/index.ts)
 
+<a id="reachforstardsh-ssh-local"></a>
+
+## `@reachforstar/dsh-ssh-local`
+
+```ts config-catalog
+/** Configuration for the local SSH provider. */
+export interface Config {
+  /** Default foreground command timeout in milliseconds (default 60000). */
+  defaultExecTimeoutMs?: number
+  /** Cap for per-call timeout overrides in milliseconds (default 600000). */
+  maxExecTimeoutMs?: number
+  /** Per-stream capture cap in bytes; overflow keeps the tail (default 65536). */
+  outputMaxBytes?: number
+  /**
+   * Host key policy: `accept-new` remembers an unknown key on first contact
+   * and rejects later changes; `reject` refuses any key that is neither
+   * pinned on the definition nor remembered. (Default `accept-new`.)
+   */
+  strictHostKey?: 'accept-new' | 'reject'
+  /**
+   * When true, use the ssh2 algorithm defaults (legacy kex/cipher/MAC
+   * fallbacks included) for maximum server compatibility. Default false
+   * restricts the handshake to modern algorithms.
+   */
+  allowLegacyAlgorithms?: boolean
+  /**
+   * SSH keep-alive interval in milliseconds (0 disables; default 0).
+   */
+  keepaliveIntervalMs?: number
+  /**
+   * Reject private keys whose POSIX permissions let group/others read them
+   * (OpenSSH behavior; Windows ACLs are not checked). Default true.
+   */
+  strictPrivateKeyPermissions?: boolean
+  /**
+   * SFTP transfers larger than this many bytes use the parallel
+   * fastGet/fastPut path (0 disables the fast path; default 1 MiB).
+   */
+  fastTransferThresholdBytes?: number
+}
+```
+
+Source: [`packages/remote/ssh-local/src/index.ts:45`](../packages/remote/ssh-local/src/index.ts)
+
+<a id="reachforstardsh-subagent-pi"></a>
+
+## `@reachforstar/dsh-subagent-pi`
+
+Requires: `subagents` · `subprocess`
+
+```ts config-catalog
+/** Deployment-owned environment, process-release bounds, and Pi directories. */
+export interface Config {
+  /**
+   * Explicit environment entries layered over the subprocess seam's
+   * credential-scrubbed parent environment. Pi credentials (for example
+   * `DEEPSEEK_API_KEY`) and any Pi extension variables belong here.
+   */
+  env?: Record<string, string>
+  /** Grace in milliseconds for Pi's cooperative EOF shutdown before termination. */
+  disposeEofGraceMs?: number
+  /** Grace in milliseconds for app-server process-tree termination. */
+  disposeGraceMs?: number
+  /**
+   * Pi executable (bare name on `PATH`) or a test fixture launcher; the
+   * provider appends `--mode rpc`.
+   */
+  command?: string
+  /** Fixed arguments appended after the Pi executable. */
+  args?: string[]
+  /**
+   * Absolute `PI_CODING_AGENT_DIR` override naming where Pi keeps agent
+   * settings and trust state. When omitted, Pi uses its native home
+   * (`~/.pi/agent`). Wins over an `env.PI_CODING_AGENT_DIR` entry.
+   */
+  agentDir?: string
+  /**
+   * Absolute `PI_CODING_AGENT_SESSION_DIR` override naming where Pi keeps
+   * session files. When omitted, Pi uses its native session location. Wins
+   * over an `env.PI_CODING_AGENT_SESSION_DIR` entry.
+   */
+  sessionDir?: string
+}
+```
+
+Source: [`packages/subagent/subagent-pi/src/index.ts:32`](../packages/subagent/subagent-pi/src/index.ts)
+
 ## 无配置的可加载插件
 
 这些插件通过 `cordis.yml` 中不含 `config:` 块的条目加载；它们未声明任何配置接口。
-
 - `@deepseek-ai/dsh-acp-app` — 需要 `cmdlineArgs`（[`packages/bundle/acp-app/src/index.ts`](../packages/bundle/acp-app/src/index.ts)）
 - `@deepseek-ai/dsh-agent`（[`packages/core/agent/src/index.ts`](../packages/core/agent/src/index.ts)）
 - `@deepseek-ai/dsh-api-remotes` — 需要 `typertGateway`（[`packages/api/remotes/src/index.ts`](../packages/api/remotes/src/index.ts)）
@@ -3411,6 +3497,11 @@ export interface Config {
 - `@deepseek-ai/dsh-user-questions`（[`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts)）
 - `@deepseek-ai/dsh-webhook` — 需要 `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry`（[`packages/webhook/webhook/src/index.ts`](../packages/webhook/webhook/src/index.ts)）
 - `@deepseek-ai/dsh-workspace` — 需要 `storageDomain` · `sessionPersistence`（[`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts)）
+- `@reachforstar/dsh-client-ui-polish`（[`packages/client/ui-polish/src/index.ts`](../packages/client/ui-polish/src/index.ts)）
+- `@reachforstar/dsh-client-ui-ssh`（[`packages/client/ui-ssh/src/index.ts`](../packages/client/ui-ssh/src/index.ts)）
+- `@reachforstar/dsh-host-ssh-remotes` — 需要 `ssh`（[`packages/host/ssh-remotes/src/index.ts`](../packages/host/ssh-remotes/src/index.ts)）
+- `@reachforstar/dsh-tool-excalidraw` — 需要 `tools`（[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)）
+- `@reachforstar/dsh-tool-ssh` — 需要 `tools` · `ssh` · `systemPrompt`（[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)）
 
 ## Seam 包（不可直接加载）
 
@@ -3432,6 +3523,8 @@ export interface Config {
 - `@deepseek-ai/dsh-spill` — 抽象 `SpillStore`（[`packages/spill/spill/src/index.ts`](../packages/spill/spill/src/index.ts)）
 - `@deepseek-ai/dsh-subprocess` — 抽象 `SubprocessRuntime`（[`packages/subprocess/subprocess/src/index.ts`](../packages/subprocess/subprocess/src/index.ts)）
 - `@deepseek-ai/dsh-workflow` — 抽象 `WorkflowEngine`（[`packages/workflow/workflow/src/index.ts`](../packages/workflow/workflow/src/index.ts)）
+- `@reachforstar/dsh-ssh` — 抽象 `SshService`（[`packages/remote/ssh/src/index.ts`](../packages/remote/ssh/src/index.ts)）
+
 ## 库包（无插件入口）
 
 由其他包作为库导入；`cordis.yml` 无法加载它们。

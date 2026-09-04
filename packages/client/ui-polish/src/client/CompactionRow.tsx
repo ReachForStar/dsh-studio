@@ -5,8 +5,9 @@
 // per step.
 
 import { useState } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { COMPACTION_RATIO_FIELD, type PolishSettings } from '../background-settings.ts'
+import type { createCompactionRowStore } from './settings-store.ts'
 import css from './BackgroundRow.module.css'
 
 /** Options offered: ratio × 100 as the select value; empty = harness default. */
@@ -19,23 +20,23 @@ const RATIO_OPTIONS: readonly { value: string; label: string }[] = [
   { value: '80', label: '80%' },
 ]
 
-/** Injected business face: read the current ratio and persist a change. */
+/** Injected business face: persist a ratio change. */
 export interface CompactionRowInjected {
-  /** Current ratio × 100, or null when unset (harness default applies). */
-  currentRatio: number | null
   /** Persist a ratio selection; null clears back to the harness default. */
   setRatio: (ratio: number | null) => void
 }
 
-/** Full component props: runtime share + locale seat + injected compaction face. */
+/** Full component props: runtime share + locale seat + store + injected compaction face. */
 export type CompactionRowProps =
-  PropsRuntime<'settings.general.item'> & PropsLocale<'ui-polish'> & CompactionRowInjected
+  PropsRuntime<'settings.general.item'> & PropsLocale<'ui-polish'>
+  & PropsStore<ReturnType<typeof createCompactionRowStore>> & CompactionRowInjected
 
 /**
  * Render the automatic-compaction threshold row.
  * @param props - composed slot props.
  */
-export function CompactionRow({ t, currentRatio, setRatio }: CompactionRowProps) {
+export function CompactionRow({ t, setRatio, useStore }: CompactionRowProps) {
+  const currentRatio = useStore(s => s.ratio)
   const [saved, setSaved] = useState(false)
   const value = currentRatio === null ? '' : String(Math.round(currentRatio * 100))
   const onChange = (next: string): void => {

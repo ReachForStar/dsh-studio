@@ -16,7 +16,7 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 |---|---|
 | [`@deepseek-ai/dsh-client-ui-polish`](packages/client/ui-polish/README.zh.md) | Web GUI 打磨：全局背景图片、按模型单价估算每条已结算消息费用的会话统计浮窗（模型费率卡可编辑）、会话视图内的就地文件与 git 面板、内嵌 Excalidraw 白板标签页（与模型的工具共享同一场景）、可配置的自动压缩上下文阈值。 |
 | [`@deepseek-ai/dsh-tool-excalidraw`](packages/fs/tool-excalidraw/README.zh.md) | 模型面向的白板工具——`excalidraw_read`、`excalidraw_write`、`excalidraw_draw`、`excalidraw_export`——读写画布标签页渲染的同一工作区场景文件。 |
-| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.zh.md) | 通过 RPC 模式把任务委派给 [Pi 编码 agent](https://github.com/earendil-works/pi) 的子代理提供方；[`pi-dsh` 示例](examples/pi-dsh/README.zh.md)覆盖反向的 Pi→dsh 委派。 |
+| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.zh.md) | 通过 RPC 模式把任务委派给 [Pi 编码 agent](https://github.com/earendil-works/pi) 的子代理提供方；Pi 集成包文档覆盖反向的 Pi→dsh 委派。 |
 
 ## 核心特性
 

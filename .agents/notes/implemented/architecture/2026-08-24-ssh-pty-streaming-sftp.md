@@ -1,95 +1,33 @@
-# SSH PTY + Streaming SFTP
+# Agent Note: SSH PTY and streaming SFTP
 
-**Date:** 2026-08-24
-**Packages:** `remote/ssh`, `remote/ssh-local`, `host/apiproxy`, `client/ui-polish`
+Status: implemented
 
-## What changed
+English | [中文](2026-08-24-ssh-pty-streaming-sftp.zh.md)
 
-Extended the `ctx.ssh` capability seam with interactive PTY sessions and
-streaming SFTP read/write. Added an apiproxy `ssh` domain (HTTP RPC + WebSocket
-downlink) and a browser UI tab in `ui-polish` (xterm.js PTY + SFTP file
-manager).
+## Problem
 
-## Key decisions
+The SSH capability needs interactive PTY sessions and streamed SFTP transfers for the Web panel without exposing credentials or creating a second transport protocol.
 
-- **PTY via ssh2 `client.shell`**: the `SshConnection.openPty` seam returns
-  a `SshPtySession` (write/resize/onOutput/onExit/close). `ssh-local`
-  implements it with ssh2's `shell()` channel; output is buffered so late
-  subscribers replay history. `window-change` does not call `accept()`
-  (ssh2 sends it with `want_reply=0`).
+## Decision
 
-- **Streaming SFTP via `node:stream`**: `SshSftp.openRead`/`openWrite`
-  return `Readable`/`Writable` streams backed by ssh2's
-  `createReadStream`/`createWriteStream`. Files never land on the host
-  local disk — bytes flow directly between the remote and the browser.
+`ctx.ssh` provides `openPty`, `openRead`, and `openWrite` through the canonical SSH capability. The local provider implements PTY with `ssh2` shell channels and SFTP with `ssh2` streams; PTY output is buffered for late subscribers and window changes do not request a server reply.
 
-- **PTY output on the host frame stream**: `ssh/pty/output` (base64, ≤16 KiB)
-  and `ssh/pty/exit` frames extend `HostFrame`. The apiproxy tracks live PTY
-  sessions in a `Map<ptyId, SshPtySession>` and pushes frames to all open
-  host frame queues.
+The Host SSH gateway exposes generated `ssh` Remote methods for command execution, PTY lifecycle, and SFTP metadata. PTY output and exit use the shared Remote Event channel. Authenticated Fetch routes stream SFTP downloads and uploads, so transfer bytes do not pass through an RPC envelope or a host temporary file.
 
-- **SFTP download/upload as host-only routes**: download is a GET route
-  (`/api/ssh/sftp/download`) that streams the remote file as an attachment;
-  upload is a POST route (`/api/ssh/sftp/upload`) that pipes the request body
-  into the SFTP write stream with backpressure. Neither uses the RPC
-  envelope.
+The browser SSH panel uses the generated Remote namespace and Fetch routes. It buffers initial PTY output until the terminal is attached and keeps SFTP navigation independent from the terminal session.
 
-- **`ssh.exec` unary RPC**: a lightweight foreground command runner for
-  probes (e.g. resolving `$HOME`). `resolveExec` fills defaults/caps, the
-  apiproxy routes it through `ctx.ssh`; the result carries exitCode, stdout,
-  stderr, and timeout/abort flags. SFTP initializes its directory from
-  `echo $HOME` so the browser lands in the remote home instead of `/`.
+## Alternatives considered
 
-- **SFTP remove is recursive for directories**: the `ssh.sftp.remove` payload
-  accepts an optional `recursive` flag; the host drops it through to
-  `sftp.remove`. The browser passes `recursive: true` for directory entries
-  so a non-empty tree can be deleted.
+**Restore the standalone apiproxy protocol.** Rejected because the application already provides generated Remote, Remote Event, and authenticated Fetch transports; a second WebSocket protocol would duplicate authentication and lifecycle handling.
 
-- **Browser UI in `ui-polish`**: the SSH tab (order 30) uses xterm.js for the
-  PTY terminal and a fetch-based SFTP file manager. The connection selector
-  reads `ctx.remote.ssh.list()` via the `ssh.list` RPC. The SFTP manager is
-  independent of the terminal: picking a connection lists its home
-  immediately. When the terminal is open, a prompt tracker optionally follows
-  the shell cwd (a "Follow terminal" switch); manual SFTP navigation pauses
-  that follow.
+**Buffer complete files on the Host.** Rejected because streamed SFTP preserves backpressure and avoids unnecessary local copies of remote data.
+
+**Expose only connection management.** Rejected because the Web requirement includes interactive PTY and SFTP operations, not only saved definitions and connectivity probes.
+
+## Consequences
+
+The Web profile provides full SSH command, PTY, and SFTP behavior through one transport architecture. PTY sessions require explicit cleanup, and real-server compatibility remains dependent on SSH authentication, host-key policy, and server SFTP behavior. The generated SSH Remote and event catalogs remain the source for browser method and event names.
 
 ## Testing
 
-- `ssh-local`: in-memory pseudo-shell in `test-server.ts` handles
-  pty/shell/window-change deterministically (no subprocesses). 52 tests,
-  100% coverage.
-- `apiproxy`: SSH domain stubs in test fixtures; 376 tests pass.
-- `ui-polish`: tab registration test updated to include `ssh`.
-
-## Known artifacts
-
-- 3 unhandled `No response from server` errors from ssh2 SFTP
-  `cleanupRequests` during test teardown. Exit code 0; CI does not fail.
-
-## Follow-up fixes (SFTP reliability + UX)
-
-- **Upload refresh race**: the post-upload `listDir` cached a stale
-  `sftpPath` closure and could lose a concurrent refresh. The upload handler
-  now reads `sftpPathRef.current` (live path) and `await`-refresh in
-  `finally`, so a partial write still refreshes; `listDir` gained a monotonic
-  `listSeqRef` token so a slow older response cannot clobber the latest one.
-- **Multi-file upload**: the upload input sets `multiple`, uploading each
-  selected file and collecting per-file failures.
-- **Breadcrumb navigation**: the SFTP path bar renders clickable segments
-  (`pathSegments`) that jump directly to any ancestor, in addition to the
-  `..` button.
-- **Name filter**: a client-side search box filters the current directory by
-  basename, without a round trip to the host.
-- **PROMPT_COMMAND cwd marker (bash)**: opening a PTY injects an idempotent
-  hook that prints `__DSH_CWD__<pwd>` before each prompt; the SFTP cwd
-  tracker prefers that marker over PS1 text parsing (reliable across `~`,
-  bracket, and no-path prompts). Removed a self-referencing
-  `\${PROMPT_COMMAND:-}` that re-expanded and flooded the terminal.
-- **lstat/stat wire shape**: `openRead` stats the file before streaming; the
-  `statRaw` helper previously treated the `lstat` callback argument as a NAME
-  array and read `stats[0].attrs`. Real OpenSSH answers STAT/LSTAT with a
-  single ATTRS (`Stats` object), so `stats[0]` was `undefined` and every
-  download failed with "no entry" (the in-memory test server answered with a
-  NAME array, masking the bug). `statRaw` now uses the callback `Stats`
-  directly, and the test server answers STAT/LSTAT/FSTAT via `attrs()` so the
-  real wire shape is exercised.
+The SSH gateway, Remote Event forwarding, Fetch route registration, local provider, and browser adapter have focused tests. A real SSH server is still required to validate authentication, host-key changes, PTY behavior, and SFTP interoperability outside the test fixtures.

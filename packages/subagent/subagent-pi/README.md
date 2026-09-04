@@ -1,6 +1,67 @@
+---
+description: "Configure the Pi subagent provider for one-shot delegated coding tasks over the Pi RPC protocol."
+kind: "package-reference"
+---
+
 # @reachforstar/dsh-subagent-pi
 
 English | [中文](README.zh.md)
+
+## Summary
+
+Use this package to delegate one self-contained text task to a Pi coding-agent process. It returns only the final answer, keeps the child workspace at the parent Session cwd, and cleans up the process tree on completion or cancellation.
+
+## Table of Contents
+
+- [Use this package](#use-this-package)
+- [Understand the implementation](#understand-the-implementation)
+- [Further Exploration](#further-exploration)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
+
+-----
+
+<a id="use-this-package"></a>
+## Use this package
+
+Mount the provider and its tool consumer in a Host composition when delegated Pi coding tasks are required.
+
+### When to choose it
+
+Choose this provider when Pi is installed and independently configured. Use the native in-process or ACP subagent providers when the child must inherit the parent context or expose a different lifecycle.
+
+### Minimal configuration
+
+```yaml
+- id: subagent-pi
+  name: '@reachforstar/dsh-subagent-pi'
+```
+
+The provider's accepted fields are listed in the generated [configuration catalog](../../../docs/config-catalog.md).
+
+-----
+
+<a id="understand-the-implementation"></a>
+## Understand the implementation
+
+<details>
+<summary>Implementation internals — click to expand</summary>
+
+The provider starts Pi through the subprocess capability, waits for an RPC readiness response, submits one prompt, and reads the last assistant text. Cancellation and disposal terminate the managed process tree and wait for quiescence.
+
+</details>
+
+-----
+
+<a id="further-exploration"></a>
+## Further Exploration
+
+- [Subagent capability](../subagent/README.md) — shared provider contract.
+- [Tool subagent](../tool-subagent/README.md) — model-facing delegation consumer.
+- [Subprocess capability](../../subprocess/subprocess/README.md) — managed child-process contract.
+
+-----
 
 This package registers the fixed `pi` subagent provider. Each accepted run starts the [Pi coding agent](https://github.com/earendil-works/pi) (`@earendil-works/pi-coding-agent`) in its RPC mode in the delegating Session's workspace, submits one self-contained text task over the Pi line-delimited JSON stdio protocol, and returns only the final answer through the shared [`dsh-subagent`](../subagent/README.md) result contract.
 
@@ -93,3 +154,13 @@ Append-only: the new tool result follows the reusable parent request prefix.
 - **Final text only** — reasoning, intermediate messages, tool traffic, usage, stderr, and workspace diffs remain product-local; cancellation and failure carry no partial output because Pi's RPC protocol exposes no committed partial projection.
 - **No optional shared capabilities** — output schemas, child personas, tool filtering, and harness depth enforcement are rejected by the shared service for this provider.
 - **No wall-clock timeout or side-effect rollback** — the caller cancels long work, and files or external systems changed before cancellation are not restored.
+
+<a id="dev-note"></a>
+### Dev Note
+
+<details>
+<summary>Working context for maintainers — click to expand</summary>
+
+None.
+
+</details>

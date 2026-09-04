@@ -10,6 +10,7 @@
 // field, so the settings document carries a short path, never megabytes of
 // base64.
 
+import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -77,7 +78,14 @@ export async function handleBackgroundRequest(
       if (mime === null) throw new Error('background: not a supported image')
       await mkdir(dirname(imagePath), { recursive: true })
       await writeFile(imagePath, bytes)
-      const payload = JSON.stringify({ url: '/bg/current' })
+      // A fresh cache-busting version on every upload: the browser stores the
+      // served URL in settings, and `BackgroundRuntime.setBackgroundImage`
+      // short-circuits same-value writes, so a constant `/bg/current` would
+      // silently skip a second upload in the same session and leave the stale
+      // preview painted. A per-upload version makes each write distinct and
+      // defeats any browser cache of the old bytes.
+      const version = randomUUID()
+      const payload = JSON.stringify({ url: `/bg/current?v=${version}` })
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
       res.end(payload)
       return

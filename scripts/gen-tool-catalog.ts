@@ -740,7 +740,7 @@ function toolSource(entry: ToolPackage, toolName: string): string {
 function renderTool(schema: ToolSchema, source: string): string[] {
   const out = [`### \`${schema.name}\``, '']
   if (schema.description) out.push(schema.description, '')
-  out.push('```json', JSON.stringify(schema.parameters, null, 2), '```', '')
+  out.push('```json', JSON.stringify(schema.parameters, null, 2).replaceAll('\r\n', '\n'), '```', '')
   out.push(`Source: [\`${source}\`](../${source})`, '')
   return out
 }

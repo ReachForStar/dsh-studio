@@ -65,7 +65,6 @@
     "@deepseek-ai/dsh-client-ui-model-selection": "workspace:^",
     "@reachforstar/dsh-client-ui-polish": "workspace:^",
     "@deepseek-ai/dsh-client-ui-settings-models": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-settings-plugin-inventory": "workspace:^",
     "@reachforstar/dsh-client-ui-ssh": "workspace:^",
     "@deepseek-ai/dsh-client-ui-permission-presets": "workspace:^",
     "@deepseek-ai/dsh-client-ui-plan": "workspace:^",

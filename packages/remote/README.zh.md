@@ -1,8 +1,13 @@
+---
+description: "选择 SSH/SFTP 能力、 本地提供方、模型工具、Host 网关和 Web 设置包。"
+kind: "package-group"
+---
+
 # remote/ — SSH/SFTP 能力族
 
 [English](README.md) | 中文
 
-能力族涵盖 SSH/SFTP 接缝（seam）定义、其本地 `ssh2` 实现、面向模型工具与 Web GUI 连接管理界面。全部为 **product** 包。
+能力族涵盖 SSH/SFTP 接缝（seam）定义、其本地 `ssh2` 实现、面向模型工具与 Web GUI 连接管理界面。全部为 **product** 包。参阅[SSH 子系统参考](../../docs/subsystems/ssh.zh.md)中的生成服务与事件 API。
 
 | 包 | 职责 | ctx 键 |
 |---|---|---|

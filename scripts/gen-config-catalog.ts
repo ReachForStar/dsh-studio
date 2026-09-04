@@ -791,7 +791,7 @@ function renderConfigEntry(entry: CatalogEntry, byName: Map<string, CatalogEntry
   const out = [`<a id="${githubSlug(entry.pkg)}"></a>`, '', `## \`${entry.pkg}\``, '']
   const requires = requiresLine(entry.inject)
   if (requires) out.push(requires, '')
-  out.push('```' + FENCE, ...(entry.pastes ?? []).map(p => p.text).join('\n\n').split('\n'), '```', '')
+  out.push('```' + FENCE, ...(entry.pastes ?? []).map(p => p.text.replaceAll('\r\n', '\n')).join('\n\n').split('\n'), '```', '')
   if (entry.refs && entry.refs.length > 0) {
     out.push(`Depends on: ${entry.refs.map(r => refLink(r, byName)).join(' · ')}`, '')
   }

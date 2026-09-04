@@ -16,7 +16,7 @@ Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://de
 |---|---|
 | [`@deepseek-ai/dsh-client-ui-polish`](packages/client/ui-polish/README.md) | Web GUI polish: a whole-app background image, a session stats float pricing each settled message at its model's rate against an editable rate card, in-place file and git panels in the conversation view, an embedded Excalidraw whiteboard tab sharing one scene with the model's tools, and a configurable automatic-compaction threshold. |
 | [`@deepseek-ai/dsh-tool-excalidraw`](packages/fs/tool-excalidraw/README.md) | Model-facing whiteboard tools — `excalidraw_read`, `excalidraw_write`, `excalidraw_draw`, `excalidraw_export` — over the workspace scene file the canvas tab renders. |
-| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.md) | A subagent provider that delegates a task to the [Pi coding agent](https://github.com/earendil-works/pi) over its RPC mode; the [`pi-dsh` example](examples/pi-dsh/README.md) covers the reverse Pi→dsh direction. |
+| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.md) | A subagent provider that delegates a task to the [Pi coding agent](https://github.com/earendil-works/pi) over its RPC mode; the Pi→dsh direction is covered by the Pi integration package documentation. |
 
 ## Key features
 

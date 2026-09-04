@@ -58,6 +58,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@reachforstar/dsh-host-ssh-remotes": "workspace:^",
     "@deepseek-ai/dsh-agent": "workspace:^",
     "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-api-remotes": "workspace:^",
@@ -80,6 +81,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@reachforstar/dsh-host-ssh-remotes": "workspace:^",
     "@deepseek-ai/dsh-agent": "workspace:^",
     "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-api-remotes": "workspace:^",

@@ -502,7 +502,7 @@ Source: [`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/
 
 Not in any shipped tree (a deliberate opt-in — dynamic package code reaches the real runtime, see .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md). The toolset injects `ctx.dynamicCordisRunner` from `@deepseek-ai/dsh-cordis-host-runner`, which owns the definition registry and the vm sandbox; a composition missing it never activates the tools. A running package may register ADDITIONAL model-visible tools until it is stopped, undefined, or DSH restarts; a full changed request header logs those tool-set changes.
 
-<a id="deepseek-aidsh-tool-ssh"></a>
+<a id="reachforstardsh-tool-ssh"></a>
 
 ## `@reachforstar/dsh-tool-ssh`
 
@@ -1030,7 +1030,7 @@ Source: [`packages/fs/tool-str-replace-editor/src/index.ts`](../packages/fs/tool
 
 Standalone view/create/unique literal replace/line insert tool over the filesystem seam; it composes with any shell or terminal API.
 
-<a id="deepseek-aidsh-tool-excalidraw"></a>
+<a id="reachforstardsh-tool-excalidraw"></a>
 
 ## `@reachforstar/dsh-tool-excalidraw`
 

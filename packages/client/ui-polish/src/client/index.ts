@@ -23,18 +23,21 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 // Type-only: pulls the slot registry Context merge (ctx.slots).
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+// Type-only: pulls the SSH Remote methods and forwarded PTY event declarations.
+import type {} from '@reachforstar/dsh-host-ssh-remotes/remote'
+import type {} from '@reachforstar/dsh-host-ssh-remotes/types'
 import { BACKGROUND_SETTINGS_NAMESPACE, COMPACTION_RATIO_FIELD, type PolishSettings } from '../background-settings.ts'
 import { BackgroundRuntime } from './background-runtime.ts'
 import { BackgroundRow, type BackgroundRowInjected } from './BackgroundRow.tsx'
 import { CompactionRow, type CompactionRowInjected } from './CompactionRow.tsx'
 import { PricingRow, type PricingRowInjected } from './PricingRow.tsx'
-import { createBackgroundRowStore } from './settings-store.ts'
+import { createBackgroundRowStore, createCompactionRowStore, createPricingRowStore } from './settings-store.ts'
 import { PricingRuntime } from './pricing-store.ts'
 import { SEED_RATE_CARD } from './cost.ts'
 import { StatsFloat } from './StatsFloat.tsx'
 import { GitPanel } from './GitPanel.tsx'
 import { ExcalidrawPanel } from './ExcalidrawPanel.tsx'
-import { SshPanel } from './SshPanel.tsx'
+import { SshPanel, type SshPanelInjected, type SshPanelRpcResult } from './SshPanel.tsx'
 import { MutationDiffPanel } from './MutationDiffPanel.tsx'
 import { en, zh, type PolishKey } from './locales.ts'
 
@@ -76,7 +79,7 @@ body[data-ds-bg-image] {
 `
 
 /** Required services: settings transport plus slots/locale for the registrations. */
-export const inject = ['slots', 'locale', 'settingsScope']
+export const inject = ['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh']
 
 /**
  * Client plugin body: bind the background preference, paint the body, and
@@ -130,36 +133,70 @@ export function apply(ctx: ClientContext): void {
   }, BackgroundRow))
 
   // Automatic-compaction threshold row: reads and writes the durable
-  // ui-polish settings field the node half's per-step control consumes.
+  // ui-polish settings field the node half's per-step control consumes. A
+  // store mirrors the adopted ratio so the controlled select follows a change
+  // (the row never re-renders from a one-shot inject otherwise).
+  const compactionStore = createCompactionRowStore()
+  let compactionBound: BoundActions<typeof compactionStore> | undefined
+  let compactionRevision = 0
+  let compactionRatio: number | null = host.getSnapshot().value?.compactionThresholdRatio ?? null
+  const syncCompaction = (): void => {
+    compactionRevision += 1
+    compactionBound?.sync(compactionRatio, compactionRevision)
+  }
+  const adoptCompaction = (): void => {
+    compactionRatio = host.getSnapshot().value?.compactionThresholdRatio ?? null
+    syncCompaction()
+  }
+  ctx.effect(() => host.subscribe(adoptCompaction), 'ui-polish: compaction row adopt')
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item',
     id: 'polish-compaction',
     order: 40,
+    store: compactionStore,
     locale: NS,
-    inject: (): CompactionRowInjected => ({
-      currentRatio: host.getSnapshot().value?.compactionThresholdRatio ?? null,
-      setRatio: (ratio) => {
-        if (ratio === null) void host.unset(COMPACTION_RATIO_FIELD)
-        else void host.set(COMPACTION_RATIO_FIELD, ratio)
-      },
-    }),
+    inject: (actions: BoundActions<typeof compactionStore>): CompactionRowInjected => {
+      compactionBound = actions
+      syncCompaction()
+      return {
+        setRatio: (ratio) => {
+          compactionRatio = ratio
+          if (ratio === null) void host.unset(COMPACTION_RATIO_FIELD)
+          else void host.set(COMPACTION_RATIO_FIELD, ratio)
+          syncCompaction()
+        },
+      }
+    },
   }, CompactionRow))
 
   // Model rate card row: edit the JSON card that prices the stats float. The
   // row shares the plugin settings scope; the pricing runtime adopts and
   // validates the durable text, so a saved card survives restarts and the
-  // float re-prices immediately.
+  // float re-prices immediately. A store mirrors the durable card text and
+  // whether a user card is set so the reset gate follows a change.
+  const pricingStore = createPricingRowStore()
+  let pricingBound: BoundActions<typeof pricingStore> | undefined
+  let pricingRevision = 0
+  const syncPricing = (): void => {
+    pricingRevision += 1
+    const json = pricing.getUserJson()
+    pricingBound?.sync(json ?? JSON.stringify(SEED_RATE_CARD, null, 2), json !== null, pricingRevision)
+  }
+  ctx.effect(() => host.subscribe(syncPricing), 'ui-polish: pricing row adopt')
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item',
     id: 'polish-pricing',
     order: 50,
+    store: pricingStore,
     locale: NS,
-    inject: (): PricingRowInjected => ({
-      currentJson: pricing.getUserJson() ?? JSON.stringify(SEED_RATE_CARD, null, 2),
-      hasCustom: pricing.getUserJson() !== null,
-      save: (json) => { pricing.save(json) },
-      reset: () => { pricing.reset() },
-    }),
+    inject: (actions: BoundActions<typeof pricingStore>): PricingRowInjected => {
+      pricingBound = actions
+      syncPricing()
+      return {
+        save: (json) => { pricing.save(json) },
+        reset: () => { pricing.reset() },
+      }
+    },
   }, PricingRow))
 
   ctx.slots.inject('conversation.composer.dock', function* () {
@@ -176,6 +213,56 @@ export function apply(ctx: ClientContext): void {
 
   // File panel: a conversation.view tab (between the trajectory and Git tabs)
   // listing every file a settled tool call operated on, with in-place editing.
+  const sshRpc = async (
+    method: string,
+    payload: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<SshPanelRpcResult> => {
+    const result = method === 'ssh.list'
+      ? await ctx.remote.ssh.list()
+      : method === 'ssh.exec'
+        ? await ctx.remote.ssh.exec(payload as never, signal)
+        : method === 'ssh.pty.open'
+          ? await ctx.remote.ssh.ptyOpen(payload as never, signal)
+          : method === 'ssh.pty.attach'
+            ? await ctx.remote.ssh.ptyAttach(payload as never)
+            : method === 'ssh.pty.write'
+              ? await ctx.remote.ssh.ptyWrite(payload as never)
+              : method === 'ssh.pty.resize'
+                ? await ctx.remote.ssh.ptyResize(payload as never)
+                : method === 'ssh.pty.close'
+                  ? await ctx.remote.ssh.ptyClose(payload as never)
+                  : method === 'ssh.sftp.list'
+                    ? await ctx.remote.ssh.sftpList(payload as never, signal)
+                    : method === 'ssh.sftp.mkdir'
+                      ? await ctx.remote.ssh.sftpMkdir(payload as never, signal)
+                      : method === 'ssh.sftp.remove'
+                        ? await ctx.remote.ssh.sftpRemove(payload as never, signal)
+                        : method === 'ssh.sftp.rename'
+                          ? await ctx.remote.ssh.sftpRename(payload as never, signal)
+                          : undefined
+    if (result === undefined) throw new Error(`SSH 面板不支持 Remote 方法 ${method}`)
+    return result.ok
+      ? { ok: true, value: result.value }
+      : { ok: false, error: { message: `${result.error.code}: ${result.error.message}` } }
+  }
+
+  const subscribeSshFrames = (
+    onFrame: Parameters<SshPanelInjected['subscribeHostFrames']>[0],
+    onDrop: Parameters<SshPanelInjected['subscribeHostFrames']>[1],
+  ): (() => void) => {
+    const offOutput = ctx.remote.$on('ssh/pty/output', (event) => {
+      onFrame({ type: 'ssh/pty/output', ptyId: event.ptyId, data: event.data })
+    })
+    const offExit = ctx.remote.$on('ssh/pty/exit', (event) => {
+      onDrop(event.ptyId)
+    })
+    return () => {
+      offOutput()
+      offExit()
+    }
+  }
+
   ctx.slots.inject('conversation.view', function* () {
     yield ctx.slots.register({
       name: 'conversation.view',
@@ -210,6 +297,10 @@ export function apply(ctx: ClientContext): void {
       order: 30,
       locale: NS,
       label: () => t('ssh.title'),
+      inject: (): SshPanelInjected => ({
+        rpc: sshRpc,
+        subscribeHostFrames: subscribeSshFrames,
+      }),
     }, SshPanel)
   })
 }

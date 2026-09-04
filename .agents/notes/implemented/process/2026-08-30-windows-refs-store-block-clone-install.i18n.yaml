@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-08-30-windows-refs-store-block-clone-install.md
-2026-08-30-windows-refs-store-block-clone-install.md: 086c00453fffada7faef1631e7c270f3270b82d6
-2026-08-30-windows-refs-store-block-clone-install.zh.md: f813ae15a16c9f5cd61b1f7b98a66d74af2115e9
+2026-08-30-windows-refs-store-block-clone-install.md: 5552cd656669de4d1cc7c7bc2aa9511aab8da79f
+2026-08-30-windows-refs-store-block-clone-install.zh.md: eeba3ddc51e39be80329d41fd9f47fdfa0ac718b

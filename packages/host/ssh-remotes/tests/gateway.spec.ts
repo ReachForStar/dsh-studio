@@ -29,17 +29,16 @@ async function harness(): Promise<{ ctx: Context; gateway: SshGateway; ssh: Stub
 }
 
 describe('SshGateway', () => {
-  it('publishes four direct methods under the ssh wire namespace', async () => {
+  it('publishes the SSH management, PTY, and SFTP methods under one namespace', async () => {
     const { gateway } = await harness()
     expect(gateway.typertRemote).toMatchObject({
       serviceKey: 'sshGateway',
       namespace: 'ssh',
     })
-    expect(remoteMethods(gateway)).toEqual([
-      { method: 'list', invocation: { kind: 'direct' } },
-      { method: 'save', invocation: { kind: 'direct' } },
-      { method: 'delete', invocation: { kind: 'direct' } },
-      { method: 'test', invocation: { kind: 'direct' } },
+    expect(remoteMethods(gateway).map(method => method.method)).toEqual([
+      'list', 'save', 'delete', 'test', 'exec', 'ptyOpen', 'ptyAttach',
+      'ptyWrite', 'ptyResize', 'ptyClose', 'sftpList', 'sftpStat', 'sftpMkdir',
+      'sftpRemove', 'sftpRename',
     ])
   })
 
@@ -119,6 +118,17 @@ describe('SshGateway', () => {
       await expect(gateway.save(payload as SshRemoteSaveRequest)).rejects.toThrow(/ssh save:/)
     }
     await expect(gateway.delete('')).rejects.toThrow(/non-empty/)
+  })
+
+  it('executes commands through the saved connection and preserves cancellation', async () => {
+    const { gateway, ssh } = await harness()
+    const saved = await gateway.save({
+      name: 'exec-box', host: 'h', username: 'u', authKind: 'password', password: 'x',
+    })
+    const signal = new AbortController().signal
+    const result = await gateway.exec({ connectionId: saved.id, command: 'pwd', cwd: '/srv' }, signal)
+    expect(result.stdout).toBe('ok')
+    expect(ssh.resolved).toEqual([{ command: 'pwd', cwd: '/srv', signal }])
   })
 
   it('returns the probe outcome as a result, never an RPC error', async () => {

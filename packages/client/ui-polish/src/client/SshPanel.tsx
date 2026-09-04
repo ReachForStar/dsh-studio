@@ -3,9 +3,8 @@
  * terminal (xterm.js) and a streaming SFTP file manager.
  *
  * The connection selector lists stored SSH connections. The PTY and SFTP
- * operate on the selected connection. PTY output arrives on the host
- * WebSocket frame stream (`/api/events.host`); SFTP file transfer uses the
- * host-only download channel (GET) and a carrier POST upload route.
+ * operate on the selected connection. PTY output arrives through the shared
+ * Remote event stream; SFTP file transfer uses authenticated GET/POST routes.
  *
  * The SFTP file manager is an independent, always-usable browser: selecting a
  * connection loads its directory immediately. When the terminal is open, a
@@ -19,11 +18,26 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import type { PropsRuntime, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import { randomUUID } from './crypto-shim.ts'
 import css from './SshPanel.module.css'
 
-/** Full component props: conversation view share + the ui-polish locale seat. */
-export type SshPanelProps = PropsRuntime<'conversation.view'> & PropsLocale<'ui-polish'>
+/** One SSH Remote call result consumed by the panel. */
+export interface SshPanelRpcResult {
+  ok: boolean
+  value?: unknown
+  error?: { message: string }
+}
+
+/** SSH operations and PTY event subscriptions supplied by the plugin owner. */
+export interface SshPanelInjected {
+  rpc: (method: string, payload: Record<string, unknown>, signal?: AbortSignal) => Promise<SshPanelRpcResult>
+  subscribeHostFrames: (
+    onFrame: (frame: HostFrameLike) => void,
+    onDrop: (ptyId: string) => void,
+  ) => () => void
+}
+
+/** Full component props: conversation view share + locale + SSH operations. */
+export type SshPanelProps = PropsRuntime<'conversation.view'> & PropsLocale<'ui-polish'> & SshPanelInjected
 
 interface SshConnectionView {
   id: string
@@ -50,41 +64,6 @@ interface HostFrameLike {
   exitCode?: number | null
   signal?: string | null
   dropped?: boolean
-}
-
-/**
- * Send a unary RPC to the apiproxy carrier. The carrier expects POST with
- * a JSON `ClientRequest` envelope; the response is a `ServerResponse`
- * envelope whose `result` carries the ok/err payload.
- */
-async function rpc(
-  method: string,
-  payload: Record<string, unknown>,
-  signal?: AbortSignal,
-): Promise<{ ok: boolean; value?: unknown; error?: { message: string } }> {
-  const rpcId = randomUUID()
-  const res = await fetch(`/api/${method}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ type: 'client-request', rpcId, method, payload }),
-    ...(signal !== undefined ? { signal } : {}),
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    console.error(`[SshPanel] RPC ${method} failed: ${res.status}`, text)
-    return { ok: false, error: { message: `${res.status}: ${text}` } }
-  }
-  const body = (await res.json()) as {
-    result?: { ok: true; value: unknown } | { ok: false; error: { message: string } }
-  }
-  const result = body.result
-  if (result === undefined) {
-    console.error(`[SshPanel] RPC ${method} malformed response:`, body)
-    return { ok: false, error: { message: 'malformed response' } }
-  }
-  if (result.ok) return { ok: true, value: result.value }
-  console.error(`[SshPanel] RPC ${method} error:`, result.error.message)
-  return { ok: false, error: result.error }
 }
 
 /** Join a directory and a child name into an absolute remote path. */
@@ -119,7 +98,11 @@ function pathSegments(path: string): Array<{ prefix: string; label: string }> {
 }
 
 /** Resolve the remote home directory by running `echo $HOME`. Returns null on failure. */
-async function resolveHomeDir(connectionId: string, signal?: AbortSignal): Promise<string | null> {
+async function resolveHomeDir(
+  rpc: SshPanelInjected['rpc'],
+  connectionId: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
   try {
     const result = await rpc('ssh.exec', { connectionId, command: 'echo $HOME' }, signal)
     if (!result.ok) return null
@@ -134,52 +117,7 @@ async function resolveHomeDir(connectionId: string, signal?: AbortSignal): Promi
   }
 }
 
-/**
- * Subscribe to the host WebSocket stream for PTY output/exit frames.
- *
- * The carrier serves `/api/events.host` as a WebSocket downlink (asking a
- * plain GET returns 426 Upgrade Required). Each inbound message is a
- * `server-request` envelope `{ type, rpcId, method, payload }` where `payload`
- * is the HostFrame. This driver parses the envelope and forwards only
- * `ssh/pty/*` frames; unsubscribe closes the socket.
- */
-function subscribeHostFrames(
-  onFrame: (frame: HostFrameLike) => void,
-  onDrop: (ptyId: string) => void,
-): () => void {
-  const url = new URL('/api/events.host', window.location.origin)
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-  const socket = new WebSocket(url.toString())
-  socket.addEventListener('open', () => {
-    console.debug('[SshPanel] host frames WebSocket opened')
-  })
-  socket.addEventListener('error', () => {
-    console.error('[SshPanel] host frames WebSocket error')
-  })
-  const handleMessage = (event: MessageEvent): void => {
-    try {
-      if (typeof event.data !== 'string') return
-      const full = JSON.parse(event.data) as { payload?: HostFrameLike }
-      const frame = full.payload
-      if (frame === undefined) return
-      if (frame.type === 'ssh/pty/output' && frame.ptyId && frame.data) {
-        onFrame(frame)
-      } else if (frame.type === 'ssh/pty/exit' && frame.ptyId) {
-        onDrop(frame.ptyId)
-      }
-    } catch (error) {
-      console.error('[SshPanel] malformed host frame:', error)
-    }
-  }
-  socket.addEventListener('message', handleMessage)
-  return () => {
-    socket.removeEventListener('message', handleMessage)
-    if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
-      socket.close()
-    }
-  }
-}
-
+/** PTY event payloads are supplied by the shared Remote event stream. */
 /** Strip ANSI escape sequences (colors, cursor moves, etc.) from terminal output. */
 function stripAnsi(text: string): string {
   let result = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
@@ -288,7 +226,7 @@ function extractCwdFromProbe(chunk: string): string | null {
 /**
  * Render the SSH/SFTP panel as a conversation view tab.
  */
-export function SshPanel({ t }: SshPanelProps) {
+export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
   const [connections, setConnections] = useState<SshConnectionView[]>([])
   const [selectedConn, setSelectedConn] = useState<string | null>(null)
   const [terminalEl, setTerminalEl] = useState<HTMLElement | null>(null)
@@ -310,6 +248,7 @@ export function SshPanel({ t }: SshPanelProps) {
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const ptyIdRef = useRef<string | null>(null)
+  const pendingPtyOutputRef = useRef<Uint8Array[]>([])
   const resizeObserver = useRef<ResizeObserver | null>(null)
   const hostUnsubRef = useRef<(() => void) | null>(null)
   const followCwdRef = useRef(followCwd)
@@ -342,12 +281,13 @@ export function SshPanel({ t }: SshPanelProps) {
     const unsub = subscribeHostFrames(
       (frame) => {
         if (frame.ptyId !== ptyIdRef.current) return
-        const term = termRef.current
-        if (term === null || frame.data === undefined) return
+        if (frame.data === undefined) return
         const bytes = atob(frame.data)
         const bytesArr = new Uint8Array(bytes.length)
         for (let i = 0; i < bytes.length; i++) bytesArr[i] = bytes.charCodeAt(i)
-        term.write(bytesArr)
+        const term = termRef.current
+        if (term === null) pendingPtyOutputRef.current.push(bytesArr)
+        else term.write(bytesArr)
         const text = new TextDecoder().decode(bytesArr)
         // Feed the prompt tracker so the SFTP path can follow terminal cd.
         promptTrackerRef.current?.feed(text)
@@ -485,7 +425,7 @@ export function SshPanel({ t }: SshPanelProps) {
     setSftpEntries([])
     setSftpError(null)
     void (async () => {
-      const home = await resolveHomeDir(selectedConn, ac.signal)
+      const home = await resolveHomeDir(rpc, selectedConn, ac.signal)
       if (ac.signal.aborted) return
       if (home !== null) setHomeDir(home)
       const initial = home ?? '/'
@@ -493,7 +433,7 @@ export function SshPanel({ t }: SshPanelProps) {
       void listDir(initial)
     })()
     return () => { ac.abort() }
-  }, [selectedConn, listDir])
+  }, [selectedConn, listDir, rpc])
 
   // Open a PTY session on the selected connection. The xterm view is
   // mounted by a separate effect once `terminalEl` + `ptyOpen` are ready.
@@ -510,7 +450,19 @@ export function SshPanel({ t }: SshPanelProps) {
         return
       }
       const ptyId = (result.value as { ptyId: string } | undefined)?.ptyId ?? ''
+      if (ptyId === '') {
+        setPtyError('host returned no PTY id')
+        return
+      }
+      pendingPtyOutputRef.current = []
       ptyIdRef.current = ptyId
+      const attached = await rpc('ssh.pty.attach', { ptyId })
+      if (!attached.ok) {
+        await rpc('ssh.pty.close', { ptyId }).catch(() => undefined)
+        ptyIdRef.current = null
+        setPtyError(attached.error?.message ?? 'failed to attach PTY')
+        return
+      }
       promptTrackerRef.current?.reset()
       setPtyOpen(true)
     } catch (error) {
@@ -518,7 +470,7 @@ export function SshPanel({ t }: SshPanelProps) {
     } finally {
       setPtyStarting(false)
     }
-  }, [selectedConn])
+  }, [selectedConn, rpc])
 
   // Mount xterm once the PTY is open and the terminal container is ready.
   useEffect(() => {
@@ -539,6 +491,7 @@ export function SshPanel({ t }: SshPanelProps) {
     fit.fit()
     termRef.current = term
     fitRef.current = fit
+    for (const chunk of pendingPtyOutputRef.current.splice(0)) term.write(chunk)
 
     term.onData((data: string) => {
       const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(data)))
@@ -605,8 +558,9 @@ export function SshPanel({ t }: SshPanelProps) {
       termRef.current?.dispose()
       termRef.current = null
       ptyIdRef.current = null
+      pendingPtyOutputRef.current = []
     }
-  }, [])
+  }, [rpc])
 
   // SFTP: navigate into a directory (manual navigation pauses cwd follow).
   const navigateDir = useCallback((entry: SftpEntryView) => {

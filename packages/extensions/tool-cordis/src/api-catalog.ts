@@ -416,16 +416,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'Team membership, or undefined for non-Team subagents and stale identities.',
       },
       {
-        signature: 'ssh: SshApi',
-        description: 'Interactive PTY sessions and streaming SFTP over a named SSH connection.',
-        parameters: [],
-      },
-      {
-        signature: 'downloads: DownloadsApi',
-        description: 'Host-only download surfaces (GET, no wire envelope); absent from IApiClient.',
-        parameters: [],
-      },
-      {
         signature: '@Remote(\'view\') remoteView(agent: Agent): TeamView',
         description: 'Read the current roster and non-deleted task board through the generated Remote API.',
         parameters: [{ name: 'agent', description: 'exact live Team member used as the authority credential.' }],
@@ -3282,6 +3272,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [],
   },
   {
+    name: 'ssh/pty/exit',
+    mode: 'emit',
+    signature: '\'ssh/pty/exit\'(event: SshPtyExitEvent): void',
+    summary: 'One PTY termination report.',
+    description: 'One PTY termination report.',
+    parameters: [{ name: 'event', description: 'PTY identity and exit details.' }],
+  },
+  {
+    name: 'ssh/pty/output',
+    mode: 'emit',
+    signature: '\'ssh/pty/output\'(event: SshPtyOutputEvent): void',
+    summary: 'One PTY output chunk, base64-encoded for JSON transport.',
+    description: 'One PTY output chunk, base64-encoded for JSON transport.',
+    parameters: [{ name: 'event', description: 'PTY identity and output bytes.' }],
+  },
+  {
     name: 'subagent/end',
     mode: 'emit',
     signature: '\'subagent/end\'(this: Scoped<SubagentRuntime>, info: SubagentRunEndInfo): void',
@@ -4766,38 +4772,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
   },
   {
-    name: 'RpcError',
-    declaration: 'export type RpcError = {\n    [C in RpcErrorCode]: {\n        code: C;\n        message: string;\n        details: RpcErrorDetailsMap[C];\n    };\n}[RpcErrorCode];',
-  },
-  {
-    name: 'RpcErrorCode',
-    declaration: 'export type RpcErrorCode = keyof RpcErrorDetailsMap;',
-  },
-  {
-    name: 'RpcErrorDetailsMap',
-    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        name: string;\n    };\n    \'workspace-move-invalid\': {\n        workspaceId: string;\n        sessionId: SessionId;\n        beforeSessionId?: SessionId;\n    };\n    \'directory-unreadable\': {\n        path: string;\n    };\n    \'directory-exists\': {\n        path: string;\n    };\n    \'directory-create-failed\': {\n        path: string;\n    };\n    \'directory-picker-unavailable\': {\n        capability: string;\n    };\n    \'agent-preset-read-only\': {\n        agentPreset: string;\n        reason: string;\n    };\n    \'agent-preset-locked\': {\n        sessionId: SessionId;\n        agentPreset: string;\n    };\n    \'agent-preset-conflict\': {\n        sessionId: SessionId;\n        requestedPreset: string;\n        existingPreset?: string;\n    };\n    \'agent-preset-not-found\': {\n        agentPreset: string;\n      /* …truncated — full shape in source */',
-  },
-  {
-    name: 'RpcId',
-    declaration: 'export type RpcId = Branded<\'rpc-id\'>;',
-  },
-  {
-    name: 'RpcReceipt',
-    declaration: 'export type RpcReceipt = {\n    accepted: true;\n} | {\n    accepted: false;\n    reason: \'not-pending\' | \'bad-response\';\n};',
-  },
-  {
-    name: 'RpcRequest',
-    declaration: 'export interface RpcRequest<P> {\n    rpcId: RpcId;\n    payload: P;\n}',
-  },
-  {
-    name: 'RpcResponse',
-    declaration: 'export interface RpcResponse<T> {\n    rpcId: RpcId;\n    result: RpcResult<T>;\n}',
-  },
-  {
-    name: 'RpcResult',
-    declaration: 'export type RpcResult<T> = {\n    ok: true;\n    value: T;\n} | {\n    ok: false;\n    error: RpcError;\n};',
-  },
-  {
     name: 'RunnerFailureRule',
     declaration: 'export interface RunnerFailureRule {\n    allowedExitCodes?: readonly number[];\n    fatalSignatures: readonly string[];\n    informationalLines?: readonly string[];\n}',
   },
@@ -5394,10 +5368,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SftpEntryType = \'file\' | \'dir\' | \'symlink\' | \'other\';',
   },
   {
-    name: 'SftpEntryView',
-    declaration: 'export interface SftpEntryView {\n    name: string;\n    path: string;\n    type: \'file\' | \'directory\' | \'symlink\' | \'other\';\n    size: number;\n    mtime: number;\n}',
-  },
-  {
     name: 'ShellExecRequest',
     declaration: 'export interface ShellExecRequest {\n    command: string;\n    workdir?: string | undefined;\n    timeoutMs?: number | undefined;\n    stdoutMaxBytes?: number | undefined;\n    signal?: AbortSignal | undefined;\n    stdin?: string | undefined;\n    env?: Record<string, string> | undefined;\n    dshEnv?: DshEnvironment | undefined;\n    sandboxPolicy?: SandboxExecutionPolicy | undefined;\n}',
   },
@@ -5514,10 +5484,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SpillSource {\n    toolName: string;\n    callId: ToolCallId;\n    label: string;\n}',
   },
   {
-    name: 'SshApi',
-    declaration: 'export interface SshApi {\n    list(request: RpcRequest<{}>): Promise<RpcResponse<{\n        connections: SshConnectionView[];\n    }>>;\n    ptyOpen(request: RpcRequest<SshPtyOpenRequest>, signal: AbortSignal): Promise<RpcResponse<SshPtyOpenResult>>;\n    ptyWrite(request: RpcRequest<SshPtyWriteRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        accepted: true;\n    }>>;\n    ptyResize(request: RpcRequest<SshPtyResizeRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        accepted: true;\n    }>>;\n    ptyClose(request: RpcRequest<SshPtyCloseRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        closed: true;\n    }>>;\n    sftpList(request: RpcRequest<SshSftpRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        entries: SftpEntryView[];\n    }>>;\n    sftpStat(request: RpcRequest<SshSftpRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        entry: SftpEntryView;\n    }>>;\n    sftpMkdir(request: RpcRequest<SshSftpMkdirRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        path: string;\n    }>>;\n    sftpRemove(request: RpcRequest<SshSftpRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        removed: true;\n    }>>;\n    sftpRename(request: RpcRequest<SshSftpRenameRequest>, signal: AbortSignal): Promise<RpcResponse<{\n        path: string;\n    }>>;\n    sftpDownload(connectionId: string, remotePath: string, signal: AbortSignal): Promise<Response>;\n    sftpUpload(connectionId: string, remotePath: string, body: ReadableStream<Uint8Array>, signal /* …truncated — full shape in source */',
-  },
-  {
     name: 'SshAuth',
     declaration: 'export type SshAuth = {\n    kind: \'password\';\n    password: string;\n} | {\n    kind: \'privateKey\';\n    privateKeyPath: string;\n    passphrase?: string;\n};',
   },
@@ -5534,10 +5500,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SshConnectionId = Branded<\'SshConnectionId\'>;',
   },
   {
-    name: 'SshConnectionView',
-    declaration: 'export interface SshConnectionView {\n    id: string;\n    name: string;\n    host: string;\n    port: number;\n    user: string;\n    authKind: \'password\' | \'privateKey\';\n}',
-  },
-  {
     name: 'SshDefinitionView',
     declaration: 'export interface SshDefinitionView {\n    id: SshConnectionId;\n    name: string;\n    host: string;\n    port: number;\n    username: string;\n    auth: {\n        kind: \'password\';\n        passwordSet: boolean;\n    } | {\n        kind: \'privateKey\';\n        privateKeyPath: string;\n        passphraseSet: boolean;\n    };\n    connectTimeoutMs: number;\n    hostKeyFingerprint?: string | undefined;\n}',
   },
@@ -5550,36 +5512,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SshExecSpec {\n    command: string;\n    timeoutMs: number;\n    cwd?: string;\n    signal?: AbortSignal;\n    outputMaxBytes: number;\n}',
   },
   {
-    name: 'SshPtyCloseRequest',
-    declaration: 'export interface SshPtyCloseRequest {\n    ptyId: string;\n}',
+    name: 'SshPtyExitEvent',
+    declaration: 'export interface SshPtyExitEvent {\n    ptyId: string;\n    exitCode: number | null;\n    signal: string | null;\n    dropped: boolean;\n}',
   },
   {
     name: 'SshPtyExitInfo',
     declaration: 'export interface SshPtyExitInfo {\n    exitCode: number | null;\n    signal: string | null;\n    dropped: boolean;\n}',
   },
   {
-    name: 'SshPtyOpenRequest',
-    declaration: 'export interface SshPtyOpenRequest {\n    connectionId: string;\n    cols: number;\n    rows: number;\n    cwd?: string;\n}',
-  },
-  {
-    name: 'SshPtyOpenResult',
-    declaration: 'export interface SshPtyOpenResult {\n    ptyId: string;\n}',
-  },
-  {
     name: 'SshPtyOptions',
     declaration: 'export interface SshPtyOptions {\n    cols: number;\n    rows: number;\n    term?: string;\n}',
   },
   {
-    name: 'SshPtyResizeRequest',
-    declaration: 'export interface SshPtyResizeRequest {\n    ptyId: string;\n    cols: number;\n    rows: number;\n}',
+    name: 'SshPtyOutputEvent',
+    declaration: 'export interface SshPtyOutputEvent {\n    ptyId: string;\n    data: string;\n}',
   },
   {
     name: 'SshPtySession',
     declaration: 'export interface SshPtySession {\n    write(data: Uint8Array): void;\n    resize(cols: number, rows: number): void;\n    onOutput(callback: (data: Uint8Array) => void): () => void;\n    onExit(callback: (info: SshPtyExitInfo) => void): () => void;\n    readonly closed: boolean;\n    close(): Promise<void>;\n}',
-  },
-  {
-    name: 'SshPtyWriteRequest',
-    declaration: 'export interface SshPtyWriteRequest {\n    ptyId: string;\n    data: string;\n}',
   },
   {
     name: 'SshReadableFile',
@@ -5592,18 +5542,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SshSftp',
     declaration: 'export interface SshSftp {\n    list(path: string): Promise<SftpEntry[]>;\n    stat(path: string): Promise<SftpEntry>;\n    readFile(remotePath: string, localPath: string, options?: {\n        overwrite?: boolean;\n    }): Promise<{\n        bytes: number;\n    }>;\n    writeFile(localPath: string, remotePath: string): Promise<{\n        bytes: number;\n    }>;\n    mkdir(path: string, options?: {\n        recursive?: boolean;\n    }): Promise<void>;\n    remove(path: string, options?: {\n        recursive?: boolean;\n    }): Promise<void>;\n    rename(fromPath: string, toPath: string): Promise<void>;\n    openRead(remotePath: string): Promise<SshReadableFile>;\n    openWrite(remotePath: string): Promise<SshWritableFile>;\n}',
-  },
-  {
-    name: 'SshSftpMkdirRequest',
-    declaration: 'export interface SshSftpMkdirRequest extends SshSftpRequest {\n    recursive?: boolean;\n}',
-  },
-  {
-    name: 'SshSftpRenameRequest',
-    declaration: 'export interface SshSftpRenameRequest extends SshSftpRequest {\n    toPath: string;\n}',
-  },
-  {
-    name: 'SshSftpRequest',
-    declaration: 'export interface SshSftpRequest {\n    connectionId: string;\n    path: string;\n}',
   },
   {
     name: 'SshTestResult',

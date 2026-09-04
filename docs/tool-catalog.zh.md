@@ -25,9 +25,11 @@
 | `@deepseek-ai/dsh-tool-bash` | `bash` | `ctx.tools`、`ctx.shell`、`ctx.systemPrompt`、`ctx.shellEnv`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | bash 工具是 bash 执行器 seam 面向模型的消费方。使用 `run_in_background` 的运行会注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具（来自 `@deepseek-ai/dsh-tool-jobs`）收集／停止；禁用 `enableRunInBackground` 配置（默认为 true）后，该参数会被完全移除。 |
 | `@deepseek-ai/dsh-tool-pwsh` | `pwsh` | `ctx.tools`、`ctx.shell`、`ctx.systemPrompt`、`ctx.shellEnv`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费方（由 `@deepseek-ai/dsh-pwsh-local` 等 PowerShell 执行器为 `ctx.shell` 提供后端）；除沙箱接口外，它逐项对应 bash 工具调用。使用 `run_in_background` 的运行会注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具收集／停止；托管的 `DSH_*` 环境来自 `@deepseek-ai/dsh-shell-env`。每次调用都在新进程中运行，不使用持久 PTY 会话。路径采用原生 `C:\...` 形式，变量采用 `$env:NAME`。 |
 | `@deepseek-ai/dsh-tool-cordis` | `cordis_define`、`cordis_inspect_list`、`cordis_inspect_query`、`cordis_inspect_self`、`cordis_run`、`cordis_stop`、`cordis_undefine` | `ctx.tools`、`ctx.dynamicCordisRunner` | `tool/call`、`tool/result`、`process-local dynamic package lifecycle` | - | 不在任何随产品发布的树中，需要显式选择启用；动态 Package 代码可以访问真实运行时，见 .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md。该工具集注入 `@deepseek-ai/dsh-cordis-host-runner` 提供的 `ctx.dynamicCordisRunner`，后者拥有定义注册表和 vm 沙箱；组合缺少它时这些工具不会激活。运行中的 Package 在停止、undefine 或 DSH 重启前可以注册**额外的**模型可见工具；发生这类工具集变化时，系统会记录完整且有变动的请求头。 |
+| `@reachforstar/dsh-tool-ssh` | `sftp_list`、`sftp_mkdir`、`sftp_read`、`sftp_rename`、`sftp_rm`、`sftp_stat`、`sftp_write`、`ssh_connect`、`ssh_connections`、`ssh_disconnect`、`ssh_exec`、`ssh_test` | `ctx.tools`、`ctx.ssh`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`settings/document-updated (ssh definition saves)` | - | ssh 工具是 SSH/SFTP 能力 seam 面向模型的消费方，提供连接管理、远程命令执行和 SFTP 传输／浏览。定义与记住的主机密钥持久化在 `ssh` settings 命名空间；主机密钥默认按 accept-new 校验，秘密不会出现在结果中。 |
 | `@deepseek-ai/dsh-tool-bash-persistent` | `bash` | `ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 bash 工具；部署组合提供 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 pwsh 工具，持久 bash 工具的 Windows 对应物；部署组合提供 pwsh 方言的 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`、`ctx.fs` | `tool/call`、`fs/observed after view presence/absence, edit absence, or successful mutation`、`tool/result` | - | 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。 |
+| `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`、`excalidraw_export`、`excalidraw_read`、`excalidraw_write` | `ctx.tools`、`ctx.workspaceRegistry` | `tool/call`、`tool/result` | - | 白板场景工具从调用 agent 的会话推导目标工作区；没有归属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 `@reachforstar/dsh-client-ui-polish` 的 Web 画布标签页共享。 |
 | `@deepseek-ai/dsh-tool-fs` | `edit`、`read`、`read_image`、`write` | `ctx.tools`、`ctx.fs`、`ctx.systemPrompt`、`ctx.attachments (image-tool registration)`、`ctx.llm + an image-capable route (image-tool execution)` | `tool/call`、`fs/write-intent or fs/edit-intent for mutations`、`fs/observed after read presence/absence or successful file operation`、`durable attachment (read_image)`、`tool/result` | - | 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。 |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`、`grep` | `ctx.tools`、`ctx.subprocess`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | glob 和 grep 是无条件可用的发现工具，通过 ctx.subprocess spawn 随包提供的 ripgrep 二进制文件（`@vscode/ripgrep`），并作为普通前台调用运行，绝不作为后台任务；无需在宿主机安装 `rg`，也不经过 shell 层。本目录使用 `sampleOverCapGlobResults: true`；部署必须显式选择该行为。结果超过上限时，会通过可选的 ctx.spillStore 后端保存完整的格式化列表；在共置部署中，如果后端公开本地路径，返回的定位信息可供后续读取／搜索。 |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`、`terminal_list`、`terminal_open`、`terminal_read`、`terminal_send`、`terminal_signal` | `ctx.tools`、`ctx.terminals`、`ctx.systemPrompt`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | 这 6 个终端工具需要选择启用，用于补充一次性 bash／文件系统工具。`terminal_send(run_in_background: true)` 会注册到 `ctx.jobs`；schema 不包含 TUI、具名按键序列、BEL、调整尺寸、自动启动和跨 agent 共享。 |
@@ -504,6 +506,374 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 
 不在任何随产品发布的树中，需要显式选择启用；动态 Package 代码可以访问真实运行时，见 .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md。该工具集注入 `@deepseek-ai/dsh-cordis-host-runner` 提供的 `ctx.dynamicCordisRunner`，后者拥有定义注册表和 vm 沙箱；组合缺少它时这些工具不会激活。运行中的 Package 在停止、undefine 或 DSH 重启前可以注册**额外的**模型可见工具；发生这类工具集变化时，系统会记录完整且有变动的请求头。
 
+<a id="reachforstardsh-tool-ssh"></a>
+
+## `@reachforstar/dsh-tool-ssh`
+
+### `sftp_list`
+
+List one remote directory over SFTP (non-recursive). Entries report type, size, mtime, and mode.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote directory path to list."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_mkdir`
+
+Create one remote directory over SFTP. With `recursive`, missing parents are created too.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote directory path to create."
+    },
+    "recursive": {
+      "type": "boolean",
+      "description": "Create missing parents (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_read`
+
+Download one remote file to a local path over SFTP. The local file must not exist unless `overwrite` is set; a failed transfer removes the partial local file.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "remote_path": {
+      "type": "string",
+      "description": "Remote file path to download."
+    },
+    "local_path": {
+      "type": "string",
+      "description": "Local destination path; relative paths resolve against the session workspace."
+    },
+    "overwrite": {
+      "type": "boolean",
+      "description": "Replace an existing local file (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "remote_path",
+    "local_path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_rename`
+
+Rename or move one remote path over SFTP.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "from": {
+      "type": "string",
+      "description": "Current remote path."
+    },
+    "to": {
+      "type": "string",
+      "description": "Destination remote path."
+    }
+  },
+  "required": [
+    "connection",
+    "from",
+    "to"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_rm`
+
+Remove one remote file or directory over SFTP. Directories require `recursive: true` and are deleted depth-first; symlinks are unlinked, never followed.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote path to remove."
+    },
+    "recursive": {
+      "type": "boolean",
+      "description": "Remove a directory tree (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_stat`
+
+Stat one remote path over SFTP without following symlinks.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote path to stat."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_write`
+
+Upload one local file to a remote path over SFTP. The remote directory must already exist (use sftp_mkdir first).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "local_path": {
+      "type": "string",
+      "description": "Local source path; relative paths resolve against the session workspace."
+    },
+    "remote_path": {
+      "type": "string",
+      "description": "Remote destination path."
+    }
+  },
+  "required": [
+    "connection",
+    "local_path",
+    "remote_path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_connect`
+
+Save a new SSH connection definition (or update one by passing its id). The definition persists in user settings and is usable by ssh_exec and the sftp_* tools; secrets never come back in results. List saved connections with ssh_connections.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique display name for the connection (also accepted wherever a connection id is)."
+    },
+    "host": {
+      "type": "string",
+      "description": "Remote host name or IP address."
+    },
+    "username": {
+      "type": "string",
+      "description": "Remote login user."
+    },
+    "port": {
+      "type": "number",
+      "description": "Remote SSH port (default 22)."
+    },
+    "auth": {
+      "type": "string",
+      "description": "Authentication kind: \"password\" or \"privateKey\".",
+      "enum": [
+        "password",
+        "privateKey"
+      ]
+    },
+    "password": {
+      "type": "string",
+      "description": "Password (required when auth is \"password\")."
+    },
+    "private_key_path": {
+      "type": "string",
+      "description": "Absolute local path of the private key (required when auth is \"privateKey\")."
+    },
+    "passphrase": {
+      "type": "string",
+      "description": "Private-key passphrase, when the key is encrypted."
+    },
+    "connect_timeout_ms": {
+      "type": "number",
+      "description": "Connection-establishment timeout in milliseconds (default 10000, range 1000-300000)."
+    },
+    "id": {
+      "type": "string",
+      "description": "Id of an existing connection to update; omit to create a new one."
+    }
+  },
+  "required": [
+    "name",
+    "host",
+    "username",
+    "auth"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_connections`
+
+List every saved SSH connection definition (secret-free view). Use the returned id or name as the `connection` argument of ssh_exec and the sftp_* tools.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_disconnect`
+
+Close the shared connection for one saved connection. Later ssh_exec/sftp_* calls reconnect automatically.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    }
+  },
+  "required": [
+    "connection"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_exec`
+
+Execute a command on a saved SSH connection and return its stdout/stderr. Each call runs in a fresh remote shell: no state (cwd, variables) persists between calls — pass `cwd` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`; commands that exceed the timeout are killed and reported as `[timed out ...]`. Long output is truncated to its tail with a truncation marker.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "command": {
+      "type": "string",
+      "description": "The command to execute on the remote host."
+    },
+    "timeout_ms": {
+      "type": "number",
+      "description": "Timeout in milliseconds. The provider applies its configured default and cap, and kills the command on expiry."
+    },
+    "cwd": {
+      "type": "string",
+      "description": "Remote working directory for this command; a `cd` prefix is applied on the remote side."
+    }
+  },
+  "required": [
+    "connection",
+    "command"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_test`
+
+Probe one saved connection: connect, run a probe command, and close again. Reports the round-trip latency or the failure reason.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    }
+  },
+  "required": [
+    "connection"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: connection management (ssh_connect/ssh_connections/ssh_disconnect/ssh_test), remote command execution (ssh_exec), and SFTP transfer/browse (sftp_list/stat/read/write/mkdir/rm/rename). Definitions and remembered host keys persist in the `ssh` settings namespace; host keys verify by default (accept-new) and secrets never appear in results.
+
 <a id="deepseek-aidsh-tool-bash-persistent"></a>
 
 ## `@deepseek-ai/dsh-tool-bash-persistent`
@@ -665,6 +1035,154 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 来源：[`packages/fs/tool-str-replace-editor/src/index.ts`](../packages/fs/tool-str-replace-editor/src/index.ts)
 
 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。
+
+<a id="reachforstardsh-tool-excalidraw"></a>
+
+## `@reachforstar/dsh-tool-excalidraw`
+
+### `excalidraw_draw`
+
+Draw shapes on the current workspace's Excalidraw canvas (the shared whiteboard). Describe shapes at a high level — no Excalidraw internals needed. Use it to draw diagrams, flowcharts, or to work a problem on the canvas (e.g. geometry). `action: "append"` adds to the existing scene; `action: "replace"` clears the canvas first. Supported element `type` values: "rectangle", "ellipse", "diamond", "text" (put the content in `text`), "arrow", "line" (optionally give `points` as [[x1,y1],[x2,y2],...] else a diagonal across the box is used). Coordinates are in canvas pixels (top-left origin).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "elements": {
+      "type": "array",
+      "description": "Shapes to draw.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "One of rectangle/ellipse/diamond/text/arrow/line."
+          },
+          "x": {
+            "type": "number",
+            "description": "Left edge in canvas pixels."
+          },
+          "y": {
+            "type": "number",
+            "description": "Top edge in canvas pixels."
+          },
+          "width": {
+            "type": "number",
+            "description": "Width in canvas pixels."
+          },
+          "height": {
+            "type": "number",
+            "description": "Height in canvas pixels."
+          },
+          "text": {
+            "type": "string",
+            "description": "Text content (for type \"text\")."
+          },
+          "points": {
+            "type": "array",
+            "description": "Line/arrow points as [[x,y],...] (optional)."
+          },
+          "strokeColor": {
+            "type": "string",
+            "description": "Outline color (CSS color)."
+          },
+          "backgroundColor": {
+            "type": "string",
+            "description": "Fill color (CSS color)."
+          },
+          "fillStyle": {
+            "type": "string",
+            "description": "hachure/solid/cross-hatch/zigzag."
+          },
+          "strokeWidth": {
+            "type": "number",
+            "description": "Outline width in pixels."
+          },
+          "opacity": {
+            "type": "number",
+            "description": "Opacity 0-100."
+          }
+        },
+        "required": [
+          "type",
+          "x",
+          "y",
+          "width",
+          "height"
+        ]
+      }
+    },
+    "action": {
+      "type": "string",
+      "description": "\"append\" (default) adds shapes; \"replace\" clears the canvas first."
+    }
+  },
+  "required": [
+    "elements"
+  ]
+}
+```
+
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_export`
+
+Export the current workspace's Excalidraw canvas to an SVG image file in the workspace (pure node-side rendering — no browser needed). Reads the same scene the canvas tab shows and writes a vector SVG at `<workspace>/<path>` (default `.dsh/excalidraw/export.svg`). Use it to persist a diagram the model drew so it can be viewed, committed, or converted elsewhere. The SVG uses flat fills/strokes (no hand-drawn texture); text keeps its content and font size.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Workspace-relative output path (e.g. \"docs/flow.svg\"); default \".dsh/excalidraw/export.svg\"."
+    },
+    "transparent": {
+      "type": "boolean",
+      "description": "When true, the SVG has a transparent background; default uses the canvas background color."
+    }
+  }
+}
+```
+
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_read`
+
+Read the current workspace's Excalidraw canvas scene. Returns a summary (element counts by type, text elements, theme), a compact `elements` list (id/type/x/y/width/height/text) so you can reason about what is on the canvas, and the complete scene JSON string in `sceneJson` when small. Use `excalidraw_draw` to add shapes, or `excalidraw_write` to replace the scene.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_write`
+
+Overwrite the current workspace's Excalidraw canvas scene from a complete scene JSON string (the shape produced by `excalidraw_read`'s `sceneJson`: an object with `elements` and `appState`). The canvas tab renders this exact file. A missing scene file is created.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scene": {
+      "type": "string",
+      "description": "Complete Excalidraw scene JSON (object with `elements` array and `appState` object)."
+    }
+  },
+  "required": [
+    "scene"
+  ]
+}
+```
+
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+The whiteboard scene tools derive the target workspace from the calling agent's session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish.
 
 <a id="deepseek-aidsh-tool-fs"></a>
 

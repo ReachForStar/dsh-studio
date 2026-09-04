@@ -1,8 +1,13 @@
+---
+description: "Choose the SSH/SFTP capability, local provider, model tools, Host gateway, and Web settings packages."
+kind: "package-group"
+---
+
 # remote/ — SSH/SFTP capability family
 
 English | [中文](README.zh.md)
 
-The capability family spans the canonical SSH/SFTP seam, its local `ssh2` implementation, the model-facing tools, and the Web GUI connection-management surface. All are **product** packages.
+The capability family spans the canonical SSH/SFTP seam, its local `ssh2` implementation, the model-facing tools, and the Web GUI connection-management surface. All are **product** packages. See the [SSH subsystem reference](../../docs/subsystems/ssh.md) for the generated service and event API.
 
 | Package | Role | ctx key |
 |---|---|---|

@@ -11,7 +11,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { join } from 'node:path'
+import { basename, join, sep } from 'node:path'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
@@ -46,12 +46,15 @@ describe('web e2e: agent-preset authoring is a host-side copy', () => {
 
   /** Tokenize the lane-owned preset root after general aria normalization. */
   function withPresetRoot(snapshot: string): string {
-    const rootSuffix = `/${userRoot.split('/').pop()!}`
+    // The captured path uses the platform separator, so key on the lane root's
+    // basename plus that separator — `\name` on Windows, `/name` elsewhere — and
+    // re-emit the token with a forward slash so the golden stays platform-stable.
+    const rootSuffix = `${sep}${basename(userRoot)}`
     return snapshot.split('\n').map((line) => {
       const rootStart = line.indexOf(rootSuffix)
       if (rootStart === -1) return line
       const pathStart = line.lastIndexOf(' ', rootStart) + 1
-      return `${line.slice(0, pathStart)}{{presetRoot}}${line.slice(rootStart + rootSuffix.length)}`
+      return `${line.slice(0, pathStart)}{{presetRoot}}/${line.slice(rootStart + rootSuffix.length).replace(/^[\\/]+/, '')}`
     }).join('\n')
   }
 

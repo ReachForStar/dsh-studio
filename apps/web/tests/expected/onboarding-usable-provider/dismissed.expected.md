@@ -13,6 +13,9 @@
     - button "Agent 预设":
       - img
       - text: Agent 预设
+    - button "SSH 连接":
+      - img
+      - text: SSH 连接
   - button "打开配置文件"
   - button "关闭":
     - img
@@ -65,6 +68,7 @@
     - option "xiaomi-token-plan-sgp"
     - option "zai"
     - option "zai-coding-cn"
+    - option "AMAX Token Router"
   - text: API 密钥
   - textbox "API 密钥":
     - /placeholder: 输入 API 密钥，或留空使用环境认证

@@ -13,6 +13,9 @@
     - button "Agent 预设":
       - img
       - text: Agent 预设
+    - button "SSH 连接":
+      - img
+      - text: SSH 连接
   - button "打开配置文件"
   - button "关闭":
     - img
@@ -21,7 +24,6 @@
   - paragraph: 配置和查看本部署已安装的插件。
   - tablist "插件视图":
     - tab "插件配置" [selected]
-    - tab "插件列表"
   - tabpanel "插件配置":
     - list:
       - listitem:

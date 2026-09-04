@@ -131,6 +131,9 @@ function validateSessionHeader(id: SessionId, input: unknown): SessionHeader {
   if (record.agentPreset !== undefined && typeof record.agentPreset !== 'string') {
     throw new Error('session header agentPreset must be a string')
   }
+  if (record.backend !== undefined && record.backend !== 'dsh' && record.backend !== 'pi') {
+    throw new Error('session header backend must be "dsh" or "pi"')
+  }
   return deepFreeze(record as unknown as SessionHeader)
 }
 
@@ -979,6 +982,7 @@ export class SessionStore extends Service {
       ...meta?.origin === undefined ? {} : { origin: meta.origin },
       ...meta?.delegationDepth === undefined ? {} : { delegationDepth: meta.delegationDepth },
       ...meta?.agentPreset === undefined ? {} : { agentPreset: meta.agentPreset },
+      ...meta?.backend === undefined ? {} : { backend: meta.backend },
     }
     return Session.create(sessionId, seed, header, options?.inheritedEventCount)
   }

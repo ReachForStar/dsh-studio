@@ -320,6 +320,7 @@ describe('JsonlSessionPersistence: format helpers', () => {
       origin: 'subagent',
       delegationDepth: 2,
       agentPreset: 'minimal',
+      backend: 'pi',
     }
     const events = [
       ...Array.from({ length: 3 }, (_, seq) => ({

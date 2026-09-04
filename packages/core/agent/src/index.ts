@@ -11,7 +11,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { isPromise } from 'node:util/types'
 import { scopeTarget } from '@deepseek-ai/dsh-scope'
 import type { Scoped } from '@deepseek-ai/dsh-scope'
-import type { SessionEvent, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
+import type { AgentBackend, SessionEvent, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import type { Agent } from './types.ts'
 import type { AgentOptions } from './runtime-types.ts'
 
@@ -89,6 +89,8 @@ export interface CreateAgentOptions {
     readonly origin?: 'subagent'
     readonly delegationDepth?: number
     readonly agentPreset?: string
+    /** Loop backend that drives this session (absent means `dsh`). */
+    readonly backend?: AgentBackend
   }
   /** Exact fork-inherited prefix length when the session metadata sets `isSeeded`. */
   readonly inheritedEventCount?: SessionLogOffset
@@ -134,6 +136,12 @@ export interface ResumeAgentOptions {
   readonly resumeSessionId: SessionId
   /** Per-agent options (model, …). */
   readonly agentOptions?: AgentOptions
+  /**
+   * Loop backend to drive this session. Absent means `dsh`; a resume of a
+   * `pi` session must pass `pi` — the registry does not read the persisted
+   * header itself.
+   */
+  readonly backend?: AgentBackend
   /** Optional creation-only cancellation signal for persistence load/setup; detached before return. */
   readonly signal?: AbortSignal
   /**
@@ -209,6 +217,8 @@ export interface AgentFactory {
 
 /** Thrown when create/resume is called before an agent factory is registered. */
 const NO_FACTORY_MESSAGE = 'no agent factory registered (load an agent-loop plugin)'
+/** Loop backend selected when a create names none. */
+const DEFAULT_AGENT_BACKEND: AgentBackend = 'dsh'
 const NO_INITIATOR_MESSAGE = 'no initiating agent is active'
 const DISPOSED_INITIATOR_MESSAGE = 'agent initiator scope is disposed'
 
@@ -249,7 +259,7 @@ interface FactorySlot {
  */
 export class AgentRegistry extends Service {
   private store = new Map<SessionId, AgentEntry>()
-  private factory: FactorySlot | undefined
+  private factories = new Map<AgentBackend, FactorySlot>()
   private readonly initiators = new AsyncLocalStorage<Agent | undefined>()
   private readonly initiatorRuns = new AsyncLocalStorage<InitiatorRun>()
   private initiatorState: 'active' | 'closing' | 'disposed' = 'active'
@@ -360,19 +370,20 @@ export class AgentRegistry extends Service {
    * Throws if a factory is already registered. Returns the disposer; on
    * dispose the factory slot is cleared.
    * @param factory - the loop-owned factory {@link create}/{@link resume} delegate to.
+   * @param backend - the loop backend this factory serves (default `dsh`).
    * @returns the disposer that clears the factory slot. The exact
    *   Cordis effect disposer (single-shot): composite (generator) effects may
    *   yield it directly — exact identity nests the teardown in order.
    */
-  setFactory(factory: AgentFactory): () => void {
+  setFactory(factory: AgentFactory, backend: AgentBackend = DEFAULT_AGENT_BACKEND): () => void {
     const dispose = this.ctx.effect(() => {
-      if (this.factory !== undefined) throw new Error('an agent factory is already registered')
+      if (this.factories.has(backend)) throw new Error(`an agent factory is already registered for backend "${backend}"`)
       // Avoid stacking two Cordis shadow layers when a caller passes a Service
       // already read through a context. Calls are re-traced through their
       // actual owner context below.
       const target = (factory as AgentFactory & { [symbols.original]?: AgentFactory })[symbols.original] ?? factory
-      this.factory = { target }
-      return () => { this.factory = undefined }
+      this.factories.set(backend, { target })
+      return () => { this.factories.delete(backend) }
     }, 'agents.setFactory()')
     // The exact cordis effect disposer (the agents.register() convention): a
     // caller's composite effect can yield it for in-order teardown; the
@@ -382,10 +393,15 @@ export class AgentRegistry extends Service {
     return dispose
   }
 
-  /** Return the active creation factory. */
-  private requireFactory(): FactorySlot {
-    if (this.factory === undefined) throw new Error(NO_FACTORY_MESSAGE)
-    return this.factory
+  /** Return the active creation factory for one loop backend. */
+  private requireFactory(backend: AgentBackend): FactorySlot {
+    const slot = this.factories.get(backend)
+    if (slot === undefined) {
+      throw new Error(backend === DEFAULT_AGENT_BACKEND
+        ? NO_FACTORY_MESSAGE
+        : `no agent factory registered for backend "${backend}" (load an agent-loop plugin)`)
+    }
+    return slot
   }
 
   /**
@@ -403,7 +419,7 @@ export class AgentRegistry extends Service {
     // explicitly. This preserves AgentLoop's dependency origin while binding
     // its effects to ownerCtx; plain factories receive ownerCtx as an explicit
     // capability and need no Cordis tracker magic.
-    const { target } = this.requireFactory()
+    const { target } = this.requireFactory(options.meta?.backend ?? DEFAULT_AGENT_BACKEND)
     const receiver = getTraceable(ownerCtx, target)
     // oxlint-disable-next-line typescript/unbound-method -- Reflect.apply intentionally supplies the caller-traced receiver
     return Reflect.apply(target.createAgent, receiver, [ownerCtx, options])
@@ -418,7 +434,7 @@ export class AgentRegistry extends Service {
    */
   async resume(options: ResumeAgentOptions): Promise<AgentHandle> {
     const ownerCtx = this.ctx
-    const { target } = this.requireFactory()
+    const { target } = this.requireFactory(options.backend ?? DEFAULT_AGENT_BACKEND)
     const receiver = getTraceable(ownerCtx, target)
     // oxlint-disable-next-line typescript/unbound-method -- Reflect.apply intentionally supplies the caller-traced receiver
     return Reflect.apply(target.resume, receiver, [ownerCtx, options])

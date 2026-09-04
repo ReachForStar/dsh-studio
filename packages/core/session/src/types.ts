@@ -86,6 +86,16 @@ export type OptionalSessionSeq = SessionSeq | null
 export const SESSION_FORMAT_VERSION = 2
 
 /**
+ * The agent-loop backend that drives a session. `dsh` is the built-in default
+ * loop shipped with the harness; `pi` delegates the loop to the Pi
+ * coding-agent runtime. Absent means `dsh` — a session written before this
+ * field existed, or one created without naming a backend, is driven by the
+ * default loop. Durable on the header so a resume routes to the same loop
+ * without the caller re-supplying the choice.
+ */
+export type AgentBackend = 'dsh' | 'pi'
+
+/**
  * Immutable validated storage metadata, kept outside the conversation event log.
  */
 export interface SessionHeader {
@@ -125,6 +135,11 @@ export interface SessionHeader {
    * would replay history the model can no longer act on.
    */
   readonly agentPreset?: string
+  /**
+   * The loop backend this session is driven by; absent means `dsh` (see
+   * {@link AgentBackend}). Durable so a resume routes back to the same loop.
+   */
+  readonly backend?: AgentBackend
 }
 
 /**
@@ -153,6 +168,7 @@ export interface CreateSessionOptions {
     readonly origin?: 'subagent'
     readonly delegationDepth?: number
     readonly agentPreset?: string
+    readonly backend?: AgentBackend
   }
 }
 

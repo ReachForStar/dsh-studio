@@ -439,4 +439,39 @@ describe('AgentRegistry factory seam', () => {
     const raw = (traced as unknown as { [symbols.original]?: TracedFactory })[symbols.original]
     expect(states.get(raw!)).toEqual(['create', 'resume'])
   })
+
+  it('routes create and resume across loop backends', async () => {
+    const ctx = new Context()
+    await ctx.plugin(AgentRegistry)
+    const dsh = stubFactory()
+    const pi = stubFactory()
+    ctx.agents.setFactory(dsh.factory, 'dsh')
+    ctx.agents.setFactory(pi.factory, 'pi')
+
+    await ctx.agents.create({ sessionId: SessionId('dsh-explicit'), meta: { backend: 'dsh' } })
+    await ctx.agents.create({ sessionId: SessionId('pi-session'), meta: { backend: 'pi' } })
+    await ctx.agents.create({ sessionId: SessionId('dsh-implicit') })
+    await ctx.agents.resume({ resumeSessionId: SessionId('pi-resume'), backend: 'pi' })
+
+    expect(dsh.calls.create.map(call => call.options.sessionId)).toEqual([
+      SessionId('dsh-explicit'), SessionId('dsh-implicit'),
+    ])
+    expect(pi.calls.create.map(call => call.options.sessionId)).toEqual([SessionId('pi-session')])
+    expect(pi.calls.resume.map(call => call.options.resumeSessionId)).toEqual([SessionId('pi-resume')])
+  })
+
+  it('rejects a duplicate factory within the same loop backend', async () => {
+    const ctx = new Context()
+    await ctx.plugin(AgentRegistry)
+    ctx.agents.setFactory(stubFactory().factory, 'pi')
+    expect(() => ctx.agents.setFactory(stubFactory().factory, 'pi')).toThrow(/already registered/)
+  })
+
+  it('fails a create for a loop backend with no registered factory', async () => {
+    const ctx = new Context()
+    await ctx.plugin(AgentRegistry)
+    ctx.agents.setFactory(stubFactory().factory, 'dsh')
+    await expect(ctx.agents.create({ sessionId: SessionId('pi'), meta: { backend: 'pi' } }))
+      .rejects.toThrow(/no agent factory/)
+  })
 })

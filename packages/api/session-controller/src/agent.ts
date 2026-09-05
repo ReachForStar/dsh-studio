@@ -462,6 +462,7 @@ export class ApiSessionAgentController {
         return (await this.ctx.agents.resume({
           resumeSessionId: sessionId,
           agentOptions: this.agentOptions(),
+          ...composition.backend === undefined ? {} : { backend: composition.backend as AgentBackend },
           setup: composition.setup,
         })).agent
       } catch (error: unknown) {

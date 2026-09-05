@@ -94,6 +94,18 @@ describe('PiLoop factory', () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
     await ctx.plugin(AgentRegistry)
+    // A persisted pi session is required for resume to load its header + history.
+    ctx.provide('sessionPersistence', {
+      async open(_id: SessionId) {
+        return {
+          async read() { return [] },
+          async append() {},
+          async close() {},
+          header: { cwd: process.cwd(), backend: 'pi' },
+          inheritedEventCount: 0,
+        }
+      },
+    })
     await ctx.plugin(PiLoop, { openSession: async () => ({ ...stubPiSession(), dispose() {} }) })
 
     const handle = await ctx.agents.resume({ resumeSessionId: SessionId('pi-resume'), backend: 'pi' })

@@ -20,10 +20,25 @@ import type {
   ResumeAgentOptions,
 } from '@deepseek-ai/dsh-agent'
 import { emitAgentEvent } from '@deepseek-ai/dsh-agent'
-import { SessionPreparation } from '@deepseek-ai/dsh-session'
+import { interruptedTurnClosers, SessionPreparation } from '@deepseek-ai/dsh-session'
+import type { SessionEvent, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { PiLoopAgent } from './agent.ts'
 import { openPiSession } from './pi-session.ts'
 import type { OpenedPiSession, PiProviderConfig } from './pi-session.ts'
+
+/** Minimal session-persistence service surface resume needs (typed, not `any`). */
+interface ResumePersistence {
+  open(
+    id: ResumeAgentOptions['resumeSessionId'],
+    access: 'write',
+  ): Promise<{
+    readonly header: { readonly cwd?: string }
+    readonly inheritedEventCount: SessionLogOffset
+    read(offset?: number, length?: number): Promise<readonly SessionEvent[]>
+    append(events: readonly SessionEvent[]): Promise<void>
+    close(): Promise<void>
+  }>
+}
 
 /** Factory for opening one Pi session; injectable for tests. */
 export type OpenPiSession = (options: {
@@ -78,9 +93,11 @@ export class PiLoop extends Service implements AgentFactory {
 
     let opened: OpenedPiSession
     try {
+      const agentProvider = options.agentOptions?.provider
+      const agentModel = options.agentOptions?.model
       const route = this.model
-        ?? (options.agentOptions?.provider !== undefined && options.agentOptions?.model !== undefined
-          ? { provider: options.agentOptions.provider, modelId: options.agentOptions.model }
+        ?? (agentProvider !== undefined && agentModel !== undefined
+          ? { provider: agentProvider, modelId: agentModel }
           : undefined)
       opened = await this.openSession({
         cwd,
@@ -102,15 +119,35 @@ export class PiLoop extends Service implements AgentFactory {
   }
 
   async resume(ownerCtx: Context, options: ResumeAgentOptions): Promise<AgentHandle> {
-    // POC: a resumed Pi session re-runs through a fresh Pi session. Persisting
-    // and reloading Pi's message tree is deferred; the dsh log is also empty
-    // here, so there is no history to replay into Pi yet.
-    return this.createAgent(ownerCtx, {
-      sessionId: options.resumeSessionId,
-      ...options.agentOptions === undefined ? {} : { agentOptions: options.agentOptions },
-      meta: { backend: 'pi' },
-      ...options.setup === undefined ? {} : { setup: options.setup },
-    })
+    // A pi session's dsh log lives in persistence; resume must rehydrate its
+    // history (and header cwd) exactly like the dsh loop does, otherwise the
+    // reopened session loses every prior message and falls back to process.cwd.
+    const persistence = this.ctx.get('sessionPersistence') as ResumePersistence | undefined
+    if (persistence === undefined) {
+      throw new Error('cannot resume a pi session: session persistence is not configured')
+    }
+    const id = options.resumeSessionId
+    const handle = await persistence.open(id, 'write')
+    try {
+      const persisted = await handle.read(0, undefined)
+      const closers = interruptedTurnClosers(persisted)
+      if (closers.length > 0) await handle.append(closers)
+      const cwd = handle.header.cwd
+      const meta = {
+        ...cwd === undefined ? {} : { cwd },
+        backend: 'pi' as const,
+      }
+      return await this.createAgent(ownerCtx, {
+        sessionId: id,
+        ...options.agentOptions === undefined ? {} : { agentOptions: options.agentOptions },
+        meta,
+        seed: [...persisted, ...closers],
+        inheritedEventCount: handle.inheritedEventCount,
+        ...options.setup === undefined ? {} : { setup: options.setup },
+      })
+    } finally {
+      await handle.close().catch(() => {})
+    }
   }
 
   /** Run setup, publish the dsh session + agent, and return the owned handle. */

@@ -72,6 +72,8 @@ export class PiLoop extends Service implements AgentFactory {
     }
 
     const agent = new PiLoopAgent(this.ctx, options.sessionId, options.agentOptions ?? {}, preparation.session, opened.session)
+    const tools = this.ctx.get('tools')
+    if (tools !== undefined) agent.registerDshTools(tools)
     return this.publish(ownerCtx, agent, opened, options.setup)
   }
 

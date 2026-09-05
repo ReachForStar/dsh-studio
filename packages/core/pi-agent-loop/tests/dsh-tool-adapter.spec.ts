@@ -28,4 +28,20 @@ describe('adaptDshTool', () => {
     expect(calls).toEqual([{ name: 'bash', args: { command: 'ls' }, callId: 'call-7' }])
     expect(result.content).toEqual([{ type: 'text', text: 'ran bash' }])
   })
+
+  it('mirrors dsh parameter declarations into a TypeBox object schema', () => {
+    const tools = fakeTools([])
+    const tool = adaptDshTool({
+      name: 'bash',
+      description: 'run a command',
+      parameters: {
+        command: { type: 'string', required: true, description: 'command' },
+        timeoutMs: { type: 'number' },
+      },
+    }, tools, stubAgent)
+
+    const schema = tool.parameters as { properties?: Record<string, unknown>; required?: string[] }
+    expect(Object.keys(schema.properties ?? {})).toEqual(['command', 'timeoutMs'])
+    expect(schema.required).toEqual(['command'])
+  })
 })

@@ -33,7 +33,8 @@
     "@deepseek-ai/dsh-session": "workspace:^"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^0.84.4"
+    "@earendil-works/pi-coding-agent": "^0.84.4",
+    "typebox": "^1.3.7"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",

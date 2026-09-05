@@ -46,5 +46,5 @@ export async function openPiSession(options: OpenPiSessionOptions): Promise<Open
     sessionManager,
     ...model === undefined ? {} : { model },
   })
-  return { session, dispose: () => { session.dispose() } }
+  return { session: session as unknown as PiAgentSessionLike, dispose: () => { session.dispose() } }
 }

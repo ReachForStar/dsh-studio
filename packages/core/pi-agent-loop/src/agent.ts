@@ -22,6 +22,7 @@ import type { TextBlock } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionId, UserMessage } from '@deepseek-ai/dsh-session'
 import type { Context } from '@deepseek-ai/cordis'
 import { PiEventTranslator } from './pi-event-translator.ts'
+import { adaptDshTool } from './dsh-tool-adapter.ts'
 
 /** The Pi AgentSession surface this driver needs; narrow so tests can supply a stub. */
 export interface PiAgentSessionLike {
@@ -33,6 +34,10 @@ export interface PiAgentSessionLike {
   dispose(): void
   /** Subscribe to Pi agent events; returns the unsubscribe function. */
   subscribe(listener: (event: unknown) => void): () => void
+  /** Pi's extension runner, when present, for late-registering custom tools. */
+  extensionRunner?: {
+    registerTool(tool: unknown): void
+  }
 }
 
 /** Extract the concatenated visible text of a user message for Pi's prompt. */
@@ -142,7 +147,21 @@ export class PiLoopAgent implements Agent {
     }
   }
 
-  /** Dispose the scoped world; the caller owns the Pi session disposal itself. */
+  /**
+   * Register this session's dsh tools as Pi custom tools so a Pi turn can call
+   * them through the dsh tool pipeline (stage 4 tool sharing).
+   */
+  registerDshTools(tools: unknown): void {
+    const runner = this.piSession.extensionRunner
+    if (runner === undefined) return
+    const runtime = tools as { schemas(): Array<{ name: string }>; get(name: string): unknown }
+    for (const schema of runtime.schemas()) {
+      const tool = runtime.get(schema.name)
+      if (tool === undefined) continue
+      runner.registerTool(adaptDshTool(tool as never, runtime as never, this))
+    }
+  }
+
   async dispose(): Promise<void> {
     await this.scope.dispose()
   }

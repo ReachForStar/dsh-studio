@@ -23,16 +23,13 @@
 
 ## 已知问题与风险
 
-- **pi → dsh 方向未做**：pi 自带工具（read/write/edit/bash + extensions）尚未注册进 dsh `ctx.tools`——dsh 本身已有对等工具，收益低，未纳入本阶段。
-
-## 后续演进方向
-
-- 若需要 pi 工具进 dsh 的统一工具面，再做 pi → dsh 方向（`pi createBashTool/createReadTool/...` → dsh `ctx.tools.register`）。
+- 双向工具适配的 schema 镜像覆盖常见形状（object/string/number/integer/boolean/array/enum/const/oneOf）；更复杂的 TypeBox 联合/修饰符随需补。
 
 ---
 
-## 补齐（提交 `3f0ab53916`）
+## 补齐（提交 `3f0ab53916`、`17cff57c89`）
 
-- **工具 schema 镜像**：`dshSchemaToTypeBox` 把 dsh 参数声明（required 标记、string/number/integer/boolean/array/object/enum/const/oneOf）镜像成 TypeBox schema，pi 模型能拿到完整参数描述。
-- **customTools 挂接**：`PiAgentSessionLike.extensionRunner` + `PiLoopAgent.registerDshTools`，借 pi `extensionRunner.registerTool` 在 PiLoopAgent 创建后把 dsh 工具动态注册进 pi 会话（解了 pi 会话先建、agent 后建的生命周期）。
-- 新增 schema 镜像单测；全量 mock 测试 8 通过；oxlint + 全量 typecheck 通过。
+- **工具 schema 镜像**：`dshSchemaToTypeBox` 把 dsh 参数声明镜像成 TypeBox schema。
+- **customTools 挂接（dsh→pi）**：`PiLoopAgent.registerDshTools` 借 `extensionRunner.registerTool` 把 dsh 工具动态注册进 pi 会话。
+- **pi→dsh 工具共享**：`adaptPiTool` 把 pi 工具（扩展/skills）适配成 dsh 工具，`PiLoopAgent.registerPiTools` 借 `extensionRunner.getAllRegisteredTools` 把 pi 工具注册进 `ctx.tools`，TypeBox 参数镜像成 dsh schema。
+- 新增 schema 镜像 + 双向适配单测；全量 mock 测试 10 通过；oxlint + 全量 typecheck 通过。

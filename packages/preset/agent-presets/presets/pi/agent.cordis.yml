@@ -1,0 +1,6 @@
+# The `pi` agent preset: a session driven by the Pi coding-agent runtime.
+#
+# The Pi loop supplies its own tools and model routing; dsh tools are injected
+# through `pi-agent-loop`'s tool sharing, so this composition stays empty — the
+# preset's `backend: pi` in preset.yml is what routes the session to Pi.
+[]

@@ -9,7 +9,7 @@ import type {
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-presets'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import type { Session, SessionId } from '@deepseek-ai/dsh-session'
+import type { AgentBackend, Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
 import { SessionQueryError, type SessionObservation } from '@deepseek-ai/dsh-session-query'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
@@ -373,16 +373,18 @@ export class ApiSessionAgentController {
    */
   async composeAgent(presetId: string | undefined): Promise<{
     readonly agentPreset?: string
+    readonly backend?: string
     readonly setup: AgentSetup
   }> {
     const presets = this.ctx.get('agentPresets')
     if (presets === undefined) return { setup: (agentCtx) => { this.installSelection(agentCtx) } }
-    const resolvedId = (await presets.resolve(presetId)).id
+    const resolved = await presets.resolve(presetId)
     return {
-      agentPreset: resolvedId,
+      agentPreset: resolved.id,
+      ...resolved.backend === undefined ? {} : { backend: resolved.backend },
       setup: async (agentCtx) => {
         this.installSelection(agentCtx)
-        await presets.mount(agentCtx, resolvedId)
+        await presets.mount(agentCtx, resolved.id)
       },
     }
   }
@@ -480,6 +482,7 @@ export class ApiSessionAgentController {
       meta: {
         cwd,
         ...(composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset }),
+        ...(composition.backend === undefined ? {} : { backend: composition.backend as AgentBackend }),
       },
       setup: composition.setup,
     })).agent

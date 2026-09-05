@@ -1,0 +1,4 @@
+name: Pi 后端
+description: 由 Pi coding-agent 运行时驱动的会话后端，可切换模型/工具。
+order: 10
+backend: pi

@@ -31,6 +31,8 @@ export interface AgentPreset {
   readonly description?: string
   /** Declared position within its group; absent sorts after those that declare one. */
   readonly order?: number
+  /** Loop backend this preset asks for (`dsh` default, `pi` for the Pi runtime). */
+  readonly backend?: string
   /**
    * Why this preset cannot compose a session, absent when it can. A broken
    * preset stays on the roster — hiding it would leave its directory blocking

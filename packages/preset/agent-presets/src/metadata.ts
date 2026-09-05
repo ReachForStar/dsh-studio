@@ -32,10 +32,11 @@ export interface PresetMetadata {
   readonly description?: string
   /**
    * Position within its group; lower comes first. A preset that declares
-   * none sorts after every preset that does, then by id — so the shipped set
-   * can read in capability order while authored ones stay alphabetical.
+   * none sorts after every preset that does, then by id.
    */
   readonly order?: number
+  /** Loop backend this preset asks for (`dsh` default, `pi` for the Pi runtime). */
+  readonly backend?: string
 }
 
 /** A non-empty trimmed string, or undefined for anything else. */
@@ -77,10 +78,12 @@ export async function readPresetMetadata(directory: string): Promise<PresetMetad
   const order = typeof record.order === 'number' && Number.isFinite(record.order)
     ? record.order
     : undefined
+  const backend = text(record.backend)
   return {
     ...name === undefined ? {} : { name },
     ...description === undefined ? {} : { description },
     ...order === undefined ? {} : { order },
+    ...backend === undefined ? {} : { backend },
   }
 }
 
@@ -95,11 +98,12 @@ export async function readPresetMetadata(directory: string): Promise<PresetMetad
 export function renderPresetMetadata(metadata: PresetMetadata): string | undefined {
   const name = text(metadata.name)
   const description = text(metadata.description)
-  const { order } = metadata
-  if (name === undefined && description === undefined && order === undefined) return undefined
+  const { order, backend } = metadata
+  if (name === undefined && description === undefined && order === undefined && backend === undefined) return undefined
   return yaml.dump({
     ...name === undefined ? {} : { name },
     ...description === undefined ? {} : { description },
     ...order === undefined ? {} : { order },
+    ...backend === undefined ? {} : { backend },
   }, { lineWidth: -1 })
 }

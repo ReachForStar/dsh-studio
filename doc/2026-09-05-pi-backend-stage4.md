@@ -23,12 +23,16 @@
 
 ## 已知问题与风险
 
-- **工具 schema 未镜像**：pi 侧工具参数是空 schema（`parameters: {}`），模型拿不到 dsh 工具的 JSON Schema 描述，调用质量打折扣。精确的 JSON Schema → TypeBox 转换是后续主要工作。
-- **未在 PiLoop 完整链路挂接 customTools**：`adaptDshTool` 是独立可测的适配函数；把它接到 `openPiSession` 的 `customTools`（需要解 agent 生命周期：pi 会话先建、PiLoopAgent 后建）留待收口。
 - **pi → dsh 方向未做**：pi 自带工具（read/write/edit/bash + extensions）尚未注册进 dsh `ctx.tools`——dsh 本身已有对等工具，收益低，未纳入本阶段。
 
 ## 后续演进方向
 
-- 完成 JSON Schema → TypeBox 的精确转换，给 pi 工具完整参数描述。
-- 把 `adaptDshTool` 接到 PiLoop 的会话创建（解 agent 生命周期）。
-- 若需要 pi 工具进 dsh，再做 pi → dsh 方向。
+- 若需要 pi 工具进 dsh 的统一工具面，再做 pi → dsh 方向（`pi createBashTool/createReadTool/...` → dsh `ctx.tools.register`）。
+
+---
+
+## 补齐（提交 `3f0ab53916`）
+
+- **工具 schema 镜像**：`dshSchemaToTypeBox` 把 dsh 参数声明（required 标记、string/number/integer/boolean/array/object/enum/const/oneOf）镜像成 TypeBox schema，pi 模型能拿到完整参数描述。
+- **customTools 挂接**：`PiAgentSessionLike.extensionRunner` + `PiLoopAgent.registerDshTools`，借 pi `extensionRunner.registerTool` 在 PiLoopAgent 创建后把 dsh 工具动态注册进 pi 会话（解了 pi 会话先建、agent 后建的生命周期）。
+- 新增 schema 镜像单测；全量 mock 测试 8 通过；oxlint + 全量 typecheck 通过。

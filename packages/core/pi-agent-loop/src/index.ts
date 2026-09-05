@@ -146,3 +146,5 @@ export type { AdaptedPiTool } from './dsh-tool-adapter.ts'
 export type { PiToolDefinitionLike, PiRunnerLike } from './pi-tool-adapter.ts'
 export type { PiAgentSessionLike } from './agent.ts'
 export type { OpenPiSessionOptions, OpenedPiSession, PiProviderConfig, PiProviderModelConfig } from './pi-session.ts'
+
+export default PiLoop

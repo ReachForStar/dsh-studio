@@ -9,6 +9,7 @@
 import {
   createAgentSessionFromServices,
   createAgentSessionServices,
+  ModelRuntime,
   SessionManager,
 } from '@earendil-works/pi-coding-agent'
 import type { PiAgentSessionLike } from './agent.ts'
@@ -31,6 +32,15 @@ export interface PiProviderConfig {
   readonly models: readonly PiProviderModelConfig[]
 }
 
+/** Module-shared Pi ModelRuntime: created once and reused across sessions. */
+let sharedModelRuntime: Promise<ModelRuntime> | undefined
+
+/** Return the process-shared Pi ModelRuntime, creating it on first use. */
+function ensureModelRuntime(): Promise<ModelRuntime> {
+  sharedModelRuntime ??= ModelRuntime.create()
+  return sharedModelRuntime
+}
+
 /** Inputs for opening one Pi AgentSession tied to a dsh session cwd. */
 export interface OpenPiSessionOptions {
   readonly cwd: string
@@ -40,6 +50,8 @@ export interface OpenPiSessionOptions {
   readonly modelId?: string
   /** Gateways registered into the Pi runtime before model selection. */
   readonly providers?: readonly PiProviderConfig[]
+  /** Reuse one shared Pi ModelRuntime across sessions (avoids re-creation). */
+  readonly modelRuntime?: ModelRuntime
 }
 
 /** One opened Pi AgentSession plus its disposal. */
@@ -56,7 +68,11 @@ export interface OpenedPiSession {
  * @returns the live session surface and its synchronous disposer.
  */
 export async function openPiSession(options: OpenPiSessionOptions): Promise<OpenedPiSession> {
-  const services = await createAgentSessionServices({ cwd: options.cwd })
+  const modelRuntime = options.modelRuntime ?? await ensureModelRuntime()
+  const services = await createAgentSessionServices({
+    cwd: options.cwd,
+    modelRuntime,
+  })
   for (const provider of options.providers ?? []) {
     const apiKey = process.env[provider.apiKeyEnv]
     if (apiKey === undefined) {

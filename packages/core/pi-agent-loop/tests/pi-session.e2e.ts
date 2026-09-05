@@ -1,7 +1,10 @@
 /**
  * Real-API smoke for the Pi session opener used by `pi-agent-loop`. Proves the
- * integration can drive a live Pi turn (its own model + its own tools). It
- * self-skips without `DEEPSEEK_API_KEY`, matching the repository's e2e policy.
+ * integration can drive a live Pi turn through a user-configured
+ * OpenAI-compatible gateway (`.env`: `AMAX_API_KEY`, `AMAX_MODEL`,
+ * `AMAX_BASE_URL`). It
+ * self-skips without those three variables, matching the repository's e2e
+ * policy — no credential is ever hardcoded.
  *
  * @module dsh-pi-agent-loop/test/pi-session.e2e
  */
@@ -13,8 +16,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
-const apiKey = process.env.DEEPSEEK_API_KEY
-const itLive = apiKey === undefined ? it.skip : it
+const apiKey = process.env.AMAX_API_KEY
+const modelId = process.env.AMAX_MODEL
+const baseUrl = process.env.AMAX_BASE_URL
+const itLive = apiKey !== undefined && modelId !== undefined && baseUrl !== undefined ? it : it.skip
 
 /** Record only assistant text deltas emitted while the turn streams. */
 function collectText(session: AgentSession): { text: string[]; stop: () => void } {
@@ -37,11 +42,35 @@ describe('pi agent session (real)', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'pi-e2e-'))
     homes.push(cwd)
     await writeFile(join(cwd, 'marker-pi-e2e.txt'), 'pi e2e marker\n')
+    // `itLive` above narrows selection, not these module-level strings.
+    if (baseUrl === undefined || apiKey === undefined || modelId === undefined) {
+      throw new Error('missing gateway config (AMAX_API_KEY/AMAX_MODEL/AMAX_BASE_URL)')
+    }
 
     const modelRuntime = await ModelRuntime.create()
-    const model = modelRuntime.getModel('deepseek', 'deepseek-v4-flash')
+    // Register the gateway from .env as a one-shot OpenAI-compatible provider:
+    // the key is a runtime credential, never committed.
+    modelRuntime.registerProvider('amax', {
+      baseUrl,
+      apiKey,
+      api: 'openai-completions',
+      models: [
+        {
+          id: modelId,
+          name: modelId,
+          api: 'openai-completions',
+          baseUrl,
+          reasoning: false,
+          input: ['text'],
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+          contextWindow: 128_000,
+          maxTokens: 8192,
+        },
+      ],
+    })
+    const model = modelRuntime.getModel('amax', modelId)
     expect(model).toBeDefined()
-    if (model === undefined) throw new Error('deepseek-v4-flash model not found')
+    if (model === undefined) throw new Error(`gateway model "${modelId}" did not register`)
 
     const { session } = await createAgentSession({
       cwd,

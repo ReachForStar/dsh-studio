@@ -39,6 +39,12 @@ export interface PiLoopConfig {
   openSession?: OpenPiSession
   /** OpenAI-compatible gateways registered into Pi before model selection. */
   providers?: readonly PiProviderConfig[]
+  /**
+   * The Pi model route every session uses. When set, it wins over dsh's
+   * `agentOptions.provider/model` (whose provider names dsh adapters, not Pi
+   * providers); omit to fall back to dsh's selection.
+   */
+  model?: { readonly provider: string; readonly modelId: string }
 }
 
 /**
@@ -50,11 +56,13 @@ export class PiLoop extends Service implements AgentFactory {
 
   private readonly openSession: OpenPiSession
   private readonly providers: readonly PiProviderConfig[]
+  private readonly model: { readonly provider: string; readonly modelId: string } | undefined
 
   constructor(ctx: Context, config: PiLoopConfig = {}) {
     super(ctx, 'piAgentLoop')
     this.openSession = config.openSession ?? openPiSession
     this.providers = config.providers ?? []
+    this.model = config.model
     ctx.effect(() => ctx.agents.setFactory(this, 'pi'), 'piAgentLoop.setFactory()')
   }
 
@@ -70,10 +78,13 @@ export class PiLoop extends Service implements AgentFactory {
 
     let opened: OpenedPiSession
     try {
+      const route = this.model
+        ?? (options.agentOptions?.provider !== undefined && options.agentOptions?.model !== undefined
+          ? { provider: options.agentOptions.provider, modelId: options.agentOptions.model }
+          : undefined)
       opened = await this.openSession({
         cwd,
-        ...options.agentOptions?.provider === undefined ? {} : { provider: options.agentOptions.provider },
-        ...options.agentOptions?.model === undefined ? {} : { modelId: options.agentOptions.model },
+        ...route === undefined ? {} : { provider: route.provider, modelId: route.modelId },
         providers: this.providers,
       })
     } catch (error: unknown) {

@@ -161,7 +161,12 @@ export class PiLoopAgent implements Agent {
     for (const schema of runtime.schemas()) {
       const tool = runtime.get(schema.name)
       if (tool === undefined) continue
-      runner.registerTool(adaptDshTool(tool as never, runtime as never, this))
+      try {
+        runner.registerTool(adaptDshTool(tool as never, runtime as never, this))
+      } catch (error: unknown) {
+        // One unadaptable dsh tool must not block the session from opening.
+        this.ctx.logger.warn(`pi agent: failed to register dsh tool "${schema.name}": ${String(error)}`)
+      }
     }
   }
 
@@ -176,8 +181,13 @@ export class PiLoopAgent implements Agent {
     for (const registered of runner.getAllRegisteredTools()) {
       const definition = registered.definition
       if (definition === undefined) continue
-      if (runtime.get((definition as { name?: string }).name ?? '') !== undefined) continue
-      runtime.register(adaptPiTool(definition as never, runner))
+      const name = (definition as { name?: string }).name ?? ''
+      if (runtime.get(name) !== undefined) continue
+      try {
+        runtime.register(adaptPiTool(definition as never, runner))
+      } catch (error: unknown) {
+        this.ctx.logger.warn(`pi agent: failed to register pi tool "${name}": ${String(error)}`)
+      }
     }
   }
 

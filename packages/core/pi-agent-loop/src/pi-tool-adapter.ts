@@ -40,6 +40,7 @@ interface DshSpec {
   readonly type?: string
   readonly required?: boolean
   readonly description?: string
+  readonly title?: string
   readonly enum?: readonly unknown[]
   readonly const?: unknown
   readonly oneOf?: readonly DshSpec[]
@@ -52,6 +53,8 @@ function typeBoxToDshSpec(schema: unknown): DshSpec {
   if (schema === null || typeof schema !== 'object') return {}
   const raw = JSON.parse(JSON.stringify(schema)) as {
     readonly type?: string
+    readonly description?: string
+    readonly title?: string
     readonly enum?: readonly unknown[]
     readonly const?: unknown
     readonly oneOf?: readonly unknown[]
@@ -59,9 +62,14 @@ function typeBoxToDshSpec(schema: unknown): DshSpec {
     readonly required?: readonly string[]
     readonly items?: unknown
   }
-  if (raw.oneOf !== undefined) return { oneOf: raw.oneOf.map(value => typeBoxToDshSpec(value)) }
-  if (raw.const !== undefined) return { const: raw.const }
-  if (raw.enum !== undefined) return { type: 'string', enum: raw.enum }
+  const annotate = (spec: DshSpec): DshSpec => ({
+    ...spec,
+    ...raw.description === undefined ? {} : { description: raw.description },
+    ...raw.title === undefined ? {} : { title: raw.title },
+  })
+  if (raw.oneOf !== undefined) return annotate({ oneOf: raw.oneOf.map(value => typeBoxToDshSpec(value)) })
+  if (raw.const !== undefined) return annotate({ const: raw.const })
+  if (raw.enum !== undefined) return annotate({ type: 'string', enum: raw.enum })
   switch (raw.type) {
     case 'object': {
       const properties: Record<string, DshSpec> = {}
@@ -70,20 +78,24 @@ function typeBoxToDshSpec(schema: unknown): DshSpec {
         if (raw.required?.includes(key)) (spec as { required?: boolean }).required = true
         properties[key] = spec
       }
-      return { type: 'object', properties }
+      return annotate({ type: 'object', properties })
     }
     case 'array':
-      return { type: 'array', ...raw.items === undefined ? {} : { items: typeBoxToDshSpec(raw.items) } }
+      return annotate({ type: 'array', ...raw.items === undefined ? {} : { items: typeBoxToDshSpec(raw.items) } })
     case 'string':
-      return { type: 'string' }
+      return annotate({ type: 'string' })
     case 'number':
-      return { type: 'number' }
+      return annotate({ type: 'number' })
     case 'integer':
-      return { type: 'integer' }
+      return annotate({ type: 'integer' })
     case 'boolean':
-      return { type: 'boolean' }
+      return annotate({ type: 'boolean' })
+    case 'null':
+      return annotate({ type: 'null' })
     default:
-      return {}
+      // TypeBox Type.Any / Type.Unknown serialize without a `type`; dsh's
+      // author-only unconstrained node is `json`.
+      return annotate({ type: 'json' })
   }
 }
 

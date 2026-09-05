@@ -37,4 +37,12 @@ describe('adaptPiTool', () => {
     const parameters = tool.parameters as { properties?: Record<string, { required?: boolean; type?: string }> }
     expect(parameters.properties?.pattern).toEqual({ type: 'string', required: true })
   })
+
+  it('mirrors null and unconstrained TypeBox shapes into dsh schemas', () => {
+    const withNull: PiToolDefinitionLike = { ...piTool, parameters: { type: 'null' } }
+    expect((adaptPiTool(withNull, runner).parameters as { type?: string }).type).toBe('null')
+
+    const withAny: PiToolDefinitionLike = { ...piTool, parameters: {} }
+    expect((adaptPiTool(withAny, runner).parameters as { type?: string }).type).toBe('json')
+  })
 })

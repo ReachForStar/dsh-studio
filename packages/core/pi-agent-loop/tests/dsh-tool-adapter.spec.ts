@@ -44,4 +44,21 @@ describe('adaptDshTool', () => {
     expect(Object.keys(schema.properties ?? {})).toEqual(['command', 'timeoutMs'])
     expect(schema.required).toEqual(['command'])
   })
+
+  it('mirrors description and title annotations into TypeBox', () => {
+    const tools = fakeTools([])
+    const tool = adaptDshTool({
+      name: 'any',
+      description: 'anything',
+      parameters: {
+        label: { type: 'string', title: 'Label title', description: 'label text' },
+      },
+    }, tools, stubAgent)
+
+    const schema = tool.parameters as {
+      properties?: Record<string, { description?: string; title?: string }>
+    }
+    expect(schema.properties?.label?.title).toBe('Label title')
+    expect(schema.properties?.label?.description).toBe('label text')
+  })
 })

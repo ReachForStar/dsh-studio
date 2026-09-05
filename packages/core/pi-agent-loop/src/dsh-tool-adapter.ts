@@ -21,6 +21,8 @@ interface DshSchema {
   readonly type?: string
   readonly required?: boolean
   readonly description?: string
+  readonly title?: string
+  readonly default?: unknown
   readonly enum?: readonly unknown[]
   readonly const?: unknown
   readonly oneOf?: readonly DshSchema[]
@@ -42,6 +44,15 @@ export interface AdaptedPiTool {
   ): Promise<{ content: readonly ContentBlock[] }>
 }
 
+/** TypeBox annotation options shared by every dsh value schema. */
+function boxOptions(schema: DshSchema): object {
+  return {
+    ...schema.description === undefined ? {} : { description: schema.description },
+    ...schema.title === undefined ? {} : { title: schema.title },
+    ...schema.default === undefined ? {} : { default: schema.default },
+  }
+}
+
 /** Mirror one dsh parameter declaration into a TypeBox schema. */
 function dshSchemaToTypeBox(schema: DshSchema): TSchema {
   if (schema.oneOf !== undefined) {
@@ -49,34 +60,46 @@ function dshSchemaToTypeBox(schema: DshSchema): TSchema {
   }
   if (schema.const !== undefined) return Type.Literal(schema.const as never)
   if (schema.enum !== undefined) return Type.Union(schema.enum.map(value => Type.Literal(value as never)))
+  const options = boxOptions(schema)
   switch (schema.type) {
     case 'string':
-      return Type.String()
+      return Type.String(options as never)
     case 'number':
-      return Type.Number()
+      return Type.Number(options as never)
     case 'integer':
-      return Type.Integer()
+      return Type.Integer(options as never)
     case 'boolean':
-      return Type.Boolean()
+      return Type.Boolean(options as never)
     case 'null':
-      return Type.Null()
+      return Type.Null(options as never)
     case 'array':
-      return Type.Array(schema.items === undefined ? Type.Any() : dshSchemaToTypeBox(schema.items))
+      return Type.Array(schema.items === undefined ? Type.Any() : dshSchemaToTypeBox(schema.items), options as never)
     case 'object':
-      return dshObjectToTypeBox(schema.properties ?? {})
+      return dshObjectToTypeBox(schema.properties ?? {}, schema.additionalProperties, options)
+    case 'json':
+      return Type.Any()
     default:
       return Type.Any()
   }
 }
 
 /** Mirror a dsh object declaration, preserving required-ness per property. */
-function dshObjectToTypeBox(properties: Record<string, DshSchema>): TSchema {
+function dshObjectToTypeBox(
+  properties: Record<string, DshSchema>,
+  additionalProperties: boolean | DshSchema | undefined,
+  options: object,
+): TSchema {
   const mapped: Record<string, TSchema> = {}
   for (const [key, schema] of Object.entries(properties)) {
     const inner = dshSchemaToTypeBox(schema)
     mapped[key] = schema.required === true ? inner : Type.Optional(inner)
   }
-  return Type.Object(mapped)
+  const objectOptions = {
+    ...options,
+    ...additionalProperties === undefined ? {}
+      : { additionalProperties: typeof additionalProperties === 'boolean' ? additionalProperties : dshSchemaToTypeBox(additionalProperties) },
+  }
+  return Type.Object(mapped, objectOptions)
 }
 
 /**
@@ -97,6 +120,8 @@ export function adaptDshTool(
 ): AdaptedPiTool {
   const parameters = dshObjectToTypeBox(
     (tool.parameters ?? {}) as Record<string, DshSchema>,
+    undefined,
+    {},
   )
   return {
     name: tool.name,

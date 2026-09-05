@@ -100,4 +100,31 @@ describe('PiLoop factory', () => {
     expect(handle.agent).toBeInstanceOf(PiLoopAgent)
     await handle.dispose()
   })
+
+  it('forwards configured gateway providers to the session opener', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    let receivedProviders: unknown
+    await ctx.plugin(PiLoop, {
+      providers: [{
+        id: 'amax',
+        baseUrl: 'https://gateway.example/v1',
+        apiKeyEnv: 'AMAX_API_KEY',
+        models: [{ id: 'qwen-3.8-27B', name: 'Qwen', contextWindow: 128_000, maxTokens: 8192 }],
+      }],
+      openSession: async (options) => {
+        receivedProviders = options.providers
+        return { ...stubPiSession(), dispose() {} }
+      },
+    })
+
+    await ctx.agents.create({ sessionId: SessionId('pi-provider'), meta: { backend: 'pi', cwd: process.cwd() } })
+    expect(receivedProviders).toEqual([{
+      id: 'amax',
+      baseUrl: 'https://gateway.example/v1',
+      apiKeyEnv: 'AMAX_API_KEY',
+      models: [{ id: 'qwen-3.8-27B', name: 'Qwen', contextWindow: 128_000, maxTokens: 8192 }],
+    }])
+  })
 })

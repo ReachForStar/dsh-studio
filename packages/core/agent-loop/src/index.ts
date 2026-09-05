@@ -25,7 +25,7 @@ import type {
 import { errorChain, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-settings'
 import { interruptedTurnClosers, SessionLogOffset, SessionPreparation, SessionSeq } from '@deepseek-ai/dsh-session'
-import type { Session, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
+import type { AgentBackend, Session, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session-projection'
@@ -331,6 +331,8 @@ export interface Config {
     cwd?: string
     /** Persisted session to resume instead of creating a fresh session. */
     resumeSessionId?: SessionId
+    /** Loop backend that drives this agent (`dsh` default, `pi` for Pi). */
+    backend?: AgentBackend
   })[]
 }
 
@@ -340,7 +342,11 @@ type ResolvedConfig = Config & { maxParallelToolCalls: number }
 /** Reject self-contained identity conflicts before any configured agent starts. */
 function validateConfiguredAgents(agents: Config['agents']): void {
   const exactIdentities = new Map<SessionId, string>()
-  for (const { id, sessionId, resumeSessionId } of agents) {
+  for (const { id, sessionId, resumeSessionId, backend } of agents) {
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- z.string() admits any string at runtime
+    if (backend !== undefined && backend !== 'dsh' && backend !== 'pi') {
+      throw new Error(`agent "${id}": backend must be "dsh" or "pi"`)
+    }
     const hasResumeId = resumeSessionId !== undefined && resumeSessionId !== ''
     if (sessionId !== undefined && hasResumeId) {
       throw new Error(`agent "${id}": sessionId and resumeSessionId are mutually exclusive`)
@@ -371,6 +377,7 @@ export class AgentLoop extends Service implements AgentFactory {
       maxTokens: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER),
       cwd: z.string(),
       resumeSessionId: z.string(),
+      backend: z.string() as z<AgentBackend | undefined>,
     })).default([]),
   }) as z<Config>
 
@@ -422,10 +429,22 @@ export class AgentLoop extends Service implements AgentFactory {
     ctx.systemPrompt.variable('model', context => context.agent?.options.model)
     ctx.systemPrompt.variable('cwd', context => context.agent?.session.header.cwd)
 
-    for (const { id, sessionId, cwd, resumeSessionId, ...options } of this.config.agents) {
-      const meta = cwd === undefined ? {} : { cwd }
+    for (const { id, sessionId, cwd, resumeSessionId, backend, ...options } of this.config.agents) {
+      const meta = {
+        ...cwd === undefined ? {} : { cwd },
+        ...backend === undefined ? {} : { backend },
+      }
       if (resumeSessionId === undefined || resumeSessionId === '') {
         const configuredId = sessionId ?? brandString<SessionId>(`${id}-session-${randomUUID()}`)
+        // A non-default backend is a peer loop (e.g. Pi): delegate through the
+        // registry so it routes to that loop's factory instead of this one.
+        if (backend !== undefined && backend !== 'dsh') {
+          const startup = this.delegateToRegistry(configuredId, options, meta).catch((error: unknown) => {
+            this.reportConfiguredStartupFailure(id, 'restore', configuredId, error)
+          })
+          this.ownership.trackStartup(startup)
+          continue
+        }
         const persistence = sessionId === undefined ? undefined : ctx.get('sessionPersistence')
         if (persistence === undefined) {
           const startup = this.create(configuredId, options, meta).then(() => undefined, (error: unknown) => {
@@ -452,6 +471,24 @@ export class AgentLoop extends Service implements AgentFactory {
         return fiber.dispose
       }, `agentLoop.resume(${id})`)
     }
+  }
+
+  /** Create one non-default-backend agent through the registry's factory route. */
+  private async delegateToRegistry(
+    id: SessionId,
+    options: AgentOptions,
+    meta: { cwd?: string; backend?: AgentBackend },
+  ): Promise<void> {
+    const createMeta: NonNullable<CreateAgentOptions['meta']> = {
+      ...meta.cwd === undefined ? {} : { cwd: meta.cwd },
+      ...meta.backend === undefined ? {} : { backend: meta.backend },
+    }
+    const handle = await this.runtime.ctx.agents.create({
+      sessionId: id,
+      agentOptions: options,
+      ...Object.keys(createMeta).length === 0 ? {} : { meta: createMeta },
+    })
+    this.ownership.track(() => handle.dispose())
   }
 
   /** Report a contained declarative-start failure to identity-bound consumers. */

@@ -1,8 +1,7 @@
 /**
  * Thin wrapper around the Pi coding-agent SDK so the loop's session creation
  * stays injectable. Tests replace this with a stub; the real integration calls
- * Pi's own services + in-memory session manager, so Pi uses its own model and
- * tools (stage-2 POC scope).
+ * Pi's own services wirelessly plus any configured OpenAI-compatible gateways.
  *
  * @module dsh-pi-agent-loop/pi-session
  */
@@ -14,6 +13,24 @@ import {
 } from '@earendil-works/pi-coding-agent'
 import type { PiAgentSessionLike } from './agent.ts'
 
+/** One gateway model the Pi runtime should advertise. */
+export interface PiProviderModelConfig {
+  readonly id: string
+  readonly name: string
+  readonly reasoning?: boolean
+  readonly contextWindow: number
+  readonly maxTokens: number
+}
+
+/** One OpenAI-compatible gateway registered into Pi's ModelRuntime. */
+export interface PiProviderConfig {
+  readonly id: string
+  readonly baseUrl: string
+  readonly apiKeyEnv: string
+  readonly api?: 'openai-completions'
+  readonly models: readonly PiProviderModelConfig[]
+}
+
 /** Inputs for opening one Pi AgentSession tied to a dsh session cwd. */
 export interface OpenPiSessionOptions {
   readonly cwd: string
@@ -21,6 +38,8 @@ export interface OpenPiSessionOptions {
   readonly provider?: string
   /** Optional dsh-routed model id; selects the Pi model when both are present. */
   readonly modelId?: string
+  /** Gateways registered into the Pi runtime before model selection. */
+  readonly providers?: readonly PiProviderConfig[]
 }
 
 /** One opened Pi AgentSession plus its disposal. */
@@ -31,12 +50,35 @@ export interface OpenedPiSession {
 
 /**
  * Open a Pi AgentSession backed by Pi's own services and an in-memory session
- * manager. The session uses Pi's default tool set and model resolution.
- * @param options - target cwd for the Pi session.
+ * manager. Configured gateways are registered first; a missing `apiKeyEnv`
+ * credential fails loud rather than silently skipping the route.
+ * @param options - target cwd, optional model route, and gateway providers.
  * @returns the live session surface and its synchronous disposer.
  */
 export async function openPiSession(options: OpenPiSessionOptions): Promise<OpenedPiSession> {
   const services = await createAgentSessionServices({ cwd: options.cwd })
+  for (const provider of options.providers ?? []) {
+    const apiKey = process.env[provider.apiKeyEnv]
+    if (apiKey === undefined) {
+      throw new Error(`pi provider "${provider.id}" requires the credential ${provider.apiKeyEnv} to be set`)
+    }
+    services.modelRuntime.registerProvider(provider.id, {
+      baseUrl: provider.baseUrl,
+      apiKey,
+      api: provider.api ?? 'openai-completions',
+      models: provider.models.map(model => ({
+        id: model.id,
+        name: model.name,
+        api: provider.api ?? 'openai-completions',
+        baseUrl: provider.baseUrl,
+        reasoning: model.reasoning ?? false,
+        input: ['text'],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: model.contextWindow,
+        maxTokens: model.maxTokens,
+      })),
+    })
+  }
   const sessionManager = SessionManager.inMemory(options.cwd)
   const model = options.provider !== undefined && options.modelId !== undefined
     ? services.modelRuntime.getModel(options.provider, options.modelId)

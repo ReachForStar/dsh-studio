@@ -23,15 +23,22 @@ import { emitAgentEvent } from '@deepseek-ai/dsh-agent'
 import { SessionPreparation } from '@deepseek-ai/dsh-session'
 import { PiLoopAgent } from './agent.ts'
 import { openPiSession } from './pi-session.ts'
-import type { OpenedPiSession } from './pi-session.ts'
+import type { OpenedPiSession, PiProviderConfig } from './pi-session.ts'
 
 /** Factory for opening one Pi session; injectable for tests. */
-export type OpenPiSession = (options: { cwd: string; provider?: string; modelId?: string }) => Promise<OpenedPiSession>
+export type OpenPiSession = (options: {
+  cwd: string
+  provider?: string
+  modelId?: string
+  providers?: readonly PiProviderConfig[]
+}) => Promise<OpenedPiSession>
 
 /** Configuration for the Pi agent loop. */
 export interface PiLoopConfig {
   /** Replace the real Pi session opener (test seam). */
   openSession?: OpenPiSession
+  /** OpenAI-compatible gateways registered into Pi before model selection. */
+  providers?: readonly PiProviderConfig[]
 }
 
 /**
@@ -42,10 +49,12 @@ export class PiLoop extends Service implements AgentFactory {
   static inject = ['agents', 'sessions']
 
   private readonly openSession: OpenPiSession
+  private readonly providers: readonly PiProviderConfig[]
 
   constructor(ctx: Context, config: PiLoopConfig = {}) {
     super(ctx, 'piAgentLoop')
     this.openSession = config.openSession ?? openPiSession
+    this.providers = config.providers ?? []
     ctx.effect(() => ctx.agents.setFactory(this, 'pi'), 'piAgentLoop.setFactory()')
   }
 
@@ -65,6 +74,7 @@ export class PiLoop extends Service implements AgentFactory {
         cwd,
         ...options.agentOptions?.provider === undefined ? {} : { provider: options.agentOptions.provider },
         ...options.agentOptions?.model === undefined ? {} : { modelId: options.agentOptions.model },
+        providers: this.providers,
       })
     } catch (error: unknown) {
       preparation[Symbol.dispose]()
@@ -135,4 +145,4 @@ export { adaptPiTool } from './pi-tool-adapter.ts'
 export type { AdaptedPiTool } from './dsh-tool-adapter.ts'
 export type { PiToolDefinitionLike, PiRunnerLike } from './pi-tool-adapter.ts'
 export type { PiAgentSessionLike } from './agent.ts'
-export type { OpenPiSessionOptions, OpenedPiSession } from './pi-session.ts'
+export type { OpenPiSessionOptions, OpenedPiSession, PiProviderConfig, PiProviderModelConfig } from './pi-session.ts'

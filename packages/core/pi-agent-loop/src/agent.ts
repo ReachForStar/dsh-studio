@@ -21,6 +21,7 @@ import type { Scope } from '@deepseek-ai/dsh-scope'
 import type { TextBlock } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionId, UserMessage } from '@deepseek-ai/dsh-session'
 import type { Context } from '@deepseek-ai/cordis'
+import { PiEventTranslator } from './pi-event-translator.ts'
 
 /** The Pi AgentSession surface this driver needs; narrow so tests can supply a stub. */
 export interface PiAgentSessionLike {
@@ -30,6 +31,8 @@ export interface PiAgentSessionLike {
   followUp(text: string): Promise<void>
   abort(): Promise<void>
   dispose(): void
+  /** Subscribe to Pi agent events; returns the unsubscribe function. */
+  subscribe(listener: (event: unknown) => void): () => void
 }
 
 /** Extract the concatenated visible text of a user message for Pi's prompt. */
@@ -55,6 +58,8 @@ export class PiLoopAgent implements Agent {
   readonly ctx: Context
 
   private readonly piSession: PiAgentSessionLike
+  /** Folds the Pi event stream into the dsh session log (stage 3). */
+  private readonly translator: PiEventTranslator
   /** Count of in-flight prompt/steer/follow-up runs; quiescence resolves waiters. */
   private active = 0
   private readonly idleWaiters = new Set<() => void>()
@@ -79,6 +84,8 @@ export class PiLoopAgent implements Agent {
     })
     this.scope = createScope(loopCtx, this)
     this.ctx = this.scope.ctx.extend({ agent: this })
+    this.translator = new PiEventTranslator(session)
+    this.translator.subscribe(piSession)
   }
 
   get status(): AgentStatus {

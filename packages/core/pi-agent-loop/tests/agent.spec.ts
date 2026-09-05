@@ -18,6 +18,7 @@ function stubPiSession() {
     async followUp(text) { prompts.push(text) },
     async abort() { aborts.push(aborts.length) },
     dispose() {},
+    subscribe() { return () => {} },
   }
   return { session, prompts, steers, aborts }
 }
@@ -52,6 +53,7 @@ describe('PiLoopAgent', () => {
       async followUp() {},
       async abort() {},
       dispose() {},
+      subscribe() { return () => {} },
     }
     const agent = new PiLoopAgent(ctx, SessionId('pi-s'), {}, Session.create(SessionId('pi-s')), session)
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'x' }], source: { kind: 'user' } }))

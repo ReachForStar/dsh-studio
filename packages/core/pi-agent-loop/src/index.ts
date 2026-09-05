@@ -120,5 +120,6 @@ export class PiLoop extends Service implements AgentFactory {
 }
 
 export { PiLoopAgent } from './agent.ts'
+export { PiEventTranslator } from './pi-event-translator.ts'
 export type { PiAgentSessionLike } from './agent.ts'
 export type { OpenPiSessionOptions, OpenedPiSession } from './pi-session.ts'

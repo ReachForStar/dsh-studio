@@ -22,6 +22,7 @@
 ## 验证结果
 - `vitest run packages/core/pi-agent-loop`：4 tests 通过。
 - `oxlint` 通过；`tsc -b packages/core/pi-agent-loop` 通过；pre-push 全量 typecheck 通过。
+- **真实 e2e 跑通**（`pi-session.e2e.ts`）：用 `.env` 的 AMAX 网关（`qwen-3.8-27B` @ `ai.amaxsmp.com/v1`）真实驱动 pi 跑完 `bash ls` 任务，断言输出含标记文件。
 
 ## 改了什么（相对历史）
 - 提交 `a5a587bea2`，11 files changed，+557/-11，推送到 fork master。
@@ -31,6 +32,7 @@
 - **resume 不回放 pi 历史**：`resume` 重建一个空 pi 会话；pi 消息树未持久化/恢复。
 - **模型与工具未共享**：pi 用 `pi-coding-agent` 自己的 `ModelRuntime`（读 agentDir auth）和默认工具，尚未桥到 dsh 的 `ctx.llm`/`ctx.tools`（阶段 4）。
 - `runMaintenance`/`inject` 是近似语义，后续对齐。
+- e2e 网关配置用 `AMAX_API_KEY`/`AMAX_MODEL`/`AMAX_BASE_URL`（避开 vite 内置 `BASE_URL` 冲突）。
 
 ## 后续演进方向
 - 阶段 3：pi `AgentEvent` → dsh `SessionEventMap` 事件对齐，使 pi 会话进入 dsh 的 subagent/plan/projection。

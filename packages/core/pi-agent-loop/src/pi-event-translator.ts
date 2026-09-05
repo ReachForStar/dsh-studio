@@ -122,8 +122,15 @@ export class PiEventTranslator {
   private stepOpen = false
   private accumulator: AssistantStreamAccumulator | undefined
   private readonly toolCallSeqs = new Map<string, SessionSeq>()
+  /** dsh request source (with rpcId) of the in-flight prompt, retiring the echo. */
+  private pendingUserSource: UserMessage['source'] | undefined
 
   constructor(private readonly session: Session) {}
+
+  /** Remember the dsh request source for the next translated user message. */
+  setPendingUserSource(source: UserMessage['source']): void {
+    this.pendingUserSource = source
+  }
 
   /** Subscribe to a Pi session and route every event into this dsh Session. */
   subscribe(piSession: { subscribe(listener: (event: unknown) => void): () => void }): () => void {
@@ -134,23 +141,31 @@ export class PiEventTranslator {
     switch (event.type) {
       case 'turn_start':
         this.handleTurnStart()
-        return
+        break
       case 'message_end':
         this.handleMessageEnd(event.message)
-        return
+        break
       case 'message_update':
         this.handleMessageUpdate(event.assistantMessageEvent)
-        return
+        break
       case 'tool_execution_end':
         this.handleToolExecutionEnd(event)
-        return
+        break
       case 'turn_end':
         this.handleTurnEnd(event.message)
-        return
+        break
       default:
         return
     }
+    this.onAppended?.()
   }
+
+  /** Optional post-append hook; PiLoopAgent drains each appended batch to disk. */
+  setOnAppended(onAppended: () => void): void {
+    this.onAppended = onAppended
+  }
+
+  private onAppended: (() => void) | undefined
 
   private handleTurnStart(): void {
     this.turn += 1
@@ -166,8 +181,9 @@ export class PiEventTranslator {
       this.ensureStep()
       const context = createUserMessage({
         content: convertContent(message.content),
-        source: { kind: 'user' },
+        source: this.pendingUserSource ?? { kind: 'user' },
       }) as UserMessage
+      this.pendingUserSource = undefined
       this.session.append('user/message', context, { surfaceOp: 'append' })
       return
     }

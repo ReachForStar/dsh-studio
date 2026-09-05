@@ -21,22 +21,28 @@ import type {
 } from '@deepseek-ai/dsh-agent'
 import { emitAgentEvent } from '@deepseek-ai/dsh-agent'
 import { interruptedTurnClosers, SessionPreparation } from '@deepseek-ai/dsh-session'
-import type { SessionEvent, SessionLogOffset } from '@deepseek-ai/dsh-session'
+import type { SessionEvent, SessionHeader, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { PiLoopAgent } from './agent.ts'
+import type { PiDurableWrite } from './agent.ts'
 import { openPiSession } from './pi-session.ts'
 import type { OpenedPiSession, PiProviderConfig } from './pi-session.ts'
 
-/** Minimal session-persistence service surface resume needs (typed, not `any`). */
-interface ResumePersistence {
-  open(
-    id: ResumeAgentOptions['resumeSessionId'],
-    access: 'write',
-  ): Promise<{
+/** One session's owned durable write handle plus its stored event cursor. */
+interface Durable {
+  readonly handle: PiDurableWrite
+  readonly stored: number
+}
+
+/** Minimal session-persistence service surface PiLoop create/resume needs. */
+interface PiPersistence {
+  create(
+    header: SessionHeader,
+    options?: { readonly inheritedEventCount?: SessionLogOffset },
+  ): Promise<PiDurableWrite>
+  open(id: SessionId, access: 'write'): Promise<PiDurableWrite & {
     readonly header: { readonly cwd?: string }
     readonly inheritedEventCount: SessionLogOffset
     read(offset?: number, length?: number): Promise<readonly SessionEvent[]>
-    append(events: readonly SessionEvent[]): Promise<void>
-    close(): Promise<void>
   }>
 }
 
@@ -82,14 +88,89 @@ export class PiLoop extends Service implements AgentFactory {
   }
 
   async createAgent(ownerCtx: Context, options: CreateAgentOptions): Promise<AgentHandle> {
+    const persistence = this.ctx.get('sessionPersistence') as PiPersistence | undefined
+    return this.launch(
+      ownerCtx,
+      options,
+      // A fresh session's durable identity is stored before publication; live
+      // events drain through the owned handle (see {@link PiLoopAgent}).
+      persistence === undefined
+        ? undefined
+        : async (session) => {
+          const handle = await persistence.create(session.header, {
+            inheritedEventCount: session.inheritedEventCount,
+          })
+          return { handle, stored: 0 }
+        },
+    )
+  }
+
+  async resume(ownerCtx: Context, options: ResumeAgentOptions): Promise<AgentHandle> {
+    // A pi session's dsh log lives in persistence; resume must rehydrate its
+    // history (and header cwd) exactly like the dsh loop does, otherwise the
+    // reopened session loses every prior message and falls back to process.cwd.
+    const persistence = this.ctx.get('sessionPersistence') as PiPersistence | undefined
+    if (persistence === undefined) {
+      throw new Error('cannot resume a pi session: session persistence is not configured')
+    }
+    const id = options.resumeSessionId
+    const handle = await persistence.open(id, 'write')
+    try {
+      const persisted = await handle.read(0, undefined)
+      const closers = interruptedTurnClosers(persisted)
+      if (closers.length > 0) await handle.append(closers)
+      const cwd = handle.header.cwd
+      return await this.launch(ownerCtx, {
+        sessionId: id,
+        ...options.agentOptions === undefined ? {} : { agentOptions: options.agentOptions },
+        meta: {
+          ...cwd === undefined ? {} : { cwd },
+          backend: 'pi' as const,
+        },
+        seed: [...persisted, ...closers],
+        inheritedEventCount: handle.inheritedEventCount,
+        ...options.setup === undefined ? {} : { setup: options.setup },
+      }, {
+        handle,
+        stored: persisted.length + closers.length,
+      })
+    } catch (error: unknown) {
+      await handle.close().catch(() => {})
+      throw error
+    }
+  }
+
+  /**
+   * Prepare the dsh session, open one Pi session, wire the durable handle, and
+   * publish. `durableFactory` stores a fresh session; a resumed session passes
+   * its already-open handle directly.
+   */
+  private async launch(
+    ownerCtx: Context,
+    options: CreateAgentOptions,
+    durableFactory:
+      | ((session: { readonly header: SessionHeader; readonly inheritedEventCount: SessionLogOffset }) => Promise<Durable>)
+      | Durable
+      | undefined,
+  ): Promise<AgentHandle> {
     const cwd = options.meta?.cwd ?? process.cwd()
-    // The dsh session is prepared so the registry and session store see a real
-    // session identity; its log stays empty until stage 3 translates Pi events.
     const preparation = SessionPreparation.create(this.ctx.sessions.prepare(options.sessionId, {
       ...options.seed === undefined ? {} : { seed: options.seed },
       ...options.meta === undefined ? {} : { meta: options.meta },
       ...options.inheritedEventCount === undefined ? {} : { inheritedEventCount: options.inheritedEventCount },
     }))
+
+    let durable: Durable | undefined
+    if (typeof durableFactory === 'function') {
+      try {
+        durable = await durableFactory(preparation.session)
+      } catch (error: unknown) {
+        preparation[Symbol.dispose]()
+        throw error
+      }
+    } else if (durableFactory !== undefined) {
+      durable = durableFactory
+    }
 
     let opened: OpenedPiSession
     try {
@@ -106,48 +187,25 @@ export class PiLoop extends Service implements AgentFactory {
       })
     } catch (error: unknown) {
       preparation[Symbol.dispose]()
+      if (durable !== undefined) await durable.handle.close().catch(() => {})
       throw error
     }
 
-    const agent = new PiLoopAgent(this.ctx, options.sessionId, options.agentOptions ?? {}, preparation.session, opened.session)
+    const agent = new PiLoopAgent(
+      this.ctx,
+      options.sessionId,
+      options.agentOptions ?? {},
+      preparation.session,
+      opened.session,
+      durable?.handle,
+      durable?.stored,
+    )
     const tools = this.ctx.get('tools')
     if (tools !== undefined) {
       agent.registerDshTools(tools)
       agent.registerPiTools(tools)
     }
-    return this.publish(ownerCtx, agent, opened, options.setup)
-  }
-
-  async resume(ownerCtx: Context, options: ResumeAgentOptions): Promise<AgentHandle> {
-    // A pi session's dsh log lives in persistence; resume must rehydrate its
-    // history (and header cwd) exactly like the dsh loop does, otherwise the
-    // reopened session loses every prior message and falls back to process.cwd.
-    const persistence = this.ctx.get('sessionPersistence') as ResumePersistence | undefined
-    if (persistence === undefined) {
-      throw new Error('cannot resume a pi session: session persistence is not configured')
-    }
-    const id = options.resumeSessionId
-    const handle = await persistence.open(id, 'write')
-    try {
-      const persisted = await handle.read(0, undefined)
-      const closers = interruptedTurnClosers(persisted)
-      if (closers.length > 0) await handle.append(closers)
-      const cwd = handle.header.cwd
-      const meta = {
-        ...cwd === undefined ? {} : { cwd },
-        backend: 'pi' as const,
-      }
-      return await this.createAgent(ownerCtx, {
-        sessionId: id,
-        ...options.agentOptions === undefined ? {} : { agentOptions: options.agentOptions },
-        meta,
-        seed: [...persisted, ...closers],
-        inheritedEventCount: handle.inheritedEventCount,
-        ...options.setup === undefined ? {} : { setup: options.setup },
-      })
-    } finally {
-      await handle.close().catch(() => {})
-    }
+    return this.publish(ownerCtx, agent, opened, options.setup, durable)
   }
 
   /** Run setup, publish the dsh session + agent, and return the owned handle. */
@@ -156,6 +214,7 @@ export class PiLoop extends Service implements AgentFactory {
     agent: PiLoopAgent,
     opened: OpenedPiSession,
     setup: CreateAgentOptions['setup'],
+    durable?: Durable,
   ): Promise<AgentHandle> {
     try {
       const commit = await setup?.(agent.ctx)
@@ -163,6 +222,8 @@ export class PiLoop extends Service implements AgentFactory {
     } catch (error: unknown) {
       await agent.dispose()
       opened.dispose()
+      await agent.flushDurable().catch(() => {})
+      await durable?.handle.close().catch(() => {})
       throw error
     }
 
@@ -178,9 +239,13 @@ export class PiLoop extends Service implements AgentFactory {
         agent.cancel({ kind: 'disposed' })
         await agent.whenIdle()
         await agent.dispose()
+        // Stopping Pi first guarantees no further appends; then drain the
+        // remaining events and release the durable write path.
         opened.dispose()
+        await agent.flushDurable()
         detachAgent()
         detachSession()
+        await durable?.handle.close().catch(() => {})
       },
     }
   }

@@ -10,7 +10,7 @@ function harness() {
   translator.subscribe({
     subscribe(fn: (event: unknown) => void) { listener = fn; return () => {} },
   })
-  return { session, emit: (event: unknown) => { listener(event) } }
+  return { session, translator, emit: (event: unknown) => { listener(event) } }
 }
 
 describe('PiEventTranslator', () => {
@@ -62,5 +62,33 @@ describe('PiEventTranslator', () => {
       'step/end',
       'turn/end',
     ])
+  })
+
+  it('carries the pending dsh request source (rpcId) onto the user message', () => {
+    const { session, translator, emit } = harness()
+    // The browser-prompt source variant (kind 'user' + rpcId) is declared by
+    // the api-session-controller layer; assert the type here to model it.
+    const source = { kind: 'user' as const, rpcId: 'req-42' }
+    translator.setPendingUserSource(source as unknown as Parameters<PiEventTranslator['setPendingUserSource']>[0])
+    emit({ type: 'turn_start' })
+    emit({ type: 'message_end', message: { role: 'user', content: [{ type: 'text', text: 'hi' }] } })
+
+    const users = session.snapshotEvents().filter(event => event.type === 'user/message')
+    expect(users).toHaveLength(1)
+    expect(users[0]?.data.source).toEqual(source)
+  })
+
+  it('skips Pi custom injections and keeps only the real user message', () => {
+    const { session, emit } = harness()
+
+    emit({ type: 'turn_start' })
+    emit({ type: 'message_end', message: { role: 'user', content: [{ type: 'text', text: 'hi' }] } })
+    emit({ type: 'message_end', message: { role: 'custom', customType: 'x', content: 'project conventions…' } })
+    emit({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'done' }] } })
+    emit({ type: 'turn_end', message: { stopReason: 'stop' } })
+
+    const users = session.snapshotEvents().filter(event => event.type === 'user/message')
+    expect(users).toHaveLength(1)
+    expect(users[0]?.data.content).toEqual([{ type: 'text', text: 'hi' }])
   })
 })

@@ -162,20 +162,21 @@ export class PiEventTranslator {
 
   private handleMessageEnd(message: PiMessage | undefined): void {
     if (message === undefined) return
-    if (message.role === 'user' || message.role === 'custom') {
+    if (message.role === 'user') {
       this.ensureStep()
-      // A `custom` message is Pi-injected model context (project AGENTS.md,
-      // skill content); record both as user-role surface context.
-      const source = message.role === 'user'
-        ? { kind: 'user' as const }
-        : { kind: 'plugin' as const, plugin: 'pi' }
       const context = createUserMessage({
         content: convertContent(message.content),
-        source,
+        source: { kind: 'user' },
       }) as UserMessage
       this.session.append('user/message', context, { surfaceOp: 'append' })
       return
     }
+    // Pi injects `custom` messages (AGENTS.md fragments, hook conventions)
+    // into every turn's model context. They are Pi-runtime context, not dsh
+    // conversation, so they never enter the dsh log: folding them into
+    // `user/message` duplicated on-screen input and bloated the log with the
+    // same convention text on every turn.
+    if (message.role === 'custom') return
     if (message.role === 'assistant') {
       this.ensureStep()
       const stream = [...(this.accumulator?.snapshot() ?? [])]

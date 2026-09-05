@@ -15,7 +15,7 @@ import type {
   CancelOptions,
   InboxTarget,
 } from '@deepseek-ai/dsh-agent'
-import { Inbox } from '@deepseek-ai/dsh-agent'
+import { emitAgentEvent, Inbox } from '@deepseek-ai/dsh-agent'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import type { TextBlock } from '@deepseek-ai/dsh-llm'
@@ -174,6 +174,11 @@ export class PiLoopAgent implements Agent {
     this.active += 1
     try {
       await operation()
+    } catch (error: unknown) {
+      // A rejected Pi operation (prompt/steer network, auth, quota failures)
+      // must surface through the agent seam instead of crashing the process.
+      this.ctx.logger.error(`pi agent "${this.id}": turn failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
+      emitAgentEvent(this.ctx, this, 'agent/error', { turn: 0, step: 0, error })
     } finally {
       this.active -= 1
       if (this.active === 0 && !this.piSession.isStreaming) {
@@ -257,6 +262,11 @@ export class PiLoopAgent implements Agent {
             this.stored += batch.length
           }
         }
+      } catch (error: unknown) {
+        // A durable write failure (closed handle, seq conflict) degrades to
+        // in-memory operation: the session keeps working and the log records
+        // why, instead of the process exiting on an unhandled rejection.
+        this.ctx.logger.error(`pi agent "${this.id}": durable write failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
       } finally {
         this.flushing = undefined
       }

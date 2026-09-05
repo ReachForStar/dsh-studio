@@ -33,3 +33,7 @@
 - **customTools 挂接（dsh→pi）**：`PiLoopAgent.registerDshTools` 借 `extensionRunner.registerTool` 把 dsh 工具动态注册进 pi 会话。
 - **pi→dsh 工具共享**：`adaptPiTool` 把 pi 工具（扩展/skills）适配成 dsh 工具，`PiLoopAgent.registerPiTools` 借 `extensionRunner.getAllRegisteredTools` 把 pi 工具注册进 `ctx.tools`，TypeBox 参数镜像成 dsh schema。
 - 新增 schema 镜像 + 双向适配单测；全量 mock 测试 10 通过；oxlint + 全量 typecheck 通过。
+## 补齐（提交 `6d92c34c3b`）
+
+- **schema 镜像扩展**：dsh `type: 'json'` → TypeBox `Type.Any`；`null` → `Type.Null`；`description`/`title`/`default` 注解双向保留；TypeBox `Type.Any`/`Type.Unknown`（无 type）回映射 dsh `type: 'json'`。
+- 新增 json/null/注解镜像单测；全量 mock 测试 12 通过；oxlint + 全量 typecheck 通过。

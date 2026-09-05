@@ -73,7 +73,10 @@ export class PiLoop extends Service implements AgentFactory {
 
     const agent = new PiLoopAgent(this.ctx, options.sessionId, options.agentOptions ?? {}, preparation.session, opened.session)
     const tools = this.ctx.get('tools')
-    if (tools !== undefined) agent.registerDshTools(tools)
+    if (tools !== undefined) {
+      agent.registerDshTools(tools)
+      agent.registerPiTools(tools)
+    }
     return this.publish(ownerCtx, agent, opened, options.setup)
   }
 
@@ -128,6 +131,8 @@ export class PiLoop extends Service implements AgentFactory {
 export { PiLoopAgent } from './agent.ts'
 export { PiEventTranslator } from './pi-event-translator.ts'
 export { adaptDshTool } from './dsh-tool-adapter.ts'
+export { adaptPiTool } from './pi-tool-adapter.ts'
 export type { AdaptedPiTool } from './dsh-tool-adapter.ts'
+export type { PiToolDefinitionLike, PiRunnerLike } from './pi-tool-adapter.ts'
 export type { PiAgentSessionLike } from './agent.ts'
 export type { OpenPiSessionOptions, OpenedPiSession } from './pi-session.ts'

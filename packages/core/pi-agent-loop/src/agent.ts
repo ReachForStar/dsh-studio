@@ -23,6 +23,7 @@ import type { Session, SessionId, UserMessage } from '@deepseek-ai/dsh-session'
 import type { Context } from '@deepseek-ai/cordis'
 import { PiEventTranslator } from './pi-event-translator.ts'
 import { adaptDshTool } from './dsh-tool-adapter.ts'
+import { adaptPiTool } from './pi-tool-adapter.ts'
 
 /** The Pi AgentSession surface this driver needs; narrow so tests can supply a stub. */
 export interface PiAgentSessionLike {
@@ -37,6 +38,8 @@ export interface PiAgentSessionLike {
   /** Pi's extension runner, when present, for late-registering custom tools. */
   extensionRunner?: {
     registerTool(tool: unknown): void
+    getAllRegisteredTools(): Array<{ definition: unknown }>
+    createContext(): unknown
   }
 }
 
@@ -159,6 +162,22 @@ export class PiLoopAgent implements Agent {
       const tool = runtime.get(schema.name)
       if (tool === undefined) continue
       runner.registerTool(adaptDshTool(tool as never, runtime as never, this))
+    }
+  }
+
+  /**
+   * Register this session's Pi tools into the dsh tool surface (reverse
+   * direction of {@link registerDshTools}).
+   */
+  registerPiTools(tools: unknown): void {
+    const runner = this.piSession.extensionRunner
+    if (runner === undefined) return
+    const runtime = tools as { register(tool: unknown): void; get(name: string): unknown }
+    for (const registered of runner.getAllRegisteredTools()) {
+      const definition = registered.definition
+      if (definition === undefined) continue
+      if (runtime.get((definition as { name?: string }).name ?? '') !== undefined) continue
+      runtime.register(adaptPiTool(definition as never, runner))
     }
   }
 

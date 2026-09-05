@@ -17,6 +17,10 @@ import type { PiAgentSessionLike } from './agent.ts'
 /** Inputs for opening one Pi AgentSession tied to a dsh session cwd. */
 export interface OpenPiSessionOptions {
   readonly cwd: string
+  /** Optional dsh-routed provider; selects the Pi model when both are present. */
+  readonly provider?: string
+  /** Optional dsh-routed model id; selects the Pi model when both are present. */
+  readonly modelId?: string
 }
 
 /** One opened Pi AgentSession plus its disposal. */
@@ -34,6 +38,13 @@ export interface OpenedPiSession {
 export async function openPiSession(options: OpenPiSessionOptions): Promise<OpenedPiSession> {
   const services = await createAgentSessionServices({ cwd: options.cwd })
   const sessionManager = SessionManager.inMemory(options.cwd)
-  const { session } = await createAgentSessionFromServices({ services, sessionManager })
+  const model = options.provider !== undefined && options.modelId !== undefined
+    ? services.modelRuntime.getModel(options.provider, options.modelId)
+    : undefined
+  const { session } = await createAgentSessionFromServices({
+    services,
+    sessionManager,
+    ...model === undefined ? {} : { model },
+  })
   return { session, dispose: () => { session.dispose() } }
 }

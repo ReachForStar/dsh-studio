@@ -26,7 +26,7 @@ import { openPiSession } from './pi-session.ts'
 import type { OpenedPiSession } from './pi-session.ts'
 
 /** Factory for opening one Pi session; injectable for tests. */
-export type OpenPiSession = (options: { cwd: string }) => Promise<OpenedPiSession>
+export type OpenPiSession = (options: { cwd: string; provider?: string; modelId?: string }) => Promise<OpenedPiSession>
 
 /** Configuration for the Pi agent loop. */
 export interface PiLoopConfig {
@@ -61,7 +61,11 @@ export class PiLoop extends Service implements AgentFactory {
 
     let opened: OpenedPiSession
     try {
-      opened = await this.openSession({ cwd })
+      opened = await this.openSession({
+        cwd,
+        ...options.agentOptions?.provider === undefined ? {} : { provider: options.agentOptions.provider },
+        ...options.agentOptions?.model === undefined ? {} : { modelId: options.agentOptions.model },
+      })
     } catch (error: unknown) {
       preparation[Symbol.dispose]()
       throw error
@@ -121,5 +125,7 @@ export class PiLoop extends Service implements AgentFactory {
 
 export { PiLoopAgent } from './agent.ts'
 export { PiEventTranslator } from './pi-event-translator.ts'
+export { adaptDshTool } from './dsh-tool-adapter.ts'
+export type { AdaptedPiTool } from './dsh-tool-adapter.ts'
 export type { PiAgentSessionLike } from './agent.ts'
 export type { OpenPiSessionOptions, OpenedPiSession } from './pi-session.ts'

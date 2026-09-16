@@ -24,7 +24,7 @@ export const inject = ['invariants']
 const install: InvariantInstaller = (ctx: Context, fail: InvariantFailure) => {
   ctx.on('settings/updated', (ns, _next, _prev) => {
     if (ns !== SSH_SETTINGS_NAMESPACE) return
-    const ssh = ctx.get('ssh')
+    const ssh = ctx.get('sshSftp')
     if (ssh === undefined) {
       fail(`settings/updated for "${String(ns)}" emitted without a live ssh service`)
       return

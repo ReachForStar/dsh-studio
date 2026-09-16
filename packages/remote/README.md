@@ -7,14 +7,14 @@ kind: "package-group"
 
 English | [中文](README.zh.md)
 
-The capability family spans the canonical SSH/SFTP seam, its local `ssh2` implementation, the model-facing tools, and the Web GUI connection-management surface. All are **product** packages. See the [SSH subsystem reference](../../docs/subsystems/ssh.md) for the generated service and event API.
+The capability family spans the canonical SSH/SFTP seam, its local `ssh2` implementation, the model-facing tools, and the Web GUI connection-management surface. All are **product** packages. See the [SSH subsystem reference](../../docs/subsystems/ssh-sftp.md) for the generated service and event API.
 
 | Package | Role | ctx key |
 |---|---|---|
-| [`ssh/`](ssh/README.md) | Defines the connection-definition registry contract (settings-backed), the live-connection handles, and the exec/SFTP vocabulary shared by Providers and Consumers. | `ctx.ssh` |
-| [`ssh-local/`](ssh-local/README.md) | Implements the seam over `ssh2`: shared per-definition connections, host-key verification, secure algorithm defaults, and parallel-chunked large transfers. | (registers `ctx.ssh`) |
+| [`ssh/`](ssh/README.md) | Defines the connection-definition registry contract (settings-backed), the live-connection handles, and the exec/SFTP vocabulary shared by Providers and Consumers. | `ctx.sshSftp` |
+| [`ssh-local/`](ssh-local/README.md) | Implements the seam over `ssh2`: shared per-definition connections, host-key verification, secure algorithm defaults, and parallel-chunked large transfers. | (registers `ctx.sshSftp`) |
 | [`tool-ssh/`](tool-ssh/README.md) | Exposes connection management, remote command execution, and SFTP transfer/browse tools to the model. | (registers on `ctx.tools`) |
-| [`host/ssh-remotes`](../host/ssh-remotes/README.md) | Host Remote gateway for the browser: list/save/remove definitions and the connectivity probe. | `ctx.sshGateway` (wire namespace `ssh`) |
+| [`host/ssh-remotes`](../host/ssh-remotes/README.md) | Host Remote gateway for the browser: list/save/remove definitions and the connectivity probe. | `ctx.sshSftpGateway` (wire namespace `ssh`) |
 | [`client/ui-ssh`](../client/ui-ssh/README.md) | Web Settings page for managing saved connections. | (registers on `settings.section`) |
 
 A leaf `cordis.yml` selects the local provider and the model-facing tools it needs. The base bundle mounts `ssh-local` + `tool-ssh`; the Web surface disables the tools there and mounts them per agent through the standard preset, keeping the host-plane provider and GUI gateway active for every session.

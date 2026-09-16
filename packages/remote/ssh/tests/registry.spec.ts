@@ -1,5 +1,5 @@
 /**
- * Registry behavior of the `ctx.ssh` Service Definition: save/get/list/remove,
+ * Registry behavior of the `ctx.sshSftp` Service Definition: save/get/list/remove,
  * name uniqueness, secret-free views, the compose-able test probe, and the
  * settings-document persistence boundary — all through the real settings seam
  * with an in-memory provider.
@@ -15,7 +15,7 @@ async function setup(): Promise<{ ctx: Context; ssh: StubSshService; settings: M
   const ctx = new Context()
   await ctx.plugin(MemorySettings)
   await ctx.plugin(StubSshService)
-  return { ctx, ssh: ctx.ssh as StubSshService, settings: ctx.settings as MemorySettings }
+  return { ctx, ssh: ctx.sshSftp as StubSshService, settings: ctx.settings as MemorySettings }
 }
 
 function saveInput(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -171,7 +171,7 @@ describe('ssh definition registry', () => {
     const reloadedCtx = new Context()
     await reloadedCtx.plugin(MemorySettings, { doc: { [SSH_SETTINGS_NAMESPACE]: raw } })
     await reloadedCtx.plugin(StubSshService)
-    expect(reloadedCtx.ssh.list()).toEqual([created])
+    expect(reloadedCtx.sshSftp.list()).toEqual([created])
     await reloadedCtx.fiber.dispose()
     await ctx.fiber.dispose()
   })
@@ -242,12 +242,12 @@ describe('ssh definition registry', () => {
     const ctx = new Context()
     await ctx.plugin(MemorySettings)
     const fiber = await ctx.plugin(StubSshService)
-    await ctx.ssh.save(saveInput())
+    await ctx.sshSftp.save(saveInput())
     await fiber.dispose()
-    expect(ctx.get('ssh')).toBeUndefined()
+    expect(ctx.get('sshSftp')).toBeUndefined()
     // Re-registration succeeds, proving the namespace registration was removed.
     await ctx.plugin(StubSshService)
-    await expect(ctx.ssh.save(saveInput({ name: 'again' }))).resolves.toMatchObject({ name: 'again' })
+    await expect(ctx.sshSftp.save(saveInput({ name: 'again' }))).resolves.toMatchObject({ name: 'again' })
     await ctx.fiber.dispose()
   })
 })

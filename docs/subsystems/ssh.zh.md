@@ -1,30 +1,97 @@
-# SSH / SFTP
+# SSH
 
 [English](ssh.md) | 中文
 
-SSH/SFTP 能力接缝横跨 Service Definition（[dsh-ssh](../../packages/remote/ssh)，`ctx.ssh`）、Service Provider（[dsh-ssh-local](../../packages/remote/ssh-local)）、Consumer（[dsh-tool-ssh](../../packages/remote/tool-ssh)，十二个 `ssh_*`/`sftp_*` schema）与 Web GUI 网关（[dsh-host-ssh-remotes](../../packages/host/ssh-remotes)）及其设置页（[dsh-client-ui-ssh](../../packages/client/ui-ssh)）。定义与记住的主机密钥持久化在 `ssh` settings 命名空间。
+[SSH 提供方家族](../../packages/ssh/README.zh.md) 通过部署方持有的 OpenSSH 连接提供一个远端文件系统／进程环境。Harness、模型传输及 Session 存储留在主机。该家族实现既有文件系统、子进程及沙箱 API，不引入 SSH 专用模型工具。
 
-Source: [`packages/remote/ssh/src/types.ts`](../../packages/remote/ssh/src/types.ts)
+## 执行坐标
 
-## 定义注册表
+文件系统身份、可执行文件查找、进程 cwd、沙箱工作区根目录及语言服务器文件 URL 都指向 SSH 主机。提供方在文件实际存在的位置规范化路径，保留文件系统对 `symlink/..` 的解释。策略解析器保留执行环境中的绝对路径写法，不尝试在 Harness 主机上解析远端路径。
 
-服务拥有 settings 支撑的 `SshConnectionDefinition` 注册表：id（品牌化）、唯一名称、主机、端口、用户名、认证（`password` | 含可选口令的 `privateKey`）、连接超时与可选钉扎主机密钥指纹。save 输入的 `id` 决定更新语义——连接必须存在，只写调用方省略的秘密从存储定义继承。`SshDefinitionView` 是无秘密的 wire 投影。
+`processPath()` 提供配套子进程提供方可用的路径。SSH 的 `processPathFromHostPath()` 仍不可用；安装远端产物不意味着任意主机路径可移植。因此 [`NodePtcRuntime`](../../packages/ptc-runtime/ptc-runtime-node/README.zh.md) 使用显式安装并经过摘要验证的远端引导程序。
 
-## 连接句柄
+## 传输与信任
 
-`connect(id)` 返回 provider 按定义 id 的共享句柄；`close` 逐出。句柄暴露 `exec(spec)`——有界输出与自有超时（会杀掉远程命令）的前台命令——与 `sftp`（list/stat/readFile/writeFile/mkdir/remove/rename）。
+管理 RPC 使用辅助进程的 SSH exec 流。普通 stdin、stdout、stderr、终端输出及可选 fd 7 控制流使用分别认证的转发 Unix 套接字。每条转发流拥有独立 SSH 通道窗口；暂停的程序输出不与控制或管理消息共用窗口。所有通道仍共享连接带宽及传输失败。
 
-## 请求与 spec：`resolveExec()` 拆分
+部署认证、已安装产物验证及逐流 TLS 认证属于 [`dsh-ssh`](../../packages/ssh/ssh/README.zh.md)。辅助进程使用远端机器上的可信本地提供方执行文件系统与进程请求。SSH 是传输方式；文件效果限制由所选远端沙箱提供方执行。
 
-接缝分离模型面请求（可选 `timeoutMs`/`cwd`/`signal`）与完整解析的 `SshExecSpec`（这些字段必填，`outputMaxBytes` 已填充），经 `ctx.ssh.resolveExec(request)`——仓库的「包边界显式优于隐式」规则。
+## 进程生命周期与取消
 
-## 主机密钥校验
+进程先预留，再连接流，且启动最多接受一次。`done` 报告直接结果，`waitForExit` 观察远端托管进程范围。终端操作保留共享异步 API。准备阶段取消、已启动进程终止及提供方释放都通过辅助进程释放各自资源。
 
-主机密钥默认校验：`accept-new` 首连把未知密钥记入注册表的 `knownHosts` 表、后续变更拒绝（`SSH_HOST_KEY_MISMATCH`）；`reject` 拒绝未知密钥（`SSH_HOST_KEY_UNKNOWN`）；定义上的 `hostKeyFingerprint` 钉扎优先于记住表。本地 provider 的握手限定现代算法（无 CBC/arcfour 加密、无 SHA-1 MAC、无 `ssh-rsa` 主机密钥签名），除非 `allowLegacyAlgorithms` 退回 ssh2 默认。
+管理截止时限约束单次 RPC 观察，不替代 Bash 或 PTC 运行时消费方选择的执行截止时限。远端等待可以持续挂起，同时其他请求继续推进。SSH 丢失会使待处理操作失效；辅助进程 EOF、信号及租期到期会启动远端清理。客户端如实报告未确认结果，绝不通过重连重放可能已执行的操作。
 
-## 错误分类
+## 组合范围
 
-带稳定码的类型化 `SshError`：`SSH_NOT_FOUND`、`SSH_NAME_EXISTS`、`SSH_INVALID_DEFINITION`、`SSH_CONNECT_FAILED`、`SSH_AUTH_FAILED`、`SSH_HOST_KEY_MISMATCH`、`SSH_HOST_KEY_UNKNOWN`、`SSH_CLOSED`、`SSH_EXEC_FAILED`、`SSH_SFTP_FAILED`、`SSH_LOCAL_IO`。
+headless 通过已挂载的文件系统提供方记录和检查 Session cwd。因此远端 FS、Bash、终端、LSP 及 PTC 消费方可以共享这些坐标。假定可访问主机文件系统的 Web 工作区视图需要单独集成；仅替换提供方并不会使这些视图支持远端。
+
+替代方案与验证责任见[决策记录](../../.agents/notes/implemented/architecture/2026-09-11-posix-ssh-runtime.zh.md)。
+
+## 连接 API
+
+```ts type-equiv
+/** Deployment-owned SSH identity and installed helper; no model argument selects these values. */
+interface Config {
+  /** OpenSSH host alias, including its existing user, key and known-host configuration. */
+  host: string
+  /** Absolute remote Node executable. */
+  node: string
+  /** Absolute path to the installed, bundled helper entry. */
+  helper: string
+  /** SHA-256 of that bundled helper; mismatches refuse the connection. */
+  helperHash: string
+  /** Absolute remote default workspace. */
+  workspace: string
+  /** Optional preinstalled built PTC entry, paired with its expected digest. */
+  bootstrapPath?: string
+  /** SHA-256 of bootstrapPath; both fields must be supplied together. */
+  bootstrapHash?: string
+  /** Connection and administrative-request deadline, at most 2,147,483,647 milliseconds. */
+  requestTimeoutMs?: number
+  /** Maximum JSON payload bytes per helper request or response. */
+  maxFrameBytes?: number
+  /** Maximum ordinary requests; heartbeat and bounded resource cleanup have reserved capacity. */
+  maxPending?: number
+  /** Remote helper lease; loss of heartbeats starts remote managed cleanup. */
+  leaseMs?: number
+}
+```
+
+```ts public-api
+/** One non-reconnecting SSH session; loss invalidates all active operations. */
+declare class SshConnection extends Service {
+  static Config: schema<Config>;
+  /** Verified remote helper coordinates; callers must await this before launch. */
+  readonly ready: Promise<Hello>;
+  constructor(ctx: Context, config: Config);
+  /** Hold plugin readiness until the remote identity and helper digest are verified. */
+  async [Service.init](): Promise<void>;
+  /** Verified remote Node executable for the paired PTC runtime. */
+  get nodeExecutable(): string;
+  /** Verified preinstalled PTC entry; unconfigured runtimes fail before program execution. */
+  get bootstrapPath(): string;
+  /**
+     * Send a helper operation; cancellation never replays an ambiguous mutation.
+     * @param method - the private helper operation.
+     * @param params - JSON request fields validated by the helper.
+     * @param result - response validation before returning provider-visible data.
+     * @param signal - cancellation, which does not undo completed remote effects.
+     * @param wait - allow a process observation to outlast the administrative deadline.
+     * @returns the validated remote result.
+     */
+  async request<T>(method: string, params: unknown, result: z.ZodType<T>, signal?: AbortSignal, wait: boolean = false): Promise<T>;
+  /**
+     * Forward one authenticated stream through an independent SSH channel.
+     * @param endpoint - private coordinates issued by this connection's helper.
+     * @param signal - cancellation of allocation and the resulting socket.
+     * @returns a paused socket; attach a consumer before resuming it.
+     */
+  async connectStream(endpoint: SshStreamEndpoint, signal?: AbortSignal): Promise<Socket>;
+  /** Tear down the helper's remote managed ranges before releasing the SSH master when reachable. */
+  dispose(): Promise<void>;
+}
+```
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -34,144 +101,35 @@ Source: [`packages/remote/ssh/src/types.ts`](../../packages/remote/ssh/src/types
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
-<a id="ctxssh--sshservice-abstract-seam"></a>
+<a id="ctxssh--sshconnection"></a>
 
-### `ctx.ssh` — `SshService` (abstract seam)
+### `ctx.ssh` — `SshConnection`
 
-Abstract SSH/SFTP service. The base class owns the settings-backed definition registry (list/get/save/remove and the compose-able test); providers implement connect and resolveExec. Mount exactly one provider per context (a second registration throws, cordis' standard duplicate-service behavior). Requires a settings provider: the registry's document is the `ssh` settings namespace.
-
-```ts cordis-catalog
-/**
- * Read the current registry contents (frozen snapshots; never mutate).
- * @returns every saved definition in registry order.
- */
-list(): readonly SshConnectionDefinition[]
-
-/**
- * Look one definition up by id or unique name.
- * @param ref - the id or name to find.
- * @returns the definition, or undefined when no connection matches.
- */
-get(ref: SshConnectionId | string): SshConnectionDefinition | undefined
-
-/**
- * Save one definition: an input carrying `id` updates that connection
- * (which must exist), otherwise a new connection is created. Names are
- * unique across the registry. An update whose auth omits a secret field
- * (password, privateKeyPath, passphrase) inherits the stored value, so
- * write-only callers can never wipe a secret they never saw.
- * @param input - untrusted save input (tool and wire payloads included).
- * @returns the normalized, persisted definition.
- */
-async save(input: unknown): Promise<SshConnectionDefinition>
-
-/**
- * Remove one connection by id or name.
- * @param ref - the id or name to remove.
- * @returns whether a connection was removed.
- */
-async remove(ref: SshConnectionId | string): Promise<boolean>
-
-/**
- * Read the remembered host key fingerprint of one `host:port` endpoint.
- * @param hostPort - the endpoint key (e.g. `example.com:22`).
- * @returns the remembered `SHA256:<base64>` fingerprint, or undefined.
- */
-knownHostFingerprint(hostPort: string): string | undefined
-
-/**
- * Persist a host key fingerprint for one `host:port` endpoint (the
- * accept-new side of host key verification).
- * @param hostPort - the endpoint key (e.g. `example.com:22`).
- * @param fingerprint - the `SHA256:<base64>` fingerprint to remember.
- */
-async rememberHostKey(hostPort: string, fingerprint: string): Promise<void>
-
-/**
- * Open (or reuse) the shared connection for one definition id. Handles stay
- * open until {@link close} or provider teardown.
- * @param id - the definition id to connect.
- * @returns the live connection handle.
- */
-abstract connect(id: SshConnectionId): Promise<SshConnection>
-
-/**
- * Close and evict the shared connection for one definition id.
- * @param id - the definition id to disconnect; unknown ids are a no-op.
- */
-abstract close(id: SshConnectionId): Promise<void>
-
-/**
- * Apply implementation-owned defaults and caps to an exec request.
- * @param request - the caller's request; omitted fields get this
- *   implementation's defaults, capped fields are clamped.
- * @returns the fully-specified spec to hand to {@link SshConnection.exec}.
- */
-abstract resolveExec(request: SshExecRequest): SshExecSpec
-
-/**
- * Verify that a connection definition can be reached: open its shared
- * connection, run a probe command, and close it again. The close evicts the
- * shared handle, so a concurrent user reconnects on its next call.
- * @param ref - the id or name to test.
- * @returns the successful probe with its round-trip latency.
- * @throws {@link SshError} with `SSH_NOT_FOUND` or `SSH_CONNECT_FAILED`.
- */
-async test(ref: SshConnectionId | string): Promise<SshTestResult>
-
-/**
- * Project one definition to its secret-free wire view.
- * @param definition - the definition to project.
- * @returns the secret-free view for wire surfaces.
- */
-toView(definition: SshConnectionDefinition): SshDefinitionView
-
-/**
- * Resolve a caller reference (id or unique name) against the registry.
- * @param ref - the id or name to find.
- * @returns the matched definition.
- * @throws {@link SshError} with `SSH_NOT_FOUND` when nothing matches.
- */
-resolve(ref: SshConnectionId | string): SshConnectionDefinition
-```
-
-Source: [`packages/remote/ssh/src/index.ts`](../../packages/remote/ssh/src/index.ts)
-
-<a id="ssh-events"></a>
-
-### `ssh/*` events
-
-<a id="sshptyexit--emit"></a>
-
-#### `ssh/pty/exit` — emit
-
-One PTY termination report.
+One non-reconnecting SSH session; loss invalidates all active operations.
 
 ```ts cordis-catalog
 /**
- * One PTY termination report.
- * @param event - PTY identity and exit details.
- * @mode emit
+ * Send a helper operation; cancellation never replays an ambiguous mutation.
+ * @param method - the private helper operation.
+ * @param params - JSON request fields validated by the helper.
+ * @param result - response validation before returning provider-visible data.
+ * @param signal - cancellation, which does not undo completed remote effects.
+ * @param wait - allow a process observation to outlast the administrative deadline.
+ * @returns the validated remote result.
  */
-'ssh/pty/exit'(event: SshPtyExitEvent): void
-```
+async request<T>(method: string, params: unknown, result: z.ZodType<T>, signal?: AbortSignal, wait: boolean = false): Promise<T>
 
-Source: [`packages/host/ssh-remotes/src/types.ts`](../../packages/host/ssh-remotes/src/types.ts)
-
-<a id="sshptyoutput--emit"></a>
-
-#### `ssh/pty/output` — emit
-
-One PTY output chunk, base64-encoded for JSON transport.
-
-```ts cordis-catalog
 /**
- * One PTY output chunk, base64-encoded for JSON transport.
- * @param event - PTY identity and output bytes.
- * @mode emit
+ * Forward one authenticated stream through an independent SSH channel.
+ * @param endpoint - private coordinates issued by this connection's helper.
+ * @param signal - cancellation of allocation and the resulting socket.
+ * @returns a paused socket; attach a consumer before resuming it.
  */
-'ssh/pty/output'(event: SshPtyOutputEvent): void
+async connectStream(endpoint: SshStreamEndpoint, signal?: AbortSignal): Promise<Socket>
+
+/** Tear down the helper's remote managed ranges before releasing the SSH master when reachable. */
+dispose(): Promise<void>
 ```
 
-Source: [`packages/host/ssh-remotes/src/types.ts`](../../packages/host/ssh-remotes/src/types.ts)
+Source: [`packages/ssh/ssh/src/index.ts`](../../packages/ssh/ssh/src/index.ts)
 <!-- END GENERATED cordis-surface -->

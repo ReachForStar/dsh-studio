@@ -37,7 +37,7 @@
   flex: 1;
   max-width: 280px;
   padding: 4px 10px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
@@ -51,7 +51,7 @@
 
 .button {
   padding: 4px 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-button-floating-fill);
   color: var(--dsw-alias-label-primary);
@@ -95,7 +95,7 @@
   min-height: 200px;
   max-height: 45vh;
   position: relative;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 10px;
   overflow: hidden;
   background: var(--dsw-alias-bg-base);
@@ -113,7 +113,7 @@
   top: 8px;
   right: 8px;
   padding: 4px 10px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 6px;
   background: var(--dsw-alias-button-floating-fill);
   color: var(--dsw-alias-label-primary);
@@ -136,7 +136,7 @@
   min-height: 150px;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--dsw-alias-border-l1);
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
   padding-top: 8px;
   overflow: hidden;
 }
@@ -198,7 +198,7 @@
 
 .filter {
   padding: 4px 10px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
@@ -240,7 +240,7 @@
 .table th {
   text-align: left;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
   font-weight: 600;
   position: sticky;
   top: 0;
@@ -250,7 +250,7 @@
 
 .table td {
   padding: 6px 8px;
-  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l1);
   color: var(--dsw-alias-label-primary);
 }
 
@@ -268,7 +268,7 @@
 
 .actionBtn {
   padding: 2px 8px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 6px;
   background: transparent;
   color: var(--dsw-alias-label-secondary);

@@ -48,7 +48,7 @@
 
 .export {
   padding: 4px 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-button-floating-fill);
   color: var(--dsw-alias-label-primary);
@@ -88,7 +88,7 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 10px;
   overflow: hidden;
 }

@@ -19,7 +19,6 @@ import type {
   CreateAgentOptions,
   ResumeAgentOptions,
 } from '@deepseek-ai/dsh-agent'
-import { emitAgentEvent } from '@deepseek-ai/dsh-agent'
 import { interruptedTurnClosers, SessionPreparation } from '@deepseek-ai/dsh-session'
 import type { SessionEvent, SessionHeader, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { PiLoopAgent } from './agent.ts'
@@ -87,11 +86,11 @@ export class PiLoop extends Service implements AgentFactory {
     ctx.effect(() => ctx.agents.setFactory(this, 'pi'), 'piAgentLoop.setFactory()')
   }
 
-  async createAgent(ownerCtx: Context, options: CreateAgentOptions): Promise<AgentHandle> {
+  async createAgent(_ownerCtx: Context, options: CreateAgentOptions): Promise<AgentHandle> {
     const persistence = this.ctx.get('sessionPersistence') as PiPersistence | undefined
     return this.launch(
-      ownerCtx,
       options,
+      'startup',
       // A fresh session's durable identity is stored before publication; live
       // events drain through the owned handle (see {@link PiLoopAgent}).
       persistence === undefined
@@ -105,7 +104,7 @@ export class PiLoop extends Service implements AgentFactory {
     )
   }
 
-  async resume(ownerCtx: Context, options: ResumeAgentOptions): Promise<AgentHandle> {
+  async resume(_ownerCtx: Context, options: ResumeAgentOptions): Promise<AgentHandle> {
     // A pi session's dsh log lives in persistence; resume must rehydrate its
     // history (and header cwd) exactly like the dsh loop does, otherwise the
     // reopened session loses every prior message and falls back to process.cwd.
@@ -120,7 +119,7 @@ export class PiLoop extends Service implements AgentFactory {
       const closers = interruptedTurnClosers(persisted)
       if (closers.length > 0) await handle.append(closers)
       const cwd = handle.header.cwd
-      return await this.launch(ownerCtx, {
+      return await this.launch({
         sessionId: id,
         ...options.agentOptions === undefined ? {} : { agentOptions: options.agentOptions },
         meta: {
@@ -130,7 +129,7 @@ export class PiLoop extends Service implements AgentFactory {
         seed: [...persisted, ...closers],
         inheritedEventCount: handle.inheritedEventCount,
         ...options.setup === undefined ? {} : { setup: options.setup },
-      }, {
+      }, 'resume', {
         handle,
         stored: persisted.length + closers.length,
       })
@@ -146,8 +145,8 @@ export class PiLoop extends Service implements AgentFactory {
    * its already-open handle directly.
    */
   private async launch(
-    ownerCtx: Context,
     options: CreateAgentOptions,
+    source: 'startup' | 'resume',
     durableFactory:
       | ((session: { readonly header: SessionHeader; readonly inheritedEventCount: SessionLogOffset }) => Promise<Durable>)
       | Durable
@@ -205,19 +204,19 @@ export class PiLoop extends Service implements AgentFactory {
       agent.registerDshTools(tools)
       agent.registerPiTools(tools)
     }
-    return this.publish(ownerCtx, agent, opened, options.setup, durable)
+    return this.publish(agent, opened, options.setup, durable, source)
   }
 
   /** Run setup, publish the dsh session + agent, and return the owned handle. */
   private async publish(
-    ownerCtx: Context,
     agent: PiLoopAgent,
     opened: OpenedPiSession,
     setup: CreateAgentOptions['setup'],
     durable?: Durable,
+    source: 'startup' | 'resume' = 'startup',
   ): Promise<AgentHandle> {
     try {
-      const commit = await setup?.(agent.ctx)
+      const commit = await setup?.(agent.ctx, agent)
       commit?.commit()
     } catch (error: unknown) {
       await agent.dispose()
@@ -228,10 +227,9 @@ export class PiLoop extends Service implements AgentFactory {
     }
 
     const detachSession = this.ctx.sessions.enter(agent.session)
-    const detachAgent = this.ctx.agents.enter(agent, ownerCtx.agent)
+    const detachAgent = this.ctx.agents.enter(agent, undefined)
     this.ctx.sessions.announce(agent.session)
-    this.ctx.agents.announce(agent)
-    emitAgentEvent(this.ctx, agent, 'agent/session-start', { source: 'startup' })
+    await this.ctx.agents.announce(agent, source)
 
     return {
       agent,

@@ -12,8 +12,8 @@
   box-sizing: border-box;
   max-width: min(100vw - 32px, 560px);
   padding: 6px 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 999px;
+  corner-shape: round;
   background: var(--dsw-alias-button-floating-fill);
   box-shadow: var(--dsw-shadow-lv2);
   font-size: 12px;
@@ -59,7 +59,7 @@
   display: block;
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid var(--dsw-alias-border-l1);
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
   font-size: 13px;
   line-height: 20px;
   font-weight: 500;

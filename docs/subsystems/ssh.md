@@ -1,30 +1,97 @@
-# SSH / SFTP
+# SSH
 
 English | [中文](ssh.zh.md)
 
-The SSH/SFTP capability seam spans a Service Definition ([dsh-ssh](../../packages/remote/ssh), `ctx.ssh`), Service Provider ([dsh-ssh-local](../../packages/remote/ssh-local)), Consumer ([dsh-tool-ssh](../../packages/remote/tool-ssh), the twelve `ssh_*`/`sftp_*` schemas), and the Web GUI gateway ([dsh-host-ssh-remotes](../../packages/host/ssh-remotes)) with its Settings page ([dsh-client-ui-ssh](../../packages/client/ui-ssh)). Definitions and remembered host keys persist in the `ssh` settings namespace.
+The [SSH provider family](../../packages/ssh/README.md) supplies one remote filesystem/process world through a deployment-owned OpenSSH connection. The Harness, model transport and Session storage remain on the host. The family implements the existing filesystem, subprocess and sandbox APIs; it introduces no SSH-specific model tools.
 
-Source: [`packages/remote/ssh/src/types.ts`](../../packages/remote/ssh/src/types.ts)
+## Execution coordinates
 
-## Definition registry
+Filesystem identities, executable lookup, process cwd, sandbox workspace roots and language-server file URLs refer to the SSH host. Providers canonicalize paths where the files exist, preserving filesystem interpretation of `symlink/..`. The policy resolver carries absolute execution-world spelling without trying to resolve remote paths on the Harness host.
 
-The service owns a settings-backed registry of `SshConnectionDefinition`s: id (branded), unique name, host, port, username, authentication (`password` | `privateKey` with optional passphrase), connection timeout, and an optional pinned host-key fingerprint. A save input's `id` selects update semantics — the connection must exist, and secrets omitted by a write-only caller are inherited from the stored definition. `SshDefinitionView` is the secret-free wire projection.
+`processPath()` supplies a path usable by the paired subprocess provider. `processPathFromHostPath()` remains unavailable for SSH; installing a remote artifact does not make an arbitrary host path portable. [`NodePtcRuntime`](../../packages/ptc-runtime/ptc-runtime-node/README.md) therefore takes an explicitly installed, digest-verified remote bootstrap.
 
-## Connection handles
+## Transport and trust
 
-`connect(id)` returns the provider's shared handle per definition id; `close` evicts it. A handle exposes `exec(spec)` — a foreground command with bounded output and an owned timeout that kills the remote command — and `sftp`, the SFTP operation surface (list/stat/readFile/writeFile/mkdir/remove/rename).
+Administrative RPC uses the helper’s SSH exec streams. Ordinary stdin, stdout, stderr, terminal output and optional fd 7 control traffic use separately authenticated forwarded Unix sockets. Each forwarded stream has its own SSH channel window; paused program output does not share the control or administrative window. All channels still share connection bandwidth and transport failure.
 
-## Request vs. spec: the `resolveExec()` split
+Deployment authentication, installed artifact verification and per-stream TLS authentication belong to [`dsh-ssh`](../../packages/ssh/ssh/README.md). The helper executes filesystem and process requests with trusted local providers on the remote machine. SSH is a transport; the selected remote sandbox provider enforces file effects.
 
-The seam separates the model-facing request (optional `timeoutMs`/`cwd`/`signal`) from the fully-resolved `SshExecSpec` (those fields required, `outputMaxBytes` filled) via `ctx.ssh.resolveExec(request)` — the repo's "explicit > implicit at package boundaries" rule.
+## Process lifetime and cancellation
 
-## Host key verification
+A process is reserved before its streams are connected, and launch is accepted at most once. `done` reports the direct result; `waitForExit` observes the remote managed range. Terminal operations retain the asynchronous shared API. Preparation cancellation, launched-process termination and provider disposal release their owned resources through the helper.
 
-Host keys verify by default: `accept-new` remembers an unknown key in the registry's `knownHosts` table on first contact and rejects later changes (`SSH_HOST_KEY_MISMATCH`); `reject` denies unknown keys (`SSH_HOST_KEY_UNKNOWN`); a definition's `hostKeyFingerprint` pin wins over the remembered table. The local provider's handshake restricts to modern algorithms (no CBC/arcfour ciphers, no SHA-1 MACs, no `ssh-rsa` host-key signatures) unless `allowLegacyAlgorithms` opts into ssh2 defaults.
+Administrative deadlines bound individual RPC observations; they do not replace the execution deadline chosen by a Bash or ptc-runtime consumer. Remote waits can remain pending while other requests progress. SSH loss invalidates pending operations; helper EOF, signals and lease expiry start remote cleanup. The client reports unconfirmed outcomes honestly and never reconnects to replay a possibly executed action.
 
-## Error taxonomy
+## Composition scope
 
-Typed `SshError` with stable codes: `SSH_NOT_FOUND`, `SSH_NAME_EXISTS`, `SSH_INVALID_DEFINITION`, `SSH_CONNECT_FAILED`, `SSH_AUTH_FAILED`, `SSH_HOST_KEY_MISMATCH`, `SSH_HOST_KEY_UNKNOWN`, `SSH_CLOSED`, `SSH_EXEC_FAILED`, `SSH_SFTP_FAILED`, `SSH_LOCAL_IO`.
+Headless records and checks Session cwd through the mounted filesystem provider. Remote FS, Bash, terminal, LSP and PTC consumers can therefore share those coordinates. Web workspace views that assume host filesystem access need separate integration; replacing providers alone does not make those views remote-aware.
+
+See the [decision record](../../.agents/notes/implemented/architecture/2026-09-11-posix-ssh-runtime.md) for the alternatives and verification obligations.
+
+## Connection API
+
+```ts type-equiv
+/** Deployment-owned SSH identity and installed helper; no model argument selects these values. */
+interface Config {
+  /** OpenSSH host alias, including its existing user, key and known-host configuration. */
+  host: string
+  /** Absolute remote Node executable. */
+  node: string
+  /** Absolute path to the installed, bundled helper entry. */
+  helper: string
+  /** SHA-256 of that bundled helper; mismatches refuse the connection. */
+  helperHash: string
+  /** Absolute remote default workspace. */
+  workspace: string
+  /** Optional preinstalled built PTC entry, paired with its expected digest. */
+  bootstrapPath?: string
+  /** SHA-256 of bootstrapPath; both fields must be supplied together. */
+  bootstrapHash?: string
+  /** Connection and administrative-request deadline, at most 2,147,483,647 milliseconds. */
+  requestTimeoutMs?: number
+  /** Maximum JSON payload bytes per helper request or response. */
+  maxFrameBytes?: number
+  /** Maximum ordinary requests; heartbeat and bounded resource cleanup have reserved capacity. */
+  maxPending?: number
+  /** Remote helper lease; loss of heartbeats starts remote managed cleanup. */
+  leaseMs?: number
+}
+```
+
+```ts public-api
+/** One non-reconnecting SSH session; loss invalidates all active operations. */
+declare class SshConnection extends Service {
+  static Config: schema<Config>;
+  /** Verified remote helper coordinates; callers must await this before launch. */
+  readonly ready: Promise<Hello>;
+  constructor(ctx: Context, config: Config);
+  /** Hold plugin readiness until the remote identity and helper digest are verified. */
+  async [Service.init](): Promise<void>;
+  /** Verified remote Node executable for the paired PTC runtime. */
+  get nodeExecutable(): string;
+  /** Verified preinstalled PTC entry; unconfigured runtimes fail before program execution. */
+  get bootstrapPath(): string;
+  /**
+     * Send a helper operation; cancellation never replays an ambiguous mutation.
+     * @param method - the private helper operation.
+     * @param params - JSON request fields validated by the helper.
+     * @param result - response validation before returning provider-visible data.
+     * @param signal - cancellation, which does not undo completed remote effects.
+     * @param wait - allow a process observation to outlast the administrative deadline.
+     * @returns the validated remote result.
+     */
+  async request<T>(method: string, params: unknown, result: z.ZodType<T>, signal?: AbortSignal, wait: boolean = false): Promise<T>;
+  /**
+     * Forward one authenticated stream through an independent SSH channel.
+     * @param endpoint - private coordinates issued by this connection's helper.
+     * @param signal - cancellation of allocation and the resulting socket.
+     * @returns a paused socket; attach a consumer before resuming it.
+     */
+  async connectStream(endpoint: SshStreamEndpoint, signal?: AbortSignal): Promise<Socket>;
+  /** Tear down the helper's remote managed ranges before releasing the SSH master when reachable. */
+  dispose(): Promise<void>;
+}
+```
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -34,144 +101,35 @@ Typed `SshError` with stable codes: `SSH_NOT_FOUND`, `SSH_NAME_EXISTS`, `SSH_INV
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
-<a id="ctxssh--sshservice-abstract-seam"></a>
+<a id="ctxssh--sshconnection"></a>
 
-### `ctx.ssh` — `SshService` (abstract seam)
+### `ctx.ssh` — `SshConnection`
 
-Abstract SSH/SFTP service. The base class owns the settings-backed definition registry (list/get/save/remove and the compose-able test); providers implement connect and resolveExec. Mount exactly one provider per context (a second registration throws, cordis' standard duplicate-service behavior). Requires a settings provider: the registry's document is the `ssh` settings namespace.
-
-```ts cordis-catalog
-/**
- * Read the current registry contents (frozen snapshots; never mutate).
- * @returns every saved definition in registry order.
- */
-list(): readonly SshConnectionDefinition[]
-
-/**
- * Look one definition up by id or unique name.
- * @param ref - the id or name to find.
- * @returns the definition, or undefined when no connection matches.
- */
-get(ref: SshConnectionId | string): SshConnectionDefinition | undefined
-
-/**
- * Save one definition: an input carrying `id` updates that connection
- * (which must exist), otherwise a new connection is created. Names are
- * unique across the registry. An update whose auth omits a secret field
- * (password, privateKeyPath, passphrase) inherits the stored value, so
- * write-only callers can never wipe a secret they never saw.
- * @param input - untrusted save input (tool and wire payloads included).
- * @returns the normalized, persisted definition.
- */
-async save(input: unknown): Promise<SshConnectionDefinition>
-
-/**
- * Remove one connection by id or name.
- * @param ref - the id or name to remove.
- * @returns whether a connection was removed.
- */
-async remove(ref: SshConnectionId | string): Promise<boolean>
-
-/**
- * Read the remembered host key fingerprint of one `host:port` endpoint.
- * @param hostPort - the endpoint key (e.g. `example.com:22`).
- * @returns the remembered `SHA256:<base64>` fingerprint, or undefined.
- */
-knownHostFingerprint(hostPort: string): string | undefined
-
-/**
- * Persist a host key fingerprint for one `host:port` endpoint (the
- * accept-new side of host key verification).
- * @param hostPort - the endpoint key (e.g. `example.com:22`).
- * @param fingerprint - the `SHA256:<base64>` fingerprint to remember.
- */
-async rememberHostKey(hostPort: string, fingerprint: string): Promise<void>
-
-/**
- * Open (or reuse) the shared connection for one definition id. Handles stay
- * open until {@link close} or provider teardown.
- * @param id - the definition id to connect.
- * @returns the live connection handle.
- */
-abstract connect(id: SshConnectionId): Promise<SshConnection>
-
-/**
- * Close and evict the shared connection for one definition id.
- * @param id - the definition id to disconnect; unknown ids are a no-op.
- */
-abstract close(id: SshConnectionId): Promise<void>
-
-/**
- * Apply implementation-owned defaults and caps to an exec request.
- * @param request - the caller's request; omitted fields get this
- *   implementation's defaults, capped fields are clamped.
- * @returns the fully-specified spec to hand to {@link SshConnection.exec}.
- */
-abstract resolveExec(request: SshExecRequest): SshExecSpec
-
-/**
- * Verify that a connection definition can be reached: open its shared
- * connection, run a probe command, and close it again. The close evicts the
- * shared handle, so a concurrent user reconnects on its next call.
- * @param ref - the id or name to test.
- * @returns the successful probe with its round-trip latency.
- * @throws {@link SshError} with `SSH_NOT_FOUND` or `SSH_CONNECT_FAILED`.
- */
-async test(ref: SshConnectionId | string): Promise<SshTestResult>
-
-/**
- * Project one definition to its secret-free wire view.
- * @param definition - the definition to project.
- * @returns the secret-free view for wire surfaces.
- */
-toView(definition: SshConnectionDefinition): SshDefinitionView
-
-/**
- * Resolve a caller reference (id or unique name) against the registry.
- * @param ref - the id or name to find.
- * @returns the matched definition.
- * @throws {@link SshError} with `SSH_NOT_FOUND` when nothing matches.
- */
-resolve(ref: SshConnectionId | string): SshConnectionDefinition
-```
-
-Source: [`packages/remote/ssh/src/index.ts`](../../packages/remote/ssh/src/index.ts)
-
-<a id="ssh-events"></a>
-
-### `ssh/*` events
-
-<a id="sshptyexit--emit"></a>
-
-#### `ssh/pty/exit` — emit
-
-One PTY termination report.
+One non-reconnecting SSH session; loss invalidates all active operations.
 
 ```ts cordis-catalog
 /**
- * One PTY termination report.
- * @param event - PTY identity and exit details.
- * @mode emit
+ * Send a helper operation; cancellation never replays an ambiguous mutation.
+ * @param method - the private helper operation.
+ * @param params - JSON request fields validated by the helper.
+ * @param result - response validation before returning provider-visible data.
+ * @param signal - cancellation, which does not undo completed remote effects.
+ * @param wait - allow a process observation to outlast the administrative deadline.
+ * @returns the validated remote result.
  */
-'ssh/pty/exit'(event: SshPtyExitEvent): void
-```
+async request<T>(method: string, params: unknown, result: z.ZodType<T>, signal?: AbortSignal, wait: boolean = false): Promise<T>
 
-Source: [`packages/host/ssh-remotes/src/types.ts`](../../packages/host/ssh-remotes/src/types.ts)
-
-<a id="sshptyoutput--emit"></a>
-
-#### `ssh/pty/output` — emit
-
-One PTY output chunk, base64-encoded for JSON transport.
-
-```ts cordis-catalog
 /**
- * One PTY output chunk, base64-encoded for JSON transport.
- * @param event - PTY identity and output bytes.
- * @mode emit
+ * Forward one authenticated stream through an independent SSH channel.
+ * @param endpoint - private coordinates issued by this connection's helper.
+ * @param signal - cancellation of allocation and the resulting socket.
+ * @returns a paused socket; attach a consumer before resuming it.
  */
-'ssh/pty/output'(event: SshPtyOutputEvent): void
+async connectStream(endpoint: SshStreamEndpoint, signal?: AbortSignal): Promise<Socket>
+
+/** Tear down the helper's remote managed ranges before releasing the SSH master when reachable. */
+dispose(): Promise<void>
 ```
 
-Source: [`packages/host/ssh-remotes/src/types.ts`](../../packages/host/ssh-remotes/src/types.ts)
+Source: [`packages/ssh/ssh/src/index.ts`](../../packages/ssh/ssh/src/index.ts)
 <!-- END GENERATED cordis-surface -->

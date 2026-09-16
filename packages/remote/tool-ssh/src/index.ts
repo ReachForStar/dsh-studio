@@ -1,5 +1,5 @@
 /**
- * Model-facing Consumer of the `ctx.ssh` capability seam: connection
+ * Model-facing Consumer of the `ctx.sshSftp` capability seam: connection
  * management (`ssh_connect`/`ssh_connections`/`ssh_disconnect`/`ssh_test`),
  * remote command execution (`ssh_exec`), and SFTP file transfer
  * (`sftp_list`/`sftp_stat`/`sftp_read`/`sftp_write`/`sftp_mkdir`/`sftp_rm`/
@@ -21,7 +21,7 @@ import type { SshConnectionDefinition, SshRunResult } from '@reachforstar/dsh-ss
 import { parseExitStatus } from '@deepseek-ai/dsh-shell'
 
 export const name = 'tool-ssh'
-export const inject = ['tools', 'ssh', 'systemPrompt']
+export const inject = ['tools', 'sshSftp', 'systemPrompt']
 
 /** Validate a caller string argument. */
 function requireString(value: unknown, label: string): string {
@@ -227,8 +227,8 @@ export function apply(ctx: Context): void {
     },
     async execute(args: Record<string, unknown>, _exec: ToolExecution) {
       const input = validateConnectArgs(args)
-      const saved = await ctx.ssh.save(input)
-      return ctx.ssh.toView(saved)
+      const saved = await ctx.sshSftp.save(input)
+      return ctx.sshSftp.toView(saved)
     },
     presentCall: () => ({ card: 'generic', title: 'ssh_connect', kind: 'execute', rawInput: 'save connection definition' }),
     presentResult: presentGeneric,
@@ -279,7 +279,7 @@ export function apply(ctx: Context): void {
       }],
     },
     execute() {
-      return Promise.resolve({ connections: ctx.ssh.list().map(definition => ctx.ssh.toView(definition)) })
+      return Promise.resolve({ connections: ctx.sshSftp.list().map(definition => ctx.sshSftp.toView(definition)) })
     },
     presentCall: () => ({ card: 'generic', title: 'ssh_connections', kind: 'execute', rawInput: 'list saved connections' }),
     presentResult: presentGeneric,
@@ -302,8 +302,8 @@ export function apply(ctx: Context): void {
       render: (_args, value) => summary(value.closed ? 'ssh connection closed' : 'no open connection'),
     },
     async execute(args: Record<string, unknown>) {
-      const definition = resolveConnection(ctx.ssh, requireString(args['connection'], 'connection'))
-      await ctx.ssh.close(definition.id)
+      const definition = resolveConnection(ctx.sshSftp, requireString(args['connection'], 'connection'))
+      await ctx.sshSftp.close(definition.id)
       return { closed: true }
     },
     presentCall: (args: Record<string, unknown>) => ({ card: 'generic', title: 'ssh_disconnect', kind: 'execute', rawInput: String(args['connection']) }),
@@ -331,7 +331,7 @@ export function apply(ctx: Context): void {
     async execute(args: Record<string, unknown>) {
       const connection = requireString(args['connection'], 'connection')
       try {
-        const outcome = await ctx.ssh.test(connection)
+        const outcome = await ctx.sshSftp.test(connection)
         return outcome
       } catch (error) {
         // v8 ignore next -- providers throw SshError (an Error) exclusively; the unknown fallback is defensive
@@ -373,8 +373,8 @@ export function apply(ctx: Context): void {
       const connection = requireString(args['connection'], 'connection')
       const command = requireString(args['command'], 'command')
       const timeoutMs = requireOptionalNumber(args['timeout_ms'], 'timeout_ms')
-      const definition = resolveConnection(ctx.ssh, connection)
-      const spec = ctx.ssh.resolveExec({
+      const definition = resolveConnection(ctx.sshSftp, connection)
+      const spec = ctx.sshSftp.resolveExec({
         command,
         ...timeoutMs !== undefined ? { timeoutMs } : {},
         // v8 ignore start -- the remote cwd prefix assumes a POSIX shell; the cwd suite skips on Windows
@@ -382,7 +382,7 @@ export function apply(ctx: Context): void {
         /* v8 ignore stop */
         signal: exec.signal,
       })
-      const handle = await ctx.ssh.connect(definition.id)
+      const handle = await ctx.sshSftp.connect(definition.id)
       const result = await handle.exec(spec)
       if (result.aborted) {
         const error = new HarnessError('tool call aborted', TOOL_ABORTED)
@@ -439,9 +439,9 @@ export function apply(ctx: Context): void {
       }],
     },
     async execute(args: Record<string, unknown>) {
-      const definition = resolveConnection(ctx.ssh, requireString(args['connection'], 'connection'))
+      const definition = resolveConnection(ctx.sshSftp, requireString(args['connection'], 'connection'))
       const path = requireString(args['path'], 'path')
-      const handle = await ctx.ssh.connect(definition.id)
+      const handle = await ctx.sshSftp.connect(definition.id)
       const entries = await handle.sftp.list(path)
       return { path, entries }
     },
@@ -473,9 +473,9 @@ export function apply(ctx: Context): void {
       render: (_args, value) => summary(`${value.type} ${value.size} bytes ${value.name}`),
     },
     async execute(args: Record<string, unknown>) {
-      const definition = resolveConnection(ctx.ssh, requireString(args['connection'], 'connection'))
+      const definition = resolveConnection(ctx.sshSftp, requireString(args['connection'], 'connection'))
       const path = requireString(args['path'], 'path')
-      const handle = await ctx.ssh.connect(definition.id)
+      const handle = await ctx.sshSftp.connect(definition.id)
       return handle.sftp.stat(path)
     },
     presentCall: (args: Record<string, unknown>) => ({ card: 'generic', title: 'sftp_stat', kind: 'execute', rawInput: String(args['path']) }),
@@ -502,10 +502,10 @@ export function apply(ctx: Context): void {
       render: (_args, value) => summary(`downloaded ${value.bytes} bytes`),
     },
     async execute(args: Record<string, unknown>, exec: ToolExecution) {
-      const definition = resolveConnection(ctx.ssh, requireString(args['connection'], 'connection'))
+      const definition = resolveConnection(ctx.sshSftp, requireString(args['connection'], 'connection'))
       const remotePath = requireString(args['remote_path'], 'remote_path')
       const localPath = resolveLocalPath(requireString(args['local_path'], 'local_path'), exec)
-      const handle = await ctx.ssh.connect(definition.id)
+      const handle = await ctx.sshSftp.connect(definition.id)
       return handle.sftp.readFile(remotePath, localPath, {
         ...requireOptionalBoolean(args['overwrite'], 'overwrite') === true ? { overwrite: true } : {},
       })
@@ -538,10 +538,10 @@ export function apply(ctx: Context): void {
       render: (_args, value) => summary(`uploaded ${value.bytes} bytes`),
     },
     async execute(args: Record<string, unknown>, exec: ToolExecution) {
-      const definition = resolveConnection(ctx.ssh, requireString(args['connection'], 'connection'))
+      const definition = resolveConnection(ctx.sshSftp, requireString(args['connection'], 'connection'))
       const localPath = resolveLocalPath(requireString(args['local_path'], 'local_path'), exec)
       const remotePath = requireString(args['remote_path'], 'remote_path')
-      const handle = await ctx.ssh.connect(definition.id)
+      const handle = await ctx.sshSftp.connect(definition.id)
       return handle.sftp.writeFile(localPath, remotePath)
     },
     presentCall: (args: Record<string, unknown>) => ({
@@ -572,9 +572,9 @@ export function apply(ctx: Context): void {
       render: (_args, value) => summary(`created directory ${value.path}`),
     },
     async execute(args: Record<string, unknown>) {
-      const definition = resolveConnection(ctx.ssh, requireString(args['connection'], 'connection'))
+      const definition = resolveConnection(ctx.sshSftp, requireString(args['connection'], 'connection'))
       const path = requireString(args['path'], 'path')
-      const handle = await ctx.ssh.connect(definition.id)
+      const handle = await ctx.sshSftp.connect(definition.id)
       await handle.sftp.mkdir(path, {
         ...requireOptionalBoolean(args['recursive'], 'recursive') === true ? { recursive: true } : {},
       })
@@ -603,9 +603,9 @@ export function apply(ctx: Context): void {
       render: (_args, _value) => summary('removed'),
     },
     async execute(args: Record<string, unknown>) {
-      const definition = resolveConnection(ctx.ssh, requireString(args['connection'], 'connection'))
+      const definition = resolveConnection(ctx.sshSftp, requireString(args['connection'], 'connection'))
       const path = requireString(args['path'], 'path')
-      const handle = await ctx.ssh.connect(definition.id)
+      const handle = await ctx.sshSftp.connect(definition.id)
       await handle.sftp.remove(path, {
         ...requireOptionalBoolean(args['recursive'], 'recursive') === true ? { recursive: true } : {},
       })
@@ -634,10 +634,10 @@ export function apply(ctx: Context): void {
       render: (_args, _value) => summary('renamed'),
     },
     async execute(args: Record<string, unknown>) {
-      const definition = resolveConnection(ctx.ssh, requireString(args['connection'], 'connection'))
+      const definition = resolveConnection(ctx.sshSftp, requireString(args['connection'], 'connection'))
       const from = requireString(args['from'], 'from')
       const to = requireString(args['to'], 'to')
-      const handle = await ctx.ssh.connect(definition.id)
+      const handle = await ctx.sshSftp.connect(definition.id)
       await handle.sftp.rename(from, to)
       return { renamed: true }
     },

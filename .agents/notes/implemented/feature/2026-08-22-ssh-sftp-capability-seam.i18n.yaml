@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-22-ssh-sftp-capability-seam.md
-2026-08-22-ssh-sftp-capability-seam.md: 144d3dbc4db7895a2470005e88839f13480611b1
-2026-08-22-ssh-sftp-capability-seam.zh.md: f6efd0dca735e8c3ae01bac0097d9356930e98a4
+2026-08-22-ssh-sftp-capability-seam.md: fe1e2ec5a3979f75824c4a2358148113ad028b4a
+2026-08-22-ssh-sftp-capability-seam.zh.md: 721bfdc6b39281f994dab091d87bff3bc1596b72

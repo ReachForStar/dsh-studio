@@ -636,7 +636,6 @@ function request(
 }
 
 interface FakeChildOptions {
-  readonly pid?: number
   readonly exitOnTerminate?: boolean
   readonly doneError?: Error
 }
@@ -675,16 +674,27 @@ function fakeChild(options: FakeChildOptions = {}): FakeChild {
   const terminate = vi.fn(() => {
     if (options.exitOnTerminate !== false) settle()
   })
-  const waitForExit = vi.fn(async () => {
+  const waitForExit = vi.fn(async (signal?: AbortSignal) => {
     if (exited) return true
-    await done.catch(() => {})
-    return true
+    if (signal?.aborted) return false
+    return await new Promise<boolean>((resolve) => {
+      const onExit = (): void => {
+        signal?.removeEventListener('abort', onAbort)
+        resolve(true)
+      }
+      const onAbort = (): void => {
+        void done.catch(() => {})
+        resolve(false)
+      }
+      signal?.addEventListener('abort', onAbort, { once: true })
+      void done.then(onExit, onExit)
+    })
   })
   const handle: SubprocessHandle = {
-    pid: options.pid ?? 1234,
     stdin: toChild,
     stdout: fromChild,
     stderr: undefined,
+    control: undefined,
     collected: {},
     done,
     terminate,
@@ -760,14 +770,11 @@ describe('startPiRun rollback paths', () => {
       () => undefined,
       (failure: unknown) => failure,
     )
-    expect(error).toBeInstanceOf(AggregateError)
-    if (!(error instanceof AggregateError)) {
-      throw new Error('expected startup and rollback failures')
-    }
-    expect(error.errors).toEqual([
-      expect.objectContaining({ message: 'spawn observer failed' }),
-      expect.objectContaining({ message: 'spawn observer failed' }),
-    ])
+    // A spawn-level failure means there is no process tree to clean up: the
+    // dispose resolves, so only the startup failure itself surfaces.
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(AggregateError)
+    expect((error as Error).message).toContain('spawn observer failed')
   })
 })
 
@@ -792,12 +799,11 @@ describe('disposePiChild', () => {
     // before the child exits cooperatively.
     await disposePiChild(wire, child.handle, 1)
     expect(child.terminate).toHaveBeenCalledTimes(1)
-    expect(child.waitForExit).toHaveBeenCalledTimes(1)
+    expect(child.waitForExit).toHaveBeenCalledTimes(2)
   })
 
   it('handles a spawn-level failure with no process tree', async () => {
     const child = fakeChild({
-      pid: -1,
       doneError: new Error('spawn failed'),
     })
     const wire = new PiRpcWire(child.handle.stdout!, child.handle.stdin!)
@@ -805,7 +811,6 @@ describe('disposePiChild', () => {
     await expect(disposePiChild(wire, child.handle, 500))
       .resolves.toBeUndefined()
     expect(child.terminate).not.toHaveBeenCalled()
-    expect(child.waitForExit).not.toHaveBeenCalled()
   })
 
   it('contains a concurrently closed stdin error', async () => {

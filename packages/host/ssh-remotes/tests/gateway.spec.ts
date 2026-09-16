@@ -25,7 +25,7 @@ async function harness(): Promise<{ ctx: Context; gateway: SshGateway; ssh: Stub
   await ctx.plugin(StubSshService)
   await ctx.plugin(SshGateway)
   const gateway = ctx.get('sshGateway') as SshGateway
-  return { ctx, gateway, ssh: ctx.ssh as StubSshService }
+  return { ctx, gateway, ssh: ctx.sshSftp as StubSshService }
 }
 
 describe('SshGateway', () => {

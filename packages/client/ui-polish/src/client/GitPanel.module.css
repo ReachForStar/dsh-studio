@@ -44,6 +44,7 @@
   flex: none;
   padding: 1px 9px;
   border-radius: 999px;
+  corner-shape: round;
   background: color-mix(in srgb, var(--dsw-alias-accent) 16%, transparent);
   color: var(--dsw-alias-accent);
   font-size: 12px;
@@ -69,6 +70,7 @@
   flex: none;
   padding: 1px 9px;
   border-radius: 999px;
+  corner-shape: round;
   background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent);
   color: var(--dsw-alias-state-success-primary);
   font-size: 12px;
@@ -176,7 +178,7 @@
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
@@ -191,7 +193,7 @@
 .action {
   flex: none;
   padding: 6px 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-button-floating-fill);
   color: var(--dsw-alias-label-primary);
@@ -248,7 +250,7 @@
 .switch,
 .switchActive {
   padding: 3px 9px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 6px;
   background: none;
   color: var(--dsw-alias-label-tertiary);
@@ -273,7 +275,7 @@
   padding: 10px 12px;
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   font-family: var(--dsw-font-mono);
   font-size: 12px;
   line-height: 17px;
@@ -289,7 +291,7 @@
   width: 100%;
   min-height: 60vh;
   padding: 10px 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);

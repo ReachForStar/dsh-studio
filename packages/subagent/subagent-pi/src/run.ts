@@ -25,8 +25,11 @@ export const DEFAULT_DISPOSE_GRACE_MS = 3_000
 /** Default grace for Pi's cooperative EOF shutdown before termination. */
 export const DEFAULT_DISPOSE_EOF_GRACE_MS = 6_000
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => { setTimeout(resolve, ms) })
+/** Bounded managed-range exit wait: observes the handle's range until it is empty or `ms` elapses. */
+function rangeExitsWithin(child: SubprocessHandle, ms: number): Promise<boolean> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => { controller.abort() }, ms)
+  return child.waitForExit(controller.signal).finally(() => { clearTimeout(timer) })
 }
 
 /**
@@ -111,25 +114,22 @@ export async function disposePiChild(
   eofGraceMs: number,
 ): Promise<void> {
   wire.close()
-  if (child.pid <= 0) {
-    await child.done.catch(() => {})
-    return
-  }
   try {
     child.stdin?.end()
   } catch {
     // A concurrently closed stdin does not change tree ownership below.
   }
-  const eof = child.done.then(
-    () => true,
-    () => true,
-  )
-  const exited = await Promise.race([eof, delay(eofGraceMs).then(() => false)])
+  const exited = await rangeExitsWithin(child, eofGraceMs)
   if (!exited) {
+    // terminate() owns the bounded SIGTERM→SIGKILL ladder; the unbounded
+    // wait is the process owner's exit proof.
     child.terminate()
   }
   await child.waitForExit()
-  await child.done
+  // A spawn-level failure already surfaced through startPiRun's rollback;
+  // disposal only proves the managed range is gone, so its `done` rejection
+  // is not re-thrown here.
+  await child.done.catch(() => {})
 }
 
 /**

@@ -15,7 +15,7 @@ export const name = 'ssh-remotes-invariant'
 export const inject = ['invariants']
 
 /**
- * No runtime invariant: the gateway is a thin projection of the `ctx.ssh`
+ * No runtime invariant: the gateway is a thin projection of the `ctx.sshSftp`
  * seam; the registry contracts it serves belong to the `dsh-ssh` companion.
  */
 const install: InvariantInstaller = () => {}

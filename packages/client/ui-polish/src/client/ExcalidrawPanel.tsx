@@ -5,8 +5,15 @@
 // change notifications back via /scene/write. Excalidraw + mermaid are inlined
 // into the plugin client bundle; react/react-dom come from the platform.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw'
+import { useCallback, useEffect, lazy, Suspense, useMemo, useRef, useState } from 'react'
+// Excalidraw loads lazily: its dist entry pulls an extensionless subpath
+// (roughjs/bin/rough) that only a bundler resolves, so the client module
+// import (roster boot, whole-client test) must not load it eagerly.
+import type { Excalidraw as ExcalidrawComponent } from '@excalidraw/excalidraw'
+const Excalidraw = lazy(async () => {
+  const mod = await import('@excalidraw/excalidraw')
+  return { default: mod.Excalidraw }
+}) as unknown as typeof ExcalidrawComponent
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 // Excalidraw ships no auto-injected stylesheet; the tsdown plain-css plugin
 // inlines this exact specifier into a <style> tag in the client bundle.
@@ -242,11 +249,13 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
   const frame = useMemo(() => {
     if (cwd === undefined) return null
     return (
-      <Excalidraw
-        excalidrawAPI={handleApi}
-        onChange={handleChange}
-        theme={theme}
-      />
+      <Suspense fallback={null}>
+        <Excalidraw
+          excalidrawAPI={handleApi}
+          onChange={handleChange}
+          theme={theme}
+        />
+      </Suspense>
     )
   }, [cwd, handleApi, handleChange, theme])
 
@@ -264,6 +273,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
        * excalidraw's appState is a loose record by design */
       const viewBackgroundColor = appState['viewBackgroundColor']
       const background = typeof viewBackgroundColor === 'string' ? viewBackgroundColor : '#ffffff'
+      const { exportToBlob } = await import('@excalidraw/excalidraw')
       const blob = await exportToBlob({
         elements,
         appState: appState as never,

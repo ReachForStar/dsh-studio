@@ -68,9 +68,9 @@ function projectionFromNodeUsage(usage: unknown): TokenUsageProjection | null {
   return { uncachedInputTokens: uncached, outputTokens: output, cacheReadTokens: cacheRead, cacheWriteTokens: cacheWrite }
 }
 
-/** One assistant node's model id, from the node's own provenance record. */
+/** One assistant node's model id, from the node's recorded request config. */
 function modelOfNode(node: ConversationNode): string | undefined {
-  return node.kind === 'assistant' ? node.provenance?.model : undefined
+  return node.kind === 'assistant' ? node.requestConfig?.model : undefined
 }
 
 /** One cost-attributable assistant message: usage, model, and settled time. */

@@ -10,7 +10,7 @@ SSH 能力需要为 Web 面板提供交互式 PTY 会话和流式 SFTP 传输，
 
 ## Decision
 
-`ctx.ssh` 通过规范 SSH 能力提供 `openPty`、`openRead` 和 `openWrite`。本地提供方使用 `ssh2` shell 通道实现 PTY，使用 `ssh2` 流实现 SFTP；PTY 输出会为延迟订阅者缓冲，窗口调整不会请求服务器回复。
+`ctx.sshSftp` 通过规范 SSH 能力提供 `openPty`、`openRead` 和 `openWrite`。本地提供方使用 `ssh2` shell 通道实现 PTY，使用 `ssh2` 流实现 SFTP；PTY 输出会为延迟订阅者缓冲，窗口调整不会请求服务器回复。
 
 Host SSH 网关通过规范的 `ssh` Remote 方法提供命令执行、PTY 生命周期和 SFTP 元数据操作。PTY 输出和退出使用共享 Remote Event 通道。认证后的 Fetch 路由流式传输 SFTP 下载和上传，因此传输字节不会经过 RPC 信封或 Host 临时文件。
 

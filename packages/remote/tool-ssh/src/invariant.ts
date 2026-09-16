@@ -15,7 +15,7 @@ export const name = 'tool-ssh-invariant'
 export const inject = ['invariants']
 
 /**
- * No runtime invariant: the tools are stateless Consumers of the `ctx.ssh`
+ * No runtime invariant: the tools are stateless Consumers of the `ctx.sshSftp`
  * seam, whose registry and connection contracts the `dsh-ssh` companion owns.
  */
 const install: InvariantInstaller = () => {}

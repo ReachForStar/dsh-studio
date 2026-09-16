@@ -10,7 +10,7 @@ The SSH capability needs interactive PTY sessions and streamed SFTP transfers fo
 
 ## Decision
 
-`ctx.ssh` provides `openPty`, `openRead`, and `openWrite` through the canonical SSH capability. The local provider implements PTY with `ssh2` shell channels and SFTP with `ssh2` streams; PTY output is buffered for late subscribers and window changes do not request a server reply.
+`ctx.sshSftp` provides `openPty`, `openRead`, and `openWrite` through the canonical SSH capability. The local provider implements PTY with `ssh2` shell channels and SFTP with `ssh2` streams; PTY output is buffered for late subscribers and window changes do not request a server reply.
 
 The Host SSH gateway exposes generated `ssh` Remote methods for command execution, PTY lifecycle, and SFTP metadata. PTY output and exit use the shared Remote Event channel. Authenticated Fetch routes stream SFTP downloads and uploads, so transfer bytes do not pass through an RPC envelope or a host temporary file.
 

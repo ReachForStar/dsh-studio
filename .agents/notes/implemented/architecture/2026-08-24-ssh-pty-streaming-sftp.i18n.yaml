@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-24-ssh-pty-streaming-sftp.md
-2026-08-24-ssh-pty-streaming-sftp.md: bac03d9cf8af76b051389b9cc16da285ab7ea18e
-2026-08-24-ssh-pty-streaming-sftp.zh.md: 20615c43f13f4d87ab4b70be57ae3c92fe1d9abd
+2026-08-24-ssh-pty-streaming-sftp.md: 9466c18880d80bb3c9fc3acb99fd48f16387d932
+2026-08-24-ssh-pty-streaming-sftp.zh.md: f9348905df5807ce6ae2feaeaaad095b8dc79a75

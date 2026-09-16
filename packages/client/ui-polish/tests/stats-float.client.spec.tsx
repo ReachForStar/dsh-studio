@@ -100,16 +100,16 @@ describe('StatsFloat', () => {
     expect(view.container.textContent).toContain('费用 ¥1.35')
   })
 
-  it('bills each assistant step at its own model rate from node provenance', () => {
+  it('bills each assistant step at its own model rate from node request config', () => {
     const flash = assistant({
       messageId: 'm-flash', time: 1_000,
       usage: { inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      provenance: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+      requestConfig: { provider: 'deepseek', model: 'deepseek-v4-flash' },
     })
     const pro = assistant({
       seq: 2, messageId: 'm-pro', time: 2_000, turn: 2,
       usage: { inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      provenance: { provider: 'deepseek', model: 'deepseek-v4-pro' },
+      requestConfig: { provider: 'deepseek', model: 'deepseek-v4-pro' },
     })
     const { source } = makeSource([flash, pro])
     // flash input ¥1.5 + pro input ¥4.5 = ¥6.00; node usage wins over the projection.

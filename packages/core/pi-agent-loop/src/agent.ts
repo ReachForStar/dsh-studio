@@ -14,8 +14,9 @@ import type {
   AgentStatus,
   CancelOptions,
   InboxTarget,
+  Inbox,
 } from '@deepseek-ai/dsh-agent'
-import { emitAgentEvent, Inbox } from '@deepseek-ai/dsh-agent'
+import { emitAgentEvent } from '@deepseek-ai/dsh-agent'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import type { TextBlock } from '@deepseek-ai/dsh-llm'
@@ -109,13 +110,18 @@ export class PiLoopAgent implements Agent {
     this.piSession = piSession
     this.durable = durable
     this.stored = storedCount ?? 0
-    // The inbox is kept for the Agent contract but is unused in this POC: Pi
-    // owns pending work through its own prompt/steer queue.
-    this.inbox = new Inbox(session, {
-      inserted: () => {},
-      discarded: () => {},
-      claimed: () => {},
-    })
+    // The inbox stays inert in this POC: Pi owns pending work through its own
+    // prompt/steer queue, so every Inbox mutation is a no-op.
+    this.inbox = {
+      nextTurn: [],
+      nextStep: [],
+      clear: () => {},
+      append: () => {},
+      prepend: () => {},
+      replace: () => false,
+      remove: () => false,
+      splice: () => [],
+    }
     this.scope = createScope(loopCtx, this)
     this.ctx = this.scope.ctx.extend({ agent: this })
     this.translator = new PiEventTranslator(session)

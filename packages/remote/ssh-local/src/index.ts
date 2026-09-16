@@ -1,5 +1,5 @@
 /**
- * Local implementation of the `ctx.ssh` capability seam over `ssh2`. One
+ * Local implementation of the `ctx.sshSftp` capability seam over `ssh2`. One
  * connection per definition id is cached and reused across consumers until
  * closed or dropped; exec and SFTP operations are promise-wrapped with
  * bounded output capture and an owned timeout that kills the remote command.
@@ -1054,7 +1054,7 @@ class LocalSftp implements SshSftp {
 }
 
 /**
- * Local SSH/SFTP provider: implements the `ctx.ssh` seam over `ssh2` with a
+ * Local SSH/SFTP provider: implements the `ctx.sshSftp` seam over `ssh2` with a
  * per-definition shared connection cache. A dropped connection (server close
  * or error) evicts itself; the next {@link connect} opens a fresh one.
  */

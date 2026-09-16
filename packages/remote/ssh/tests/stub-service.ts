@@ -1,5 +1,5 @@
 /**
- * Minimal real subclass of the `ctx.ssh` Service Definition for tests: the
+ * Minimal real subclass of the `ctx.sshSftp` Service Definition for tests: the
  * registry under test is the base class itself, so the stub implements only
  * the abstract connection contract and records its calls.
  */

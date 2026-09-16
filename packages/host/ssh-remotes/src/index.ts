@@ -1,6 +1,6 @@
 /**
  * Host Remote gateway for the SSH connection-management GUI: list, save, and
- * remove definitions plus the connectivity probe, all over the `ctx.ssh` seam.
+ * remove definitions plus the connectivity probe, all over the `ctx.sshSftp` seam.
  * Secrets are write-only — every response is a secret-free view.
  * @module @reachforstar/dsh-host-ssh-remotes
  */
@@ -186,7 +186,7 @@ function requirePositiveInteger(value: number, field: string): void {
 
 /** Host Remote surface for SSH connection management, PTY, and SFTP. */
 export class SshGateway extends TypertRemoteService {
-  static inject = ['ssh']
+  static inject = ['sshSftp']
 
   private readonly ptySessions = new Map<string, SshPtySession>()
 
@@ -225,7 +225,7 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('list')
   list(): { connections: SshRemoteDefinition[] } {
-    return { connections: this.ctx.ssh.list().map(toRemoteDefinition) }
+    return { connections: this.ctx.sshSftp.list().map(toRemoteDefinition) }
   }
 
   /**
@@ -238,7 +238,7 @@ export class SshGateway extends TypertRemoteService {
   @Remote('save')
   async save(request: SshRemoteSaveRequest): Promise<SshRemoteDefinition> {
     const validated = validateSaveRequest(request)
-    const saved = await this.ctx.ssh.save(toSaveInput(validated))
+    const saved = await this.ctx.sshSftp.save(toSaveInput(validated))
     return toRemoteDefinition(saved)
   }
 
@@ -252,7 +252,7 @@ export class SshGateway extends TypertRemoteService {
     if (typeof id !== 'string' || id.length === 0) {
       throw new Error('ssh delete: id must be a non-empty string')
     }
-    return { removed: await this.ctx.ssh.remove(id) }
+    return { removed: await this.ctx.sshSftp.remove(id) }
   }
 
   /**
@@ -267,7 +267,7 @@ export class SshGateway extends TypertRemoteService {
       return { ok: false, error: 'ssh test: id must be a non-empty string' }
     }
     try {
-      const outcome = await this.ctx.ssh.test(id)
+      const outcome = await this.ctx.sshSftp.test(id)
       return { ok: outcome.ok, latencyMs: outcome.latencyMs }
     } catch (error) {
       const message = error instanceof SshError ? error.message : error instanceof Error ? error.message : String(error)
@@ -284,7 +284,7 @@ export class SshGateway extends TypertRemoteService {
   @Remote('exec')
   async exec(request: SshExecRemoteRequest, signal: AbortSignal): Promise<SshRemoteRunResult> {
     const connection = await this.connection(request.connectionId, signal)
-    return connection.exec(this.ctx.ssh.resolveExec({
+    return connection.exec(this.ctx.sshSftp.resolveExec({
       command: request.command,
       ...request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs },
       ...request.cwd === undefined ? {} : { cwd: request.cwd },
@@ -440,9 +440,9 @@ export class SshGateway extends TypertRemoteService {
   }
 
   private async connection(id: string, signal: AbortSignal): Promise<SshConnection> {
-    const definition = this.ctx.ssh.resolve(id)
+    const definition = this.ctx.sshSftp.resolve(id)
     signal.throwIfAborted()
-    const connection = await this.ctx.ssh.connect(definition.id)
+    const connection = await this.ctx.sshSftp.connect(definition.id)
     signal.throwIfAborted()
     return connection
   }

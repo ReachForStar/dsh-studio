@@ -1,5 +1,5 @@
 /**
- * Wire-independent SSH/SFTP vocabulary of the `ctx.ssh` capability seam.
+ * Wire-independent SSH/SFTP vocabulary of the `ctx.sshSftp` capability seam.
  * @module @reachforstar/dsh-ssh/types
  */
 

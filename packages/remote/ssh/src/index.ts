@@ -1,5 +1,5 @@
 /**
- * Service Definition for the `ctx.ssh` capability seam: a settings-backed
+ * Service Definition for the `ctx.sshSftp` capability seam: a settings-backed
  * connection-definition registry (the provider-independent part) plus the
  * live-connection contract providers implement. Definitions persist in the
  * `ssh` settings namespace; authentication secrets live in that same document
@@ -86,7 +86,7 @@ const EMPTY_SECTION: SshSettingsSection = { connections: [], knownHosts: {} }
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    ssh: SshService
+    sshSftp: SshService
   }
 }
 
@@ -105,7 +105,7 @@ export abstract class SshService extends Service {
   private scope: SettingsScope<SshSettingsSection> | undefined
 
   constructor(ctx: Context) {
-    super(ctx, 'ssh')
+    super(ctx, 'sshSftp')
     ctx.effect(() => {
       const scope = ctx.settings.register(SSH_SETTINGS_NAMESPACE, SshSettingsSchema)
       this.scope = scope

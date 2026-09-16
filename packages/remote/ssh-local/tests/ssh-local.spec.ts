@@ -69,9 +69,9 @@ describe('ssh-local provider', () => {
 
   it('authenticates with a password and runs a foreground command', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    const result = await handle.exec(ctx.ssh.resolveExec({ command: 'echo hello' }))
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    const result = await handle.exec(ctx.sshSftp.resolveExec({ command: 'echo hello' }))
     expect(result.exitCode).toBe(0)
     expect(normalize(result.stdout)).toBe('hello\n')
     expect(result.signal).toBeNull()
@@ -81,9 +81,9 @@ describe('ssh-local provider', () => {
 
   it('reports nonzero exits and captures stderr separately', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    const result = await handle.exec(ctx.ssh.resolveExec({ command: 'echo err 1>&2 && exit 3' }))
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    const result = await handle.exec(ctx.sshSftp.resolveExec({ command: 'echo err 1>&2 && exit 3' }))
     expect(result.exitCode).toBe(3)
     expect(result.stderr).toContain('err')
     expect(result.stdout).toBe('')
@@ -91,8 +91,8 @@ describe('ssh-local provider', () => {
 
   it('rejects wrong credentials with the typed auth error', async () => {
     const ctx = await setup()
-    await ctx.ssh.save(saveInput({ auth: { kind: 'password', password: 'wrong' } }))
-    await expect(ctx.ssh.connect(SshConnectionId('test-box'))).rejects.toMatchObject({ code: 'SSH_AUTH_FAILED' })
+    await ctx.sshSftp.save(saveInput({ auth: { kind: 'password', password: 'wrong' } }))
+    await expect(ctx.sshSftp.connect(SshConnectionId('test-box'))).rejects.toMatchObject({ code: 'SSH_AUTH_FAILED' })
   })
 
   it('authenticates with a private key file', async () => {
@@ -103,28 +103,28 @@ describe('ssh-local provider', () => {
     await writeFile(keyPath, privateKey.export({ type: 'pkcs1', format: 'pem' }))
     // OpenSSH rejects group/other-readable keys; the fixture must look real.
     if (process.platform !== 'win32') await chmod(keyPath, 0o600)
-    await ctx.ssh.save(saveInput({
+    await ctx.sshSftp.save(saveInput({
       name: 'key-box',
       auth: { kind: 'privateKey', privateKeyPath: keyPath },
     }))
-    const handle = await ctx.ssh.connect(SshConnectionId('key-box'))
-    const result = await handle.exec(ctx.ssh.resolveExec({ command: 'echo keyed' }))
+    const handle = await ctx.sshSftp.connect(SshConnectionId('key-box'))
+    const result = await handle.exec(ctx.sshSftp.resolveExec({ command: 'echo keyed' }))
     expect(normalize(result.stdout)).toBe('keyed\n')
   })
 
   it('fails loud when the private key file is missing', async () => {
     const ctx = await setup()
-    await ctx.ssh.save(saveInput({
+    await ctx.sshSftp.save(saveInput({
       auth: { kind: 'privateKey', privateKeyPath: 'C:/definitely/missing/key.pem' },
     }))
-    await expect(ctx.ssh.connect(SshConnectionId('test-box'))).rejects.toMatchObject({ code: 'SSH_AUTH_FAILED' })
+    await expect(ctx.sshSftp.connect(SshConnectionId('test-box'))).rejects.toMatchObject({ code: 'SSH_AUTH_FAILED' })
   })
 
   it('kills a command that exceeds its timeout and reports timedOut', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    const result = await handle.exec(ctx.ssh.resolveExec({ command: 'node -e "setTimeout(() => {}, 10000)"', timeoutMs: 500 }))
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    const result = await handle.exec(ctx.sshSftp.resolveExec({ command: 'node -e "setTimeout(() => {}, 10000)"', timeoutMs: 500 }))
     expect(result.timedOut).toBe(true)
     expect(result.aborted).toBe(false)
     expect(result.timeoutMs).toBe(500)
@@ -133,10 +133,10 @@ describe('ssh-local provider', () => {
 
   it('aborts a running command when the caller signal fires', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     const controller = new AbortController()
-    const running = handle.exec(ctx.ssh.resolveExec({
+    const running = handle.exec(ctx.sshSftp.resolveExec({
       command: 'node -e "setTimeout(() => {}, 10000)"',
       timeoutMs: 30_000,
       signal: controller.signal,
@@ -148,15 +148,15 @@ describe('ssh-local provider', () => {
 
   it('truncates oversized output to its tail with the truncation flag', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    const result = await handle.exec(ctx.ssh.resolveExec({
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    const result = await handle.exec(ctx.sshSftp.resolveExec({
       command: 'node -e "process.stdout.write(\'x\'.repeat(200000))"',
     }))
     expect(result.stdoutTruncated).toBe(true)
     expect(result.stdout).toHaveLength(65_536)
     expect(result.stdout.endsWith('x'.repeat(200_000).slice(-65_536))).toBe(true)
-    const stderrResult = await handle.exec(ctx.ssh.resolveExec({
+    const stderrResult = await handle.exec(ctx.sshSftp.resolveExec({
       command: 'node -e "process.stderr.write(\'e\'.repeat(200000))"',
     }))
     expect(stderrResult.stderrTruncated).toBe(true)
@@ -165,38 +165,38 @@ describe('ssh-local provider', () => {
 
   it('reuses the shared connection and replaces it after close', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
+    const saved = await ctx.sshSftp.save(saveInput())
     // Closing a never-connected id is a no-op.
-    await ctx.ssh.close(saved.id)
+    await ctx.sshSftp.close(saved.id)
     // Connecting an unknown id fails loud with the typed error.
-    await expect(ctx.ssh.connect(SshConnectionId('missing-id'))).rejects.toMatchObject({ code: 'SSH_NOT_FOUND' })
-    const first = await ctx.ssh.connect(saved.id)
-    const second = await ctx.ssh.connect(saved.id)
+    await expect(ctx.sshSftp.connect(SshConnectionId('missing-id'))).rejects.toMatchObject({ code: 'SSH_NOT_FOUND' })
+    const first = await ctx.sshSftp.connect(saved.id)
+    const second = await ctx.sshSftp.connect(saved.id)
     expect(first).toBe(second)
-    await ctx.ssh.close(saved.id)
-    const third = await ctx.ssh.connect(saved.id)
+    await ctx.sshSftp.close(saved.id)
+    const third = await ctx.sshSftp.connect(saved.id)
     expect(third).not.toBe(first)
-    expect(await third.exec(ctx.ssh.resolveExec({ command: 'echo again' }))).toMatchObject({ exitCode: 0 })
+    expect(await third.exec(ctx.sshSftp.resolveExec({ command: 'echo again' }))).toMatchObject({ exitCode: 0 })
   })
 
   it('evicts a connection dropped by the server and fails connect loud after', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    await handle.exec(ctx.ssh.resolveExec({ command: 'echo up' }))
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    await handle.exec(ctx.sshSftp.resolveExec({ command: 'echo up' }))
     await server!.stop()
     server = undefined
     // The dropped client evicted itself, so the next connect attempts a fresh
     // handshake and reports a connection failure rather than SSH_CLOSED.
-    await expect(ctx.ssh.connect(saved.id)).rejects.toMatchObject({ code: 'SSH_CONNECT_FAILED' })
+    await expect(ctx.sshSftp.connect(saved.id)).rejects.toMatchObject({ code: 'SSH_CONNECT_FAILED' })
   })
 
   it('closes every pooled connection at composition teardown', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    await ctx.ssh.connect(saved.id)
-    const second = await ctx.ssh.save(saveInput({ name: 'second' }))
-    await ctx.ssh.connect(second.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    await ctx.sshSftp.connect(saved.id)
+    const second = await ctx.sshSftp.save(saveInput({ name: 'second' }))
+    await ctx.sshSftp.connect(second.id)
     const before = server!.disconnects
     await ctx.fiber.dispose()
     context = undefined
@@ -206,11 +206,11 @@ describe('ssh-local provider', () => {
 
   it('resolves exec requests with provider defaults and caps', async () => {
     const ctx = await setup()
-    expect(ctx.ssh.resolveExec({ command: 'x' })).toMatchObject({ command: 'x', timeoutMs: 60_000, outputMaxBytes: 65_536 })
-    expect(ctx.ssh.resolveExec({ command: 'x', timeoutMs: 1 })).toMatchObject({ timeoutMs: 1 })
-    expect(ctx.ssh.resolveExec({ command: 'x', timeoutMs: 999_999 })).toMatchObject({ timeoutMs: 300_000 })
-    expect(ctx.ssh.resolveExec({ command: 'x', cwd: '/tmp' })).toMatchObject({ cwd: '/tmp' })
-    expect(() => ctx.ssh.resolveExec({ command: 'x', timeoutMs: 0 })).toThrow(/positive finite/)
+    expect(ctx.sshSftp.resolveExec({ command: 'x' })).toMatchObject({ command: 'x', timeoutMs: 60_000, outputMaxBytes: 65_536 })
+    expect(ctx.sshSftp.resolveExec({ command: 'x', timeoutMs: 1 })).toMatchObject({ timeoutMs: 1 })
+    expect(ctx.sshSftp.resolveExec({ command: 'x', timeoutMs: 999_999 })).toMatchObject({ timeoutMs: 300_000 })
+    expect(ctx.sshSftp.resolveExec({ command: 'x', cwd: '/tmp' })).toMatchObject({ cwd: '/tmp' })
+    expect(() => ctx.sshSftp.resolveExec({ command: 'x', timeoutMs: 0 })).toThrow(/positive finite/)
   })
 })
 
@@ -221,8 +221,8 @@ describe('ssh-local sftp operations', () => {
 
   it('walks the full transfer surface: mkdir, write, list, stat, read, rename, remove', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-local-'))
     const upload = join(localRoot, 'payload.txt')
     await writeFile(upload, 'remote me')
@@ -248,8 +248,8 @@ describe('ssh-local sftp operations', () => {
 
   it('creates missing parents with recursive mkdir', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     await handle.sftp.mkdir('a/b/c', { recursive: true })
     expect((await handle.sftp.list('a/b')).map(entry => entry.name)).toEqual(['c'])
     // A second pass over an existing tree is a no-op.
@@ -258,8 +258,8 @@ describe('ssh-local sftp operations', () => {
 
   it('refuses to overwrite an existing local file unless asked', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-local-'))
     await writeFile(join(localRoot, 'remote.txt'), 'keep me')
     await handle.sftp.writeFile(join(localRoot, 'remote.txt'), 'remote.txt')
@@ -274,8 +274,8 @@ describe('ssh-local sftp operations', () => {
 
   it('removes a partial local file when a download fails mid-transfer', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-local-'))
     const target = join(localRoot, 'partial.txt')
     await expect(handle.sftp.readFile('missing.txt', target)).rejects.toMatchObject({ code: 'SSH_SFTP_FAILED' })
@@ -284,8 +284,8 @@ describe('ssh-local sftp operations', () => {
 
   it('removes a directory tree depth-first and refuses without recursive', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     await handle.sftp.mkdir('tree/inner', { recursive: true })
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-local-'))
     const leaf = join(localRoot, 'leaf.txt')
@@ -298,15 +298,15 @@ describe('ssh-local sftp operations', () => {
 
   it('reports missing local upload sources with the local-io code', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     await expect(handle.sftp.writeFile('C:/missing/source.txt', 'any.txt')).rejects.toMatchObject({ code: 'SSH_LOCAL_IO' })
   })
 
   it('fails sftp operations with typed errors on missing paths and bad parents', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     await expect(handle.sftp.list('missing-dir')).rejects.toMatchObject({ code: 'SSH_SFTP_FAILED' })
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-local-'))
     const source = join(localRoot, 'src.txt')
@@ -333,8 +333,8 @@ describe('ssh-local sftp operations', () => {
     context = ctx
     await ctx.plugin(MemorySettings)
     await ctx.plugin(LocalSshService, { fastTransferThresholdBytes: 0 })
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-local-'))
     const source = join(localRoot, 'src.txt')
     await writeFile(source, 'streamed')
@@ -358,24 +358,24 @@ describe('ssh-local sftp operations', () => {
 
   it('fails sftp operations on a closed connection with SSH_CLOSED', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    await ctx.ssh.close(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    await ctx.sshSftp.close(saved.id)
     await expect(handle.sftp.list('.')).rejects.toMatchObject({ code: 'SSH_CLOSED' })
-    await expect(handle.exec(ctx.ssh.resolveExec({ command: 'echo x' }))).rejects.toMatchObject({ code: 'SSH_CLOSED' })
+    await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo x' }))).rejects.toMatchObject({ code: 'SSH_CLOSED' })
   })
 })
 
 cwdSuite('ssh-local remote cwd (POSIX remote shell)', () => {
   it('prefixes a cd to the command', async () => {
     const ctx = await setup()
-    await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(SshConnectionId('test-box'))
+    await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(SshConnectionId('test-box'))
     // The provider quotes the cwd for a POSIX remote shell; the directory
     // must exist on the host, so the server's own root is the target.
     const sub = join(server!.root, 'subdir')
     await mkdir(sub)
-    const result = await handle.exec(ctx.ssh.resolveExec({ command: 'pwd', cwd: sub }))
+    const result = await handle.exec(ctx.sshSftp.resolveExec({ command: 'pwd', cwd: sub }))
     expect(result.stdout.trim()).toBe(sub)
   })
 })
@@ -387,50 +387,50 @@ describe('ssh-local host key verification and transfer performance', () => {
 
   it('remembers an unknown host key on first contact (accept-new)', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    await handle.exec(ctx.ssh.resolveExec({ command: 'echo first' }))
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    await handle.exec(ctx.sshSftp.resolveExec({ command: 'echo first' }))
     const hostPort = `127.0.0.1:${server!.port}`
     // The remember write is fire-and-forget by design; wait for it to land.
-    const remembered = await vi.waitFor(() => ctx.ssh.knownHostFingerprint(hostPort))
+    const remembered = await vi.waitFor(() => ctx.sshSftp.knownHostFingerprint(hostPort))
     expect(remembered).toMatch(/^SHA256:[A-Za-z0-9+/]{43}=?$/)
     // A second connection verifies against the remembered fingerprint.
-    const again = await ctx.ssh.connect(saved.id)
-    await expect(again.exec(ctx.ssh.resolveExec({ command: 'echo again' }))).resolves.toMatchObject({ exitCode: 0 })
+    const again = await ctx.sshSftp.connect(saved.id)
+    await expect(again.exec(ctx.sshSftp.resolveExec({ command: 'echo again' }))).resolves.toMatchObject({ exitCode: 0 })
   })
 
   it('accepts a pinned fingerprint that matches the server key', async () => {
     const ctx = await setup()
-    const probe = await ctx.ssh.connect((await ctx.ssh.save(saveInput())).id)
-    await probe.exec(ctx.ssh.resolveExec({ command: 'echo probe' }))
+    const probe = await ctx.sshSftp.connect((await ctx.sshSftp.save(saveInput())).id)
+    await probe.exec(ctx.sshSftp.resolveExec({ command: 'echo probe' }))
     await probe.close()
-    const fingerprint = await vi.waitFor(() => ctx.ssh.knownHostFingerprint(`127.0.0.1:${server!.port}`))
-    const saved = await ctx.ssh.save(saveInput({
+    const fingerprint = await vi.waitFor(() => ctx.sshSftp.knownHostFingerprint(`127.0.0.1:${server!.port}`))
+    const saved = await ctx.sshSftp.save(saveInput({
       name: 'pinned',
       hostKeyFingerprint: fingerprint,
     }))
-    const handle = await ctx.ssh.connect(saved.id)
-    await expect(handle.exec(ctx.ssh.resolveExec({ command: 'echo ok' }))).resolves.toMatchObject({ exitCode: 0 })
+    const handle = await ctx.sshSftp.connect(saved.id)
+    await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo ok' }))).resolves.toMatchObject({ exitCode: 0 })
   })
 
   it('rejects a pinned fingerprint that does not match', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput({
+    const saved = await ctx.sshSftp.save(saveInput({
       hostKeyFingerprint: 'SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
     }))
-    await expect(ctx.ssh.connect(saved.id)).rejects.toMatchObject({ code: 'SSH_HOST_KEY_MISMATCH' })
+    await expect(ctx.sshSftp.connect(saved.id)).rejects.toMatchObject({ code: 'SSH_HOST_KEY_MISMATCH' })
   })
 
   it('rejects a changed key against the remembered fingerprint', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    await handle.exec(ctx.ssh.resolveExec({ command: 'echo seed' }))
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    await handle.exec(ctx.sshSftp.resolveExec({ command: 'echo seed' }))
     // A different fingerprint is now remembered; the server's real key no
     // longer matches it.
-    await ctx.ssh.rememberHostKey(`127.0.0.1:${server!.port}`, 'SHA256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=')
-    await ctx.ssh.close(saved.id)
-    await expect(ctx.ssh.connect(saved.id)).rejects.toMatchObject({ code: 'SSH_HOST_KEY_MISMATCH' })
+    await ctx.sshSftp.rememberHostKey(`127.0.0.1:${server!.port}`, 'SHA256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=')
+    await ctx.sshSftp.close(saved.id)
+    await expect(ctx.sshSftp.connect(saved.id)).rejects.toMatchObject({ code: 'SSH_HOST_KEY_MISMATCH' })
   })
 
   it('rejects an unknown host key under strictHostKey: reject', async () => {
@@ -438,15 +438,15 @@ describe('ssh-local host key verification and transfer performance', () => {
     context = ctx
     await ctx.plugin(MemorySettings)
     await ctx.plugin(LocalSshService, { strictHostKey: 'reject' })
-    await ctx.ssh.save(saveInput())
-    await expect(ctx.ssh.connect(SshConnectionId('test-box'))).rejects.toMatchObject({ code: 'SSH_HOST_KEY_UNKNOWN' })
+    await ctx.sshSftp.save(saveInput())
+    await expect(ctx.sshSftp.connect(SshConnectionId('test-box'))).rejects.toMatchObject({ code: 'SSH_HOST_KEY_UNKNOWN' })
   })
 
   it('connects with the modern algorithm set (no legacy fallbacks)', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    await expect(handle.exec(ctx.ssh.resolveExec({ command: 'echo algo' }))).resolves.toMatchObject({ exitCode: 0 })
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo algo' }))).resolves.toMatchObject({ exitCode: 0 })
   })
 
   it('rejects a too-open private key on POSIX hosts', async () => {
@@ -456,15 +456,15 @@ describe('ssh-local host key verification and transfer performance', () => {
     const loosePath = join(localRoot, 'id_loose')
     await writeFile(loosePath, privateKey.export({ type: 'pkcs1', format: 'pem' }))
     await chmod(loosePath, 0o644)
-    await ctx.ssh.save(saveInput({ name: 'loose', auth: { kind: 'privateKey', privateKeyPath: loosePath } }))
+    await ctx.sshSftp.save(saveInput({ name: 'loose', auth: { kind: 'privateKey', privateKeyPath: loosePath } }))
     if (process.platform === 'win32') return // Windows ACLs are not checked
-    await expect(ctx.ssh.connect(SshConnectionId('loose'))).rejects.toMatchObject({ code: 'SSH_AUTH_FAILED' })
+    await expect(ctx.sshSftp.connect(SshConnectionId('loose'))).rejects.toMatchObject({ code: 'SSH_AUTH_FAILED' })
     const strictPath = join(localRoot, 'id_strict')
     await writeFile(strictPath, privateKey.export({ type: 'pkcs1', format: 'pem' }))
     await chmod(strictPath, 0o600)
-    await ctx.ssh.save(saveInput({ name: 'strict', auth: { kind: 'privateKey', privateKeyPath: strictPath } }))
-    const handle = await ctx.ssh.connect(SshConnectionId('strict'))
-    await expect(handle.exec(ctx.ssh.resolveExec({ command: 'echo ok' }))).resolves.toMatchObject({ exitCode: 0 })
+    await ctx.sshSftp.save(saveInput({ name: 'strict', auth: { kind: 'privateKey', privateKeyPath: strictPath } }))
+    const handle = await ctx.sshSftp.connect(SshConnectionId('strict'))
+    await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo ok' }))).resolves.toMatchObject({ exitCode: 0 })
   })
 
   it('transfers large files through the parallel fastGet/fastPut path', async () => {
@@ -472,8 +472,8 @@ describe('ssh-local host key verification and transfer performance', () => {
     context = ctx
     await ctx.plugin(MemorySettings)
     await ctx.plugin(LocalSshService, { fastTransferThresholdBytes: 1024 })
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-fast-'))
     const big = 'y'.repeat(200_000)
     const upload = join(localRoot, 'big.txt')
@@ -505,9 +505,9 @@ describe('ssh-local provider configuration', () => {
     context = ctx
     await ctx.plugin(MemorySettings)
     await ctx.plugin(LocalSshService)
-    await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(SshConnectionId('test-box'))
-    await expect(handle.exec(ctx.ssh.resolveExec({ command: 'echo ok' }))).resolves.toMatchObject({ exitCode: 0 })
+    await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(SshConnectionId('test-box'))
+    await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo ok' }))).resolves.toMatchObject({ exitCode: 0 })
   })
 
   it('rejects a config whose exec cap is below its default', async () => {
@@ -525,9 +525,9 @@ describe('ssh-local provider configuration', () => {
     context = ctx
     await ctx.plugin(MemorySettings)
     await ctx.plugin(LocalSshService, { allowLegacyAlgorithms: true, keepaliveIntervalMs: 5000 })
-    await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(SshConnectionId('test-box'))
-    await expect(handle.exec(ctx.ssh.resolveExec({ command: 'echo legacy' }))).resolves.toMatchObject({ exitCode: 0 })
+    await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(SshConnectionId('test-box'))
+    await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo legacy' }))).resolves.toMatchObject({ exitCode: 0 })
   })
 
   it('authenticates with an encrypted private key and passphrase', async () => {
@@ -537,12 +537,12 @@ describe('ssh-local provider configuration', () => {
     const keyPath = join(localRoot, 'id_encrypted')
     await writeFile(keyPath, privateKey.export({ type: 'pkcs1', format: 'pem', cipher: 'aes-256-cbc', passphrase: 'key-pass' }))
     if (process.platform !== 'win32') await chmod(keyPath, 0o600)
-    await ctx.ssh.save(saveInput({
+    await ctx.sshSftp.save(saveInput({
       name: 'encrypted',
       auth: { kind: 'privateKey', privateKeyPath: keyPath, passphrase: 'key-pass' },
     }))
-    const handle = await ctx.ssh.connect(SshConnectionId('encrypted'))
-    await expect(handle.exec(ctx.ssh.resolveExec({ command: 'echo keyed' }))).resolves.toMatchObject({ exitCode: 0 })
+    const handle = await ctx.sshSftp.connect(SshConnectionId('encrypted'))
+    await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo keyed' }))).resolves.toMatchObject({ exitCode: 0 })
   })
 })
 
@@ -553,8 +553,8 @@ describe('ssh-local pty sessions', () => {
 
   async function openPty(cols = 80, rows = 24): Promise<SshPtySession> {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     return handle.openPty({ cols, rows })
   }
 
@@ -682,28 +682,28 @@ describe('ssh-local pty sessions', () => {
 
   it('closes live pty sessions when the connection closes', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     const pty = await handle.openPty({ cols: 80, rows: 24 })
     const output = collectOutput(pty)
     await waitFor(() => output.join('').includes('READY'), 'pty ready banner')
-    await ctx.ssh.close(saved.id)
+    await ctx.sshSftp.close(saved.id)
     expect(pty.closed).toBe(true)
   })
 
   it('fails openPty on a closed connection', async () => {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
-    await ctx.ssh.close(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
+    await ctx.sshSftp.close(saved.id)
     await expect(handle.openPty({ cols: 80, rows: 24 })).rejects.toMatchObject({ code: 'SSH_CLOSED' })
   })
 
   it('reports SSH_PTY_FAILED when the server rejects the shell request', async () => {
     server!.rejectShell = true
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     await expect(handle.openPty({ cols: 80, rows: 24 })).rejects.toMatchObject({ code: 'SSH_PTY_FAILED' })
   })
 })
@@ -715,8 +715,8 @@ describe('ssh-local sftp streaming', () => {
 
   async function connectSftp(): Promise<SshSftp> {
     const ctx = await setup()
-    const saved = await ctx.ssh.save(saveInput())
-    const handle = await ctx.ssh.connect(saved.id)
+    const saved = await ctx.sshSftp.save(saveInput())
+    const handle = await ctx.sshSftp.connect(saved.id)
     return handle.sftp
   }
 

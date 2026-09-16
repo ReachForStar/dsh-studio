@@ -129,7 +129,7 @@ describe('ssh tools', () => {
       connection: 'box', local_path: 'src.txt', remote_path: 'rel.txt',
     }, agent)
     expect(written.isError).toBe(false)
-    const handle = await ctx.ssh.connect(ctx.ssh.get('box')!.id)
+    const handle = await ctx.sshSftp.connect(ctx.sshSftp.get('box')!.id)
     expect((await handle.sftp.list('.')).some(entry => entry.name === 'rel.txt')).toBe(true)
   })
 
@@ -274,7 +274,7 @@ describe('ssh tools', () => {
     // onto an existing local file.
     const source = join(localRoot, 'src.txt')
     await writeFile(source, 'data')
-    const handle = await ctx.ssh.connect(ctx.ssh.get('box')!.id)
+    const handle = await ctx.sshSftp.connect(ctx.sshSftp.get('box')!.id)
     await handle.sftp.writeFile(source, 'remote.txt')
     const target = join(localRoot, 'target.txt')
     await writeFile(target, 'keep')
@@ -293,7 +293,7 @@ describe('ssh tools', () => {
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-tool-ssh-'))
     const source = join(localRoot, 'src.txt')
     await writeFile(source, 'fresh data')
-    const handle = await ctx.ssh.connect(ctx.ssh.get('box')!.id)
+    const handle = await ctx.sshSftp.connect(ctx.sshSftp.get('box')!.id)
     await handle.sftp.writeFile(source, 'remote.txt')
     const target = join(localRoot, 'target.txt')
     await writeFile(target, 'stale')

@@ -12,7 +12,7 @@ status: active
 
 ## 背景（现状与约束）
 
-fork（ReachForStar/dsh-studio）自 merge base `d347e70390` 起有 99 个自研提交（pi 后端、SSH/SFTP、ui-polish、excalidraw、AMAX 网关、精简 CI），上游同期推进 1967 个提交（新 agent API、会话 v3 格式、能力接缝文档体系、双语配对门禁）。两侧都改动了 `packages/core`、`packages/api`、`packages/session`、`.github`、`docs/`，冲突 80 个文件。
+fork（ReachForStar/dsh-studio）自分叉点起有 99 个自研提交（pi 后端、SSH/SFTP、ui-polish、excalidraw、AMAX 网关、精简 CI），上游同期推进 1967 个提交（新 agent API、会话 v3 格式、能力接缝文档体系、双语配对门禁）。两侧都改动了 `packages/core`、`packages/api`、`packages/session`、`.github`、`docs/`，冲突 80 个文件。
 
 约束：
 - fork 自研功能必须保留；
@@ -49,5 +49,18 @@ fork（ReachForStar/dsh-studio）自 merge base `d347e70390` 起有 99 个自研
 
 - fork 会话记录的 `backend` 字段落位在 v3 物理头；旧 v2 日志的 `backend` 语义（无字段 = `dsh`）保持不变。
 - fork 侧代码必须跟随上游 API：pi 后端改用 `agents.enter/announce`、`AgentSetup(ctx, agent)`、`SubprocessHandle.waitForExit(signal)`，`Inbox` 变为只读接口（见 [pi 后端](../entities/pi-backend.md)）。
-- 已删除工作流的引用改为目录链接；`doc/` 下 fork 历史报告去除了提交哈希引用（保留正文，后续可迁入 wiki）。
+- 已删除工作流的引用改为目录链接。
 - 验证口径：`typecheck`、`build` 通过；`pnpm run test` 全量跑通到「仅剩本机环境抖动」；`pnpm run test:docs` 20 个文档门禁全绿。
+
+## 上一轮合并（2026-09-05）的既有取舍
+
+本轮沿用了同一条「按来源取舍」策略，上一轮留下的可复用先例：
+
+- **lockfile 不手工合并**：取上游版后由 `pnpm install` 重新解析，找回 fork 新增依赖（`@reachforstar/dsh-host-ssh-remotes`、`ssh2` 等）。
+- **生成物先取上游再重生成**：`docs/event-producer-consumer.*` 的英文侧由 `gen-doc-graphs` 重生成，中文侧手工对齐；`.i18n.yaml` 用 `verify-translation-pairing --write` 重记。
+- **两侧都有有效改动的文件逐项合并**：如 `llm-pi-ai/tests/discovery.spec.ts` 同时保留 fork 的名称回退用例与上游的 enriched models/Anthropic/`data` 优先用例；并把冲突时被误丢的 fork 源码改动（`discovery.ts` 的 `model_name`/`title` 候选字段、缺 baseURL 时回退 `catalogProvider(provider).baseUrl`）补回。
+- **平台风险已知**：`pnpm install` 会编译原生模块（`fs-ext` 等），Windows 需要本机 MSBuild 工具链，缺失则安装失败。
+
+## 历史文档处理
+
+fork 此前的逐日任务报告位于 `doc/`（11 份，2026-09-03 ~ 09-05）。本轮把它们按主题并入本 wiki 的查询页（[客户端栈迁移](../queries/fork-client-stack-migration.md)、[Web 修复与快照通道](../queries/fork-web-ui-repairs.md)、[pi 后端实现历程](../queries/pi-backend-implementation.md)）后删除该目录，避免与 `docs/wiki/` 形成两套知识源；原始文本保存在 git 历史中。

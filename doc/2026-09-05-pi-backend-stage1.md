@@ -13,9 +13,9 @@
 
 ### 路由
 - `packages/core/agent/src/index.ts`：
-  - `SetFactory` 从单例改为 `Map<AgentBackend, FactorySlot>`，`setFactory(factory, backend = 'dsh')`。
-  - `create` 经 `options.meta?.backend ?? 'dsh'` 路由；`resume` 经 `options.backend ?? 'dsh'` 路由。
-  - 未注册 backend 时报错（默认 backend 保持原 `/no agent factory/` 文案，向后兼容既有测试）。
+ - `SetFactory` 从单例改为 `Map<AgentBackend, FactorySlot>`，`setFactory(factory, backend = 'dsh')`。
+ - `create` 经 `options.meta?.backend ?? 'dsh'` 路由；`resume` 经 `options.backend ?? 'dsh'` 路由。
+ - 未注册 backend 时报错（默认 backend 保持原 `/no agent factory/` 文案，向后兼容既有测试）。
 
 ### 测试
 - `agent.spec.ts` 新增 3 个用例：跨 backend 路由、同 backend 重复注册拒绝、缺 factory 报错。
@@ -27,7 +27,7 @@
 - `oxlint` 通过；pre-push 全量 `tsc -b tsconfig.client.json` typecheck 通过。
 
 ## 改了什么（相对历史）
-- 提交 `b5a203a11a`，6 files changed, +92/-13，已推送到 fork master。
+- 提交 ，6 files changed, +92/-13，已推送到 fork master。
 
 ## 已知问题与风险
 - `ResumeAgentOptions.backend` 目前是显式参数，尚未改为「自动从持久化 header 读回」——需要阶段 2（真挂 pi factory）时，让 resume 上层（ACP/session-controller/subagent）从 header 填 backend，或引入 resolver。

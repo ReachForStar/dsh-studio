@@ -48,7 +48,7 @@ Web profile 需要已保存 SSH 连接定义的设置页时，挂载本浏览器
 <details>
 <summary>实现细节——点击展开</summary>
 
-浏览器插件拥有设置分区与快照 store。它把列出、保存、删除和测试操作委托给生成的 `ssh` Remote 命名空间；Host SSH 网关通过 `ctx.ssh` 解析已保存定义，并返回不含秘密的视图。
+浏览器插件拥有设置分区与快照 store。它把列出、保存、删除和测试操作委托给生成的 `ssh` Remote 命名空间；Host SSH 网关通过 `ctx.sshSftp` 解析已保存定义，并返回不含秘密的视图。
 
 </details>
 

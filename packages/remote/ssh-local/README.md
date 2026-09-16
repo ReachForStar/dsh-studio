@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use this package to provide the `ctx.ssh` capability through the local `ssh2` client. It reuses connections per definition, supports bounded command execution, interactive PTY sessions, host-key verification, and SFTP transfers. Choose it for a Host process that can reach the target SSH servers directly.
+Use this package to provide the `ctx.sshSftp` capability through the local `ssh2` client. It reuses connections per definition, supports bounded command execution, interactive PTY sessions, host-key verification, and SFTP transfers. Choose it for a Host process that can reach the target SSH servers directly.
 
 ## Table of Contents
 
@@ -63,7 +63,7 @@ The provider keeps one live connection per saved definition and evicts it after 
 
 -----
 
-Local Service Provider of the `ctx.ssh` seam over [`ssh2`](https://www.npmjs.com/package/ssh2). One connection per definition id is cached and reused until closed or dropped; exec and SFTP operations are promise-wrapped with bounded output and an owned timeout that kills the remote command.
+Local Service Provider of the `ctx.sshSftp` seam over [`ssh2`](https://www.npmjs.com/package/ssh2). One connection per definition id is cached and reused until closed or dropped; exec and SFTP operations are promise-wrapped with bounded output and an owned timeout that kills the remote command.
 
 ## Config
 

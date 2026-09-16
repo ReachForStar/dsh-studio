@@ -48,7 +48,7 @@ The package has no required configuration fields. It requires the `ssh` Remote n
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The browser plugin owns the settings section and a snapshot store. It delegates list, save, delete, and test operations to the generated `ssh` Remote namespace; the Host SSH gateway resolves stored definitions through `ctx.ssh` and returns secret-free views.
+The browser plugin owns the settings section and a snapshot store. It delegates list, save, delete, and test operations to the generated `ssh` Remote namespace; the Host SSH gateway resolves stored definitions through `ctx.sshSftp` and returns secret-free views.
 
 </details>
 

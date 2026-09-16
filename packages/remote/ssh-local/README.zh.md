@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包通过本地 `ssh2` 客户端提供 `ctx.ssh` 能力。它按定义复用连接，支持有界命令执行、交互式 PTY 会话、主机密钥校验和 SFTP 传输。Host 进程需要能直接访问目标 SSH 服务器。
+本包通过本地 `ssh2` 客户端提供 `ctx.sshSftp` 能力。它按定义复用连接，支持有界命令执行、交互式 PTY 会话、主机密钥校验和 SFTP 传输。Host 进程需要能直接访问目标 SSH 服务器。
 
 ## 目录
 
@@ -63,7 +63,7 @@ Host 进程拥有 SSH 网络连接时，与 `@reachforstar/dsh-ssh` 一起挂载
 
 -----
 
-基于 [`ssh2`](https://www.npmjs.com/package/ssh2) 的 `ctx.ssh` 接缝本地 Service Provider。按定义 id 缓存并复用一条连接，直至关闭或断开；exec 与 SFTP 操作经 promise 包装，输出有界、自有超时会杀掉远程命令。
+基于 [`ssh2`](https://www.npmjs.com/package/ssh2) 的 `ctx.sshSftp` 接缝本地 Service Provider。按定义 id 缓存并复用一条连接，直至关闭或断开；exec 与 SFTP 操作经 promise 包装，输出有界、自有超时会杀掉远程命令。
 
 ## 配置
 

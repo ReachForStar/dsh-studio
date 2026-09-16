@@ -124,7 +124,7 @@ describe('StatsFloat', () => {
     expect(view.container.textContent).toContain('模型 deepseek-v4-flash ¥1.50 · deepseek-v4-pro ¥4.50')
   })
 
-  it('falls back to the default card when no settled node carries model provenance', () => {
+  it('falls back to the default card when no settled node carries a model id', () => {
     const unmodeled = assistant({
       messageId: 'm-unknown', time: 1_000,
       usage: { inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },

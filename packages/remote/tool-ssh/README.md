@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use this package to give an agent tools for saving and testing SSH connections, running bounded remote commands, and reading or writing remote SFTP files. The tools keep SSH secrets on the Host and use the configured `ctx.ssh` provider. Choose it when model-driven remote operations are required and destructive actions need explicit command-level handling.
+Use this package to give an agent tools for saving and testing SSH connections, running bounded remote commands, and reading or writing remote SFTP files. The tools keep SSH secrets on the Host and use the configured `ctx.sshSftp` provider. Choose it when model-driven remote operations are required and destructive actions need explicit command-level handling.
 
 ## Table of Contents
 
@@ -64,7 +64,7 @@ The tool consumer resolves the caller's SSH service, validates connection refere
 
 -----
 
-Model-facing Consumer of the `ctx.ssh` capability seam. Tools:
+Model-facing Consumer of the `ctx.sshSftp` capability seam. Tools:
 
 - **Connection management**: `ssh_connect` (create or update a definition), `ssh_connections` (secret-free list), `ssh_disconnect`, `ssh_test`.
 - **Remote execution**: `ssh_exec` (foreground command with bounded output and timeout).

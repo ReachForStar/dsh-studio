@@ -48,7 +48,7 @@ kind: "package-reference"
 <details>
 <summary>实现细节——点击展开</summary>
 
-服务拥有持久化的连接定义和已记住的主机密钥。提供方在相同的 `ctx.ssh` 服务后实现连接建立、命令执行、PTY 会话和 SFTP 操作。
+服务拥有持久化的连接定义和已记住的主机密钥。提供方在相同的 `ctx.sshSftp` 服务后实现连接建立、命令执行、PTY 会话和 SFTP 操作。
 
 </details>
 
@@ -64,7 +64,7 @@ kind: "package-reference"
 
 -----
 
-`ctx.ssh` 能力接缝的 Service Definition：settings 支撑的连接定义注册表与 Provider 实现的连接契约。注册表（list/get/save/remove）、可组合的连通性探测、记住的主机密钥表与 exec/SFTP 词汇与 Provider 无关、由本包拥有；Provider 实现连接机制。
+`ctx.sshSftp` 能力接缝的 Service Definition：settings 支撑的连接定义注册表与 Provider 实现的连接契约。注册表（list/get/save/remove）、可组合的连通性探测、记住的主机密钥表与 exec/SFTP 词汇与 Provider 无关、由本包拥有；Provider 实现连接机制。
 
 ## 服务
 

@@ -7,7 +7,21 @@ kind: "package-group"
 
 English | [中文](README.zh.md)
 
-The capability family spans the canonical SSH/SFTP seam, its local `ssh2` implementation, the model-facing tools, and the Web GUI connection-management surface. All are **product** packages. See the [SSH subsystem reference](../../docs/subsystems/ssh-sftp.md) for the generated service and event API.
+## Summary
+
+The capability family spans the canonical SSH/SFTP seam, its local `ssh2` implementation, the model-facing tools, and the Web GUI connection-management surface. All are **product** packages. The seam and its local provider run on the Host; the tools expose bounded remote commands and SFTP transfers to the model; the gateway and settings page manage saved connections from the browser. See the [SSH subsystem reference](../../docs/subsystems/ssh-sftp.md) for the generated service and event API.
+
+## Table of Contents
+
+- [Packages](#packages)
+- [Security posture](#security-posture)
+
+-----
+
+<a id="packages"></a>
+## Packages
+
+A leaf `cordis.yml` selects the local provider and the model-facing tools it needs. The base bundle mounts `ssh-local` + `tool-ssh`; the Web surface disables the tools there and mounts them per agent through the standard preset, keeping the host-plane provider and GUI gateway active for every session.
 
 | Package | Role | ctx key |
 |---|---|---|
@@ -17,8 +31,7 @@ The capability family spans the canonical SSH/SFTP seam, its local `ssh2` implem
 | [`host/ssh-remotes`](../host/ssh-remotes/README.md) | Host Remote gateway for the browser: list/save/remove definitions and the connectivity probe. | `ctx.sshSftpGateway` (wire namespace `ssh`) |
 | [`client/ui-ssh`](../client/ui-ssh/README.md) | Web Settings page for managing saved connections. | (registers on `settings.section`) |
 
-A leaf `cordis.yml` selects the local provider and the model-facing tools it needs. The base bundle mounts `ssh-local` + `tool-ssh`; the Web surface disables the tools there and mounts them per agent through the standard preset, keeping the host-plane provider and GUI gateway active for every session.
-
+<a id="security-posture"></a>
 ## Security posture
 
 - Host keys verify by default (`accept-new`): an unknown key is remembered on first contact, a later change is rejected with `SSH_HOST_KEY_MISMATCH`, and a definition may pin an exact `SHA256:<base64>` fingerprint. `strictHostKey: reject` denies unknown keys outright.

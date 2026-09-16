@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包向 Web 客户端提供 SSH 连接管理、远程命令、交互式 PTY 会话和 SFTP 文件传输。网关把连接秘密保留在 Host，只返回不含秘密的连接视图。它需要 `ctx.ssh` 提供方和 Host Connection 传输。
+本包向 Web 客户端提供 SSH 连接管理、远程命令、交互式 PTY 会话和 SFTP 文件传输。网关把连接秘密保留在 Host，只返回不含秘密的连接视图。它需要 `ctx.sshSftp` 提供方和 Host Connection 传输。
 
 ## 目录
 
@@ -48,7 +48,7 @@ kind: "package-reference"
 <details>
 <summary>实现细节——点击展开</summary>
 
-网关通过 `ctx.ssh` 解析每个已保存定义。JSON Remote 方法处理命令、PTY 控制和 SFTP 元数据；认证后的 Fetch 路由传输文件内容；PTY 输出和结束状态使用应用 Remote Event 通道。
+网关通过 `ctx.sshSftp` 解析每个已保存定义。JSON Remote 方法处理命令、PTY 控制和 SFTP 元数据；认证后的 Fetch 路由传输文件内容；PTY 输出和结束状态使用应用 Remote Event 通道。
 
 </details>
 

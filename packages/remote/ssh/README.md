@@ -48,7 +48,7 @@ The service definition itself has no configuration fields. Provider fields are d
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The service owns durable connection definitions and remembered host keys. Providers implement connection establishment, command execution, PTY sessions, and SFTP operations behind the same `ctx.ssh` service.
+The service owns durable connection definitions and remembered host keys. Providers implement connection establishment, command execution, PTY sessions, and SFTP operations behind the same `ctx.sshSftp` service.
 
 </details>
 
@@ -64,7 +64,7 @@ The service owns durable connection definitions and remembered host keys. Provid
 
 -----
 
-Service Definition for the `ctx.ssh` capability seam: a settings-backed connection-definition registry plus the live-connection contract Providers implement. The registry (list/get/save/remove), the compose-able connectivity probe, the remembered host-key table, and the exec/SFTP vocabulary are provider-independent and owned here; Providers implement the connection mechanics.
+Service Definition for the `ctx.sshSftp` capability seam: a settings-backed connection-definition registry plus the live-connection contract Providers implement. The registry (list/get/save/remove), the compose-able connectivity probe, the remembered host-key table, and the exec/SFTP vocabulary are provider-independent and owned here; Providers implement the connection mechanics.
 
 ## Service
 

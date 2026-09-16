@@ -211,7 +211,7 @@ export function parseRateCard(json: string): RateCardData {
  * Resolve the billing mode for one model id: exact match on the card, a
  * case-insensitive match as a fallback, then a flat card at the fallback
  * rates (the card's `default`, or the built-in seed when none is supplied).
- * @param model - the model id (from an assistant node's provenance).
+ * @param model - the model id (from an assistant node's `requestConfig.model`).
  * @param models - the card's model table (defaults to the built-in seed).
  * @param fallback - the flat card unknown models fall back to (defaults to the seed).
  * @returns the effective billing mode for the model.
@@ -292,7 +292,7 @@ export function tierFor(
 
 /** Estimated spend in CNY for one message at its model's rate and time.
  * @param usage - the message's token usage projection.
- * @param model - the model id (from an assistant node's provenance).
+ * @param model - the model id (from an assistant node's `requestConfig.model`).
  * @param at - the message's wall-clock instant.
  * @param card - the rate card to bill against (defaults to the built-in seed).
  * @returns the estimated spend in yuan.
@@ -313,7 +313,7 @@ export function estimateCost(
 
 /** Per-bucket cost split for one message, mirroring {@link estimateCost}.
  * @param usage - the message's token usage projection.
- * @param model - the model id (from an assistant node's provenance).
+ * @param model - the model id (from an assistant node's `requestConfig.model`).
  * @param at - the message's wall-clock instant.
  * @param card - the rate card to bill against (defaults to the built-in seed).
  * @returns the input/cache/output bucket split in yuan.

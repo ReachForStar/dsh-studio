@@ -7,7 +7,21 @@ kind: "package-group"
 
 [English](README.md) | 中文
 
-能力族涵盖 SSH/SFTP 接缝（seam）定义、其本地 `ssh2` 实现、面向模型工具与 Web GUI 连接管理界面。全部为 **product** 包。参阅[SSH 子系统参考](../../docs/subsystems/ssh-sftp.zh.md)中的生成服务与事件 API。
+## 概述
+
+能力族涵盖 SSH/SFTP 接缝（seam）定义、其本地 `ssh2` 实现、面向模型工具与 Web GUI 连接管理界面。全部为 **product** 包。接缝与本地提供方运行在 Host；工具向模型暴露有界远程命令与 SFTP 传输；网关与设置页在浏览器侧管理已保存连接。参阅[SSH 子系统参考](../../docs/subsystems/ssh-sftp.zh.md)中的生成服务与事件 API。
+
+## 目录
+
+- [包](#packages)
+- [安全姿态](#security-posture)
+
+-----
+
+<a id="packages"></a>
+## 包
+
+base bundle 挂载 `ssh-local` + `tool-ssh`；Web 表面在此禁用工具行、改由 standard preset 按 agent 挂载，host 平面的 provider 与 GUI 网关对每个会话保持活动。
 
 | 包 | 职责 | ctx 键 |
 |---|---|---|
@@ -17,8 +31,7 @@ kind: "package-group"
 | [`host/ssh-remotes`](../host/ssh-remotes/README.zh.md) | 浏览器侧 Host Remote 网关：定义增删查与连通性探测。 | `ctx.sshSftpGateway`（wire 命名空间 `ssh`） |
 | [`client/ui-ssh`](../client/ui-ssh/README.zh.md) | Web 设置页连接管理界面。 | （注册于 `settings.section`） |
 
-base bundle 挂载 `ssh-local` + `tool-ssh`；Web 表面在此禁用工具行、改由 standard preset 按 agent 挂载，host 平面的 provider 与 GUI 网关对每个会话保持活动。
-
+<a id="security-posture"></a>
 ## 安全姿态
 
 - 主机密钥默认校验（`accept-new`）：未知密钥首连记录、后续变更拒绝（`SSH_HOST_KEY_MISMATCH`）；定义可钉扎精确 `SHA256:<base64>` 指纹。`strictHostKey: reject` 直接拒绝未知密钥。

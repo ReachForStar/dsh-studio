@@ -7,10 +7,10 @@
 ## 干了什么
 
 - 新增 `src/pi-event-translator.ts` — `PiEventTranslator`：
-  - 订阅 pi `AgentSession` 事件流，翻译成 dsh `Session.append` 事件。
-  - `turn_start`→`turn/start`；`message_end(user/custom)`→`user/message`；`message_end(assistant)`→`assistant/message`（含 usage/stream）；`message_update` 的 `text_delta`/`thinking_delta` 用 `AssistantStreamAccumulator` 累积成 stream；assistant 里的 `toolCall`→`tool/call`；`tool_execution_end`→`tool/result`（`sourceEventSeqs` 指向对应 `tool/call`）；`turn_end`→`turn/end`。
-  - step 边界取粗粒度：一个 pi turn 映射成一个 dsh step（多步模型调用的事件仍按序记录，仅 step 切分后置）。
-  - pi `custom` 上下文消息（项目 AGENTS.md / skill 内容）记录为 `source.kind: 'plugin'` 的 `user/message`。
+ - 订阅 pi `AgentSession` 事件流，翻译成 dsh `Session.append` 事件。
+ - `turn_start`→`turn/start`；`message_end(user/custom)`→`user/message`；`message_end(assistant)`→`assistant/message`（含 usage/stream）；`message_update` 的 `text_delta`/`thinking_delta` 用 `AssistantStreamAccumulator` 累积成 stream；assistant 里的 `toolCall`→`tool/call`；`tool_execution_end`→`tool/result`（`sourceEventSeqs` 指向对应 `tool/call`）；`turn_end`→`turn/end`。
+ - step 边界取粗粒度：一个 pi turn 映射成一个 dsh step（多步模型调用的事件仍按序记录，仅 step 切分后置）。
+ - pi `custom` 上下文消息（项目 AGENTS.md / skill 内容）记录为 `source.kind: 'plugin'` 的 `user/message`。
 - `src/agent.ts`：`PiAgentSessionLike` 增加 `subscribe`；`PiLoopAgent` 构造时新建 `PiEventTranslator` 并订阅 pi 事件流。
 - `src/index.ts`：导出 `PiEventTranslator`。
 
@@ -23,7 +23,7 @@
 
 ## 改了什么（相对历史）
 
-- 提交 `627b73cce8`，7 files changed，+458，推送到 fork master。
+- 提交 ，7 files changed，+458，推送到 fork master。
 
 ## 已知问题与风险
 

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use this package to expose SSH connection management, remote commands, interactive PTY sessions, and SFTP file transfers to the Web client. The gateway keeps connection secrets on the Host and returns secret-free connection views. It requires the `ctx.ssh` provider and Host Connection transport.
+Use this package to expose SSH connection management, remote commands, interactive PTY sessions, and SFTP file transfers to the Web client. The gateway keeps connection secrets on the Host and returns secret-free connection views. It requires the `ctx.sshSftp` provider and Host Connection transport.
 
 ## Table of Contents
 
@@ -48,7 +48,7 @@ The package has no standalone configuration fields. The generated [configuration
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The gateway resolves each saved definition through `ctx.ssh`. JSON Remote methods handle commands, PTY control, and SFTP metadata; authenticated Fetch routes stream file content. PTY output and termination use the application Remote Event channel.
+The gateway resolves each saved definition through `ctx.sshSftp`. JSON Remote methods handle commands, PTY control, and SFTP metadata; authenticated Fetch routes stream file content. PTY output and termination use the application Remote Event channel.
 
 </details>
 

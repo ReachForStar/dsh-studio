@@ -181,6 +181,12 @@ interface SessionHeader {
    * would replay history the model can no longer act on.
    */
   readonly agentPreset?: string
+
+  /**
+   * The loop backend this session is driven by; absent means `dsh` (see
+   * {@link AgentBackend}). Durable so a resume routes back to the same loop.
+   */
+  readonly backend?: AgentBackend
 }
 ```
 
@@ -190,7 +196,7 @@ A backend refuses a log it cannot faithfully interpret with `SessionFormatUnsupp
 
 ## `CreateSessionOptions` — seeding and metadata
 
-Creating a `Session` through the store takes a `seed` (initial replay or fork history), an optional exact `inheritedEventCount`, and `meta` (the storage-level fields the store folds into a `SessionHeader`). The store fills in `version`/`id` and defaults `createdAt`; the caller may supply the validated absolute `cwd`, `parentSession` lineage, `isSeeded` lineage bit, optional coarse `origin`, `delegationDepth`, `agentPreset`, and an existing `createdAt`. A seeded creation requires an explicit seed equal to its inherited prefix and an exact cut; the constructor appends the child-owned tagged end-seed marker at that cut before setup adds child-owned events. `origin: 'subagent'` lets product navigation hide duplicate child rows; it does not prove that a descriptor is valid or that the child can resume.
+Creating a `Session` through the store takes a `seed` (initial replay or fork history), an optional exact `inheritedEventCount`, and `meta` (the storage-level fields the store folds into a `SessionHeader`). The store fills in `version`/`id` and defaults `createdAt`; the caller may supply the validated absolute `cwd`, `parentSession` lineage, `isSeeded` lineage bit, optional coarse `origin`, `delegationDepth`, `agentPreset`, the driving loop `backend`, and an existing `createdAt`. A seeded creation requires an explicit seed equal to its inherited prefix and an exact cut; the constructor appends the child-owned tagged end-seed marker at that cut before setup adds child-owned events. `origin: 'subagent'` lets product navigation hide duplicate child rows; it does not prove that a descriptor is valid or that the child can resume.
 
 ```ts type-equiv
 /**
@@ -219,6 +225,7 @@ interface CreateSessionOptions {
     readonly origin?: 'subagent'
     readonly delegationDepth?: number
     readonly agentPreset?: string
+    readonly backend?: AgentBackend
   }
 }
 ```

@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包为 agent 提供保存和测试 SSH 连接、执行有界远程命令，以及读写远程 SFTP 文件的工具。SSH 秘密保留在 Host，并使用配置的 `ctx.ssh` 提供方。需要模型驱动远程操作且破坏性操作需要命令级控制时选择本包。
+本包为 agent 提供保存和测试 SSH 连接、执行有界远程命令，以及读写远程 SFTP 文件的工具。SSH 秘密保留在 Host，并使用配置的 `ctx.sshSftp` 提供方。需要模型驱动远程操作且破坏性操作需要命令级控制时选择本包。
 
 ## 目录
 
@@ -64,7 +64,7 @@ agent 需要连接命名 SSH 服务器、执行前台命令或通过 SFTP 传输
 
 -----
 
-`ctx.ssh` 能力接缝的模型面 Consumer。工具：
+`ctx.sshSftp` 能力接缝的模型面 Consumer。工具：
 
 - **连接管理**：`ssh_connect`（创建或更新定义）、`ssh_connections`（无秘密列表）、`ssh_disconnect`、`ssh_test`。
 - **远程执行**：`ssh_exec`（有界输出与超时的前台命令）。

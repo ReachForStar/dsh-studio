@@ -9,10 +9,10 @@
 新增 `packages/core/pi-agent-loop`（`@deepseek-ai/dsh-pi-agent-loop`）：
 
 - `src/agent.ts` — `PiLoopAgent implements Agent`，实现 dsh 的 Agent seam：
-  - `followup` → pi `prompt`；`steer` → pi `steer`；`send` 按 target 分发。
-  - `cancel` → pi `abort`；`whenIdle`/`status` 用「活跃计数 + pi.isStreaming」推导。
-  - `inject` 为 no-op（pi 无跨请求上下文注入 seam）；`runMaintenance` 直接跑。
-  - 保留 dsh `session`/`inbox`（inbox 空转），pi 的 `AgentSession` 才是执行引擎。
+ - `followup` → pi `prompt`；`steer` → pi `steer`；`send` 按 target 分发。
+ - `cancel` → pi `abort`；`whenIdle`/`status` 用「活跃计数 + pi.isStreaming」推导。
+ - `inject` 为 no-op（pi 无跨请求上下文注入 seam）；`runMaintenance` 直接跑。
+ - 保留 dsh `session`/`inbox`（inbox 空转），pi 的 `AgentSession` 才是执行引擎。
 - `src/pi-session.ts` — 封装 pi SDK：`createAgentSessionServices({cwd})` + `SessionManager.inMemory` + `createAgentSessionFromServices`，隔离可注入。
 - `src/index.ts` — `PiLoop extends Service implements AgentFactory`，`static inject = ['agents','sessions']`，用 `setFactory(this,'pi')` 注册；`createAgent` 走 `sessions.prepare` + pi session + 发布（enter/announce + `agent/session-start`）；`resume` 暂为 fresh pi session（未回放历史）。
 - `tests/agent.spec.ts` — 4 个用例（mock pi session）：followup/steer 桥接、running/idle 状态、`meta.backend:'pi'` 创建路由、resume 路由。
@@ -25,7 +25,7 @@
 - **真实 e2e 跑通**（`pi-session.e2e.ts`）：用 `.env` 的 AMAX 网关（`qwen-3.8-27B` @ `ai.amaxsmp.com/v1`）真实驱动 pi 跑完 `bash ls` 任务，断言输出含标记文件。
 
 ## 改了什么（相对历史）
-- 提交 `a5a587bea2`，11 files changed，+557/-11，推送到 fork master。
+- 提交 ，11 files changed，+557/-11，推送到 fork master。
 
 ## 已知问题与风险
 - **事件未回写 dsh session log**：pi 的 turn/step/消息不进入 `SessionEventMap`，因此 dsh 的 subagent/plan/projection/UI 读不到 pi 会话内容（阶段 3 做事件对齐）。

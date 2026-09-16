@@ -2,7 +2,7 @@
 
 [English](architecture.md) | 中文
 
-改动 `packages/` 下的任何内容之前，请先阅读本文。本文假定你已了解 Cordis；如果尚未了解，请先阅读[入门](cordis-primer.zh.md)或[教程](cordis-tutorial/index.zh.md)。
+改动 `packages/` 下的任何内容之前，请先阅读本文。本文假定你已了解 Cordis；若未了解，请先阅读[入门](cordis-primer.zh.md)或[教程](cordis-tutorial/index.zh.md)。
 
 建议使用 agent（智能体）探索代码库并理解其架构。
 
@@ -16,15 +16,15 @@
 
 运行中的 `dsh` 是一棵插件树，由启动时按序叠加的各层组合而成。
 
-**profile** 是存放在 Harness home 中的具名组装。它列出自己叠放的组合包，存放自己安装的树外插件，并保存用户自己的 `cordis.patch.yml`。`web`、`headless`、`sdk`、`sdk-minimal` 和 `acp` 作为模板随发行版交付。
+**profile** 是存放在 Harness home 中的具名组装：它叠放的组合包、安装的树外插件，以及用户自己的 `cordis.patch.yml`。`web`、`headless`、`sdk`、`sdk-minimal` 和 `acp` 作为模板随发行版交付。
 
 **组合包**是 Cordis 配置项及其挂载代码的分发格式，因此它插入的内容始终可被其上各层 patch。
 
-两者都在各自的 `package.json` 中通过 `dsh` 字段声明自己：`dsh.profile` 列出一个 profile 的组合包，`dsh.bundle` 指向一个组合包的 patch 文件。
+两者都在 `package.json` 中通过 `dsh` 字段声明自己：`dsh.profile` 列出一个 profile 的组合包，`dsh.bundle` 指向一个组合包的 patch 文件。
 
 [`dsh-base`](../packages/bundle/base/README.zh.md) 是 `web`、`headless`、`sdk` 与 `acp` profile 的共享第一层：模型适配器、工具、持久化、沙箱与审批策略、设置、凭据、遥测。[`dsh-web-app`](../packages/bundle/web-app/README.zh.md) 增加浏览器应用，[`dsh-headless`](../packages/bundle/headless/README.zh.md) 增加不带服务器的一次性运行器，[`dsh-sdk-app`](../packages/bundle/sdk-app/README.zh.md) 增加 SDK JSON-RPC 服务器，[`dsh-acp-app`](../packages/bundle/acp-app/README.zh.md) 增加仅用于自动化的 ACP 服务器。[`dsh-sdk-minimal`](../packages/bundle/sdk-minimal/README.zh.md) 是刻意保留的例外：一个组合包拥有完整的显式 SDK 配置树，不应用 `dsh-base`。
 
-各层按此顺序应用在空条目列表之上：先按 profile 列出的顺序应用每个组合包，然后是 profile 的 `cordis.patch.yml`，然后是 home 级的那份，最后是任意 `--patch` overlay。一条 patch 按 id 定位某个条目并替换其整个 config，或插入新条目。
+各层应用于空条目列表：先按 profile 列出的顺序应用每个组合包，然后是 profile 的 `cordis.patch.yml`、home 级的那份与任意 `--patch` overlay。一条 patch 按 id 定位某个条目并替换其整个 config，或插入新条目。
 
 自定义 profile 默认实时重载 patch。随附的 `web` profile 使用实时重载；`headless`、`sdk`、`sdk-minimal` 和 `acp` 则只在启动时应用一次所有配置层，因为一次性应用或 stdio 应用拥有工作之后，替换其依赖会破坏该生命周期。
 
@@ -146,7 +146,7 @@ seam 正是替换一个提供方就能改变整个产品的原因。文件系统
 | 添加面向模型的能力 | 在 `ctx.tools` 上注册；其 schema 加入提示词组装 |
 | 让某个会话拥有不同的能力集合 | 组装一个 agent preset；其中的服务行需要 `isolate` realm |
 | 添加 shell 执行 | 注册 `ctx.shell` 后端；本地后端通过 `ctx.subprocess` spawn 进程 |
-| 添加远程 SSH/SFTP 执行与传输 | 注册 `ctx.ssh` 提供方；本地提供方使用 `ssh2`，定义与记住的主机密钥持久化在 settings |
+| 添加远程 SSH/SFTP 执行 | 注册 `ctx.sshSftp` 提供方；本地提供方使用 `ssh2` 并把定义持久化在 settings |
 | 添加持久化终端执行 | 注册 `ctx.terminals` 后端和 `dsh-tool-terminal` |
 | 添加用户命令 | 在 `ctx.commands` 上注册；它无需模型轮次即可分派 |
 | 添加后台工作 | 在 `ctx.jobs` 上注册；`job_*` 工具负责收集或停止 |

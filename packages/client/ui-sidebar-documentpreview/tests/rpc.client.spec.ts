@@ -34,7 +34,7 @@ describe('createReadPage', () => {
   it('binds the paged read to the Remote with the offset as the only range', async () => {
     const read = vi.fn<WorkspaceFilesReadRemote['workspaceFiles']['read']>(() => Promise.resolve(page(4, ['d'], true)))
     const signal = new AbortController().signal
-    const readPage: ReadWorkspaceFilePage = createReadPage({ workspaceFiles: { read } })
+    const readPage: ReadWorkspaceFilePage = createReadPage({ workspaceFiles: { read, write: vi.fn() } })
     await expect(readPage(SESSION, PATH, 4, signal)).resolves.toEqual(page(4, ['d'], true))
     expect(read).toHaveBeenCalledWith(SESSION, PATH, { offset: 4 }, signal)
   })
@@ -46,7 +46,7 @@ describe('createWriteFile', () => {
       () => Promise.resolve({ ok: true, value: { absolutePath: '/host/work/notes.md', version: 'v2', bytes: 3 } }),
     )
     const signal = new AbortController().signal
-    const save = createWriteFile({ workspaceFiles: { write } })
+    const save = createWriteFile({ workspaceFiles: { read: vi.fn(), write } })
 
     await save(FILE, 'next', 'v1', signal)
 
@@ -57,7 +57,7 @@ describe('createWriteFile', () => {
     const write = vi.fn<WorkspaceFilesReadRemote['workspaceFiles']['write']>(
       () => Promise.resolve({ ok: true, value: { absolutePath: '/host/work/notes.md', version: 'v2', bytes: 3 } }),
     )
-    const save = createWriteFile({ workspaceFiles: { write } })
+    const save = createWriteFile({ workspaceFiles: { read: vi.fn(), write } })
 
     await save(FILE, 'fresh', undefined, new AbortController().signal)
 

@@ -355,6 +355,54 @@ export class WorkspaceFiles extends TypertRemoteService {
   }
 
   /**
+   * Replace one regular file's bytes inside the Session's workspace, with the
+   * same guards as {@link write}. Used by editors of formats the browser
+   * cannot express as text — an edited office document is a zip.
+   * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
+   * @param path - absolute or workspace-relative path of an existing regular file.
+   * @param data - the complete next content, base64 encoded.
+   * @param guard - the version the caller read, when it edited from one.
+   * @param signal - caller cancellation.
+   * @returns the file's identity and the version this write produced.
+   */
+  @Remote
+  async writeBytes(
+    workspaceFileScope: WorkspaceFileScope,
+    path: string,
+    data: string,
+    guard: WorkspaceFileWriteGuard,
+    signal: AbortSignal,
+  ): Promise<WorkspaceFileStat> {
+    const bytes = Buffer.from(data, 'base64')
+    const limit = this.config.maxFileBytes
+    if (bytes.byteLength > limit) {
+      throw new RemoteError('workspace-file/too-large', `${bytes.byteLength} bytes of "${path}" exceed the ${limit} byte cap`, { path, limit })
+    }
+    const { target } = await this.locateWritable(workspaceFileScope, path, signal)
+    const expected = guard.expectedVersion === undefined
+      ? undefined
+      : { kind: 'replaceIfVersion' as const, version: FsVersion(guard.expectedVersion) }
+    let outcome
+    try {
+      outcome = await this.ctx.fs.writeBytes(target, bytes, expected, signal)
+    } catch (error) {
+      if (isStaleVersionRefusal(error)) {
+        throw new RemoteError('workspace-file/stale-version', `"${path}" changed since it was read`, { path }, { cause: error })
+      }
+      if (isBinaryWriteRefusal(error)) {
+        throw new RemoteError(
+          'workspace-file/binary-unsupported',
+          `the filesystem backend serving "${path}" cannot store binary content`,
+          { path },
+          { cause: error },
+        )
+      }
+      throw error
+    }
+    return { absolutePath: this.ctx.fs.processPath(target), version: outcome.version }
+  }
+
+  /**
    * Report one regular file's identity, version, and size without its content.
    * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
    * @param path - absolute path or path relative to the workspace root; files outside it are allowed.
@@ -530,6 +578,15 @@ export class WorkspaceFiles extends TypertRemoteService {
       throw error
     }
   }
+}
+
+/**
+ * The backend's refusal of binary writes, recognized by its code alone, for the
+ * same reason as {@link isNotTextRefusal}: a filesystem reached over a
+ * text-only channel refuses with its own error class.
+ */
+function isBinaryWriteRefusal(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'FS_UNSUPPORTED_BINARY_WRITE'
 }
 
 /**

@@ -175,6 +175,16 @@ describe('FileSystem provider seam', () => {
   })
 })
 
+describe('writeBytes', () => {
+  it('refuses binary writes unless a backend implements them', async () => {
+    const ctx = new Context()
+    const fiber = await ctx.plugin(FakeFileSystem)
+    await expect(ctx.fs.writeBytes(await ctx.fs.resolve('a.bin'), Uint8Array.from([1])))
+      .rejects.toMatchObject({ code: 'FS_UNSUPPORTED_BINARY_WRITE' })
+    await fiber.dispose()
+  })
+})
+
 describe('branded id factories', () => {
   it('FsTargetKey and FsVersion brand a string at compile time (identity at runtime)', () => {
     expect(FsTargetKey('k')).toBe('k')

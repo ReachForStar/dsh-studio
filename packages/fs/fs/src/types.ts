@@ -124,6 +124,17 @@ export type FsWriteIntent =
   | { kind: 'createIfAbsent' }
   | { kind: 'replaceIfVersion'; version: FsVersion }
 
+/**
+ * Outcome of a full-file binary write. Unlike {@link FsWriteOutcome} this
+ * carries no `before`/`after` texts: raw bytes have no diff basis.
+ */
+export interface FsWriteBytesOutcome {
+  /** Whether the write created a new file or replaced an existing one. */
+  operation: 'create' | 'update'
+  /** Opaque version of the file after the write. */
+  version: FsVersion
+}
+
 /** Outcome of a full-file write. */
 export interface FsWriteOutcome {
   /** Whether the write created a new file or replaced an existing one. */
@@ -186,6 +197,7 @@ export type FsErrorCode =
   | 'FS_AMBIGUOUS_EDIT'
   | 'FS_EDIT_NOT_FOUND'
   | 'FS_ABORTED'
+  | 'FS_UNSUPPORTED_BINARY_WRITE'
 
 /**
  * Typed filesystem error. Extends {@link HarnessError} so it carries a stable

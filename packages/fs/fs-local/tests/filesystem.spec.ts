@@ -402,6 +402,49 @@ describe('listDir', () => {
   })
 })
 
+describe('writeBytes', () => {
+  it('creates a file from raw bytes and reports the new version', async () => {
+    const bytes = Uint8Array.from([0, 255, 1, 254])
+    const target = await fs.resolve('archive.bin')
+    const outcome = await fs.writeBytes(target, bytes, { kind: 'createIfAbsent' })
+    expect(outcome.operation).toBe('create')
+    expect(Buffer.from(await readFile(join(dir, 'archive.bin')))).toEqual(Buffer.from(bytes))
+    expect(outcome.version).toBe((await fs.stat(target))?.version)
+  })
+
+  it('replaces an existing file when the version still matches', async () => {
+    await writeFile(join(dir, 'doc.bin'), 'old')
+    const target = await fs.resolve('doc.bin')
+    const before = await fs.stat(target)
+    const outcome = await fs.writeBytes(target, Uint8Array.from([1]), { kind: 'replaceIfVersion', version: before!.version })
+    expect(outcome.operation).toBe('update')
+    expect(Buffer.from(await readFile(join(dir, 'doc.bin')))).toEqual(Buffer.from([1]))
+  })
+
+  it('refuses a guarded write whose file disappeared', async () => {
+    const target = await fs.resolve('gone.bin')
+    await expect(fs.writeBytes(target, Uint8Array.from([1]), { kind: 'replaceIfVersion', version: FsVersion('v0') }))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+  })
+
+  it('refuses a stale guard and a blind overwrite', async () => {
+    await writeFile(join(dir, 'doc.bin'), 'old')
+    const target = await fs.resolve('doc.bin')
+    await expect(fs.writeBytes(target, Uint8Array.from([1]), { kind: 'replaceIfVersion', version: FsVersion('v0') }))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    await expect(fs.writeBytes(target, Uint8Array.from([1]), { kind: 'createIfAbsent' }))
+      .rejects.toMatchObject({ code: 'FS_NOT_OBSERVED' })
+    expect(await readFile(join(dir, 'doc.bin'), 'utf8')).toBe('old')
+  })
+
+  it('refuses a directory target', async () => {
+    await mkdir(join(dir, 'folder'))
+    const target = await fs.resolve('folder')
+    await expect(fs.writeBytes(target, Uint8Array.from([1])))
+      .rejects.toMatchObject({ code: 'FS_NOT_REGULAR_FILE' })
+  })
+})
+
 describe('writeText', () => {
   it('createIfAbsent creates a new file', async () => {
     const target = await fs.resolve('new.txt')

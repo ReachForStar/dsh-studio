@@ -10,6 +10,7 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
+import { FsError } from './types.ts'
 import type {
   FsDirEntry,
   FsEditOutcome,
@@ -19,6 +20,7 @@ import type {
   FsObservation,
   FsTarget,
   FsVersion,
+  FsWriteBytesOutcome,
   FsWriteIntent,
   FsWriteOutcome,
 } from './types.ts'
@@ -37,6 +39,7 @@ export type {
   FsObservation,
   FsPathInfo,
   FsTarget,
+  FsWriteBytesOutcome,
   FsWriteIntent,
   FsWriteOutcome,
 } from './types.ts'
@@ -254,6 +257,43 @@ export abstract class FileSystem extends Service {
     signal?: AbortSignal,
     sandboxPolicy?: SandboxExecutionPolicy,
   ): Promise<FsWriteOutcome>
+
+  /**
+   * Atomically create or replace a file with raw bytes. The same intent and
+   * policy rules as {@link writeText} apply; there is no diff basis, so the
+   * outcome names only the operation and the new version.
+   *
+   * The base implementation refuses. A backend that cannot carry binary
+   * content — a filesystem whose channel encodes text — must say so rather than
+   * write a decoded or truncated file, and a consumer that must persist bytes
+   * (an edited office document, an image editor) then fails where the user can
+   * see why.
+   * @param target - the resolved target to write.
+   * @param content - the complete new file content.
+   * @param expected - the write intent guarding the write; omit for unconditional.
+   * @param signal - aborts before atomic publication takes effect.
+   * @param sandboxPolicy - the per-call mode and workspace root this write
+   *   runs under; a sandboxing backend fences the write by it, the bare backend
+   *   ignores it. Omit to leave the backend its own default.
+   * @returns the outcome, including the version the write produced.
+   */
+  writeBytes(
+    target: FsTarget,
+    content: Uint8Array,
+    expected?: FsWriteIntent,
+    signal?: AbortSignal,
+    sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsWriteBytesOutcome> {
+    void target
+    void content
+    void expected
+    void signal
+    void sandboxPolicy
+    return Promise.reject(new FsError(
+      'this filesystem backend carries text only and cannot store binary content',
+      'FS_UNSUPPORTED_BINARY_WRITE',
+    ))
+  }
 
   /**
    * Atomically edit literal text. When supplied, the version guard is checked

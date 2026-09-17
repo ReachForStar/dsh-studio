@@ -35,6 +35,7 @@ import type {
   Models,
   ModelThinkingLevel,
   MutableModels,
+  Provider,
   SimpleStreamOptions,
   ThinkingLevel,
 } from '@earendil-works/pi-ai'
@@ -48,6 +49,7 @@ import {
 import type {
   GenerateOptions,
   ImageAttachmentAccess,
+  LlmDiscoveredModel,
   LlmModelInfo,
   LlmProviderInfo,
   LlmResolvedModelInfo,
@@ -58,21 +60,60 @@ import type {
 } from '@deepseek-ai/dsh-llm'
 import type { AttachmentStore, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
+import { catalogFromListing } from './discovery.ts'
+import type { EndpointCatalogSource } from './discovery.ts'
+import { buildProvider } from './provider.ts'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { toPiContext } from './context.ts'
 import { toStreamChunks } from './stream.ts'
 
 /** One resolution's frozen view: the profiles and the collection built from them. */
 interface PiAiSnapshot {
-  /** The resolved profiles this collection was built from, used as its identity. */
+  /** The profiles this collection was built from, used as its identity. */
   profiles: ReadonlyMap<string, ResolvedPiAiProviderProfile>
   /** Providers for exactly those profiles; never mutated once published. */
   models: Models
+  /**
+   * Routes whose endpoint catalog could not be read, by route. An operation
+   * addressing one of them reports that reading's fault — an unreachable URL,
+   * a rejected key — instead of a missing model, which names nothing the
+   * deployment can repair.
+   */
+  endpointErrors: ReadonlyMap<string, LlmError>
+}
+
+/** What one endpoint reading produced: a served route, or why it could not be read. */
+type EndpointReading =
+  | { readonly ok: true; readonly profile: ResolvedPiAiProviderProfile; readonly provider: Provider }
+  | { readonly ok: false; readonly error: LlmError }
+
+/**
+ * One configuration's state: the snapshot the configuration alone materializes,
+ * one endpoint reading per route whose catalog has to come from its endpoint,
+ * and the snapshot those readings add up to.
+ */
+interface PiAiGeneration {
+  /** The profiles this generation was built from, used as its identity. */
+  readonly profiles: ReadonlyMap<string, ResolvedPiAiProviderProfile>
+  /** Routes the configuration alone materialized. */
+  readonly base: PiAiSnapshot
+  /** One reading per endpoint-catalog route, in flight or settled. */
+  readonly probes: Map<string, Promise<void>>
+  /** The readings that landed, success and failure alike. */
+  readonly readings: Map<string, EndpointReading>
+  /** The snapshot including every landed reading; dropped when one lands. */
+  merged?: PiAiSnapshot | undefined
 }
 
 /** Constructor options for {@link PiAiAdapter}: the two resolution hooks the plugin owns. */
 export interface PiAiAdapterOptions {
-  /** Current validated profiles by provider route; called once per operation. */
+  /**
+   * Current validated profiles by provider route, called once per operation.
+   * The adapter recognizes an unchanged configuration by this map's identity,
+   * so a getter must return the same map while the configuration is unchanged
+   * — the plugin memoizes its resolution for exactly that reason; a fresh map
+   * per call would re-read every endpoint-served route on every operation.
+   */
   profiles: () => ReadonlyMap<string, ResolvedPiAiProviderProfile>
   /**
    * Resolve the credential for one already-resolved profile; called once per
@@ -101,6 +142,13 @@ export interface PiAiAdapterOptions {
    * conversion because its stored replay state is unusable by this build.
    */
   onReplayDegrade?: (detail: { provider: string; model: string; reason: string }) => void
+  /**
+   * Read one route's models from its own endpoint, for a route whose catalog
+   * neither the configuration nor the installed catalog supplies. Omitted
+   * means such a route cannot be served: its operations report that the
+   * endpoint its catalog would come from was never read.
+   */
+  discoverEndpointCatalog?: (source: EndpointCatalogSource) => Promise<readonly LlmDiscoveredModel[]>
 }
 
 /** The two auth injectables a pi-ai collection is built with. */
@@ -212,32 +260,163 @@ function requestHeaders(headers: Readonly<Record<string, string>> | undefined): 
 }
 
 /**
+ * Report one failed endpoint reading as the coded failure an operation
+ * surfaces. A failure the reading already coded — an unreachable endpoint, a
+ * rejected credential, a timeout — passes through unchanged: it names what the
+ * deployment has to repair, which a restatement here would bury.
+ * @param provider - the route being read, named in the fallback message.
+ * @param error - whatever the reading threw.
+ * @returns the failure this route reports until the configuration changes.
+ */
+function endpointFailure(provider: string, error: unknown): LlmError {
+  if (error instanceof LlmError) return error
+  const detail = error instanceof Error ? error.message : String(error)
+  return new LlmError(
+    `llm-pi-ai: provider "${provider}" endpoint catalog could not be read: ${detail}`,
+    'INVALID_CONFIG',
+    { cause: error },
+  )
+}
+
+/**
  * pi-ai-backed multi-provider adapter. Each operation reads the current
  * profiles, so a configuration change reaches the next request without a
  * restart; model descriptors come from the collection those profiles built.
+ *
+ * A route whose models neither the configuration nor the installed catalog
+ * supplies is read from its own endpoint before the snapshot is built, once per
+ * configuration: the reading is what makes a gateway with no shipped catalog
+ * routable at all, and caching it per generation keeps that cost off every
+ * later request while a configuration change still refreshes it.
  */
 export class PiAiAdapter extends LlmAdapter {
-  private snapshot: PiAiSnapshot | undefined
+  private generation: PiAiGeneration | undefined
 
   constructor(private readonly config: PiAiAdapterOptions) {
     super()
   }
 
   /**
-   * The snapshot for the current profiles. Resolution memoizes its result, so
+   * The generation for the current profiles. Resolution memoizes its result, so
    * an unchanged configuration is recognized by identity; a changed one gets a
    * brand-new collection, leaving any snapshot an operation already captured
    * untouched for as long as that operation holds it.
    */
-  private current(): PiAiSnapshot {
+  private forCurrentProfiles(): PiAiGeneration {
     const profiles = this.config.profiles()
-    if (this.snapshot?.profiles === profiles) return this.snapshot
+    if (this.generation?.profiles === profiles) return this.generation
     const models: MutableModels = createModels(this.config.auth)
     for (const profile of profiles.values()) {
       if (profile.piProvider !== undefined) models.setProvider(profile.piProvider)
     }
-    this.snapshot = { profiles, models }
-    return this.snapshot
+    this.generation = {
+      profiles,
+      base: { profiles, models, endpointErrors: new Map() },
+      probes: new Map(),
+      readings: new Map(),
+    }
+    return this.generation
+  }
+
+  /**
+   * The snapshot for one operation, with the route it addresses read from its
+   * endpoint first. Only the addressed route is read: a deployment whose other
+   * gateway is unreachable must not make every request wait for it.
+   * @param provider - the route this operation names.
+   * @returns the snapshot the operation captures before its first await.
+   */
+  private async snapshotFor(provider: string): Promise<PiAiSnapshot> {
+    const generation = this.forCurrentProfiles()
+    const profile = generation.profiles.get(provider)
+    if (profile?.endpointCatalog === undefined) return generation.base
+    await this.probe(generation, profile)
+    return this.merged(generation)
+  }
+
+  /** Read one route's endpoint catalog once per generation, however many operations ask. */
+  private probe(generation: PiAiGeneration, profile: ResolvedPiAiProviderProfile): Promise<void> {
+    const inFlight = generation.probes.get(profile.provider)
+    if (inFlight !== undefined) return inFlight
+    const probe = this.readRoute(generation, profile)
+    generation.probes.set(profile.provider, probe)
+    return probe
+  }
+
+  /**
+   * Perform one endpoint reading and record what it produced. Nothing it can
+   * hit escapes as a rejection: an unreadable catalog is a per-route failure
+   * the operations on that route report, not a failure of the adapter.
+   */
+  private async readRoute(generation: PiAiGeneration, profile: ResolvedPiAiProviderProfile): Promise<void> {
+    const source = profile.endpointCatalog
+    /* v8 ignore next -- the sole caller only reads a route that carries one. */
+    if (source === undefined) return
+    const discover = this.config.discoverEndpointCatalog
+    try {
+      if (discover === undefined) {
+        throw new LlmError(
+          `llm-pi-ai: provider "${profile.provider}" resolves its models from ${source.baseURL}, which this build`
+          + ' has no way to read',
+          'INVALID_CONFIG',
+        )
+      }
+      const catalog = catalogFromListing(source, await discover(source))
+      // Built from the protocol the reading used rather than the route's own
+      // override, which a gateway the catalog ships a card for leaves unset:
+      // the reading is what established the protocol here.
+      const provider = buildProvider({
+        provider: profile.provider,
+        displayName: profile.displayName,
+        api: source.api,
+        ...source.request.baseURL === undefined ? {} : { baseURL: source.request.baseURL },
+        models: catalog.models,
+        namesCredential: profile.apiKeyEnv !== undefined,
+      })
+      const { catalogError: _unread, ...resolved } = profile
+      generation.readings.set(profile.provider, {
+        ok: true,
+        provider,
+        profile: {
+          ...resolved,
+          piProvider: provider,
+          modelErrors: catalog.modelErrors,
+          configuredMaxTokens: catalog.configuredMaxTokens,
+        },
+      })
+    } catch (error) {
+      generation.readings.set(profile.provider, { ok: false, error: endpointFailure(profile.provider, error) })
+    } finally {
+      generation.merged = undefined
+    }
+  }
+
+  /**
+   * The snapshot including every landed reading. Rebuilt from the base each
+   * time a reading lands, so the collection an operation holds is immutable and
+   * never gains a provider underneath it.
+   * @param generation - the configuration whose readings to include; every
+   *   caller reaches this after a reading of the route it addresses landed.
+   * @returns the merged snapshot, rebuilt on the first call after a reading lands.
+   */
+  private merged(generation: PiAiGeneration): PiAiSnapshot {
+    if (generation.merged !== undefined) return generation.merged
+    const models: MutableModels = createModels(this.config.auth)
+    const profiles = new Map(generation.profiles)
+    const endpointErrors = new Map<string, LlmError>()
+    for (const profile of generation.profiles.values()) {
+      if (profile.piProvider !== undefined) models.setProvider(profile.piProvider)
+    }
+    for (const [provider, reading] of generation.readings) {
+      if (!reading.ok) {
+        endpointErrors.set(provider, reading.error)
+        continue
+      }
+      models.setProvider(reading.provider)
+      profiles.set(provider, reading.profile)
+    }
+    const merged: PiAiSnapshot = { profiles, models, endpointErrors }
+    generation.merged = merged
+    return merged
   }
 
   /** The profile for one route within one snapshot, or the not-owned failure. */
@@ -252,6 +431,11 @@ export class PiAiAdapter extends LlmAdapter {
   /** The configured descriptor for one exact route/model pair within one snapshot. */
   private modelOf(snapshot: PiAiSnapshot, provider: string, model: string): Model<Api> {
     const profile = this.profileOf(snapshot, provider)
+    // The endpoint reading is checked first: a route it could not serve has no
+    // model diagnostics of its own, and "this endpoint refused the key" is the
+    // fault to report rather than "this route has no configured model".
+    const unread = snapshot.endpointErrors.get(provider)
+    if (unread !== undefined) throw unread
     const failure = profile.modelErrors.get(model)
       ?? (profile.piProvider === undefined ? profile.catalogError : undefined)
     if (failure !== undefined) throw new LlmError(failure, 'INVALID_CONFIG')
@@ -266,35 +450,30 @@ export class PiAiAdapter extends LlmAdapter {
     // The configured name, not the route key: `displayName` exists so a
     // deployment can label a route, and a label only the configuration surface
     // reads would leave every selector showing the raw key.
-    return { id: provider, name: this.current().profiles.get(provider)?.displayName ?? provider }
+    return { id: provider, name: this.config.profiles().get(provider)?.displayName ?? provider }
   }
 
   override providerRetryPolicy(provider: string): ResolvedRetryPolicy | undefined {
-    return this.current().profiles.get(provider)?.retryPolicy
+    return this.config.profiles().get(provider)?.retryPolicy
   }
 
-  override listModels(provider: string): Promise<readonly LlmModelInfo[]> {
-    return Promise.resolve().then(() => {
-      const snapshot = this.current()
-      this.profileOf(snapshot, provider)
-      return snapshot.models.getModels(provider).map(model => ({
-        provider,
-        id: model.id,
-        name: model.name,
-        inputModalities: [...model.input],
-      }))
-    })
+  override async listModels(provider: string): Promise<readonly LlmModelInfo[]> {
+    const snapshot = await this.snapshotFor(provider)
+    this.profileOf(snapshot, provider)
+    return snapshot.models.getModels(provider).map(model => ({
+      provider,
+      id: model.id,
+      name: model.name,
+      inputModalities: [...model.input],
+    }))
   }
 
-  override resolveModel(
+  override async resolveModel(
     provider: string,
     model: string,
     _signal?: AbortSignal,
   ): Promise<LlmResolvedModelInfo> {
-    return Promise.resolve().then(() => {
-      const snapshot = this.current()
-      return this.modelInfo(snapshot, provider, model)
-    })
+    return this.modelInfo(await this.snapshotFor(provider), provider, model)
   }
 
   private modelInfo(snapshot: PiAiSnapshot, provider: string, model: string): LlmResolvedModelInfo {
@@ -315,16 +494,25 @@ export class PiAiAdapter extends LlmAdapter {
     }
   }
 
-  override prepareCall(provider: string, model: string, _signal?: AbortSignal): Promise<PreparedAdapterCall> {
-    const snapshot = this.current()
-    return Promise.resolve({
+  override async prepareCall(
+    provider: string,
+    model: string,
+    _signal?: AbortSignal,
+  ): Promise<PreparedAdapterCall> {
+    const snapshot = await this.snapshotFor(provider)
+    return {
       model: this.modelInfo(snapshot, provider, model),
       stream: options => this.streamWithSnapshot(options, snapshot),
-    })
+    }
   }
 
   stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
-    return this.streamWithSnapshot(options, this.current())
+    return this.streamResolved(options)
+  }
+
+  /** Resolve the addressed route before streaming, so one request reads one snapshot. */
+  private async * streamResolved(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    yield* this.streamWithSnapshot(options, await this.snapshotFor(options.provider))
   }
 
   private async * streamWithSnapshot(

@@ -25,7 +25,14 @@
 import { INVALID_CREDENTIAL_CODE, LlmError, normalizeApiKey } from '@deepseek-ai/dsh-llm'
 import type { LlmDiscoveredModel, LlmModelDiscoveryOperation } from '@deepseek-ai/dsh-llm'
 import { attributionHeaders } from '@deepseek-ai/dsh-llm'
-import { catalogModels, catalogProvider } from './catalog.ts'
+import {
+  CATALOG_ROUTE_APIS,
+  catalogModels,
+  catalogProvider,
+  PiAiCatalogError,
+  resolveRouteModels,
+} from './catalog.ts'
+import type { PiAiModelProfile, RouteCatalog, RouteCatalogRequest } from './catalog.ts'
 
 /**
  * Protocols whose model listing this module can read. OpenAI protocols use
@@ -44,6 +51,15 @@ const LISTABLE_PROTOCOLS: ReadonlySet<string> = new Set([
 
 /** Stable API version required by Anthropic's model-listing endpoint. */
 const ANTHROPIC_VERSION = '2023-06-01'
+
+/**
+ * Wire protocol assumed for a route that names none. Declaring a provider and
+ * reading one make the same guess for the same reason: an OpenAI-compatible
+ * endpoint is what a gateway overwhelmingly speaks, and refusing until the
+ * field is filled would withhold the reading from the case it exists for. A
+ * wrong guess costs one refused request naming the endpoint.
+ */
+const DEFAULT_LISTING_API = 'openai-completions'
 
 /** Largest model-list page accepted by Anthropic's public endpoint; discovery reads one page and does not follow `has_more`. */
 const ANTHROPIC_MODEL_LIMIT = 1000
@@ -103,6 +119,94 @@ function label(...candidates: readonly unknown[]): string | undefined {
     if (typeof candidate === 'string' && candidate.length > 0) return candidate
   }
   return undefined
+}
+
+/**
+ * Join the endpoint base with the protocol's listing path. The base is
+ * treated as a prefix rather than a URL to resolve against, so a deployment
+ * path such as `https://gateway.example/openai/v1` keeps its segments instead
+ * of losing them to `URL` resolution. OpenAI protocols list at
+ * `{baseURL}/models`. Anthropic lists at `{root}/v1/models`, where the root is
+ * the base without trailing slashes and without one trailing `/v1` segment:
+ * gateway documentation publishes both spellings of the same root. Only this
+ * listing URL normalizes that segment; model requests receive the configured
+ * `baseURL` unchanged.
+ */
+/**
+ * How one route's models are read from its own endpoint. Produced by
+ * {@link routeEndpointCatalog} and carried on the resolved profile so the
+ * request path can repeat the reading the configuration surface offers.
+ */
+export interface EndpointCatalogSource {
+  /**
+   * Route-level resolution facts without a model list. Materializing the
+   * listing through these means an endpoint-served catalog resolves exactly as
+   * a configured one does — same defaults, same protocol, same diagnostics.
+   */
+  readonly request: RouteCatalogRequest
+  /** Endpoint to interrogate. */
+  readonly baseURL: string
+  /** Wire protocol the endpoint speaks, and therefore the protocol its models resolve to. */
+  readonly api: string
+}
+
+/**
+ * How a route whose models neither configuration nor the installed catalog
+ * supplies reads them from its own endpoint, or `undefined` when no reading is
+ * possible. A route qualifies only when it listed no models, the installed
+ * catalog describes none for it, an endpoint is resolvable, and that endpoint's
+ * protocol has a listing this build can read — a route that fails any of these
+ * has no catalog to serve and is refused by the configuration instead.
+ * @param request - the route's resolution facts, model list included.
+ * @returns the reading to perform, or `undefined` when the route needs none or cannot have one.
+ */
+export function routeEndpointCatalog(request: RouteCatalogRequest): EndpointCatalogSource | undefined {
+  // A route that enumerated its own models, or one the installed catalog
+  // describes, already has its catalog; only a route with neither has to be read.
+  if ((request.models?.length ?? 0) > 0 || catalogModels(request.provider).size > 0) return undefined
+  const baseURL = request.baseURL ?? catalogProvider(request.provider)?.baseUrl
+  if (baseURL === undefined || baseURL.length === 0) return undefined
+  const api = request.api ?? CATALOG_ROUTE_APIS[request.provider] ?? DEFAULT_LISTING_API
+  if (!LISTABLE_PROTOCOLS.has(api)) return undefined
+  return { request, baseURL, api }
+}
+
+/**
+ * Materialize one route's catalog from the listing its endpoint answered.
+ *
+ * Entries carry only what the listing disclosed, so the route's declared
+ * default capacities and modalities answer for the rest, and a duplicated id
+ * keeps its first entry: a listing quirk must not deny every model the endpoint
+ * does serve. An endpoint that names no model at all is refused rather than
+ * resolved to an empty catalog, which resolution would read as "serve the
+ * installed catalog" and report as a route nobody configured.
+ * @param source - the route facts and protocol the reading used.
+ * @param listing - the models the endpoint advertised, in endpoint order.
+ * @returns the materialized catalog for that route.
+ * @throws PiAiCatalogError when the listing names no usable model or an entry cannot resolve.
+ */
+export function catalogFromListing(
+  source: EndpointCatalogSource,
+  listing: readonly LlmDiscoveredModel[],
+): RouteCatalog {
+  const seen = new Set<string>()
+  const models: PiAiModelProfile[] = []
+  for (const model of listing) {
+    if (model.id.length === 0 || seen.has(model.id)) continue
+    seen.add(model.id)
+    models.push({
+      id: model.id,
+      ...model.name === undefined ? {} : { name: model.name },
+      ...model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow },
+      ...model.maxTokens === undefined ? {} : { maxTokens: model.maxTokens },
+    })
+  }
+  if (models.length === 0) {
+    throw new PiAiCatalogError(
+      `llm-pi-ai: provider "${source.request.provider}" endpoint ${source.baseURL} named no models to serve`,
+    )
+  }
+  return resolveRouteModels({ ...source.request, api: source.api, models }, 'strict')
 }
 
 /**
@@ -232,6 +336,25 @@ function readListing(body: unknown): LlmDiscoveredModel[] {
 }
 
 /**
+ * Report a cancellation as what it was. A caller's own abort and the deadline
+ * it attached with `AbortSignal.timeout` both arrive as `aborted`, and a
+ * deployment that bounded the wait has to read "did not answer" rather than
+ * "cancelled" to tell a slow endpoint from a withdrawn request.
+ * @param signal - the operation's cancellation signal.
+ * @param url - the endpoint being interrogated, named in the timeout's message.
+ * @param cause - the error the read rejected with.
+ * @returns the coded failure to throw.
+ */
+function aborted(signal: AbortSignal, url: string, cause: unknown): LlmError {
+  // AbortSignal.reason is typed `any`; pin it to `unknown` before narrowing.
+  const reason: unknown = signal.reason
+  const timedOut = reason instanceof Error && reason.name === 'TimeoutError'
+  return timedOut
+    ? new LlmError(`${url} did not answer before its timeout`, 'TIMEOUT', { cause })
+    : new LlmError('model discovery aborted by caller', 'ABORTED', { cause })
+}
+
+/**
  * Accept one probe key, or refuse it before the header is built. Without this
  * the `fetch` below would throw a ByteString `TypeError` that this function's
  * catch reports as `could not reach <url>` — blaming the network for a local,
@@ -304,7 +427,7 @@ export async function discoverModels(
   // the action from the case it exists for. The cost is a misdirected message
   // when the endpoint speaks something else (an Anthropic gateway answers 401,
   // which reads as a credential problem), and hand-entry remains the way out.
-  const api = request.api ?? 'openai-completions'
+  const api = request.api ?? DEFAULT_LISTING_API
   if (!LISTABLE_PROTOCOLS.has(api)) {
     throw new LlmError(
       `pi-ai protocol "${api}" has no model listing this build can read; enter this provider's models by hand`,
@@ -337,9 +460,7 @@ export async function discoverModels(
       ...request.signal === undefined ? {} : { signal: request.signal },
     })
   } catch (error: unknown) {
-    if (request.signal?.aborted) {
-      throw new LlmError('model discovery aborted by caller', 'ABORTED', { cause: error })
-    }
+    if (request.signal?.aborted) throw aborted(request.signal, url, error)
     throw new LlmError(`could not reach ${url}`, 'DISCOVERY_FAILED', { cause: error })
   }
   if (!response.ok) {
@@ -355,9 +476,7 @@ export async function discoverModels(
     // Cancellation during the body read rejects with the abort reason, which
     // may be any value; the caller gets the same coded failure it would have
     // for a cancellation before the request went out.
-    if (request.signal?.aborted) {
-      throw new LlmError('model discovery aborted by caller', 'ABORTED', { cause: error })
-    }
+    if (request.signal?.aborted) throw aborted(request.signal, url, error)
     throw error
   }
   let body: unknown

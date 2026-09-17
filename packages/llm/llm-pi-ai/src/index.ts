@@ -194,10 +194,52 @@ export function apply(ctx: Context, config: Config): void {
   // through `ctx` per call, so they stay correct across the collection rebuilds
   // a configuration change causes, and a sign-in survives one.
   const auth = { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
+  /** Host-owned request inputs for discovery of one configured route. */
+  const storedDiscoveryProfile = (
+    provider: string | undefined,
+  ): StoredModelDiscoveryProfile | undefined => {
+    if (provider === undefined) return undefined
+    // A catalog gateway's ambient env answers a listing probe even while its
+    // route is still being declared (no profile yet) — "fetch available
+    // models" runs before the provider is saved. AMAX reads AMAX_API_KEY
+    // straight from the process environment, so a fresh draft carries it.
+    if (provider === AMAX_PROVIDER.id) {
+      const ambient = process.env[AMAX_API_KEY_ENV]
+      if (ambient !== undefined && ambient.length > 0) {
+        return {
+          headers: undefined,
+          resolveApiKey: () => Promise.resolve(ambient),
+        }
+      }
+    }
+    const profile = profiles().get(provider)
+    if (profile === undefined) return undefined
+    return {
+      headers: profile.headers,
+      resolveApiKey: () => resolveApiKey(provider, profile),
+    }
+
+  }
   const adapter = new PiAiAdapter({
     profiles,
     resolveApiKey,
     auth,
+    // The reading the configuration surface offers on a draft, applied to a
+    // saved route the first time an operation needs its models. The route's own
+    // HTTP timeout bounds it, so an unreachable gateway cannot hold a request
+    // or a model picker open indefinitely.
+    discoverEndpointCatalog: (source) => {
+      const timeoutMs = profiles().get(source.request.provider)?.timeoutMs
+      return discoverModels(
+        {
+          provider: source.request.provider,
+          baseURL: source.baseURL,
+          api: source.api,
+          ...timeoutMs === undefined ? {} : { signal: AbortSignal.timeout(timeoutMs) },
+        },
+        () => storedDiscoveryProfile(source.request.provider),
+      )
+    },
     resolveAttachments: () => ctx.get('attachments'),
     resolveImageAccess: (attachments, ref) => resolveImageAttachmentAccess(
       attachments,
@@ -239,32 +281,6 @@ export function apply(ctx: Context, config: Config): void {
     directoryFacts = entries
   }
   ensureDirectory()
-  /** Host-owned request inputs for discovery of one configured route. */
-  const storedDiscoveryProfile = (
-    provider: string | undefined,
-  ): StoredModelDiscoveryProfile | undefined => {
-    if (provider === undefined) return undefined
-    // A catalog gateway's ambient env answers a listing probe even while its
-    // route is still being declared (no profile yet) — "fetch available
-    // models" runs before the provider is saved. AMAX reads AMAX_API_KEY
-    // straight from the process environment, so a fresh draft carries it.
-    if (provider === AMAX_PROVIDER.id) {
-      const ambient = process.env[AMAX_API_KEY_ENV]
-      if (ambient !== undefined && ambient.length > 0) {
-        return {
-          headers: undefined,
-          resolveApiKey: () => Promise.resolve(ambient),
-        }
-      }
-    }
-    const profile = profiles().get(provider)
-    if (profile === undefined) return undefined
-    return {
-      headers: profile.headers,
-      resolveApiKey: () => resolveApiKey(provider, profile),
-    }
-
-  }
   // Interrogating an endpoint is a configuration-time action over a draft, so
   // it is offered for the whole namespace rather than per route: the provider
   // a surface is adding does not exist yet. The draft is the whole request

@@ -450,6 +450,38 @@ describe('draft-provider model discovery', () => {
     }, aborted)).rejects.toMatchObject({ code: 'ABORTED' })
   })
 
+  it('reports a cancellation carrying an error reason as a cancellation', async () => {
+    // A reason that is an Error but not a deadline reads as an abort; only the
+    // timeout below is reported as a timeout.
+    const aborted = AbortSignal.abort(new RangeError('stop'))
+    await expect(discoverModels({ baseURL: 'http://127.0.0.1:9/v1', signal: aborted }))
+      .rejects.toMatchObject({ code: 'ABORTED' })
+  })
+
+  it('reports a deadline the caller attached as a timeout, not a cancellation', async () => {
+    const bodyRead = Promise.withResolvers<undefined>()
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      const signal = init?.signal
+      if (signal === undefined || signal === null) throw new Error('expected a discovery signal')
+      return new Response(new ReadableStream<Uint8Array>({
+        pull(stream) {
+          bodyRead.resolve(undefined)
+          return new Promise<void>((resolve) => {
+            signal.addEventListener('abort', () => {
+              stream.error(signal.reason)
+              resolve()
+            }, { once: true })
+          })
+        },
+      }))
+    })
+
+    const probe = discoverModels({ baseURL: 'https://slow.example/v1', signal: AbortSignal.timeout(10) })
+    await bodyRead.promise
+
+    await expect(probe).rejects.toMatchObject({ code: 'TIMEOUT' })
+  })
+
   it('is offered for the namespace, and refuses one it does not serve', async () => {
     const ctx = await harness()
 

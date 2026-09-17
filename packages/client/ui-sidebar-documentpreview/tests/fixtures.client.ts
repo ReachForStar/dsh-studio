@@ -18,7 +18,7 @@ import type { WorkspaceFileStat, WorkspaceFileText } from '@deepseek-ai/dsh-api-
 import type { TextPreviewProps } from '../src/client/TextPreview.tsx'
 import { textFace } from '../src/client/face.ts'
 import type { TextInjected } from '../src/client/face.ts'
-import type { ReadDocumentBytes, ReadWorkspaceFilePage, SessionFile } from '../src/client/rpc.ts'
+import type { ReadDocumentBytes, ReadWorkspaceFilePage, SessionFile, WriteWorkspaceFile } from '../src/client/rpc.ts'
 import { createTextStore } from '../src/client/store.ts'
 import type { TextStore } from '../src/client/store.ts'
 import type { DocumentPreviewProps } from '../src/client/document/contract.ts'
@@ -86,6 +86,8 @@ export interface Harness {
   read: Mock<ReadWorkspaceFilePage>
   /** The complete byte reader. */
   bytes: Mock<ReadDocumentBytes>
+  /** The complete text writer. */
+  write: Mock<WriteWorkspaceFile>
   /** The tab record's lifetime. */
   controller: AbortController
   /** Current file metadata. */
@@ -114,7 +116,10 @@ export function harness(script: Record<number, RemoteResult<WorkspaceFileText>> 
   const read = vi.fn<ReadWorkspaceFilePage>((_session, _path, offset) =>
     Promise.resolve(pages[offset] ?? failure('workspace-file/not-found', { path: PATH })))
   const bytes = vi.fn<ReadDocumentBytes>()
-  const face = textFace(read, bytes)(SESSION, instance.actions)
+  const write = vi.fn<WriteWorkspaceFile>(() => Promise.resolve({
+    ok: true, value: { absolutePath: ABSOLUTE_PATH, version: 'v2', bytes: 100 },
+  }))
+  const face = textFace(read, bytes, write)(SESSION, instance.actions)
   const current = { version: 'v1' as string | undefined, failure: undefined as RemoteFailure | undefined, snapshot: meta('v1', undefined) }
   const refresh = (): void => { current.snapshot = meta(current.version, current.failure) }
   const useResource = vi.fn<() => ResourceSnapshot<WorkspaceFileStat>>(() => current.snapshot)
@@ -144,6 +149,7 @@ export function harness(script: Record<number, RemoteResult<WorkspaceFileText>> 
     reloadPages: face.reloadPages,
     loadAll: face.loadAll,
     reloadAll: face.reloadAll,
+    save: face.save,
     useDocumentPreviews: () => definitions,
     renderSlot,
     t,
@@ -153,6 +159,7 @@ export function harness(script: Record<number, RemoteResult<WorkspaceFileText>> 
     face,
     read,
     bytes,
+    write,
     controller,
     get file() { return current.snapshot.value },
     useResource,

@@ -8,7 +8,7 @@
  */
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { WorkspaceFileBytes, WorkspaceFileRange, WorkspaceFileText } from '@deepseek-ai/dsh-api-workspace-files/types'
+import type { WorkspaceFileBytes, WorkspaceFileRange, WorkspaceFileStat, WorkspaceFileText } from '@deepseek-ai/dsh-api-workspace-files/types'
 import { parseFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 
 /** The slice of the Client Remote this package calls. */
@@ -28,6 +28,22 @@ export interface WorkspaceFilesReadRemote {
       range: WorkspaceFileRange,
       signal?: AbortSignal,
     ): Promise<RemoteResult<WorkspaceFileText>>
+    /**
+     * Replace one file's complete text.
+     * @param sessionId - the session whose workspace resolves `path`.
+     * @param path - workspace path, absolute or relative to the workspace root.
+     * @param text - the complete next content.
+     * @param guard - the version the editor read, so a newer file is not overwritten.
+     * @param signal - cancels the call.
+     * @returns the file's identity and the version this write produced.
+     */
+    write(
+      sessionId: SessionId,
+      path: string,
+      text: string,
+      guard: { expectedVersion?: string },
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<WorkspaceFileStat>>
   }
 }
 
@@ -79,6 +95,38 @@ export function hostFileOf(address: string): SessionFile {
  */
 export function createReadPage(remote: WorkspaceFilesReadRemote): ReadWorkspaceFilePage {
   return (sessionId, path, offset, signal) => remote.workspaceFiles.read(sessionId, path, { offset }, signal)
+}
+
+/**
+ * Write one complete text through the Host endpoint. The version the editor
+ * read travels as the guard, so a write based on stale content is refused
+ * instead of silently discarding another writer's change.
+ * @param file - Session and path decoded from the tab address.
+ * @param text - the complete next content.
+ * @param expectedVersion - version the editor read, when it read one.
+ * @param signal - owning tab lifetime.
+ * @returns the committed file's identity and version, including declared failures.
+ */
+export type WriteWorkspaceFile = (
+  file: SessionFile,
+  text: string,
+  expectedVersion: string | undefined,
+  signal: AbortSignal,
+) => Promise<RemoteResult<WorkspaceFileStat>>
+
+/**
+ * Bind the complete-text write to one Remote face.
+ * @param remote - the Client Remote carrying the `workspaceFiles` namespace.
+ * @returns the write the editor performs.
+ */
+export function createWriteFile(remote: WorkspaceFilesReadRemote): WriteWorkspaceFile {
+  return (file, text, expectedVersion, signal) => remote.workspaceFiles.write(
+    file.sessionId,
+    file.path,
+    text,
+    expectedVersion === undefined ? {} : { expectedVersion },
+    signal,
+  )
 }
 
 /** Complete document bytes borrowed read-only by renderers; copy before transferring to a Worker. */

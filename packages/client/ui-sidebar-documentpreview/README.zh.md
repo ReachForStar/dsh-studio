@@ -17,6 +17,7 @@ kind: "package-reference"
 - [地址](#addresses)
 - [怎么读](#how-it-reads)
 - [导航](#navigation)
+- [编辑](#editing)
 - [模型体验](#model-experience)
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
@@ -60,6 +61,13 @@ PNG、JPEG、GIF、WebP、BMP、ICO 和 SVG 通过 Blob URL 在 `<img>` 静态�
 
 `ctx.sidebarRight.openResource(address, { params: { line } })` 通过 `file` 参数携带 1 起算的源码行号。在 `text-pages` 模式下，owner 顺序加载到该行或 EOF。纯文本与代码渲染器提供源码行锚点；Markdown 不提供。所选渲染器没有锚点时，导航保持待处理；用户切换到纯文本或代码后执行。代码导航直接滚动内部源码视口。字节模式渲染器不消费源码行导航。每个完成的导航 revision 只响应一次。不带 `revealIfOpened: false` 打开同一文件时聚焦已有 tab，并送达新 revision。
 
+<a id="editing"></a>
+## 编辑
+
+纯文本、代码与 Markdown 查看器（`text-pages` 加载模式）可以就地编辑。控件位于文档工具条；打开它会先把文件剩余部分读完，因为保存是整文件替换，而取自前缀的草稿会把文件截断。编辑器开着时，状态行区分未保存、写入中、已提交与被拒绝；`Ctrl`/`Cmd`+`S` 保存，`Escape` 退出编辑。
+
+保存以一次 `workspaceFiles.write` 调用发出，并携带编辑器读到的版本，因此底下已被改动的文件会被以 `workspace-file/stale-version` 拒绝而非被覆盖；失败行说明原因，草稿保留。Host 把写入限制在会话工作区内，套用与读取相同的 `maxFileBytes` 上限，并原子替换文件。提交后的写入成为该 tab 的当前版本，因此变更提示条不会把编辑器自己的保存报成外部改动。
+
 <a id="model-experience"></a>
 ## 模型体验
 
@@ -72,7 +80,7 @@ PNG、JPEG、GIF、WebP、BMP、ICO 和 SVG 通过 Blob URL 在 `<img>` 静态�
 ## 已知限制与延期工作
 
 <a id="known-limitations-and-deferred-work"></a>
-- **预览而非编辑。** 查看器不提供文件编辑或共享搜索接口；目录地址以 `not-regular-file` 失败。未知扩展名使用纯文本读取，仍受其 UTF-8/NUL 检查限制。
+- **只支持文本编辑。** 字节模式查看器（PDF、HTML、图片）保持只读，编辑器也是纯文本：没有语法感知编辑，也没有多文件操作。目录地址以 `not-regular-file` 失败。未知扩展名使用纯文本读取，仍受其 UTF-8/NUL 检查限制。
 - **文本顺序分页，完整文件受限。** 定位到较深处的源码行需要先加载此前各页；PDF、HTML 和图片必须取得 Host `maxFileBytes` 上限内的完整结果。
 - **字节视图不恢复滚动位置。** PDF、HTML 与图片的渲染器重新挂载或重新载入时可能回到顶部；图片适配面板宽度、不产生横向滚动，HTML iframe 的滚动属于其不透明浏览上下文。
 - **本地 HTML 依赖集合有限。** 只打包直接引用的经典 `.js` 脚本和 `.css` 样式表。浏览器解析的资源仍受浏览器源与网络规则限制；iframe 不获得运行时文件读取桥接。

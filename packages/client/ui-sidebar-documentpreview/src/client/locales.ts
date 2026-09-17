@@ -26,7 +26,15 @@ export const zh = {
   'error.notText': '该格式文件暂时无法预览',
   'error.notRegularFile': '该路径不是普通文件，没有可显示的内容',
   'error.unavailable': '读取失败：{message}',
+  'error.staleVersion': '文件已被外部修改，请重新载入后再保存',
   retry: '重试',
+  edit: '编辑',
+  'edit.stop': '退出编辑',
+  save: '保存',
+  saving: '保存中…',
+  saved: '已保存',
+  saveFailed: '保存失败：{message}',
+  unsaved: '有未保存的修改',
 } satisfies Record<string, string>
 
 /** Text-preview dictionary key union. */
@@ -52,5 +60,13 @@ export const en = {
   'error.notText': 'Preview is not available for this file type yet.',
   'error.notRegularFile': 'Not a regular file, nothing to display.',
   'error.unavailable': 'Read failed: {message}',
+  'error.staleVersion': 'The file changed elsewhere; reload before saving',
   retry: 'Retry',
+  edit: 'Edit',
+  'edit.stop': 'Stop editing',
+  save: 'Save',
+  saving: 'Saving…',
+  saved: 'Saved',
+  saveFailed: 'Save failed: {message}',
+  unsaved: 'Unsaved changes',
 } satisfies Record<SidebarDocumentPreviewKey, string>

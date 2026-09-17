@@ -55,6 +55,10 @@ export interface TextTabState {
   wrap: boolean
   /** The `navigation.revision` the body already answered; absent before the first. */
   revision: number | undefined
+  /** A write is in flight for this tab. */
+  writing: boolean
+  /** Why the last write failed; cleared by the next write. */
+  writeFailure: RemoteFailure | undefined
 }
 
 /** Every tab's state, keyed by tab id. */
@@ -77,6 +81,8 @@ export function fresh(): TextTabState {
     scrollTop: 0,
     wrap: true,
     revision: undefined,
+    writing: false,
+    writeFailure: undefined,
   }
 }
 
@@ -96,6 +102,9 @@ type TextActions = {
   scrolled: (draft: TextState, tabId: TabId, scrollTop: number) => void
   toggledWrap: (draft: TextState, tabId: TabId) => void
   navigated: (draft: TextState, tabId: TabId, revision: number) => void
+  writing: (draft: TextState, tabId: TabId) => void
+  written: (draft: TextState, tabId: TabId, version: string) => void
+  writeFailed: (draft: TextState, tabId: TabId, failure: RemoteFailure) => void
   forget: (draft: TextState, tabId: TabId) => void
 }
 
@@ -207,6 +216,43 @@ export function createTextStore(): EngineStoreHandle<TextState, TextActions> {
        */
       navigated: (d, tabId: TabId, revision: number) => {
         bucket(d, tabId).revision = revision
+      },
+      /**
+       * Mark a write as in flight for one tab.
+       * @param d - draft state.
+       * @param tabId - the tab being edited.
+       */
+      writing: (d, tabId: TabId) => {
+        const state = bucket(d, tabId)
+        state.writing = true
+        state.writeFailure = undefined
+      },
+      /**
+       * Record a committed write: the file's new version.
+       * The observed version moves with it, because the reader's own write is
+       * not the external change the change bar reports.
+       * @param d - draft state.
+       * @param tabId - the tab that was edited.
+       * @param version - version the Host reported for the write.
+       */
+      written: (d, tabId: TabId, version: string) => {
+        const state = bucket(d, tabId)
+        state.writing = false
+        state.writeFailure = undefined
+        state.version = version
+        state.observedVersion = version
+      },
+      /**
+       * Record why a write failed; the pages already held stay, because a
+       * refused write changed nothing on disk.
+       * @param d - draft state.
+       * @param tabId - the tab that was edited.
+       * @param failure - the settled Remote failure.
+       */
+      writeFailed: (d, tabId: TabId, failure: RemoteFailure) => {
+        const state = bucket(d, tabId)
+        state.writing = false
+        state.writeFailure = failure
       },
       /**
        * Drop one tab's state, for a tab record that is gone.

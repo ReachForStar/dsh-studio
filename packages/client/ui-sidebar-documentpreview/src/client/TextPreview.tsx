@@ -94,7 +94,7 @@ export type TextPreviewProps =
  */
 export function TextPreview({
   useTabInfo, useResource, useStore, actions, loadPage, reloadPages,
-  loadAll, reloadAll, useDocumentPreviews, renderSlot, t,
+  loadAll, reloadAll, save, useDocumentPreviews, renderSlot, t,
 }: TextPreviewProps): ReactNode {
   const { tab } = useTabInfo()
   const { navigation, signal } = tab
@@ -120,6 +120,18 @@ export function TextPreview({
   const pathRef = useRef<HTMLDivElement | null>(null)
   const pathTextRef = useRef<HTMLSpanElement | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  // Editing is the pane's own state, not the store's: a draft belongs to the
+  // open editor, while the file's version belongs to the store.
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<string | undefined>(undefined)
+  const draftRef = useRef<string | undefined>(undefined)
+  draftRef.current = draft
+  // The text the draft was taken from: the file's content when the editor
+  // opened, and the text of the last committed write after that. Comparing
+  // against the file rather than against a flag is what keeps an editor that
+  // opened without typing from claiming unsaved work.
+  const [baseline, setBaseline] = useState<string | undefined>(undefined)
+  const pendingRef = useRef<string | undefined>(undefined)
   const displayPath = meta.value?.absolutePath ?? current?.complete?.absolutePath ?? file.path
   usePathClipped(pathRef, pathTextRef, displayPath, state !== undefined)
   // Every tab of this type is a `file` resource address, so its params are the
@@ -194,6 +206,31 @@ export function TextPreview({
     return { kind: 'text', pages: loaded, text: loaded.filter(page => page.lines > 0).map(page => page.text).join('\n'), eof: current.eof }
   }, [mode, loaded, current?.complete, current?.eof])
 
+  // Editing needs the whole file: while the editor is open and the pages stop
+  // short of the end, keep reading, so the draft is never a prefix the save
+  // would truncate the file to.
+  const editingIncomplete = editing && mode === 'text-pages' && current !== undefined && !current.eof
+  useEffect(() => {
+    if (!editingIncomplete || current.loading || current.failure !== undefined || !canRead) return
+    loadPage(tab.id, file, loadedThrough + 1, signal, meta.value?.version)
+  }, [editingIncomplete, current?.loading, current?.failure, loadedThrough, canRead, tab.id, file, signal, loadPage])
+
+  // The draft starts as the file's text, once that text is complete.
+  const completeText = mode === 'text-pages' && current?.eof === true && content?.kind === 'text' ? content.text : undefined
+  useEffect(() => {
+    if (!editing || completeText === undefined || draftRef.current !== undefined) return
+    setBaseline(completeText)
+    setDraft(completeText)
+  }, [editing, completeText])
+
+  // A committed write becomes the new baseline; a failed one leaves the draft
+  // dirty, because the file still holds what the editor started from.
+  useEffect(() => {
+    if (pendingRef.current === undefined || current?.writing === true) return
+    if (current?.writeFailure === undefined) setBaseline(pendingRef.current)
+    pendingRef.current = undefined
+  }, [current?.writing, current?.writeFailure])
+
   // A known binary suffix with no matching renderer never reads: no plain-text
   // fallback, no viewer control, only the path and the unsupported line.
   if (selected === undefined && unviewable) {
@@ -234,6 +271,18 @@ export function TextPreview({
     if (!canRead) return
     if (mode === 'text-pages') reloadPages(tab.id, file, signal, meta.value?.version)
     else reloadAll(tab.id, file, signal, meta.value?.version)
+  }
+  const dirty = editing && draft !== undefined && draft !== baseline
+  const commit = (): void => {
+    const text = draftRef.current
+    if (text === undefined || current === undefined || current.writing) return
+    pendingRef.current = text
+    save(tab.id, file, text, current.version, signal)
+  }
+  const stopEditing = (): void => {
+    setEditing(false)
+    setDraft(undefined)
+    setBaseline(undefined)
   }
   return (
     <div className={css.preview} data-textpreview-state="text" data-textpreview-url={tab.contentId} data-document-preview={selected.id}>
@@ -304,6 +353,31 @@ export function TextPreview({
             </button>
           </Tooltip>
         )}
+        {mode === 'text-pages' && (
+          <Tooltip label={t(editing ? 'edit.stop' : 'edit')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className={clsx(css.tool, editing && css.toolActive)}
+              aria-pressed={editing}
+              aria-label={t(editing ? 'edit.stop' : 'edit')}
+              data-textpreview-tool={editing ? 'edit-stop' : 'edit'}
+              onClick={() => { if (editing) stopEditing(); else setEditing(true) }}
+            >
+              {t('edit')}
+            </button>
+          </Tooltip>
+        )}
+        {editing && (
+          <button
+            type="button"
+            className={css.action}
+            disabled={draft === undefined || !dirty || current?.writing === true}
+            data-textpreview-save
+            onClick={commit}
+          >
+            {current?.writing === true ? t('saving') : t('save')}
+          </button>
+        )}
         <Tooltip label={t('reload')} side="bottom" delayMs={500}>
           <button
             type="button"
@@ -316,6 +390,17 @@ export function TextPreview({
           </button>
         </Tooltip>
       </div>
+      {editing && (draft !== undefined || completeText === undefined) && (
+        <p className={css.changed} data-textpreview-edit-status={current?.writeFailure !== undefined ? 'failed' : current?.writing === true ? 'saving' : dirty ? 'dirty' : 'clean'}>
+          <span>
+            {current?.writeFailure !== undefined
+              ? t('saveFailed', { message: failureLine(t, current.writeFailure) })
+              : current?.writing === true
+                ? t('saving')
+                : dirty ? t('unsaved') : t('saved')}
+          </span>
+        </p>
+      )}
       <div
         ref={bindBody}
         className={clsx(css.body, state.wrap && css.wrap)}
@@ -334,12 +419,30 @@ export function TextPreview({
         {!hasContent && current?.failure === undefined && (
           <LoadingIndicator className={clsx(css.statusLine, css.bodyLoading)} label={t('loading')} />
         )}
-        {content !== undefined && renderSlot('sidebar.right.tab.document', {
-          resourceAddress: tab.contentId, content, wrap: state.wrap, scrollportRef: bindScrollport,
-        }, {
-          entryKey: selected.id, hookContext: useTabInfo,
-          fallback: <p className={css.statusLine}>{t('rendererUnavailable', { name: selected.title() })}</p>,
-        })}
+        {editing
+          ? (
+            <textarea
+              className={css.editor}
+              value={draft ?? ''}
+              spellCheck={false}
+              aria-label={t('edit')}
+              data-textpreview-editor
+              onChange={(event) => { setDraft(event.target.value) }}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+                  event.preventDefault()
+                  commit()
+                }
+                if (event.key === 'Escape') stopEditing()
+              }}
+            />
+          )
+          : content !== undefined && renderSlot('sidebar.right.tab.document', {
+            resourceAddress: tab.contentId, content, wrap: state.wrap, scrollportRef: bindScrollport,
+          }, {
+            entryKey: selected.id, hookContext: useTabInfo,
+            fallback: <p className={css.statusLine}>{t('rendererUnavailable', { name: selected.title() })}</p>,
+          })}
         {current?.failure !== undefined && (hasContent
           ? (
             <p className={css.statusLine} data-textpreview-failed={current.failure.code}>
@@ -371,7 +474,7 @@ export function TextPreview({
               </button>
             </div>
           ))}
-        {mode === 'text-pages' && current !== undefined && loaded.length > 0 && !current.eof && current.failure === undefined && (
+        {!editing && mode === 'text-pages' && current !== undefined && loaded.length > 0 && !current.eof && current.failure === undefined && (
           <button
             type="button"
             className={css.more}

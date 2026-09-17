@@ -73,6 +73,12 @@ describe('read-only', () => {
     expect(existsSync(path)).toBe(false)
   })
 
+  it('denies a binary write, leaving no file on disk', async () => {
+    const path = join(workspace, 'denied.bin')
+    await expect(fs.writeBytes(await target(path), Uint8Array.from([1]))).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    expect(existsSync(path)).toBe(false)
+  })
+
   it('denies edit of an existing file (the content is unchanged)', async () => {
     const path = join(workspace, 'file.txt')
     await writeFile(path, 'original')
@@ -90,6 +96,13 @@ describe('read-only', () => {
 
 describe('workspace-write containment', () => {
   beforeEach(() => boot('workspace-write'))
+
+  it('a binary write under the workspace lands', async () => {
+    const path = join(workspace, 'binary.bin')
+    const outcome = await fs.writeBytes(await target(path), Uint8Array.from([7, 8]))
+    expect(outcome.operation).toBe('create')
+    expect(existsSync(path)).toBe(true)
+  })
 
   it('a write under the workspace lands', async () => {
     const path = join(workspace, 'nested', 'ok.txt')

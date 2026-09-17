@@ -170,6 +170,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly path: string
       readonly kind: 'directory' | 'symlink' | 'other'
     }
+    /** The composed filesystem backend cannot store binary content. */
+    'workspace-file/binary-unsupported': { readonly path: string }
     /** The path is not a directory, so it has no children to list. */
     'workspace-file/not-directory': {
       readonly path: string

@@ -32,3 +32,10 @@
 
 - 根因：`SshPanel.tsx` 的 `handleMkdir` 未传 `recursive`，父目录缺失时 SFTP mkdir 直接失败；网关与 `ssh-local` 的递归实现本就具备。
 - 修复：客户端改传 `recursive: true`；结论与 WSL 实测方式记入 [SSH/SFTP 接缝](concepts/ssh-sftp-seam.md)。
+
+## [2026-09-17] fix | 关闭 SSH 终端时释放共享连接
+
+- 根因：网关 `ptyClose` 只关终端通道，共享连接按 definition 池化常驻且网关无关连接方法，为终端建立的连接比终端活得久。
+- 解法：网关记录每个 PTY 所在的连接，最后一个持有者关闭（含 shell 自行退出）即关闭连接，exec/SFTP 按需重连；关连接失败只记日志。
+- 验证：`ssh-remotes` 网关 10 用例通过（新增 3 个生命周期用例）；测试用 `StubSshService` 扩充为按 id 共享句柄并提供可控 PTY 会话。
+- 结论与取舍记入 [SSH/SFTP 接缝](concepts/ssh-sftp-seam.md)，决策回合见 Agent Note `2026-09-17-terminal-releases-ssh-connection`。

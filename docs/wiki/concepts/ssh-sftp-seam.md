@@ -39,6 +39,7 @@ fork 自研的远程执行与文件传输接缝：Service Definition 声明连�
 
 - 2026-09-17：Web SSH 面板新建目录（`ui-polish/src/client/SshPanel.tsx` 的 `handleMkdir`）调 `ssh.sftp.mkdir` 时未传 `recursive`，面板又允许输入 `a/b/c` 这类多级名称，于是父目录缺失时远端直接以 SFTP FAILURE 失败。修复为客户端传 `recursive: true`（网关 `sftpMkdir` 已转发 `request.recursive === true`，`ssh-local` 的 `ensureDir` 已实现逐级创建）。
 - 实测方式：在 WSL（Ubuntu-22.04）起一个临时 sshd（独立配置、临时 host key 与 authorized_keys，端口 2222），用 `ssh-local` 连真实 OpenSSH/SFTP 调 `mkdir('/tmp/.../a/b/c', { recursive: true })` 建树成功，同一路径的非递归调用以 `SSH_SFTP_FAILED` 失败——证明差别就在该参数。
+- 2026-09-17：网关的 `ptyClose` 原本只关终端通道，而共享连接按 definition 池化常驻（提供方 `connect` 返回同一句柄，直到显式关闭或提供方拆除），网关又没有关连接的方法，于是为终端建立的连接比终端活得久。修复：网关记录每个 PTY 建立在哪条连接上，最后一个持有它的终端关闭（含 shell 自行退出）即关闭该连接；exec/SFTP 按需重连；关连接失败只记日志、不上报给已关闭的终端。
 
 ## 关联页面
 

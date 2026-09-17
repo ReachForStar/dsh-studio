@@ -75,3 +75,8 @@
 
 - `writeBytes` 落到文件系统 seam：基类拒绝（`FS_UNSUPPORTED_BINARY_WRITE`）、`fs-local` 实现（`writeFileAtomic` 接受 `Uint8Array`）、`fs-sandbox` 围栏、`fs-ssh` 错误码透传；`workspaceFiles` 新增 `@Remote writeBytes`（同 `write` 的包含性/上限/版本守卫，另映射 `workspace-file/binary-unsupported`）。相关文件 100% 覆盖。
 - 建立 `~/.dsh/profiles/web-lab/`（base + web-app + browser-use/playwright provider/computer-use/auto-review），加载验证通过；三项端到端限制见查询页 [实验能力试验 profile](queries/web-lab-profile-and-experimental-plugins.md)。
+
+## [2026-09-17] feat | Word / PowerPoint 预览与文本级编辑、视频预览、费用卡片改版
+
+- office：文件系统 seam 新增 `writeBytes`（基类拒绝 + `fs-local` 实现 + `fs-sandbox` 围栏 + `fs-ssh` 错误码透传），`workspaceFiles.writeBytes`，客户端 `createWriteFileBytes`/`face.saveBytes`/pane 透出 `saveBytes`；新增 `office/{zip,xml,errors}` 与 `OfficeBody` 外壳、`docx`/`pptx` 渲染器（`fflate` + 局部名 XML 匹配 + 文本叶子替换）。相关文件 100% 覆盖，`test:docs` 20/20。
+- 视频渲染器与费用卡片改版的沉淀见对应提交。

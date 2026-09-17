@@ -278,6 +278,16 @@
     - id: ui-polish
       name: '@reachforstar/dsh-client-ui-polish'
 
+    # Publishes this app's sessions to remote A2A agents on its own loopback
+    # port: the agent card sits at /.well-known/agent-card.json and tasks are
+    # driven over JSON-RPC with SSE streaming. Set DSH_A2A_API_KEY to require
+    # `X-Api-Key` from peers; without it, only loopback callers get in.
+    - id: a2a-host
+      name: '@reachforstar/dsh-a2a-host'
+      config:
+        port: !!js Number(process.env.DSH_A2A_PORT ?? 9310)
+        apiKey: !!js process.env.DSH_A2A_API_KEY
+
     - id: ui-attachment
       name: '@deepseek-ai/dsh-client-ui-attachment'
 

@@ -92,6 +92,10 @@ flowchart LR
   cfg --> plugin_dsh_base_ssh_local
   plugin_dsh_base_tool_ssh["tool-ssh<br/>@reachforstar/dsh-tool-ssh"]
   cfg --> plugin_dsh_base_tool_ssh
+  plugin_dsh_base_a2a["a2a<br/>@reachforstar/dsh-a2a"]
+  cfg --> plugin_dsh_base_a2a
+  plugin_dsh_base_tool_a2a["tool-a2a<br/>@reachforstar/dsh-tool-a2a"]
+  cfg --> plugin_dsh_base_tool_a2a
   plugin_dsh_base_fs_observation_policy["fs-observation-policy<br/>@deepseek-ai/dsh-fs-observation-policy"]
   cfg --> plugin_dsh_base_fs_observation_policy
   plugin_dsh_base_tool_fs["tool-fs<br/>@deepseek-ai/dsh-tool-fs"]
@@ -232,6 +236,8 @@ flowchart LR
 | `tool-jobs` | `@deepseek-ai/dsh-tool-jobs` |
 | `ssh-local` | `@reachforstar/dsh-ssh-local` |
 | `tool-ssh` | `@reachforstar/dsh-tool-ssh` |
+| `a2a` | `@reachforstar/dsh-a2a` |
+| `tool-a2a` | `@reachforstar/dsh-tool-a2a` |
 | `fs-observation-policy` | `@deepseek-ai/dsh-fs-observation-policy` |
 | `tool-fs` | `@deepseek-ai/dsh-tool-fs` |
 | `tool-fs-search` | `@deepseek-ai/dsh-tool-fs-search` |

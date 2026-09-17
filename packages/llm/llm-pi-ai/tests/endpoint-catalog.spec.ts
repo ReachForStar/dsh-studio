@@ -129,7 +129,7 @@ describe('endpoint catalog eligibility', () => {
 
 describe('reading a route from its own endpoint', () => {
   it('resolves and lists the models the endpoint named', async () => {
-    const read = vi.fn(() => Promise.resolve(GATEWAY_LISTING))
+    const read = vi.fn((_request: unknown) => Promise.resolve(GATEWAY_LISTING))
     const adapter = adapterOf(read)
 
     await expect(adapter.resolveModel('acme-gateway', 'gateway-large')).resolves.toMatchObject({
@@ -171,7 +171,7 @@ describe('reading a route from its own endpoint', () => {
   })
 
   it('reads again after the configuration changes', async () => {
-    const read = vi.fn(() => Promise.resolve(GATEWAY_LISTING))
+    const read = vi.fn((_request: unknown) => Promise.resolve(GATEWAY_LISTING))
     // Memoized the way the plugin's own getter is: an unchanged configuration
     // keeps its map, a changed one arrives as a new map.
     let providers: Record<string, LlmPiAi.PiAiProviderProfile> = {
@@ -194,7 +194,7 @@ describe('reading a route from its own endpoint', () => {
     await adapter.listModels('acme-gateway')
 
     expect(read).toHaveBeenCalledTimes(2)
-    expect(read.mock.calls[1]?.[0].baseURL).toBe('https://acme.test/v2')
+    expect(read.mock.calls[1]?.[0]).toMatchObject({ baseURL: 'https://acme.test/v2' })
   })
 
   it('reports the endpoint fault a request on that route hits', async () => {
@@ -227,7 +227,7 @@ describe('reading a route from its own endpoint', () => {
   })
 
   it('reads the catalog card endpoint when the route configures none of its own', async () => {
-    const read = vi.fn(() => Promise.resolve(GATEWAY_LISTING))
+    const read = vi.fn((_request: unknown) => Promise.resolve(GATEWAY_LISTING))
     const adapter = adapterOf(read, { amax: { apiKeyEnv: 'AMAX_API_KEY' } })
 
     await expect(adapter.resolveModel('amax', 'gateway-large')).resolves.toMatchObject({ id: 'gateway-large' })

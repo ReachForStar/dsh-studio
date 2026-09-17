@@ -27,3 +27,8 @@
 - 根因：`resolveRouteModels` 对无已安装目录且未列 `models` 的路由直接判定不可服务，配置界面的 `/models` 发现结果从不进入运行期解析；`resolveProfiles` 的严格校验还会拦住这类配置的保存。
 - 解法：路由事实只构建一次；满足「无 models 列表 + 无已安装目录 + 端点协议可读」即标记端点服务路由，以 deferred 校验放行保存；`PiAiAdapter` 按代（以 profile 映射身份为键）只读取一次，只读操作点名的路由，失败以端点自身故障上报，读取受路由 `timeoutMs` 约束。
 - 验证：`llm-pi-ai` 包 356 用例通过、src 覆盖率 100%；`pnpm run test:docs` 20 门禁通过；新增 Agent Note `2026-09-17-runtime-endpoint-catalogs`（双语）。
+
+## [2026-09-17] fix | SSH 面板新建目录缺 recursive
+
+- 根因：`SshPanel.tsx` 的 `handleMkdir` 未传 `recursive`，父目录缺失时 SFTP mkdir 直接失败；网关与 `ssh-local` 的递归实现本就具备。
+- 修复：客户端改传 `recursive: true`；结论与 WSL 实测方式记入 [SSH/SFTP 接缝](concepts/ssh-sftp-seam.md)。

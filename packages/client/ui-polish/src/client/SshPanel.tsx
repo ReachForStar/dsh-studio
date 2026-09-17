@@ -654,7 +654,8 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     void (async () => {
       setSftpError(null)
       try {
-        const result = await rpc('ssh.sftp.mkdir', { connectionId: selectedConn, path })
+        // 面板接受 `a/b/c` 这样的多级名称，父目录缺失时须由远端一并创建。
+        const result = await rpc('ssh.sftp.mkdir', { connectionId: selectedConn, path, recursive: true })
         if (result.ok) { void listDir(sftpPath) }
         else { setSftpError(result.error?.message ?? '创建目录失败') }
       } catch (error) {

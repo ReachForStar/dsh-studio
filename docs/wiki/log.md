@@ -65,3 +65,8 @@
 - 问题2：SFTP 读取改为跟随终端连接——宿主新增 `withConnection()`（取连接→执行→无 PTY 持有时关闭），`exec`/`sftp*`/download/upload 全部改走它；客户端删除「选中即列目录」的 eager 行为，终端关闭即清空列表并提示「打开终端后可浏览远程文件」。
 - 需求1a/1b：`workspaceFiles.write` + 文档面板编辑器（详见实体页 [文档面板的编辑与保存](entities/document-panel-editing.md)）。
 - 踩坑：新增 `@Remote` 方法后必须重跑根构建重新生成 `lib/typert.remote-client.d.ts`，否则客户端类型缺方法；测试目录不在包 tsconfig 内，须用 `tsc -b tsconfig.client.json` 检查。
+
+## [2026-09-17] feat | 视频预览与费用卡片改版
+
+- 需求1d：新增 `video` 渲染器（`ui-sidebar-documentpreview/src/client/video/`），bytes 模式 `<video controls preload="metadata" playsinline>`，注册 `mp4/m4v/webm/ogv/mov` 并声明为二进制后缀；Blob URL 与图片渲染器同样在卸载/换文件时回收；失败（Blob 创建或播放被拒）给出失败行。3 处测试（媒体类型矩阵、播放器属性、替换字节回收、Blob 失败、播放失败、无完整字节、未声明后缀）。
+- 需求2：`StatsFloat` 展示层重做（口径不变）——总额为主视觉、三档占比条 + 图例、token chips、按模型占比行、计时行最后；收起态胶囊带总额 + token 三段。详见实体页 [统计浮层](entities/stats-float.md#视觉分层2026-09-17-改版)。

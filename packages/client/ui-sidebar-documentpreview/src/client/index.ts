@@ -35,6 +35,7 @@ import { apply as registerMarkdown } from './markdown/index.ts'
 import { apply as registerHtml } from './html/index.ts'
 import { apply as registerImage } from './image/index.ts'
 import { apply as registerPdf } from './pdf/index.ts'
+import { apply as registerVideo } from './video/index.ts'
 import { apply as registerCode } from './code/index.ts'
 
 // Values stay package-private unless another package needs them; the plugin
@@ -115,5 +116,6 @@ export function apply(ctx: ClientContext): void {
   registerHtml(ctx)
   registerImage(ctx)
   registerPdf(ctx)
+  registerVideo(ctx)
   registerCode(ctx)
 }

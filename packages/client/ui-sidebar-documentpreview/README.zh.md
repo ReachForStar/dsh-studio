@@ -28,7 +28,7 @@ kind: "package-reference"
 ## 注册了什么
 
 - **类型** —— `ctx.sidebarRightTabs.register(...)`，id 为 `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`（这个实现在 tab 系统中的身份，也是其正文注册所用的键），kind `text`，pattern `dsh-resource://file/**`，档位 `fallback`。`canOpen` 只接受 Session 地址，其中路径可为相对或绝对路径；不认领裸 `absolute` 地址。在 `extension` 或 `builtin` 档以更窄 pattern（比如 `*.png`）注册的类型接走那些地址；其他受支持文件落到这里。整个地址就是内容身份，所以不同目录下同名的两个文件、或同一路径在两个会话之下，是两个 tab；解码后的 basename 是 tab 标题，keyed slot `sidebar.right.pane.tab.title` 会在标题前放置按扩展名选择的 `FileTypeIcon`。
-- **正文** —— keyed slot `sidebar.right.pane.tab`，键为类型的 id。固定头部在可用时显示 Host 的绝对路径，否则显示请求路径；目录使用三级标签色，文件名使用一级标签色，路径过长时保留末段并向开头淡出，提示中仍提供完整值。下拉菜单可在匹配的渲染器与纯文本间切换；声明为二进制的后缀（位图图片、PDF）不提供纯文本兜底，只剩一个候选时完全不渲染查看器控件。已知的二进制容器后缀（音频、视频、压缩包、office 文档）没有注册渲染器时，在路径头部下方显示不支持预览的空态——文件类型图标加一行说明——并且不会发起读取。仅当所选渲染器声明 `wrap: true` 时显示换行开关；图标表示点击后切换到的模式，该偏好按 tab 保存，初始开启。重新载入仍在此头部，不放入 Sidebar 的 tab 条。正文贴合格的每条边，各渲染器自行提供内容留白，并可拥有内部滚动区。这与 Files tab 右侧预留 2px 滚动条间距的布局有意不同：Preview 使用格的完整宽度，使贴边 HTML 与代码滚动区终止于格的边缘。
+- **正文** —— keyed slot `sidebar.right.pane.tab`，键为类型的 id。固定头部在可用时显示 Host 的绝对路径，否则显示请求路径；目录使用三级标签色，文件名使用一级标签色，路径过长时保留末段并向开头淡出，提示中仍提供完整值。下拉菜单可在匹配的渲染器与纯文本间切换；声明为二进制的后缀（位图图片、PDF）不提供纯文本兜底，只剩一个候选时完全不渲染查看器控件。已知的二进制容器后缀（音频、压缩包、office 文档）没有注册渲染器时，在路径头部下方显示不支持预览的空态——文件类型图标加一行说明——并且不会发起读取。仅当所选渲染器声明 `wrap: true` 时显示换行开关；图标表示点击后切换到的模式，该偏好按 tab 保存，初始开启。重新载入仍在此头部，不放入 Sidebar 的 tab 条。正文贴合格的每条边，各渲染器自行提供内容留白，并可拥有内部滚动区。这与 Files tab 右侧预留 2px 滚动条间距的布局有意不同：Preview 使用格的完整宽度，使贴边 HTML 与代码滚动区终止于格的边缘。
 - **共享加载与视图状态**，会话作用域、按 tab id 分桶。store 持有累计页或完整字节、读取与观察版本、加载/失败状态、渲染器选择、滚动位置、换行和已响应的导航 revision。普通 inject face 调用 Remote 读取，并经声明的 store action 写入。重新载入和加载模式变化会淘汰旧请求；tab 的中止信号清理其状态。
 
 文档实现在 `ctx.documentPreviews.register({ id, extensions, binaryExtensions?, priority, title, loading, wrap? })` 注册元数据，并以相同 `id` 向 keyed、Session 作用域的子 slot `sidebar.right.tab.document` 注册正文。`binaryExtensions` 列出 `extensions` 中字节不可按文本阅读的后缀；匹配这类后缀的文件在其查看器选项中不再提供纯文本兜底。两处注册都由 effect 持有，通过 `ctx.slots.inject` 等待子 slot。正文接收 `resourceAddress`、准备好的 `content`、`wrap`、`scrollportRef` 和标准 `useTabInfo`/`useResource` 钩子，不接收自定义资源加载器。拥有内部滚动元素的渲染器把 `scrollportRef` 挂到该元素上；该元素卸载后，owner 恢复使用共享正文。元数据声明 `loading: 'text-pages'` 或 `'bytes-complete'`。注册表保留所有匹配备选：`extension`（默认）优先于 `builtin`，随后按更长的后缀、再按注册顺序排列。所选实现仍可用时，下拉选择保持不变；移除后选择下一个候选。内置正文也使用相同注册方式。
@@ -60,6 +60,8 @@ PNG、JPEG、GIF、WebP、BMP、ICO 和 SVG 通过 Blob URL 在 `<img>` 静态�
 ## 导航
 
 `ctx.sidebarRight.openResource(address, { params: { line } })` 通过 `file` 参数携带 1 起算的源码行号。在 `text-pages` 模式下，owner 顺序加载到该行或 EOF。纯文本与代码渲染器提供源码行锚点；Markdown 不提供。所选渲染器没有锚点时，导航保持待处理；用户切换到纯文本或代码后执行。代码导航直接滚动内部源码视口。字节模式渲染器不消费源码行导航。每个完成的导航 revision 只响应一次。不带 `revealIfOpened: false` 打开同一文件时聚焦已有 tab，并送达新 revision。
+
+内置渲染器覆盖纯文本、Markdown、HTML、图片、PDF、视频与代码。视频渲染器用 `<video>` 元素配浏览器自带控件播放完整字节，受面板宽高约束；与图片渲染器一样需要完整文件，因此无法播放的容器会报出失败，而不会退回文本。
 
 <a id="editing"></a>
 ## 编辑

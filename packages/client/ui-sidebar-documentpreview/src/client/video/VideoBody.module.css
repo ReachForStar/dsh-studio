@@ -1,0 +1,44 @@
+/* The player follows the pane's width and keeps a 16:9 stage; a video with a
+   taller frame letterboxes inside it rather than forcing the pane wider. */
+.frame {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  gap: 8px;
+  width: 100%;
+  height: max-content;
+  min-height: 100%;
+  padding: 12px;
+  font-family: var(--dsw-font, sans-serif);
+  white-space: normal;
+}
+
+.video {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: 70vh;
+  margin: auto;
+  border-radius: 8px;
+  background: #000;
+  outline: none;
+}
+
+.video[hidden] {
+  display: none;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 10px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: normal;
+}

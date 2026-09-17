@@ -1,7 +1,10 @@
-/* Session stats float: pinned to the viewport's bottom-right via position:fixed,
+/* Session stats card: pinned to the viewport's bottom-right via position:fixed,
    so it never overlaps the conversation header or input. The dock only mounts
-   while a session is active, which is when the readout matters. Default state is
-   a compact capsule showing just the cost; clicking it expands the full readout. */
+   while a session is active, which is when the readout matters. Collapsed, it
+   is a capsule showing the workspace's total cost; expanded, the total is the
+   hero figure and token, bucket, and per-model detail sit under it.
+   The bucket bar and model shares are decorative: every figure they encode is
+   also written as text, so their colour carries no information on its own. */
 
 .root {
   position: fixed;
@@ -10,8 +13,8 @@
   z-index: 30;
   display: block;
   box-sizing: border-box;
-  max-width: min(100vw - 32px, 560px);
-  padding: 6px 12px;
+  max-width: min(100vw - 32px, 480px);
+  padding: 8px 14px;
   border-radius: 999px;
   corner-shape: round;
   background: var(--dsw-alias-button-floating-fill);
@@ -24,70 +27,233 @@
   cursor: pointer;
   user-select: none;
   opacity: 0.85;
-  transition: opacity 120ms ease;
+  transition: opacity 120ms ease, border-radius 120ms ease;
 }
 
 .root:hover {
   opacity: 1;
 }
 
-/* Expanded state: square corners, full width content. */
+.root:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+/* Expanded state: a card with room for the detail rows. */
 .root[data-expanded='true'] {
+  width: min(100vw - 32px, 360px);
+  padding: 12px 14px 14px;
   border-radius: 12px;
 }
 
-/* Collapsed capsule label: the single cost figure. */
-.costInline {
-  display: inline-block;
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 500;
-  color: var(--dsw-alias-label-primary);
+/* Collapsed capsule: the workspace total, with a muted token triple after it. */
+.capsule {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
   white-space: nowrap;
 }
 
-.line {
-  display: block;
+.capsuleValue {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
 }
 
-.sep {
-  color: var(--dsw-alias-separator-primary);
-  margin: 0 8px; /* carries the former flex gap */
+.capsuleMeta {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
 }
 
-.cost {
+/* Header: what the card answers for, and how to close it. */
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.title {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--dsw-alias-label-secondary);
+  text-transform: uppercase;
+}
+
+.headHint {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Hero: the one figure the card leads with. */
+.hero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.heroValue {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.heroLabel {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Bucket split: one bar plus a legend that carries the exact figures. */
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  margin: 10px 0 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--dsw-alias-border-l1);
+}
+
+.barSeg {
   display: block;
-  margin-top: 6px;
-  padding-top: 6px;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.bar_input { background: var(--dsw-alias-state-business-primary); }
+.bar_cache { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 55%, var(--dsw-alias-bg-layer-1)); }
+.bar_output { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 30%, var(--dsw-alias-bg-layer-1)); }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.dot_input { background: var(--dsw-alias-state-business-primary); }
+.dot_cache { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 55%, var(--dsw-alias-bg-layer-1)); }
+.dot_output { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 30%, var(--dsw-alias-bg-layer-1)); }
+
+.legendLabel {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.legendValue {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+
+/* Token chips: secondary figures, set apart from the cost rows. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.chipLabel {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.chipValue {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Per-model split: a name, a share bar, and the model's own figure. */
+.models {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 0.5px solid var(--dsw-alias-border-l1);
-  font-size: 13px;
-  line-height: 20px;
+}
+
+.modelsTitle {
+  font-size: 11px;
   font-weight: 500;
-  color: var(--dsw-alias-label-primary);
+  letter-spacing: 0.02em;
+  color: var(--dsw-alias-label-secondary);
+  text-transform: uppercase;
+}
+
+.modelRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.modelName {
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: default;
 }
 
-.costTotal {
+.modelShare {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dsw-alias-border-l1);
+}
+
+.modelShareFill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--dsw-alias-state-business-primary);
+}
+
+.modelCost {
   color: var(--dsw-alias-label-primary);
+  font-weight: 500;
 }
 
-.costBuckets {
-  display: block;
-  margin-top: 2px;
+/* Session timing and counts: the quietest line, last. */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
   font-size: 11px;
-  line-height: 16px;
-  font-weight: 400;
   color: var(--dsw-alias-label-tertiary);
-  white-space: nowrap;
 }
 
-.costModels {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 400;
-  color: var(--dsw-alias-label-tertiary);
+.metaItem {
   white-space: nowrap;
 }

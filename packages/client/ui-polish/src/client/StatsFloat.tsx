@@ -5,7 +5,7 @@
 // assemblies without the sessionStats unit). Collapsed by default to a compact
 // cost capsule; clicking expands the full readout.
 
-import { Fragment, memo, useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: merges the chat target into ConversationViewSnapshotMap and the
 // session hooks (useSession/useProjection/useSessions/useWorkspaces) into dock
@@ -353,6 +353,29 @@ export const StatsFloat = memo(function StatsFloat({
     }
   }
   if (groups.length === 0 && costDisplay === null) return null
+  // 展示分三层：总花费为主视觉，token/缓存为次级指标，模型拆分为可读条目。
+  const tokenChips: { key: 'stats.input' | 'stats.output' | 'stats.cache'; value: string }[] = reported !== undefined
+    ? [
+      { key: 'stats.input' as const, value: formatTokens(billedInputTokens(reported.usage)) },
+      { key: 'stats.output' as const, value: formatTokens(reported.usage.outputTokens) },
+      { key: 'stats.cache' as const, value: formatTokens(reported.usage.cacheReadTokens) },
+    ].filter(chip => chip.value !== '0')
+    : []
+  const BAR_CLASS = { input: css.bar_input, cache: css.bar_cache, output: css.bar_output } as const
+  const DOT_CLASS = { input: css.dot_input, cache: css.dot_cache, output: css.dot_output } as const
+  const bucketTotal = costDisplay === null
+    ? 0
+    : costDisplay.totals.input + costDisplay.totals.cache + costDisplay.totals.output
+  const bucketShares = costDisplay === null || bucketTotal <= 0
+    ? []
+    : ([
+      { key: 'stats.input' as const, cost: costDisplay.totals.input, kind: 'input' as const },
+      { key: 'stats.cache' as const, cost: costDisplay.totals.cache, kind: 'cache' as const },
+      { key: 'stats.output' as const, cost: costDisplay.totals.output, kind: 'output' as const },
+    ]).filter(share => share.cost > 0)
+  const modelTotal = costDisplay === null
+    ? 0
+    : costDisplay.totals.models.reduce((sum, entry) => sum + entry.cost, 0)
   return (
     <div
       className={css.root}
@@ -360,6 +383,7 @@ export const StatsFloat = memo(function StatsFloat({
       data-expanded={expanded}
       role="button"
       tabIndex={0}
+      aria-expanded={expanded}
       title={expanded ? undefined : t('stats.expand')}
       onClick={() => { setExpanded(value => !value) }}
       onKeyDown={(event) => {
@@ -369,48 +393,87 @@ export const StatsFloat = memo(function StatsFloat({
         }
       }}
     >
-      {/* Collapsed: a single line with the total cost (the figure users glance at). */}
-      {!expanded && costDisplay !== null && (
-        <span className={css.costInline}>{t('stats.cost', { cost: costDisplay.label })}</span>
-      )}
-      {!expanded && costDisplay === null && groups.length > 0 && (
-        <span className={css.costInline}>{groups[0]}</span>
-      )}
-      {expanded && (
-        <>
-          {groups.length > 0 && (
-            <div className={css.line}>
-              {groups.map((group, i) => (
-                <Fragment key={group}>
-                  {i > 0 && <><span className={css.sep} aria-hidden>|</span>{' '}</>}
-                  <span>{group}</span>
-                </Fragment>
-              ))}
+      {!expanded
+        ? (
+          <span className={css.capsule}>
+            {/* Without a billable cost the capsule leads with the first token
+                figure instead of an empty hero; either way the remaining
+                figures follow as labelled pairs. */}
+            <span className={css.capsuleValue}>
+              {costDisplay?.label ?? (tokenChips[0] === undefined ? groups[0] : `${t(tokenChips[0].key)} ${tokenChips[0].value}`)}
+            </span>
+            {costDisplay !== null && tokenChips.length > 0 && (
+              <span className={css.capsuleMeta}>{tokenChips.map(chip => `${t(chip.key)} ${chip.value}`).join(' / ')}</span>
+            )}
+          </span>
+        )
+        : (
+          <>
+            <div className={css.head}>
+              <span className={css.title}>{t('stats.title')}{reported !== undefined && reported.sessions > 1
+                ? ` · ${t('stats.workspace', { sessions: reported.sessions })}`
+                : ''}</span>
+              <span className={css.headHint}>{t('stats.collapse')}</span>
             </div>
-          )}
-          {costDisplay !== null && (
-            <div className={css.cost}>
-              <span className={css.costTotal}>{t('stats.cost', { cost: costDisplay.label })}</span>
-              <span className={css.costBuckets}>
-                {t('stats.costDetail', {
-                  input: formatCost(costDisplay.totals.input),
-                  cache: formatCost(costDisplay.totals.cache),
-                  output: formatCost(costDisplay.totals.output),
-                })}
-              </span>
-              {costDisplay.totals.models.length > 0 && (
-                <span className={css.costModels}>
-                  {t('stats.costModels', {
-                    models: costDisplay.totals.models
-                      .map(entry => `${entry.model} ${formatCost(entry.cost)}`)
-                      .join(' · '),
-                  })}
-                </span>
-              )}
-            </div>
-          )}
-        </>
-      )}
+            {costDisplay !== null && (
+              <div className={css.hero}>
+                <span className={css.heroValue}>{costDisplay.label}</span>
+                <span className={css.heroLabel}>{t('stats.total')}</span>
+              </div>
+            )}
+            {bucketShares.length > 0 && (
+              <>
+                <div className={css.bar} aria-hidden>
+                  {bucketShares.map(share => (
+                    <span
+                      key={share.kind}
+                      className={`${css.barSeg} ${BAR_CLASS[share.kind]}`}
+                      style={{ flexGrow: share.cost }}
+                    />
+                  ))}
+                </div>
+                <ul className={css.legend}>
+                  {bucketShares.map(share => (
+                    <li key={share.kind} className={css.legendItem}>
+                      <span className={`${css.dot} ${DOT_CLASS[share.kind]}`} aria-hidden />
+                      <span className={css.legendLabel}>{t(share.key)}</span>
+                      <span className={css.legendValue}>{formatCost(share.cost)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {tokenChips.length > 0 && (
+              <div className={css.chips}>
+                {tokenChips.map(chip => (
+                  <span key={chip.key} className={css.chip}>
+                    <span className={css.chipLabel}>{t(chip.key)}</span>
+                    <span className={css.chipValue}>{chip.value}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+            {costDisplay !== null && costDisplay.totals.models.length > 0 && modelTotal > 0 && (
+              <div className={css.models}>
+                <span className={css.modelsTitle}>{t('stats.models')}</span>
+                {costDisplay.totals.models.map(entry => (
+                  <div key={entry.model} className={css.modelRow}>
+                    <span className={css.modelName} title={entry.model}>{entry.model}</span>
+                    <span className={css.modelShare} aria-hidden>
+                      <span className={css.modelShareFill} style={{ width: `${Math.round(entry.cost / modelTotal * 100)}%` }} />
+                    </span>
+                    <span className={css.modelCost}>{formatCost(entry.cost)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {groups.length > 0 && (
+              <div className={css.meta}>
+                {groups.map(group => <span key={group} className={css.metaItem}>{group}</span>)}
+              </div>
+            )}
+          </>
+        )}
     </div>
   )
 })

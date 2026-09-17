@@ -4223,6 +4223,10 @@ importers:
         version: 18.3.1
 
   packages/client/ui-sidebar-documentpreview:
+    dependencies:
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^

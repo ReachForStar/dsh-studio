@@ -152,3 +152,52 @@ describe('TextPreview — editing', () => {
     await waitFor(() => { expect(view.container.querySelector('[data-textpreview-editor]')).toBeNull() })
   })
 })
+
+describe('TextPreview — binary saves', () => {
+  it('reports a refused binary save back to the renderer', async () => {
+    const h = harness({ 1: page(1, ['one'], true) })
+    h.writeBytes.mockResolvedValue(failure('workspace-file/binary-unsupported', { path: PATH }))
+    const props = h.props()
+    const view = render(<TextPreview {...{
+      ...props,
+      renderSlot: (_key: string, owner: { saveBytes: (data: Uint8Array) => void; saveFailure: string | undefined }) => (
+        <div>
+          <button type="button" data-test-save onClick={() => { owner.saveBytes(Uint8Array.from([9])) }} />
+          {owner.saveFailure !== undefined && <span data-test-failure>{owner.saveFailure}</span>}
+        </div>
+      ),
+    } as unknown as typeof props} />)
+    await settle()
+
+    fireEvent.click(view.container.querySelector('[data-test-save]')!)
+    await settle()
+
+    await waitFor(() => { expect(view.container.querySelector('[data-test-failure]')?.textContent).toContain('error.') })
+  })
+
+  it('forwards the bytes a renderer saves, under the tab version', async () => {
+    const h = harness({ 1: page(1, ['one'], true) })
+    const props = h.props()
+    const view = render(<TextPreview {...{
+      ...props,
+      renderSlot: (_key: string, owner: { saveBytes: (data: Uint8Array) => void }) => (
+        <button type="button" data-test-save onClick={() => { owner.saveBytes(Uint8Array.from([1, 2])) }} />
+      ),
+    } as unknown as typeof props} />)
+    await settle()
+
+    // 写入进行中再次触发：早退，不重复提交。
+    fireEvent.click(view.container.querySelector('[data-test-save]')!)
+    fireEvent.click(view.container.querySelector('[data-test-save]')!)
+    await settle()
+
+    expect(h.writeBytes).toHaveBeenCalledTimes(1)
+    expect(h.writeBytes).toHaveBeenCalledWith(
+      { sessionId: SESSION, path: PATH },
+      Uint8Array.from([1, 2]),
+      'v1',
+      expect.anything(),
+    )
+    expect(h.instance.getSnapshot().byTab[TAB_ID]?.version).toBe('v2')
+  })
+})

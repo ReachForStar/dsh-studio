@@ -25,7 +25,7 @@ import type { TextPreviewInjected } from './TextPreview.tsx'
 import { TextTitle } from './TextTitle.tsx'
 import { TEXTPREVIEW_ID, textDefinition } from './definition.ts'
 import { textFace } from './face.ts'
-import { createReadPage, createWriteFile } from './rpc.ts'
+import { createReadPage, createWriteFile, createWriteFileBytes } from './rpc.ts'
 import { createTextStore } from './store.ts'
 import { en, zh } from './locales.ts'
 import { DocumentPreviewRegistry } from './document/registry.ts'
@@ -36,6 +36,8 @@ import { apply as registerHtml } from './html/index.ts'
 import { apply as registerImage } from './image/index.ts'
 import { apply as registerPdf } from './pdf/index.ts'
 import { apply as registerVideo } from './video/index.ts'
+import { apply as registerDocx } from './docx/index.ts'
+import { apply as registerPptx } from './pptx/index.ts'
 import { apply as registerCode } from './code/index.ts'
 
 // Values stay package-private unless another package needs them; the plugin
@@ -44,7 +46,7 @@ import { apply as registerCode } from './code/index.ts'
 export type { SidebarDocumentPreviewKey } from './locales.ts'
 export type { TextPreviewProps } from './TextPreview.tsx'
 export type { TextInjected } from './face.ts'
-export type { ReadWorkspaceFilePage, SessionFile, WorkspaceFilesReadRemote, WriteWorkspaceFile } from './rpc.ts'
+export type { ReadWorkspaceFilePage, SessionFile, WorkspaceFilesReadRemote, WriteWorkspaceFile, WriteWorkspaceFileBytes } from './rpc.ts'
 export type { TextPage, TextState, TextStore, TextTabState } from './store.ts'
 export type { DocumentContent, DocumentPreviewProps, DocumentTextPage } from './document/contract.ts'
 export type { DocumentLoadMode, DocumentPreviewDefinition } from './document/registry.ts'
@@ -95,6 +97,7 @@ export function apply(ctx: ClientContext): void {
     createReadPage(ctx.remote),
     (file, signal) => ctx.remote.workspaceFiles.readAll(file.sessionId, file.path, signal),
     createWriteFile(ctx.remote),
+    createWriteFileBytes(ctx.remote),
   )
   const source = { getSnapshot: previews.getSnapshot, subscribe: previews.subscribe }
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
@@ -117,5 +120,7 @@ export function apply(ctx: ClientContext): void {
   registerImage(ctx)
   registerPdf(ctx)
   registerVideo(ctx)
+  registerDocx(ctx)
+  registerPptx(ctx)
   registerCode(ctx)
 }

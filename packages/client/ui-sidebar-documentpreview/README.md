@@ -61,7 +61,7 @@ Initial reads, additional pages, and HTML/PDF/image preparation share an icon-on
 
 `ctx.sidebarRight.openResource(address, { params: { line } })` carries a 1-based source line through the `file` parameters. In `text-pages` mode, the owner loads sequential pages until that line or EOF. Plain-text and code renderers expose source-line anchors; Markdown does not. A navigation remains pending while its selected renderer has no anchor and runs if the user switches to plain text or code. Code navigation scrolls the inner source viewport directly. Byte-mode renderers do not consume source-line navigation. Each completed navigation revision is answered once. Opening the same file without `revealIfOpened: false` focuses its existing tab and delivers a new revision.
 
-The builtin renderers cover plain text, Markdown, HTML, images, PDF, video, and code. The video renderer plays complete bytes in a `<video>` element with the browser's own controls, contained by the pane's width and height; like the image renderer it needs the complete file, so an unplayable container reports its failure rather than falling back to text.
+The builtin renderers cover plain text, Markdown, HTML, images, PDF, video, code, Word documents, and presentations. The Word and PowerPoint renderers unpack the OOXML archive, show its paragraphs or slide texts, and edit them in place: a save writes the same leaves back and repacks every part, so styles, layout, images, notes, and relationships survive; the archive travels through `workspaceFiles.writeBytes`, because an office document is a zip rather than text. The video renderer plays complete bytes in a `<video>` element with the browser's own controls, contained by the pane's width and height; like the image renderer it needs the complete file, so an unplayable container reports its failure rather than falling back to text.
 
 <a id="editing"></a>
 ## Editing
@@ -82,6 +82,7 @@ No direct effect; what the user reads here never enters a model request.
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
+- **Office editing is text-level.** Word paragraphs and PowerPoint text leaves can be changed, added to, or emptied; layout, tables, images, and new shapes are not editable, and a document whose format this reader cannot parse is shown as unopenable. A backend that cannot store binary content refuses the save with `workspace-file/binary-unsupported`.
 - **Text editing only.** Bytes-mode viewers (PDF, HTML, images) stay read-only, and the editor is plain text: no syntax-aware edits, no multi-file operations. A directory address fails with `not-regular-file`. Unknown extensions use the plain-text reader and remain subject to its UTF-8/NUL checks.
 - **Sequential text and bounded complete files.** Deep source lines require the preceding pages; PDF, HTML, and images require a complete result within the Host's `maxFileBytes` cap.
 - **Byte-view scroll state is not restored.** PDF, HTML, and images can return to the top when their renderer remounts or reloads; images fit the pane's width and never scroll horizontally, and HTML iframe scrolling belongs to its opaque browsing context.

@@ -44,6 +44,22 @@ export interface WorkspaceFilesReadRemote {
       guard: { expectedVersion?: string },
       signal?: AbortSignal,
     ): Promise<RemoteResult<WorkspaceFileStat>>
+    /**
+     * Replace one file's complete bytes.
+     * @param sessionId - the session whose workspace resolves `path`.
+     * @param path - workspace path, absolute or relative to the workspace root.
+     * @param data - the complete next content, base64 encoded.
+     * @param guard - the version the editor read, so a newer file is not overwritten.
+     * @param signal - cancels the call.
+     * @returns the file's identity and the version this write produced.
+     */
+    writeBytes(
+      sessionId: SessionId,
+      path: string,
+      data: string,
+      guard: { expectedVersion?: string },
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<WorkspaceFileStat>>
   }
 }
 
@@ -127,6 +143,45 @@ export function createWriteFile(remote: WorkspaceFilesReadRemote): WriteWorkspac
     expectedVersion === undefined ? {} : { expectedVersion },
     signal,
   )
+}
+
+/**
+ * Write one complete byte array through the Host endpoint, for formats the
+ * browser cannot express as text: an edited office document is still a zip.
+ * @param file - Session and path decoded from the tab address.
+ * @param data - the complete next content.
+ * @param expectedVersion - version the editor read, when it read one.
+ * @param signal - owning tab lifetime.
+ * @returns the committed file's identity and version, including declared failures.
+ */
+export type WriteWorkspaceFileBytes = (
+  file: SessionFile,
+  data: Uint8Array,
+  expectedVersion: string | undefined,
+  signal: AbortSignal,
+) => Promise<RemoteResult<WorkspaceFileStat>>
+
+/**
+ * Bind the complete-byte write to one Remote face. The bytes travel base64,
+ * exactly as a byte read returns them.
+ * @param remote - the Client Remote carrying the `workspaceFiles` namespace.
+ * @returns the write a binary editor performs.
+ */
+export function createWriteFileBytes(remote: WorkspaceFilesReadRemote): WriteWorkspaceFileBytes {
+  return (file, data, expectedVersion, signal) => remote.workspaceFiles.writeBytes(
+    file.sessionId,
+    file.path,
+    bytesToBase64(data),
+    expectedVersion === undefined ? {} : { expectedVersion },
+    signal,
+  )
+}
+
+/** Encode bytes for the wire without spreading a large array into an argument list. */
+function bytesToBase64(data: Uint8Array): string {
+  let binary = ''
+  for (const byte of data) binary += String.fromCharCode(byte)
+  return btoa(binary)
 }
 
 /** Complete document bytes borrowed read-only by renderers; copy before transferring to a Worker. */

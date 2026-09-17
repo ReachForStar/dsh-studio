@@ -94,7 +94,7 @@ export type TextPreviewProps =
  */
 export function TextPreview({
   useTabInfo, useResource, useStore, actions, loadPage, reloadPages,
-  loadAll, reloadAll, save, useDocumentPreviews, renderSlot, t,
+  loadAll, reloadAll, save, saveBytes, useDocumentPreviews, renderSlot, t,
 }: TextPreviewProps): ReactNode {
   const { tab } = useTabInfo()
   const { navigation, signal } = tab
@@ -230,6 +230,13 @@ export function TextPreview({
     if (current?.writeFailure === undefined) setBaseline(pendingRef.current)
     pendingRef.current = undefined
   }, [current?.writing, current?.writeFailure])
+
+  // Binary formats save whatever bytes their own editor rebuilt, under the
+  // same version guard and settlement rules as the text editor's save.
+  const commitBytes = useCallback((data: Uint8Array): void => {
+    if (current === undefined || current.writing) return
+    saveBytes(tab.id, file, data, current.version, signal)
+  }, [current?.version, current?.writing, saveBytes, tab.id, file, signal])
 
   // A known binary suffix with no matching renderer never reads: no plain-text
   // fallback, no viewer control, only the path and the unsupported line.
@@ -439,6 +446,8 @@ export function TextPreview({
           )
           : content !== undefined && renderSlot('sidebar.right.tab.document', {
             resourceAddress: tab.contentId, content, wrap: state.wrap, scrollportRef: bindScrollport,
+            saveBytes: commitBytes, saving: current?.writing === true,
+            saveFailure: current?.writeFailure === undefined ? undefined : failureLine(t, current.writeFailure),
           }, {
             entryKey: selected.id, hookContext: useTabInfo,
             fallback: <p className={css.statusLine}>{t('rendererUnavailable', { name: selected.title() })}</p>,

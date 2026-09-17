@@ -19,7 +19,7 @@
 import type { BoundActions } from '@deepseek-ai/dsh-client-store'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { ReadDocumentBytes, ReadWorkspaceFilePage, SessionFile, WriteWorkspaceFile } from './rpc.ts'
+import type { ReadDocumentBytes, ReadWorkspaceFilePage, SessionFile, WriteWorkspaceFile, WriteWorkspaceFileBytes } from './rpc.ts'
 import { documentFileBytes } from './rpc.ts'
 import type { TextStore } from './store.ts'
 import type { DocumentLoadMode } from './document/registry.ts'
@@ -76,6 +76,17 @@ export interface TextInjected {
    * @param signal - the tab record's lifetime.
    */
   readonly save: (tabId: TabId, file: SessionFile, text: string, expectedVersion: string | undefined, signal: AbortSignal) => void
+  /**
+   * Store one complete byte array as the file's content, under the same guards
+   * and settlement rules as {@link save}. This is the path an office-document
+   * editor uses: the edited document is a zip, not text.
+   * @param tabId - the tab being edited.
+   * @param file - the session and workspace path the tab's address names.
+   * @param data - the complete next content.
+   * @param expectedVersion - version the editor read, when it read one.
+   * @param signal - the tab record's lifetime.
+   */
+  readonly saveBytes: (tabId: TabId, file: SessionFile, data: Uint8Array, expectedVersion: string | undefined, signal: AbortSignal) => void
 }
 
 /**
@@ -101,6 +112,7 @@ export function textFace(
   read: ReadWorkspaceFilePage,
   readAll: ReadDocumentBytes,
   write: WriteWorkspaceFile,
+  writeBytes: WriteWorkspaceFileBytes,
 ): (sessionId: SessionId, actions: BoundActions<TextStore>) => TextInjected {
   return (_sessionId: SessionId, actions: BoundActions<TextStore>): TextInjected => {
     const tabs = new Map<TabId, TabReads>()
@@ -203,8 +215,25 @@ export function textFace(
         actions.written(tabId, result.value.version)
       })
     }
+    const saveBytes = (
+      tabId: TabId, file: SessionFile, data: Uint8Array, expectedVersion: string | undefined, signal: AbortSignal,
+    ): void => {
+      if (signal.aborted) return
+      const reads = readsOf(tabId, signal)
+      const { generation } = reads
+      actions.writing(tabId)
+      void writeBytes(file, data, expectedVersion, signal).then((result) => {
+        if (signal.aborted || reads.generation !== generation) return
+        if (!result.ok) {
+          actions.writeFailed(tabId, result.error)
+          return
+        }
+        reads.version = result.value.version
+        actions.written(tabId, result.value.version)
+      })
+    }
     return {
-      loadPage, reloadPages: restart, loadAll, save,
+      loadPage, reloadPages: restart, loadAll, save, saveBytes,
       reloadAll: (tabId, file, signal, observedVersion) => { restart(tabId, file, signal, observedVersion, 'bytes-complete') },
     }
   }

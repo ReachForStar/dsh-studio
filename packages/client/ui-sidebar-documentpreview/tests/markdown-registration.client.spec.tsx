@@ -55,6 +55,9 @@ describe('Markdown implementation registration', () => {
       content: { kind: 'text', text: '# Notes\n\n```ts\nconst value = 1\n```', pages: [], eof: true },
       wrap: false,
       scrollportRef: vi.fn(),
+      saveBytes: vi.fn(),
+      saving: false,
+      saveFailure: undefined,
     }, { entryKey: MARKDOWN_BODY_ID, hookContext: useTabInfo, fallback: <span data-missing-markdown /> }))
     const view = runtime.renderRoot()
     expect(view.getByRole('heading', { name: 'Notes' })).toBeDefined()

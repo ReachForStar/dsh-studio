@@ -84,6 +84,8 @@ export class StubSshService extends SshService {
   readonly closed: string[] = []
   /** Terminals the stub handed out, in order. */
   readonly ptys: StubSshPtySession[] = []
+  /** SFTP directory listings the stub served, in order. */
+  readonly listed: string[] = []
 
   /** Live handles by definition id: the stub shares them like the real provider does. */
   private readonly handles = new Map<string, SshConnection>()
@@ -114,7 +116,24 @@ export class StubSshService extends SshService {
         this.ptys.push(session)
         return session
       },
-      sftp: {} as SshSftp,
+      sftp: {
+        list: async (path) => {
+          this.listed.push(path)
+          return [{
+            name: 'entry.txt', path: `${path === '/' ? '' : path}/entry.txt`, type: 'file' as const, size: 3, mtimeMs: 1,
+          }]
+        },
+        stat: async path => ({
+          name: path.split('/').pop() ?? path, path, type: 'file' as const, size: 3, mtimeMs: 1,
+        }),
+        readFile: async () => ({ bytes: 0 }),
+        writeFile: async () => ({ bytes: 0 }),
+        mkdir: async () => undefined,
+        remove: async () => undefined,
+        rename: async () => undefined,
+        openRead: async () => { throw new Error('the stub serves no readable files') },
+        openWrite: async () => { throw new Error('the stub serves no writable files') },
+      } satisfies SshSftp,
       close: async () => {
         const failure = this.closeError
         this.closeError = undefined

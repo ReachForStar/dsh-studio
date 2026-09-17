@@ -152,6 +152,37 @@ describe('SshGateway', () => {
     expect(ssh.opened).toEqual([saved.id, saved.id])
   })
 
+  it('releases the connection after an SFTP read leaves no terminal holding it', async () => {
+    const { gateway, ssh } = await harness()
+    const saved = await gateway.save({
+      name: 'sftp-box', host: 'h', username: 'u', authKind: 'password', password: 'x',
+    })
+
+    const listing = await gateway.sftpList({ connectionId: saved.id, path: '/srv' }, new AbortController().signal)
+
+    expect(ssh.listed).toEqual(['/srv'])
+    expect(listing.entries.map(entry => entry.name)).toEqual(['entry.txt'])
+    // Nothing holds the connection open, so the operation closes it behind itself.
+    expect(ssh.closed).toEqual([saved.id])
+
+    await gateway.sftpList({ connectionId: saved.id, path: '/srv' }, new AbortController().signal)
+    expect(ssh.opened).toEqual([saved.id, saved.id])
+  })
+
+  it('keeps the connection an open terminal holds while SFTP reads run', async () => {
+    const { gateway, ssh } = await harness()
+    const saved = await gateway.save({
+      name: 'shared-box', host: 'h', username: 'u', authKind: 'password', password: 'x',
+    })
+    const pty = await gateway.ptyOpen({ connectionId: saved.id, cols: 80, rows: 24 }, new AbortController().signal)
+
+    await gateway.sftpList({ connectionId: saved.id, path: '/' }, new AbortController().signal)
+
+    expect(ssh.closed).toEqual([])
+    await gateway.ptyClose({ ptyId: pty.ptyId })
+    expect(ssh.closed).toEqual([saved.id])
+  })
+
   it('releases the connection when a terminal reports its own exit', async () => {
     const { gateway, ssh } = await harness()
     const saved = await gateway.save({

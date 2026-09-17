@@ -12,6 +12,7 @@ updated: 2026-09-17
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。
 - [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全量会话）、数据源与两条计价路径。
+- [A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）](entities/a2a-stack.md) — 自研 A2A：协议层、宿主端点与对等端工具；零依赖、`contextId` 即会话 id、Loader default 导出踩坑。
 
 ## 概念 concepts
 

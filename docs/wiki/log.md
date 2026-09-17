@@ -45,3 +45,16 @@
 - 问题3b：删除会话列左右两条 40px 拖拽手柄与辉光，新增 `ui-primitives` 的 `Slider`（原生 range，`label` 必填），渲染为滚动区上方长条；范围 `[640, 列宽-176]`，每步发布 CSS 覆盖并存储，localStorage 键与钳制规则不变。新增概念页 [会话内容宽度轴](concepts/conversation-width-axis.md)。
 - 需求3：`StatsFloat` 口径从「所在会话」改为「当前工作区全部会话」——工作区经 `useWorkspaces` 反查，各会话 token 取会话列表行的 `tokenUsage` 投影值（当前会话用实时投影），花费按会话计价（持有的消息逐条计价，其余按卡 `default` 估算）。新增实体页 [统计浮层](entities/stats-float.md)。
 - 验证：`ui-primitives`/`ui-conversation`/`ui-polish` 定向用例通过；`StatsFloat.tsx` 覆盖率 100%（语句/分支/函数/行）；`pnpm run test:docs` 20 门禁通过；两条 Agent Note 已入库。
+
+## [2026-09-17] feat | 新增 A2A 协议栈（`packages/a2a/`）
+
+- 三个 `@reachforstar/*` 包：`dsh-a2a`（A2A v1.0.1 JSON-RPC + SSE 的 schema/server/client/task-store 与 `a2a` 服务）、`dsh-a2a-host`（agent card、监听器、以会话为后端的 `DshA2AExecutor`）、`dsh-tool-a2a`（`a2a_peers`/`a2a_send`）。零第三方运行时依赖，只用 `node:http`。
+- 接线：`bundle/base` 挂 `a2a` 与 `tool-a2a`，`bundle/web-app` 挂 `a2a-host`（默认 `127.0.0.1:9310`，`DSH_A2A_PORT`/`DSH_A2A_API_KEY` 可覆盖）；新包登记进 `tsconfig.host.json`。
+- 踩坑：三个包最初带 `export default`，Loader 的 `unwrapExports`（`exports.default ?? exports`）折叠模块后静默丢掉 `inject`/`Config`，启动报 `cannot get property "tools" without inject` 与 `Cannot read properties of undefined (reading 'peers')`；去掉 default 导出后 `pnpm dsh web` 无告警，`/.well-known/agent-card.json`、`/health`、`ListTasks` 实测通过。
+- 踩坑：未登记进 `tsconfig.host.json` 时类型感知 lint 无 program，`src` 下值全成 `any`，产生大量 `no-unsafe-assignment` 假报错。
+- 详见实体页 [A2A 栈](entities/a2a-stack.md) 与 [Agent Note](../../.agents/notes/implemented/feature/2026-09-17-a2a-endpoint-and-peers.md)。
+
+## [2026-09-17] note | 弃用文件预览增强，改为后续实现文件编辑
+
+- 需求2 的 docx/pptx/视频预览实现（`ui-sidebar-documentpreview` 下 `document/`、`docx/`、`pptx/`、`video/` 与对应测试）按用户要求从工作区移除：上游文件面板已覆盖其余能力，剩余真正缺口是 Word/PowerPoint 预览与文件编辑，其中文件编辑待后续单独实现。
+- 该批试运行暴露的 lint/类型问题（`zip.android`、`media-registration` 等）随文件一并撤销，无需保留。

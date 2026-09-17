@@ -70,3 +70,8 @@
 
 - 需求1d：新增 `video` 渲染器（`ui-sidebar-documentpreview/src/client/video/`），bytes 模式 `<video controls preload="metadata" playsinline>`，注册 `mp4/m4v/webm/ogv/mov` 并声明为二进制后缀；Blob URL 与图片渲染器同样在卸载/换文件时回收；失败（Blob 创建或播放被拒）给出失败行。3 处测试（媒体类型矩阵、播放器属性、替换字节回收、Blob 失败、播放失败、无完整字节、未声明后缀）。
 - 需求2：`StatsFloat` 展示层重做（口径不变）——总额为主视觉、三档占比条 + 图例、token chips、按模型占比行、计时行最后；收起态胶囊带总额 + token 三段。详见实体页 [统计浮层](entities/stats-float.md#视觉分层2026-09-17-改版)。
+
+## [2026-09-17] feat | 文件系统 seam 支持二进制写入；实验能力试验 profile
+
+- `writeBytes` 落到文件系统 seam：基类拒绝（`FS_UNSUPPORTED_BINARY_WRITE`）、`fs-local` 实现（`writeFileAtomic` 接受 `Uint8Array`）、`fs-sandbox` 围栏、`fs-ssh` 错误码透传；`workspaceFiles` 新增 `@Remote writeBytes`（同 `write` 的包含性/上限/版本守卫，另映射 `workspace-file/binary-unsupported`）。相关文件 100% 覆盖。
+- 建立 `~/.dsh/profiles/web-lab/`（base + web-app + browser-use/playwright provider/computer-use/auto-review），加载验证通过；三项端到端限制见查询页 [实验能力试验 profile](queries/web-lab-profile-and-experimental-plugins.md)。

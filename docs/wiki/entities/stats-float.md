@@ -37,3 +37,15 @@ status: active
 
 - 宽度轴见 [会话内容宽度轴](../concepts/conversation-width-axis.md)。
 - 决策与后果见 Agent Note `.agents/notes/implemented/feature/2026-09-17-workspace-scoped-stats-card.md`。
+
+## 视觉分层（2026-09-17 改版）
+
+- 收起态是一枚胶囊：总额为主，后跟 token 三段（`输入 100 / 输出 5 / 缓存 90`）；没有花费时胶囊以第一段 token 取代空位，若连用量都没有则回退到第一组文字统计。
+- 展开态四层：标题行（`当前工作区` + 会话数 + 收起提示）→ 总额主视觉（24px，tu­bular-nums）→ 输入/缓存/输出占比条 + 图例（各带精确金额）→ token chips → 按模型行（名称 + 占比条 + 小计）→ 计时/命中率等最安静的一行。
+- 占比条与模型占比条是装饰（`aria-hidden`），精确数字始终以文本呈现，因此配色不承载信息；三档用同一品牌色的 100% / 55% / 30% 混合，避免引入新色值。
+- 卡片可键盘操作（`role="button"` + `tabIndex` + `aria-expanded` + `focus-visible` 描边），Enter/空格切换展开。
+- 数据口径未变：仍是「当前工作区全部会话」的 token 与花费聚合。
+
+## 相关
+
+- [文档面板的编辑与保存](document-panel-editing.md) 同属本轮 fork 改动。

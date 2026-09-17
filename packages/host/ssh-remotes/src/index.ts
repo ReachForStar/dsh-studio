@@ -184,11 +184,17 @@ function requirePositiveInteger(value: number, field: string): void {
   if (!Number.isInteger(value) || value < 1) throw new Error(`ssh: ${field} must be a positive integer`)
 }
 
+/** One live PTY and the shared connection it was opened on. */
+interface SshGatewayPty {
+  readonly session: SshPtySession
+  readonly connection: SshConnection
+}
+
 /** Host Remote surface for SSH connection management, PTY, and SFTP. */
 export class SshGateway extends TypertRemoteService {
   static inject = ['sshSftp']
 
-  private readonly ptySessions = new Map<string, SshPtySession>()
+  private readonly ptySessions = new Map<string, SshGatewayPty>()
 
   constructor(ctx: Context) {
     // The gateway is its own Cordis service (`sshGateway`) whose wire namespace
@@ -197,7 +203,7 @@ export class SshGateway extends TypertRemoteService {
     ctx.effect(() => async () => {
       const sessions = [...this.ptySessions.values()]
       this.ptySessions.clear()
-      await Promise.allSettled(sessions.map(session => session.close()))
+      await Promise.allSettled(sessions.map(held => held.session.close()))
     }, 'ssh gateway: PTY teardown')
     ctx.inject(['connection'], (connectionCtx) => {
       connectionCtx.effect(() => {
@@ -309,7 +315,7 @@ export class SshGateway extends TypertRemoteService {
       signal.throwIfAborted()
     }
     const ptyId = randomUUID()
-    this.ptySessions.set(ptyId, session)
+    this.ptySessions.set(ptyId, { session, connection })
     return { ptyId }
   }
 
@@ -320,12 +326,15 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('ptyAttach')
   ptyAttach(request: SshPtyAttachRequest): { attached: true } {
-    const session = this.pty(request.ptyId)
-    session.onOutput((data) => {
+    const held = this.pty(request.ptyId)
+    held.session.onOutput((data) => {
       this.ctx.emit('ssh/pty/output', { ptyId: request.ptyId, data: Buffer.from(data).toString('base64') })
     })
-    session.onExit((info) => {
+    held.session.onExit((info) => {
       this.ptySessions.delete(request.ptyId)
+      // A shell that exited on its own leaves the same closed-terminal state as
+      // an explicit close, so the connection is released here too.
+      void this.releaseConnection(held.connection, request.ptyId)
       this.ctx.emit('ssh/pty/exit', { ptyId: request.ptyId, ...info })
     })
     return { attached: true }
@@ -338,7 +347,7 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('ptyWrite')
   ptyWrite(request: SshPtyWriteRequest): { accepted: true } {
-    this.pty(request.ptyId).write(Buffer.from(request.data, 'base64'))
+    this.pty(request.ptyId).session.write(Buffer.from(request.data, 'base64'))
     return { accepted: true }
   }
 
@@ -351,20 +360,22 @@ export class SshGateway extends TypertRemoteService {
   ptyResize(request: SshPtyResizeRequest): { accepted: true } {
     requirePositiveInteger(request.cols, 'cols')
     requirePositiveInteger(request.rows, 'rows')
-    this.pty(request.ptyId).resize(request.cols, request.rows)
+    this.pty(request.ptyId).session.resize(request.cols, request.rows)
     return { accepted: true }
   }
 
   /**
-   * 关闭 PTY。
+   * 关闭 PTY。终端是共享连接的持有者：最后一个持有该连接的 PTY 关闭时，连接
+   * 一并关闭，否则关闭终端后连接会随定义常驻。后续 exec/SFTP 会按需重新建连。
    * @param request - 要关闭的 PTY 标识。
    * @returns 表示 PTY 已关闭的确认值。
    */
   @Remote('ptyClose')
   async ptyClose(request: SshPtyCloseRequest): Promise<{ closed: true }> {
-    const session = this.pty(request.ptyId)
-    await session.close()
+    const held = this.pty(request.ptyId)
+    await held.session.close()
     this.ptySessions.delete(request.ptyId)
+    await this.releaseConnection(held.connection, request.ptyId)
     return { closed: true }
   }
 
@@ -447,10 +458,34 @@ export class SshGateway extends TypertRemoteService {
     return connection
   }
 
-  private pty(id: string): SshPtySession {
-    const session = this.ptySessions.get(id)
-    if (session === undefined) throw new SshError('SSH_PTY_CLOSED', `ssh pty session "${id}" was not found or has terminated`)
-    return session
+  private pty(id: string): SshGatewayPty {
+    const held = this.ptySessions.get(id)
+    if (held === undefined) throw new SshError('SSH_PTY_CLOSED', `ssh pty session "${id}" was not found or has terminated`)
+    return held
+  }
+
+  /**
+   * Close one shared connection once no open terminal still holds it. The
+   * provider keeps one handle per definition for every consumer — terminals,
+   * exec, SFTP — so this only closes when the terminals that made it worth
+   * keeping are gone; a later operation reconnects on demand.
+   *
+   * A close that fails does not fail the terminal that asked for it: the
+   * terminal is already gone, and a connection the provider had dropped on its
+   * own is not a close the caller can retry.
+   * @param connection - the handle the closing terminal was opened on.
+   * @param ptyId - the terminal being closed, named in the diagnostic.
+   */
+  private async releaseConnection(connection: SshConnection, ptyId: string): Promise<void> {
+    for (const held of this.ptySessions.values()) {
+      if (held.connection === connection) return
+    }
+    try {
+      await connection.close()
+    } catch (error) {
+      this.ctx.logger.warn(`ssh gateway: closing the connection held by PTY "${ptyId}" failed`)
+      this.ctx.logger.warn(error)
+    }
   }
 
   private async download(request: Request): Promise<Response> {

@@ -4,7 +4,7 @@
  * browser bundle consumes.
  */
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
@@ -129,6 +129,57 @@ describe('SshGateway', () => {
     const result = await gateway.exec({ connectionId: saved.id, command: 'pwd', cwd: '/srv' }, signal)
     expect(result.stdout).toBe('ok')
     expect(ssh.resolved).toEqual([{ command: 'pwd', cwd: '/srv', signal }])
+  })
+
+  it('closes the shared connection when the last terminal holding it closes', async () => {
+    const { gateway, ssh } = await harness()
+    const saved = await gateway.save({
+      name: 'term-box', host: 'h', username: 'u', authKind: 'password', password: 'x',
+    })
+    const first = await gateway.ptyOpen({ connectionId: saved.id, cols: 80, rows: 24 }, new AbortController().signal)
+    const second = await gateway.ptyOpen({ connectionId: saved.id, cols: 80, rows: 24 }, new AbortController().signal)
+    // Both terminals sit on one shared connection, as the provider hands it out.
+    expect(ssh.opened).toEqual([saved.id])
+
+    await gateway.ptyClose({ ptyId: first.ptyId })
+    expect(ssh.closed).toEqual([])
+
+    await gateway.ptyClose({ ptyId: second.ptyId })
+    expect(ssh.closed).toEqual([saved.id])
+
+    // The next operation on that definition reconnects on demand.
+    await gateway.exec({ connectionId: saved.id, command: 'pwd' }, new AbortController().signal)
+    expect(ssh.opened).toEqual([saved.id, saved.id])
+  })
+
+  it('releases the connection when a terminal reports its own exit', async () => {
+    const { gateway, ssh } = await harness()
+    const saved = await gateway.save({
+      name: 'exit-box', host: 'h', username: 'u', authKind: 'password', password: 'x',
+    })
+    const pty = await gateway.ptyOpen({ connectionId: saved.id, cols: 80, rows: 24 }, new AbortController().signal)
+    gateway.ptyAttach({ ptyId: pty.ptyId })
+
+    ssh.ptys[0]?.exit()
+
+    expect(ssh.closed).toEqual([saved.id])
+    // The exited terminal is gone: nothing addresses it any more.
+    expect(() => { gateway.ptyResize({ ptyId: pty.ptyId, cols: 80, rows: 24 }) }).toThrow(/not found or has terminated/)
+  })
+
+  it('closes the terminal even when the connection behind it is already gone', async () => {
+    const { ctx, gateway, ssh } = await harness()
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => ctx.logger)
+    const saved = await gateway.save({
+      name: 'gone-box', host: 'h', username: 'u', authKind: 'password', password: 'x',
+    })
+    const pty = await gateway.ptyOpen({ connectionId: saved.id, cols: 80, rows: 24 }, new AbortController().signal)
+    const failure = new Error('socket already gone')
+    ssh.closeError = failure
+
+    await expect(gateway.ptyClose({ ptyId: pty.ptyId })).resolves.toEqual({ closed: true })
+    expect(ssh.closed).toEqual([])
+    expect(warn).toHaveBeenLastCalledWith(failure)
   })
 
   it('returns the probe outcome as a result, never an RPC error', async () => {

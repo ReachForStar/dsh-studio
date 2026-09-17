@@ -31,14 +31,17 @@ External packages installed for runtime use or distributed inside the prebuilt b
 
 | Package | License |
 | --- | --- |
+| [`@a2a-js/sdk`](https://github.com/a2aproject/a2a-js) | Apache-2.0 |
 | [`@agentclientprotocol/sdk`](https://github.com/agentclientprotocol/typescript-sdk) | Apache-2.0 |
 | [`@anthropic-ai/claude-agent-sdk`](https://github.com/anthropics/claude-agent-sdk-typescript) | SEE LICENSE IN README.md |
 | [`@anthropic-ai/sdk`](https://github.com/anthropics/anthropic-sdk-typescript) | MIT |
 | [`@babel/code-frame`](https://github.com/babel/babel) | MIT |
 | [`@browserbasehq/stagehand`](https://github.com/browserbase/stagehand) | MIT |
+| [`@bufbuild/protobuf`](https://github.com/bufbuild/protobuf-es) | (Apache-2.0 AND BSD-3-Clause) |
 | [`@earendil-works/pi-ai`](https://github.com/earendil-works/pi) | MIT |
 | [`@earendil-works/pi-coding-agent`](https://github.com/earendil-works/pi) | MIT |
 | [`@excalidraw/excalidraw`](https://github.com/excalidraw/excalidraw) | MIT |
+| [`@grpc/grpc-js`](https://github.com/grpc/grpc-node/tree/master/packages/grpc-js) | Apache-2.0 |
 | [`@joplin/turndown-plugin-gfm`](https://github.com/laurent22/joplin-turndown-plugin-gfm) | MIT |
 | [`@jridgewell/gen-mapping`](https://github.com/jridgewell/sourcemaps) | MIT |
 | [`@lexical/history`](https://github.com/facebook/lexical) | MIT |
@@ -79,6 +82,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`diff`](https://github.com/kpdecker/jsdiff) | BSD-3-Clause |
 | [`electron-updater`](https://github.com/electron-userland/electron-builder) | MIT |
 | [`eventsource-parser`](https://github.com/rexxars/eventsource-parser) | MIT |
+| [`express`](https://github.com/expressjs/express) | MIT |
 | [`fflate`](https://github.com/101arrowz/fflate) | MIT |
 | [`immer`](https://github.com/immerjs/immer) | MIT |
 | [`ipaddr.js`](https://github.com/whitequark/ipaddr.js) | MIT |

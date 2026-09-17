@@ -47,7 +47,7 @@ kind: "package-reference"
 Web GUI 打磨插件，浏览器半 + 小型 host 半——无需改动核心包即可获得的几项增强：
 
 - **全局背景图片。** 插件拥有自己的 `ui-polish` settings 命名空间，将图片绘制到 body（`cover` / 固定 / 居中），并给 document 打上 `data-ds-bg-image` 标记。注入的全局样式表在属性存在时把基础 token（`--dsw-alias-bg-base`、`--dsw-specific-sidebar-fill`）覆盖为透明，使结构性表面——应用框架、会话区、详情区、侧边栏——让位于图片；需要对比度的内容元素（卡片、代码块、按钮）保留自身填充。General 设置行的上传（含大小/类型校验）、预览与移除由该行提供。图片以**磁盘文件**持久化（在 `/bg/current` 提供）——settings 文档只存短 URL，绝不存数兆 base64——重启后依然有效且不撑大设置文件。
-- **会话统计费用浮层。** 一个 `conversation.composer.dock` 项以 `position: fixed` 钉在视口右上角，展示持久的 `sessionStats` 与 `tokenUsage` 投影数据（无前者的装配回退到窗口折叠），外加按模型计费的花费估算，输入/缓存/输出桶拆分直接显示在总额下方：一个仅状态的 Conversation Definition 将每条已结算助手消息的模型（messageId → model）记入插件自有索引，每步 usage 按其自身模型的费率与其自身结算时间计价（因此 deepseek 这类分时模型在高峰/低谷价间切换，按长度分档的模型选取覆盖输入长度的档位）。**费率卡**（每 100 万 token 人民币价）是内置 `src/client/model-pricing.json` 种子，由 amaxsmp 网关价格一次性换算而来；General 设置中的**模型费率卡**行以 JSON 编辑并持久化到 settings 文档，因此自定义卡重启后依然有效并立即重新计价。未知模型回退到卡的 `default` 项。
+- **工作区统计费用浮层。** 一个 `conversation.composer.dock` 项以 `position: fixed` 钉在视口右上角，展示当前会话的持久 `sessionStats` 数据（无该投影的装配回退到窗口折叠），外加**其工作区下全部会话**的 token 与花费：每个会话通过会话列表中其行携带的投影值上报 token，当前会话则用其实时投影。花费按会话计价——本客户端持有已结算消息的会话按每条消息自身的模型与结算时间计费（因此 deepseek 这类分时模型在高峰/低谷价间切换，按长度分档的模型选取覆盖输入长度的档位），仅通过投影得知的会话按卡的 `default` 费率估算，因为线上投影只带分桶总量、没有模型归属；因此按模型的拆分行仅在只有一个会话参与时显示。**费率卡**（每 100 万 token 人民币价）是内置 `src/client/model-pricing.json` 种子，由 amaxsmp 网关价格一次性换算而来；General 设置中的**模型费率卡**行以 JSON 编辑并持久化到 settings 文档，因此自定义卡重启后依然有效并立即重新计价。未知模型回退到卡的 `default` 项。
 - **文件面板。** 一个 `conversation.view` 标签页（在轨迹与 Git 标签之间）浏览工作区仓库目录树：目录通过 `/git/list` 惰性展开，选择文件通过 `/git/read` 将当前内容读入可编辑 textarea；保存通过 `/git/write` 写回——文件就地编辑，绝不交给第三方应用。
 - **SSH/SFTP 面板。** 一个 `conversation.view` 标签页，提供已保存连接选择、远程命令探测、交互式 PTY 与 SFTP 目录/文件操作。控制操作使用生成的 `ssh` Remote 命名空间；PTY 输出与退出使用共享 Remote Event 流；文件传输使用经过认证的 Host Fetch 路由。
 - **Git 面板。** 一个 `conversation.view` 标签页（文件标签之后）展示浏览器当前查看的工作区仓库：分支、带逐文件 diff 的工作树变更、提交框（`add -A` + commit）、推送动作，以及双列布局的最近提交。选择变更文件在右列就地编辑（同一 `/git/read` + `/git/write`）。
@@ -145,7 +145,7 @@ node 半在 host webserver 上注册三个前缀；每个请求都携带工作�
 | `settings.general.item` | `polish-background` | 背景图上传 / 预览 / 移除。 |
 | `settings.general.item` | `polish-compaction` | 自动压缩阈值选择。 |
 | `settings.general.item` | `polish-pricing` | 模型费率卡 JSON 编辑器。 |
-| `conversation.composer.dock` | `polish-stats` | 会话统计费用浮层（钉在视口）。 |
+| `conversation.composer.dock` | `polish-stats` | 工作区统计费用浮层（钉在视口）。 |
 | `conversation.view` | `files` | 工作区文件浏览 / 编辑。 |
 | `conversation.view` | `git` | Git 面板（状态、diff、提交、推送、日志）。 |
 | `conversation.view` | `excalidraw` | Excalidraw 白板标签页。 |

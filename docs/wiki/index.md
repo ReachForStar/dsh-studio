@@ -11,10 +11,12 @@ updated: 2026-09-17
 
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。
+- [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全量会话）、数据源与两条计价路径。
 
 ## 概念 concepts
 
 - [SSH/SFTP 能力接缝（ctx.sshSftp）](concepts/ssh-sftp-seam.md) — fork 自研接缝的三角色、包映射，以及 `ctx.ssh` → `ctx.sshSftp` 改名原因。
+- [会话内容宽度轴（--dsh-chat-content-width）](concepts/conversation-width-axis.md) — 记录区/dock/输入卡共用的宽度来源、用户偏好的钳制规则，以及滑块控件。
 
 ## 源总结 sources
 

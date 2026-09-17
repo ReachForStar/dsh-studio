@@ -38,6 +38,7 @@ kind: "package-library"
 |---|---|
 | `Button` | 可点击操作；`variant` 选择 `primary`、`ghost`、`outline` 或 `toolbar`。 |
 | `Switch` | 36×20 的双态开关。`label` 必填，控件不可能在没有名称的情况下发布。 |
+| `Slider` | 在区间内取值的数值输入。`label` 必填；`valueText` 说明裸数字之外的读法。 |
 | `Input` | 单行文本输入，用于搜索框与行内表单。 |
 | `Menu` | 由条目、分隔线与分组标题构成的下拉菜单，支持嵌套子菜单。 |
 | `Pill` | 可选中的胶囊按钮，用于视图切换与筛选器；接受 `active` 与 `onClick`。 |

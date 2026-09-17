@@ -1,18 +1,36 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { ConversationSlotProps } from '../contract/slots.ts'
 import { conversationPhase } from '../contract/snapshot.ts'
 import { ConversationContent } from './ConversationContent.tsx'
 import css from './ConversationRoot.module.css'
 
-/** localStorage key for the dragged transcript width preference (px). */
+/** localStorage key for the chosen transcript width preference (px). */
 const WIDTH_PREF_KEY = 'dsh.conversation.contentWidth'
-/** Floor for a dragged content width; matches the layout center-column minimum. */
+/** Floor for a chosen content width; matches the layout center-column minimum. */
 const CONTENT_MIN = 640
-/** Column budget the content must leave free: 88px per side keeps the width
- * handles fully placeable (24px inset + 40px strip + 24px safe zone) — a
- * larger dragged width would push its own handles off the column and leave no
- * way to drag back. */
+/** Column budget the content leaves free: 88px per side, the figure this axis
+ * has always reserved for its edge clearances. An unchanged budget keeps a
+ * stored width the size it had when it was chosen. */
 const CONTENT_EDGE_BUDGET = 176
+
+/** The content-width range one rendered column can offer. */
+export interface WidthAxis {
+  /** Lowest width the slider offers. */
+  min: number
+  /** Highest width this column can show without consuming its edge budget. */
+  max: number
+  /** Width the column is showing. */
+  value: number
+}
+
+/**
+ * Highest content width this column can show.
+ * @param columnWidth - the conversation column's rendered width in px.
+ * @returns the widest content width the column budget allows.
+ */
+function maxContentWidth(columnWidth: number): number {
+  return Math.max(CONTENT_MIN, columnWidth - CONTENT_EDGE_BUDGET)
+}
 
 /** Reads the persisted width preference; durable-storage boundary, so a
  * missing or corrupt value resolves to "no preference".
@@ -26,10 +44,10 @@ function readWidthPreference(): number | null {
 
 /** Resolves the content width the CSS axis would show for a column width.
  * @param columnWidth - the conversation column's rendered width in px.
- * @param preference - the dragged preference, or null for the adaptive clamp.
+ * @param preference - the chosen preference, or null for the adaptive clamp.
  * @returns the resolved content width in px (mirrors the CSS clamp). */
 function resolveContentWidth(columnWidth: number, preference: number | null): number {
-  const max = Math.max(CONTENT_MIN, columnWidth - CONTENT_EDGE_BUDGET)
+  const max = maxContentWidth(columnWidth)
   if (preference !== null) return Math.min(Math.max(preference, CONTENT_MIN), max)
   return Math.max(680, Math.min(columnWidth * 0.64, 920))
 }
@@ -48,62 +66,55 @@ export function ConversationMainPanel(props: ConversationSlotProps) {
     : conversationPhase(session, conversation)
   const openState = session?.openState
   const summaryBlank = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.blank)
-
-  // Publishes the column's live width as --dsh-conversation-column-width so
-  // the shared width axis can adapt (see the .root CSS), and re-clamps a
-  // dragged preference against the shrunken column WITHOUT rewriting the
-  // stored preference — widening the window restores it (the AppFrame
-  // sidebar-drag rule). Same callback-ref pattern as the seat observer.
+  const [widthAxis, setWidthAxis] = useState<WidthAxis | undefined>(undefined)
   const rootEl = useRef<HTMLDivElement | null>(null)
-  const rootObserver = useRef<ResizeObserver | null>(null)
-  const publishWidths = useCallback((root: HTMLDivElement): void => {
+
+  // Publishes the chosen width as the shared width axis (see the .root CSS)
+  // and re-clamps it against the shrunken column WITHOUT rewriting the stored
+  // preference — widening the window restores it (the AppFrame sidebar-drag
+  // rule). Same callback-ref pattern as the seat observer.
+  const publishWidths = useCallback((root: HTMLDivElement, preference: number | null): void => {
     const column = root.offsetWidth
-    root.style.setProperty('--dsh-conversation-column-width', `${column}px`)
-    const preference = readWidthPreference()
-    if (preference === null) {
-      root.style.removeProperty('--dsh-chat-user-width')
-    } else {
-      root.style.setProperty('--dsh-chat-user-width', `${resolveContentWidth(column, preference)}px`)
-    }
+    const max = maxContentWidth(column)
+    const value = resolveContentWidth(column, preference)
+    if (preference === null) root.style.removeProperty('--dsh-chat-user-width')
+    else root.style.setProperty('--dsh-chat-user-width', `${value}px`)
+    // Identity is kept when nothing moved: the observer runs on every column
+    // resize, and a fresh object would re-render the slider for no change.
+    setWidthAxis(current => current !== undefined && current.max === max && current.value === value
+      ? current
+      : { min: CONTENT_MIN, max, value })
+  }, [])
+  const rootObserver = useRef<ResizeObserver | null>(null)
+  const publishColumnWidth = useCallback((): void => {
+    const root = rootEl.current
+    if (root === null) return
+    root.style.setProperty('--dsh-conversation-column-width', `${root.offsetWidth}px`)
   }, [])
   const rootResizeRef = useCallback((root: HTMLDivElement | null): void => {
     rootObserver.current?.disconnect()
     rootObserver.current = null
     rootEl.current = root
     if (root === null) return
-    rootObserver.current = new ResizeObserver(() => { publishWidths(root) })
+    rootObserver.current = new ResizeObserver(() => {
+      publishColumnWidth()
+      publishWidths(root, readWidthPreference())
+    })
     rootObserver.current.observe(root)
-    publishWidths(root)
-  }, [publishWidths])
+    publishColumnWidth()
+    publishWidths(root, readWidthPreference())
+  }, [publishColumnWidth, publishWidths])
 
-  // Drag plumbing for the two width handles: onStart snapshots the resolved
-  // width (grabbing a clamped column must not jump back to the raw stored
-  // preference), onDrag publishes only the live clamped style, onCommit
-  // persists the width of a gesture that actually travelled, and onEnd
-  // republishes from storage — an uncommitted press leaves the stored
-  // preference untouched.
-  const onHandleStart = useCallback((): number => {
+  // Slider plumbing: every step publishes the chosen width (the CSS override
+  // and the slider's own position), and the choice is stored as it moves — a
+  // range input has no "press without travel" state to protect the stored
+  // preference from.
+  const onContentWidthChange = useCallback((width: number): void => {
     const root = rootEl.current
-    /* v8 ignore next -- handles render inside the root, so the ref is always attached. */
-    if (root === null) return 680
-    return resolveContentWidth(root.offsetWidth, readWidthPreference())
-  }, [])
-  const onHandleDrag = useCallback((width: number): void => {
-    const root = rootEl.current
-    /* v8 ignore next -- handles render inside the root, so the ref is always attached. */
-    if (root === null) return
-    const clamped = resolveContentWidth(root.offsetWidth, width)
-    root.style.setProperty('--dsh-chat-user-width', `${clamped}px`)
-  }, [])
-  const onHandleCommit = useCallback((width: number): void => {
-    const root = rootEl.current
-    /* v8 ignore next -- handles render inside the root, so the ref is always attached. */
+    /* v8 ignore next -- the slider renders inside the root, so the ref is always attached. */
     if (root === null) return
     localStorage.setItem(WIDTH_PREF_KEY, `${resolveContentWidth(root.offsetWidth, width)}`)
-  }, [])
-  const onHandleEnd = useCallback((): void => {
-    const root = rootEl.current
-    if (root !== null) publishWidths(root)
+    publishWidths(root, width)
   }, [publishWidths])
 
   // While a session is still replaying (loading + blank) the hero/docked
@@ -136,10 +147,8 @@ export function ConversationMainPanel(props: ConversationSlotProps) {
         session={session}
         phase={phase}
         hero={hero}
-        onHandleStart={onHandleStart}
-        onHandleDrag={onHandleDrag}
-        onHandleCommit={onHandleCommit}
-        onHandleEnd={onHandleEnd}
+        widthAxis={widthAxis}
+        onContentWidthChange={onContentWidthChange}
       />
     </div>
   )

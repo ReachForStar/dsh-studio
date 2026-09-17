@@ -289,13 +289,12 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('exec')
   async exec(request: SshExecRemoteRequest, signal: AbortSignal): Promise<SshRemoteRunResult> {
-    const connection = await this.connection(request.connectionId, signal)
-    return connection.exec(this.ctx.sshSftp.resolveExec({
+    return this.withConnection(request.connectionId, signal, connection => connection.exec(this.ctx.sshSftp.resolveExec({
       command: request.command,
       ...request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs },
       ...request.cwd === undefined ? {} : { cwd: request.cwd },
       signal,
-    }))
+    })))
   }
 
   /**
@@ -387,10 +386,11 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('sftpList')
   async sftpList(request: SshSftpRequest, signal: AbortSignal): Promise<{ entries: SftpEntryView[] }> {
-    const connection = await this.connection(request.connectionId, signal)
-    const entries = await connection.sftp.list(request.path)
-    signal.throwIfAborted()
-    return { entries: entries.map(entry => sftpEntryView(entry, request.path)) }
+    return this.withConnection(request.connectionId, signal, async (connection) => {
+      const entries = await connection.sftp.list(request.path)
+      signal.throwIfAborted()
+      return { entries: entries.map(entry => sftpEntryView(entry, request.path)) }
+    })
   }
 
   /**
@@ -401,11 +401,12 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('sftpStat')
   async sftpStat(request: SshSftpRequest, signal: AbortSignal): Promise<{ entry: SftpEntryView }> {
-    const connection = await this.connection(request.connectionId, signal)
-    const entry = await connection.sftp.stat(request.path)
-    signal.throwIfAborted()
-    const parent = request.path.slice(0, request.path.lastIndexOf('/')) || '/'
-    return { entry: sftpEntryView(entry, parent) }
+    return this.withConnection(request.connectionId, signal, async (connection) => {
+      const entry = await connection.sftp.stat(request.path)
+      signal.throwIfAborted()
+      const parent = request.path.slice(0, request.path.lastIndexOf('/')) || '/'
+      return { entry: sftpEntryView(entry, parent) }
+    })
   }
 
   /**
@@ -416,10 +417,11 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('sftpMkdir')
   async sftpMkdir(request: SshSftpMkdirRequest, signal: AbortSignal): Promise<{ path: string }> {
-    const connection = await this.connection(request.connectionId, signal)
-    await connection.sftp.mkdir(request.path, { recursive: request.recursive === true })
-    signal.throwIfAborted()
-    return { path: request.path }
+    return this.withConnection(request.connectionId, signal, async (connection) => {
+      await connection.sftp.mkdir(request.path, { recursive: request.recursive === true })
+      signal.throwIfAborted()
+      return { path: request.path }
+    })
   }
 
   /**
@@ -430,10 +432,11 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('sftpRemove')
   async sftpRemove(request: SshSftpRemoveRequest, signal: AbortSignal): Promise<{ removed: true }> {
-    const connection = await this.connection(request.connectionId, signal)
-    await connection.sftp.remove(request.path, { recursive: request.recursive === true })
-    signal.throwIfAborted()
-    return { removed: true }
+    return this.withConnection(request.connectionId, signal, async (connection) => {
+      await connection.sftp.remove(request.path, { recursive: request.recursive === true })
+      signal.throwIfAborted()
+      return { removed: true }
+    })
   }
 
   /**
@@ -444,10 +447,40 @@ export class SshGateway extends TypertRemoteService {
    */
   @Remote('sftpRename')
   async sftpRename(request: SshSftpRenameRequest, signal: AbortSignal): Promise<{ path: string }> {
-    const connection = await this.connection(request.connectionId, signal)
-    await connection.sftp.rename(request.path, request.toPath)
-    signal.throwIfAborted()
-    return { path: request.toPath }
+    return this.withConnection(request.connectionId, signal, async (connection) => {
+      await connection.sftp.rename(request.path, request.toPath)
+      signal.throwIfAborted()
+      return { path: request.toPath }
+    })
+  }
+
+  /**
+   * Run one operation on the shared connection and release it afterwards unless
+   * an open terminal still holds it.
+   *
+   * The provider keys one live connection per definition and hands the same
+   * handle to terminals, exec, and SFTP alike, so an operation that simply kept
+   * the handle would leave a connection open on a target nobody is using — the
+   * terminal that justified it is gone, and the browser's next directory read
+   * or working-directory probe would reconnect it forever. Releasing here makes
+   * the connection's lifetime the terminals': a held connection is reused for
+   * the cost of a map lookup, and an unheld one is closed as the operation ends.
+   * @param id - the connection definition id.
+   * @param signal - cancels the operation.
+   * @param operation - the work to run against the live connection.
+   * @returns the operation's result.
+   */
+  private async withConnection<T>(
+    id: string,
+    signal: AbortSignal,
+    operation: (connection: SshConnection) => Promise<T>,
+  ): Promise<T> {
+    const connection = await this.connection(id, signal)
+    try {
+      return await operation(connection)
+    } finally {
+      await this.releaseConnection(connection, 'one-shot exec/SFTP operation')
+    }
   }
 
   private async connection(id: string, signal: AbortSignal): Promise<SshConnection> {
@@ -474,16 +507,16 @@ export class SshGateway extends TypertRemoteService {
    * terminal is already gone, and a connection the provider had dropped on its
    * own is not a close the caller can retry.
    * @param connection - the handle the closing terminal was opened on.
-   * @param ptyId - the terminal being closed, named in the diagnostic.
+   * @param holder - the operation that no longer needs it, named in the diagnostic.
    */
-  private async releaseConnection(connection: SshConnection, ptyId: string): Promise<void> {
+  private async releaseConnection(connection: SshConnection, holder: string): Promise<void> {
     for (const held of this.ptySessions.values()) {
       if (held.connection === connection) return
     }
     try {
       await connection.close()
     } catch (error) {
-      this.ctx.logger.warn(`ssh gateway: closing the connection held by PTY "${ptyId}" failed`)
+      this.ctx.logger.warn(`ssh gateway: closing the connection released by ${holder} failed`)
       this.ctx.logger.warn(error)
     }
   }
@@ -496,11 +529,24 @@ export class SshGateway extends TypertRemoteService {
       return new Response('missing connectionId or path', { status: 400 })
     }
     let file: Awaited<ReturnType<SshConnection['sftp']['openRead']>> | undefined
+    let connection: SshConnection | undefined
+    let settled = false
+    // The body streams after this handler returns, so the connection is held
+    // until the transfer itself ends — on the final chunk, on a read error, or
+    // when the client aborts.
+    const settle = async (): Promise<void> => {
+      if (settled) return
+      settled = true
+      await file?.close()
+      if (connection !== undefined) await this.releaseConnection(connection, 'SFTP download')
+    }
     try {
-      const connection = await this.connection(connectionId, request.signal)
+      connection = await this.connection(connectionId, request.signal)
       file = await connection.sftp.openRead(path)
       request.signal.throwIfAborted()
       const stream = Readable.toWeb(file.stream) as ReadableStream<Uint8Array>
+      file.stream.once('close', () => { void settle() })
+      file.stream.once('error', () => { void settle() })
       return new Response(stream, {
         headers: {
           'content-type': 'application/octet-stream',
@@ -509,7 +555,7 @@ export class SshGateway extends TypertRemoteService {
         },
       })
     } catch (error) {
-      await file?.close()
+      await settle()
       if (request.signal.aborted) throw request.signal.reason
       return new Response(`sftp download failed: ${error instanceof Error ? error.message : String(error)}`, { status: 500 })
     }
@@ -524,8 +570,9 @@ export class SshGateway extends TypertRemoteService {
     }
     if (request.body === null) return new Response('missing upload body', { status: 400 })
     let writable: Awaited<ReturnType<SshConnection['sftp']['openWrite']>> | undefined
+    let connection: SshConnection | undefined
     try {
-      const connection = await this.connection(connectionId, request.signal)
+      connection = await this.connection(connectionId, request.signal)
       writable = await connection.sftp.openWrite(path)
       const reader = request.body.getReader()
       while (true) {
@@ -544,6 +591,8 @@ export class SshGateway extends TypertRemoteService {
       writable?.stream.destroy()
       if (request.signal.aborted) throw request.signal.reason
       return new Response(`sftp upload failed: ${error instanceof Error ? error.message : String(error)}`, { status: 500 })
+    } finally {
+      if (connection !== undefined) await this.releaseConnection(connection, 'SFTP upload')
     }
   }
 }

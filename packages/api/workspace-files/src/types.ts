@@ -142,10 +142,23 @@ export type WorkspaceFileWatchFrame =
   | { readonly kind: 'ready' }
   | { readonly kind: 'change'; readonly change: WorkspaceFileChange }
 
+/**
+ * The freshness guard one write carries. An editor that read the file first
+ * states the version it read, so a write that would discard newer content —
+ * another editor, a model edit, a tool — fails instead of overwriting it.
+ * Omitting the guard writes unconditionally.
+ */
+export interface WorkspaceFileWriteGuard {
+  /** Version the caller read, as reported by a read, a stat, or a previous write. */
+  readonly expectedVersion?: string
+}
+
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     /** No entry exists at that path inside the workspace. */
     'workspace-file/not-found': { readonly path: string }
+    /** The file changed since the version the write was based on; nothing was written. */
+    'workspace-file/stale-version': { readonly path: string }
     /** The directory listing path resolves outside the session's workspace root. */
     'workspace-file/outside-workspace': { readonly path: string }
     /** The requested page exceeds the configured byte cap; nothing is returned. */

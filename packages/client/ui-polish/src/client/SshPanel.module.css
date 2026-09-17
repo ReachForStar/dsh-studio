@@ -229,6 +229,13 @@
   padding: 8px;
 }
 
+.hint {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  padding: 16px 8px;
+  text-align: center;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

@@ -118,20 +118,38 @@ describe('writeFileAtomic', () => {
     expect((await readdir(dir)).filter(entry => entry.includes('.tmp'))).toEqual([])
   })
 
+  it('keeps retrying while interference lasts several seconds, then commits', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    vi.useFakeTimers()
+    const dir = await scratch()
+    const target = join(dir, 'document')
+    await writeFile(target, 'old')
+    state.renameFailures.push(...Array.from({ length: 20 }, () => 'EPERM'))
+
+    const replacement = writeFileAtomic(target, 'new', { mode: 0o600 })
+    await vi.waitFor(() => { expect(state.renameAttempts).toBeGreaterThan(0) })
+    await vi.runAllTimersAsync()
+    await replacement
+
+    expect(state.renameAttempts).toBe(21)
+    expect(await readFile(target, 'utf8')).toBe('new')
+    expect((await readdir(dir)).filter(entry => entry.includes('.tmp'))).toEqual([])
+  })
+
   it('leaves no temp sibling after bounded Windows rename retries expire', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
     vi.useFakeTimers()
     const dir = await scratch()
     const target = join(dir, 'document')
     await writeFile(target, 'old')
-    state.renameFailures.push(...Array.from({ length: 9 }, () => 'EPERM'))
+    state.renameFailures.push(...Array.from({ length: 25 }, () => 'EPERM'))
 
     const replacement = writeFileAtomic(target, 'new', { mode: 0o600 })
     await vi.waitFor(() => { expect(state.renameAttempts).toBeGreaterThan(0) })
     await vi.runAllTimersAsync()
     await expect(replacement).rejects.toMatchObject({ code: 'EPERM' })
 
-    expect(state.renameAttempts).toBe(9)
+    expect(state.renameAttempts).toBe(25)
     expect(await readFile(target, 'utf8')).toBe('old')
     expect((await readdir(dir)).filter(entry => entry.includes('.tmp'))).toEqual([])
   })

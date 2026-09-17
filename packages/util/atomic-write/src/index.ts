@@ -15,9 +15,18 @@ import { lstat, mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
 const WINDOWS_TRANSIENT_RENAME_ERRORS: ReadonlySet<string> = new Set(['EACCES', 'EBUSY', 'EPERM'])
-const WINDOWS_RENAME_RETRY_INITIAL_MS = 20
-const WINDOWS_RENAME_RETRY_MAX_MS = 200
-const WINDOWS_RENAME_RETRY_LIMIT = 8
+/**
+ * Windows replacement stays blocked while any process holds the target open —
+ * a virus scanner inspecting the fresh file, an editor, or a sync client. That
+ * interference outlives a short budget (observed lasting seconds on a user
+ * settings file), so the retries cover roughly ten seconds before the caller
+ * sees the failure. Waiting is the cheap side of the trade here: the caller is
+ * a background write whose content the next attempt commits unchanged, while
+ * giving up early surfaces a permission error no user can act on.
+ */
+const WINDOWS_RENAME_RETRY_INITIAL_MS = 50
+const WINDOWS_RENAME_RETRY_MAX_MS = 500
+const WINDOWS_RENAME_RETRY_LIMIT = 24
 
 /** Whether Windows reported temporary interference with an atomic replacement. */
 function isTransientWindowsRenameError(error: unknown): boolean {
@@ -68,7 +77,7 @@ export interface WriteFileAtomicOptions {
  * race. The rename also replaces a symlinked target itself instead of writing
  * through to its referent, and the same-directory sibling keeps the rename on
  * one filesystem. Windows replacement retries transient `EACCES`, `EBUSY`,
- * and `EPERM` failures for a bounded interval while the complete temp file
+ * and `EPERM` failures for roughly ten seconds while the complete temp file
  * remains the rename source. On any remaining failure the temp file is
  * removed and the failure rethrown. Crash durability (fsync) is out of scope.
  * @param filename - final path receiving the content.

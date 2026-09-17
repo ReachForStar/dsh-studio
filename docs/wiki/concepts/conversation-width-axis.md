@@ -33,3 +33,9 @@ status: active
 
 - 长度决策与取舍见 Agent Note `.agents/notes/implemented/feature/2026-09-17-conversation-width-slider.md`。
 - 会话统计与费用卡片见 [统计浮层（StatsFloat）](../entities/stats-float.md)。
+
+## 作用域（2026-09-17 核查）
+
+宽度轴的两个变量都写在**会话面板自己的根元素**上（`ConversationMainPanel.tsx` 的 `rootEl`）：`publishWidths` 写 `--dsh-chat-user-width`，`publishColumnWidth` 写 `--dsh-conversation-column-width`；面板卸载即随之失效。全仓读取 `--dsh-chat-content-width` / `--dsh-chat-user-width` 的只有 `ui-approval`、`ui-user-questions`、`ui-goal`、`ui-chat` 的 CSS，全部位于会话根子树内——**没有会话区之外的消费者，也没有第二处写入者**，因此改宽度不会外溢到其他页面。
+
+偏好本身是**全局**的：单个 `localStorage` 键 `dsh.conversation.contentWidth`，所有会话共用（切会话沿用同一宽度）。若要改成按会话记录，需要把键改成含会话 id 的形式，并在读取时按会话回退到默认。

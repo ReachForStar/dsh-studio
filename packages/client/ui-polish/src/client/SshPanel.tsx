@@ -248,6 +248,9 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const ptyIdRef = useRef<string | null>(null)
+  // Read by `listDir`, whose identity must not change with the terminal state.
+  const ptyOpenRef = useRef(ptyOpen)
+  ptyOpenRef.current = ptyOpen
   const pendingPtyOutputRef = useRef<Uint8Array[]>([])
   const resizeObserver = useRef<ResizeObserver | null>(null)
   const hostUnsubRef = useRef<(() => void) | null>(null)
@@ -275,6 +278,25 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       finally { setConnectionsLoaded(true) }
     })()
   }, [])
+
+  const teardownTerminal = useCallback((closeRemote: boolean): void => {
+    const ptyId = ptyIdRef.current
+    ptyIdRef.current = null
+    if (closeRemote && ptyId !== null) void rpc('ssh.pty.close', { ptyId }).catch(() => undefined)
+    promptTrackerRef.current = null
+    cwdProbeRef.current = null
+    resizeObserver.current?.disconnect()
+    resizeObserver.current = null
+    termRef.current?.dispose()
+    termRef.current = null
+    setPtyOpen(false)
+    // The SFTP browser read through this terminal's connection, so it holds no
+    // remote directory any more: drop the listing instead of showing a stale
+    // one the next click could not refresh.
+    setSftpEntries([])
+    setSftpError(null)
+    setSftpLoading(false)
+  }, [rpc])
 
   // Subscribe to host WebSocket frames for PTY output/exit.
   useEffect(() => {
@@ -304,22 +326,17 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       },
       (ptyId) => {
         if (ptyId !== ptyIdRef.current) return
-        ptyIdRef.current = null
-        promptTrackerRef.current = null
-        setPtyOpen(false)
-        resizeObserver.current?.disconnect()
-        resizeObserver.current = null
-        termRef.current?.dispose()
-        termRef.current = null
+        teardownTerminal(false)
       },
     )
     hostUnsubRef.current = unsub
     return () => { unsub(); hostUnsubRef.current = null }
-  }, [])
+  }, [teardownTerminal])
 
-  // SFTP: list directory.
+  // SFTP: list directory. The read rides the connection the terminal opened,
+  // so a request without a live terminal never connects to the target.
   const listDir = useCallback(async (path: string) => {
-    if (!selectedConn) return
+    if (!selectedConn || !ptyOpenRef.current) return
     const seq = ++listSeqRef.current
     setSftpLoading(true)
     setSftpError(null)
@@ -416,24 +433,31 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     write(`${cmd}\r`)
   }, [])
 
-  // Load the selected connection's directory as soon as it is picked, so the
-  // SFTP browser is usable without opening the terminal. Prefer the remote
-  // home directory; fall back to '/' when the probe fails.
+  // Selecting a target only arms the panel: the connection belongs to the
+  // terminal, so switching targets drops the terminal that held it and the
+  // directory it was showing, and nothing connects until a terminal opens.
   useEffect(() => {
-    if (selectedConn === null) return
-    const ac = new AbortController()
     setSftpEntries([])
     setSftpError(null)
+    setSftpPath('/')
+    setFollowCwd(true)
+  }, [selectedConn])
+
+  // The SFTP browser reads through the terminal's connection: load the remote
+  // home directory once a terminal is open, preferring it over '/'.
+  useEffect(() => {
+    if (!ptyOpen || selectedConn === null) return
+    const ac = new AbortController()
     void (async () => {
       const home = await resolveHomeDir(rpc, selectedConn, ac.signal)
       if (ac.signal.aborted) return
       if (home !== null) setHomeDir(home)
       const initial = home ?? '/'
       setSftpPath(initial)
-      void listDir(initial)
+      await listDirRef.current(initial)
     })()
     return () => { ac.abort() }
-  }, [selectedConn, listDir, rpc])
+  }, [ptyOpen, selectedConn, rpc])
 
   // Open a PTY session on the selected connection. The xterm view is
   // mounted by a separate effect once `terminalEl` + `ptyOpen` are ready.
@@ -708,7 +732,12 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         <select
           className={css.select}
           value={selectedConn ?? ''}
-          onChange={(e) => { setSelectedConn(e.target.value || null) }}
+          onChange={(e) => {
+            // One connection at a time: the next target's SFTP browser needs a
+            // terminal of its own, so the previous terminal is closed here.
+            if (ptyOpenRef.current) teardownTerminal(true)
+            setSelectedConn(e.target.value || null)
+          }}
           disabled={!connectionsLoaded || connections.length === 0}
         >
           <option value="">
@@ -737,17 +766,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         {ptyOpen && termRef.current && (
           <button
             className={css.closeButton}
-            onClick={() => {
-              const id = ptyIdRef.current
-              if (id) void rpc('ssh.pty.close', { ptyId: id }).catch(() => undefined)
-              ptyIdRef.current = null
-              setPtyOpen(false)
-              resizeObserver.current?.disconnect()
-              resizeObserver.current = null
-              termRef.current?.dispose()
-              termRef.current = null
-              promptTrackerRef.current = null
-            }}
+            onClick={() => { teardownTerminal(true) }}
           >
             {t('ssh.closeTerminal')}
           </button>
@@ -757,7 +776,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       {/* SFTP file manager */}
       <div className={css.sftp}>
         <div className={css.sftpHeader}>
-          <button className={css.button} disabled={!selectedConn || sftpPath === '/'} onClick={goParent} style={{ marginRight: 8 }}>
+          <button className={css.button} disabled={!ptyOpen || sftpPath === '/'} onClick={goParent} style={{ marginRight: 8 }}>
             ..
           </button>
           <div className={css.crumbs}>
@@ -766,7 +785,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
                 {idx > 0 && <span className={css.crumbSep}>/</span>}
                 <button
                   className={`${css.crumb}${idx === pathSegments(sftpPath).length - 1 ? ` ${css.crumbCurrent}` : ''}`}
-                  disabled={!selectedConn || idx === pathSegments(sftpPath).length - 1}
+                  disabled={!ptyOpen || idx === pathSegments(sftpPath).length - 1}
                   onClick={() => { setFollowCwd(false); void listDir(seg.prefix) }}
                 >
                   {seg.label}
@@ -796,22 +815,23 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
             </button>
             <button
               className={css.button}
-              disabled={!selectedConn || sftpLoading}
+              disabled={!ptyOpen || sftpLoading}
               onClick={() => { setFollowCwd(false); void listDir(sftpPath) }}
             >
               {t('ssh.refresh')}
             </button>
-            <button className={css.button} disabled={!selectedConn} onClick={handleMkdir}>
+            <button className={css.button} disabled={!ptyOpen} onClick={handleMkdir}>
               {t('ssh.mkdir')}
             </button>
-            <button className={css.button} disabled={!selectedConn || uploading} onClick={handleUploadClick}>
+            <button className={css.button} disabled={!ptyOpen || uploading} onClick={handleUploadClick}>
               {uploading ? t('ssh.uploading') : t('ssh.upload')}
             </button>
           </div>
         </div>
         {sftpError && <div className={css.error}>{sftpError}</div>}
-        {sftpLoading && <div className={css.loading}>{t('ssh.loading')}</div>}
-        {!sftpLoading && (
+        {!ptyOpen && <div className={css.hint}>{t('ssh.needsTerminal')}</div>}
+        {ptyOpen && sftpLoading && <div className={css.loading}>{t('ssh.loading')}</div>}
+        {ptyOpen && !sftpLoading && (
           <table className={css.table}>
             <thead>
               <tr>

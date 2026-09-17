@@ -8,7 +8,7 @@ import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type { WorkspaceFileStat, WorkspaceFileText } from '@deepseek-ai/dsh-api-workspace-files/types'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import { textFace } from '../src/client/face.ts'
-import type { ReadDocumentBytes, ReadWorkspaceFilePage, WriteWorkspaceFile } from '../src/client/rpc.ts'
+import type { ReadDocumentBytes, ReadWorkspaceFilePage, WriteWorkspaceFile, WriteWorkspaceFileBytes } from '../src/client/rpc.ts'
 import { createTextStore } from '../src/client/store.ts'
 import { ABSOLUTE_PATH, FILE, PATH } from './fixtures.client.ts'
 
@@ -24,6 +24,7 @@ function bench(): {
   readonly instance: ReturnType<ReturnType<typeof createTextStore>['create']>
   readonly face: ReturnType<ReturnType<typeof textFace>>
   readonly write: ReturnType<typeof vi.fn<WriteWorkspaceFile>>
+  readonly writeBytes: ReturnType<typeof vi.fn<WriteWorkspaceFileBytes>>
   readonly pending: PendingWrite
 } {
   const instance = createTextStore().create()
@@ -35,7 +36,16 @@ function bench(): {
   const write = vi.fn<WriteWorkspaceFile>(() => new Promise<RemoteResult<WorkspaceFileStat>>((resolve) => {
     pending.resolve = resolve
   }))
-  return { instance, face: textFace(read, bytes, write)('s-1' as never, instance.actions), write, pending }
+  const writeBytes = vi.fn<WriteWorkspaceFileBytes>(() => new Promise<RemoteResult<WorkspaceFileStat>>((resolve) => {
+    pending.resolve = resolve
+  }))
+  return {
+    instance,
+    face: textFace(read, bytes, write, writeBytes)('s-1' as never, instance.actions),
+    write,
+    writeBytes,
+    pending,
+  }
 }
 
 /** Let a settled promise reach the face. */
@@ -91,5 +101,48 @@ describe('face.save', () => {
 
     // The record's end forgot the bucket, so the settlement had nothing to write.
     expect(instance.getSnapshot().byTab[TAB]).toBeUndefined()
+  })
+})
+
+describe('face.saveBytes', () => {
+  it('records the version a committed binary write reports', async () => {
+    const { face, instance, writeBytes, pending } = bench()
+    const data = Uint8Array.from([1, 2])
+    face.saveBytes(TAB, FILE, data, 'v1', new AbortController().signal)
+
+    expect(writeBytes).toHaveBeenCalledWith(FILE, data, 'v1', expect.anything())
+    expect(instance.getSnapshot().byTab[TAB]).toMatchObject({ writing: true })
+
+    pending.resolve({ ok: true, value: { absolutePath: ABSOLUTE_PATH, version: 'v3', bytes: 2 } })
+    await settle()
+
+    expect(instance.getSnapshot().byTab[TAB]).toMatchObject({ writing: false, version: 'v3' })
+  })
+
+  it('keeps a refused binary write and writes nothing after the record ended', async () => {
+    const { face, instance, writeBytes, pending } = bench()
+    face.saveBytes(TAB, FILE, Uint8Array.from([1]), 'v1', new AbortController().signal)
+    pending.resolve({
+      ok: false,
+      error: { code: 'workspace-file/binary-unsupported', message: 'text only', details: { path: PATH } } as never,
+    })
+    await settle()
+    expect(instance.getSnapshot().byTab[TAB]).toMatchObject({ writeFailure: { code: 'workspace-file/binary-unsupported' } })
+
+    const controller = new AbortController()
+    controller.abort()
+    face.saveBytes(TAB, FILE, Uint8Array.from([2]), 'v1', controller.signal)
+    expect(writeBytes).toHaveBeenCalledTimes(1)
+  })
+
+  it('drops a binary settlement whose read generation moved on', async () => {
+    const { face, instance, pending } = bench()
+    face.saveBytes(TAB, FILE, Uint8Array.from([1]), 'v1', new AbortController().signal)
+    // A mode change retires the reads — and the writes — of the old generation.
+    face.reloadPages(TAB, FILE, new AbortController().signal)
+    pending.resolve({ ok: true, value: { absolutePath: ABSOLUTE_PATH, version: 'v9', bytes: 1 } })
+    await settle()
+
+    expect(instance.getSnapshot().byTab[TAB]?.version).not.toBe('v9')
   })
 })

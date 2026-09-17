@@ -26,6 +26,10 @@ import { IMAGE_BODY_ID } from '../src/client/image/index.ts'
 import { PdfBody } from '../src/client/pdf/PdfBody.tsx'
 import { VideoBody } from '../src/client/video/VideoBody.tsx'
 import { VIDEO_BODY_ID } from '../src/client/video/index.ts'
+import { DocxBody } from '../src/client/docx/DocxBody.tsx'
+import { DOCX_BODY_ID } from '../src/client/docx/index.ts'
+import { PptxBody } from '../src/client/pptx/PptxBody.tsx'
+import { PPTX_BODY_ID } from '../src/client/pptx/index.ts'
 import { PDF_BODY_ID } from '../src/client/pdf/index.ts'
 import { CodeBody } from '../src/client/code/CodeBody.tsx'
 import { en, zh } from '../src/client/locales.ts'
@@ -100,6 +104,8 @@ describe('ui-sidebar-documentpreview apply', () => {
       ['sidebar.right.tab.document', IMAGE_BODY_ID, 'sidebarImage', ImageBody],
       ['sidebar.right.tab.document', PDF_BODY_ID, 'sidebarPdf', PdfBody],
       ['sidebar.right.tab.document', VIDEO_BODY_ID, 'sidebarVideo', VideoBody],
+      ['sidebar.right.tab.document', DOCX_BODY_ID, 'sidebarDocx', DocxBody],
+      ['sidebar.right.tab.document', PPTX_BODY_ID, 'sidebarPptx', PptxBody],
       ['sidebar.right.tab.document', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/code', 'sidebarCodePreview', CodeBody],
     ])
     expect(registered[0]?.store).toBeDefined()

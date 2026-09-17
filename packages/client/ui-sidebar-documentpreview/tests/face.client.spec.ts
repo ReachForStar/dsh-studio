@@ -11,7 +11,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 import type { WorkspaceFileBytes, WorkspaceFileText } from '@deepseek-ai/dsh-api-workspace-files/types'
 import { textFace } from '../src/client/face.ts'
-import type { DocumentFileBytes, ReadDocumentBytes, ReadWorkspaceFilePage, WriteWorkspaceFile } from '../src/client/rpc.ts'
+import type { DocumentFileBytes, ReadDocumentBytes, ReadWorkspaceFilePage, WriteWorkspaceFile, WriteWorkspaceFileBytes } from '../src/client/rpc.ts'
 import { hostFileOf } from '../src/client/rpc.ts'
 import { createTextStore } from '../src/client/store.ts'
 import { ABSOLUTE_PATH, FILE, PATH, SESSION, failure, page } from './fixtures.client.ts'
@@ -94,7 +94,8 @@ function bench(sessionId = 'other-session' as SessionId) {
   // The store's own `forget`, counted: the record's end must forget a tab exactly once.
   const forget = vi.fn(instance.actions.forget)
   // Injected for another session on purpose: the address's session must win.
-  const face = textFace(read, bytes, vi.fn<WriteWorkspaceFile>())(sessionId, { ...instance.actions, forget })
+  const writes = { write: vi.fn<WriteWorkspaceFile>(), writeBytes: vi.fn<WriteWorkspaceFileBytes>() }
+  const face = textFace(read, bytes, writes.write, writes.writeBytes)(sessionId, { ...instance.actions, forget })
   /** Settle the oldest outstanding read, or the oldest one for `offset`. */
   const settle = async (result: RemoteResult<WorkspaceFileText>, offset?: number): Promise<void> => {
     const at = offset === undefined ? 0 : pending.findIndex(call => call.offset === offset)

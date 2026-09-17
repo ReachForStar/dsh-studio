@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
-import { createReadPage, createWriteFile, documentFileBytes, hostFileOf } from '../src/client/rpc.ts'
+import { createReadPage, createWriteFile, createWriteFileBytes, documentFileBytes, hostFileOf } from '../src/client/rpc.ts'
 import type { ReadWorkspaceFilePage, WorkspaceFilesReadRemote } from '../src/client/index.ts'
 import { ADDRESS, FILE, PATH, SESSION, page } from './fixtures.client.ts'
 
@@ -34,7 +34,7 @@ describe('createReadPage', () => {
   it('binds the paged read to the Remote with the offset as the only range', async () => {
     const read = vi.fn<WorkspaceFilesReadRemote['workspaceFiles']['read']>(() => Promise.resolve(page(4, ['d'], true)))
     const signal = new AbortController().signal
-    const readPage: ReadWorkspaceFilePage = createReadPage({ workspaceFiles: { read, write: vi.fn() } })
+    const readPage: ReadWorkspaceFilePage = createReadPage({ workspaceFiles: { read, write: vi.fn(), writeBytes: vi.fn() } })
     await expect(readPage(SESSION, PATH, 4, signal)).resolves.toEqual(page(4, ['d'], true))
     expect(read).toHaveBeenCalledWith(SESSION, PATH, { offset: 4 }, signal)
   })
@@ -46,7 +46,7 @@ describe('createWriteFile', () => {
       () => Promise.resolve({ ok: true, value: { absolutePath: '/host/work/notes.md', version: 'v2', bytes: 3 } }),
     )
     const signal = new AbortController().signal
-    const save = createWriteFile({ workspaceFiles: { read: vi.fn(), write } })
+    const save = createWriteFile({ workspaceFiles: { read: vi.fn(), write, writeBytes: vi.fn() } })
 
     await save(FILE, 'next', 'v1', signal)
 
@@ -57,11 +57,36 @@ describe('createWriteFile', () => {
     const write = vi.fn<WorkspaceFilesReadRemote['workspaceFiles']['write']>(
       () => Promise.resolve({ ok: true, value: { absolutePath: '/host/work/notes.md', version: 'v2', bytes: 3 } }),
     )
-    const save = createWriteFile({ workspaceFiles: { read: vi.fn(), write } })
+    const save = createWriteFile({ workspaceFiles: { read: vi.fn(), write, writeBytes: vi.fn() } })
 
     await save(FILE, 'fresh', undefined, new AbortController().signal)
 
     expect(write).toHaveBeenCalledWith(SESSION, PATH, 'fresh', {}, expect.anything())
+  })
+})
+
+describe('createWriteFileBytes', () => {
+  it('sends the bytes base64 encoded with the version the editor read', async () => {
+    const writeBytes = vi.fn<WorkspaceFilesReadRemote['workspaceFiles']['writeBytes']>(
+      () => Promise.resolve({ ok: true, value: { absolutePath: '/host/work/notes.docx', version: 'v2', bytes: 3 } }),
+    )
+    const signal = new AbortController().signal
+    const save = createWriteFileBytes({ workspaceFiles: { read: vi.fn(), write: vi.fn(), writeBytes } })
+
+    await save(FILE, Uint8Array.from([0, 255, 16]), 'v1', signal)
+
+    expect(writeBytes).toHaveBeenCalledWith(SESSION, PATH, 'AP8Q', { expectedVersion: 'v1' }, signal)
+  })
+
+  it('writes without a guard when the editor read no version', async () => {
+    const writeBytes = vi.fn<WorkspaceFilesReadRemote['workspaceFiles']['writeBytes']>(
+      () => Promise.resolve({ ok: true, value: { absolutePath: '/host/work/notes.docx', version: 'v2', bytes: 0 } }),
+    )
+    const save = createWriteFileBytes({ workspaceFiles: { read: vi.fn(), write: vi.fn(), writeBytes } })
+
+    await save(FILE, new Uint8Array(), undefined, new AbortController().signal)
+
+    expect(writeBytes).toHaveBeenCalledWith(SESSION, PATH, '', {}, expect.anything())
   })
 })
 

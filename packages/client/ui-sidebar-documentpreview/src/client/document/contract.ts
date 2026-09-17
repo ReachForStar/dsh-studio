@@ -33,6 +33,17 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
         readonly wrap: boolean
         /** Report a renderer-owned scrollport; passing `null` restores the shared body as the owner. */
         readonly scrollportRef: RefCallback<HTMLElement>
+        /**
+         * Store one complete byte array as this file's content, guarded by the
+         * version the tab holds. Renderers whose format is not text (an office
+         * document is a zip) use this instead of the text editor in the pane;
+         * a renderer that only reads simply ignores it.
+         */
+        readonly saveBytes: (data: Uint8Array) => void
+        /** A write for this tab is in flight; the pane owns the lifecycle. */
+        readonly saving: boolean
+        /** Why the last write was refused, already localized for display. */
+        readonly saveFailure: string | undefined
       }
       hookContext: UseSidebarRightTabInfo
       inject: {

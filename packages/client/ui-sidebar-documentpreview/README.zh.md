@@ -61,7 +61,7 @@ PNG、JPEG、GIF、WebP、BMP、ICO 和 SVG 通过 Blob URL 在 `<img>` 静态�
 
 `ctx.sidebarRight.openResource(address, { params: { line } })` 通过 `file` 参数携带 1 起算的源码行号。在 `text-pages` 模式下，owner 顺序加载到该行或 EOF。纯文本与代码渲染器提供源码行锚点；Markdown 不提供。所选渲染器没有锚点时，导航保持待处理；用户切换到纯文本或代码后执行。代码导航直接滚动内部源码视口。字节模式渲染器不消费源码行导航。每个完成的导航 revision 只响应一次。不带 `revealIfOpened: false` 打开同一文件时聚焦已有 tab，并送达新 revision。
 
-内置渲染器覆盖纯文本、Markdown、HTML、图片、PDF、视频与代码。视频渲染器用 `<video>` 元素配浏览器自带控件播放完整字节，受面板宽高约束；与图片渲染器一样需要完整文件，因此无法播放的容器会报出失败，而不会退回文本。
+内置渲染器覆盖纯文本、Markdown、HTML、图片、PDF、视频、代码、Word 文档与演示文稿。Word 与演示文稿渲染器解开 OOXML 压缩包，展示其段落或幻灯片文本并就地编辑：保存把同一批文本叶子写回并重新打包每个部件，因此样式、版式、图片、备注与关系文件都原样保留；压缩包经 `workspaceFiles.writeBytes` 往返，因为 office 文档是 zip 而不是文本。视频渲染器用 `<video>` 元素配浏览器自带控件播放完整字节，受面板宽高约束；与图片渲染器一样需要完整文件，因此无法播放的容器会报出失败，而不会退回文本。
 
 <a id="editing"></a>
 ## 编辑
@@ -82,6 +82,7 @@ PNG、JPEG、GIF、WebP、BMP、ICO 和 SVG 通过 Blob URL 在 `<img>` 静态�
 ## 已知限制与延期工作
 
 <a id="known-limitations-and-deferred-work"></a>
+- **office 编辑停留在文本层。** Word 段落与 PowerPoint 文本叶子可以改写、追加或清空；版式、表格、图片与新增形状不可编辑，解析不了的格式会显示为无法打开。无法存储二进制内容的后端会以 `workspace-file/binary-unsupported` 拒绝保存。
 - **只支持文本编辑。** 字节模式查看器（PDF、HTML、图片）保持只读，编辑器也是纯文本：没有语法感知编辑，也没有多文件操作。目录地址以 `not-regular-file` 失败。未知扩展名使用纯文本读取，仍受其 UTF-8/NUL 检查限制。
 - **文本顺序分页，完整文件受限。** 定位到较深处的源码行需要先加载此前各页；PDF、HTML 和图片必须取得 Host `maxFileBytes` 上限内的完整结果。
 - **字节视图不恢复滚动位置。** PDF、HTML 与图片的渲染器重新挂载或重新载入时可能回到顶部；图片适配面板宽度、不产生横向滚动，HTML iframe 的滚动属于其不透明浏览上下文。

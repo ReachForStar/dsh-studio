@@ -1,0 +1,105 @@
+/* 办公室文档的共享编辑外壳：预览、编辑字段与状态行。 */
+.office {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  padding: 12px;
+  font-family: var(--dsw-font, sans-serif);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-primary);
+  white-space: normal;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tool {
+  padding: 2px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tool:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.tool:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.toolActive {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-button-ghost-active-border);
+  background: var(--dsw-alias-button-ghost-active-fill);
+}
+
+.status {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+.block {
+  margin: 0 0 12px;
+}
+
+.heading {
+  margin: 0 0 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.line {
+  margin: 0 0 2px;
+  white-space: pre-wrap;
+}
+
+.field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  margin: 0 0 4px;
+  padding: 4px 8px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  outline: none;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.field:focus {
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+/* 读取或解析失败：与其它渲染器的状态行同样式。 */
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 10px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: normal;
+}

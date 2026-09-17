@@ -42,6 +42,9 @@
     "watch": "tsdown --watch"
   },
   "license": "MIT",
+  "dependencies": {
+    "fflate": "^0.8.2"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^"
   },

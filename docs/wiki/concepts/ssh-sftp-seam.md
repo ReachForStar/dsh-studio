@@ -35,6 +35,11 @@ fork 自研的远程执行与文件传输接缝：Service Definition 声明连�
 
 因此 fork 侧改名。上游 `ctx.ssh` 与 fork `ctx.sshSftp` 是**两个不同的接缝**：前者是 POSIX 连接所有者（供远端 FS/子进程/沙箱使用），后者是 settings 支撑的 SSH/SFTP 连接定义注册表 + 模型工具面。文档与生成器据此区分：`docs/capability-seams.md` 的 seam 表同时列出两者，fork 侧 owner 显示为 `remote/ssh`（fork 包不在 `@deepseek-ai/dsh-` 扫描范围内）。
 
+## 变更与踩坑
+
+- 2026-09-17：Web SSH 面板新建目录（`ui-polish/src/client/SshPanel.tsx` 的 `handleMkdir`）调 `ssh.sftp.mkdir` 时未传 `recursive`，面板又允许输入 `a/b/c` 这类多级名称，于是父目录缺失时远端直接以 SFTP FAILURE 失败。修复为客户端传 `recursive: true`（网关 `sftpMkdir` 已转发 `request.recursive === true`，`ssh-local` 的 `ensureDir` 已实现逐级创建）。
+- 实测方式：在 WSL（Ubuntu-22.04）起一个临时 sshd（独立配置、临时 host key 与 authorized_keys，端口 2222），用 `ssh-local` 连真实 OpenSSH/SFTP 调 `mkdir('/tmp/.../a/b/c', { recursive: true })` 建树成功，同一路径的非递归调用以 `SSH_SFTP_FAILED` 失败——证明差别就在该参数。
+
 ## 关联页面
 
 - 决策与冲突取舍：[合并上游 upstream/master（2026-09）](../decisions/2026-09-upstream-sync.md)

@@ -58,3 +58,10 @@
 
 - 需求2 的 docx/pptx/视频预览实现（`ui-sidebar-documentpreview` 下 `document/`、`docx/`、`pptx/`、`video/` 与对应测试）按用户要求从工作区移除：上游文件面板已覆盖其余能力，剩余真正缺口是 Word/PowerPoint 预览与文件编辑，其中文件编辑待后续单独实现。
 - 该批试运行暴露的 lint/类型问题（`zip.android`、`media-registration` 等）随文件一并撤销，无需保留。
+
+## [2026-09-17] feat | 文件面板支持编辑与保存，并修复两处 fork 缺陷
+
+- 问题1：`@deepseek-ai/dsh-atomic-write` 的 Windows 重试窗口从 ~1.1s 延长到 ~10s（上限 24 次、delay 上限 500ms），修复设置写入 `EPERM 重命名` 失败。
+- 问题2：SFTP 读取改为跟随终端连接——宿主新增 `withConnection()`（取连接→执行→无 PTY 持有时关闭），`exec`/`sftp*`/download/upload 全部改走它；客户端删除「选中即列目录」的 eager 行为，终端关闭即清空列表并提示「打开终端后可浏览远程文件」。
+- 需求1a/1b：`workspaceFiles.write` + 文档面板编辑器（详见实体页 [文档面板的编辑与保存](entities/document-panel-editing.md)）。
+- 踩坑：新增 `@Remote` 方法后必须重跑根构建重新生成 `lib/typert.remote-client.d.ts`，否则客户端类型缺方法；测试目录不在包 tsconfig 内，须用 `tsc -b tsconfig.client.json` 检查。

@@ -17,6 +17,7 @@ Preview readable files in the right Sidebar and choose among registered renderer
 - [Addresses](#addresses)
 - [How it reads](#how-it-reads)
 - [Navigation](#navigation)
+- [Editing](#editing)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
@@ -60,6 +61,13 @@ Initial reads, additional pages, and HTML/PDF/image preparation share an icon-on
 
 `ctx.sidebarRight.openResource(address, { params: { line } })` carries a 1-based source line through the `file` parameters. In `text-pages` mode, the owner loads sequential pages until that line or EOF. Plain-text and code renderers expose source-line anchors; Markdown does not. A navigation remains pending while its selected renderer has no anchor and runs if the user switches to plain text or code. Code navigation scrolls the inner source viewport directly. Byte-mode renderers do not consume source-line navigation. Each completed navigation revision is answered once. Opening the same file without `revealIfOpened: false` focuses its existing tab and delivers a new revision.
 
+<a id="editing"></a>
+## Editing
+
+The plain-text, code, and Markdown viewers (`text-pages` loading) can be edited in place. The control sits in the document toolbar; opening it reads the rest of the file first, because the save replaces the whole content and a draft taken from a prefix would truncate the file. While the editor is open, a status line distinguishes unsaved work, a write in flight, a committed write, and a refusal; `Ctrl`/`Cmd`+`S` saves and `Escape` leaves the editor.
+
+A save travels as one `workspaceFiles.write` call carrying the version the editor read, so a file that changed underneath is refused with `workspace-file/stale-version` instead of being overwritten; the failure line says so and the draft stays. The Host confines writes to the Session's workspace, applies the same `maxFileBytes` cap as a read, and replaces the file atomically. A committed write becomes the tab's current version, so the change bar does not report the editor's own save.
+
 <a id="model-experience"></a>
 ## Model Experience
 
@@ -72,7 +80,7 @@ No direct effect; what the user reads here never enters a model request.
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
-- **Preview, not editing.** The viewers provide no file editing or shared search interface; a directory address fails with `not-regular-file`. Unknown extensions use the plain-text reader and remain subject to its UTF-8/NUL checks.
+- **Text editing only.** Bytes-mode viewers (PDF, HTML, images) stay read-only, and the editor is plain text: no syntax-aware edits, no multi-file operations. A directory address fails with `not-regular-file`. Unknown extensions use the plain-text reader and remain subject to its UTF-8/NUL checks.
 - **Sequential text and bounded complete files.** Deep source lines require the preceding pages; PDF, HTML, and images require a complete result within the Host's `maxFileBytes` cap.
 - **Byte-view scroll state is not restored.** PDF, HTML, and images can return to the top when their renderer remounts or reloads; images fit the pane's width and never scroll horizontally, and HTML iframe scrolling belongs to its opaque browsing context.
 - **Finite local HTML dependencies.** Only direct classic `.js` and stylesheet `.css` references are packed. Browser-resolved resources retain browser origin and network restrictions; no runtime file-read bridge is exposed to the iframe.

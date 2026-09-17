@@ -19,7 +19,7 @@
 import type { BoundActions } from '@deepseek-ai/dsh-client-store'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { ReadDocumentBytes, ReadWorkspaceFilePage, SessionFile } from './rpc.ts'
+import type { ReadDocumentBytes, ReadWorkspaceFilePage, SessionFile, WriteWorkspaceFile } from './rpc.ts'
 import { documentFileBytes } from './rpc.ts'
 import type { TextStore } from './store.ts'
 import type { DocumentLoadMode } from './document/registry.ts'
@@ -64,6 +64,18 @@ export interface TextInjected {
    * @param observedVersion - metadata version observed at read start.
    */
   readonly reloadAll: (tabId: TabId, file: SessionFile, signal: AbortSignal, observedVersion?: string) => void
+  /**
+   * Store one complete text as the file's content. The version the editor read
+   * guards the write, so a file that changed underneath is refused. A
+   * settlement is dropped when the tab's read generation moved on or the record
+   * ended, exactly like a page settlement.
+   * @param tabId - the tab being edited.
+   * @param file - the session and workspace path the tab's address names.
+   * @param text - the complete next content.
+   * @param expectedVersion - version the editor read, when it read one.
+   * @param signal - the tab record's lifetime.
+   */
+  readonly save: (tabId: TabId, file: SessionFile, text: string, expectedVersion: string | undefined, signal: AbortSignal) => void
 }
 
 /**
@@ -78,14 +90,17 @@ interface TabReads {
 }
 
 /**
- * Bind the preview's face to one paged read and one complete-byte read.
+ * Bind the preview's face to one paged read, one complete-byte read, and one
+ * complete-text write.
  * @param read - the bound `workspaceFiles.read` call.
  * @param readAll - ordinary complete-byte Remote read.
+ * @param write - ordinary complete-text Remote write.
  * @returns the Slot `inject` factory: bound actions in, face out. The slot's session id is unused because the address carries its own.
  */
 export function textFace(
   read: ReadWorkspaceFilePage,
   readAll: ReadDocumentBytes,
+  write: WriteWorkspaceFile,
 ): (sessionId: SessionId, actions: BoundActions<TextStore>) => TextInjected {
   return (_sessionId: SessionId, actions: BoundActions<TextStore>): TextInjected => {
     const tabs = new Map<TabId, TabReads>()
@@ -169,8 +184,27 @@ export function textFace(
       if (mode === 'text-pages') loadPage(tabId, file, 1, signal, observedVersion)
       else loadAll(tabId, file, signal, observedVersion)
     }
+    const save = (
+      tabId: TabId, file: SessionFile, text: string, expectedVersion: string | undefined, signal: AbortSignal,
+    ): void => {
+      if (signal.aborted) return
+      const reads = readsOf(tabId, signal)
+      const { generation } = reads
+      actions.writing(tabId)
+      void write(file, text, expectedVersion, signal).then((result) => {
+        if (signal.aborted || reads.generation !== generation) return
+        if (!result.ok) {
+          actions.writeFailed(tabId, result.error)
+          return
+        }
+        // The write defines the file's current version: later pages of the old
+        // one would restart the walk, so the held pages match the new content.
+        reads.version = result.value.version
+        actions.written(tabId, result.value.version)
+      })
+    }
     return {
-      loadPage, reloadPages: restart, loadAll,
+      loadPage, reloadPages: restart, loadAll, save,
       reloadAll: (tabId, file, signal, observedVersion) => { restart(tabId, file, signal, observedVersion, 'bytes-complete') },
     }
   }

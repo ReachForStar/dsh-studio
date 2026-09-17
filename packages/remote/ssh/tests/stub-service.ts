@@ -120,11 +120,11 @@ export class StubSshService extends SshService {
         list: async (path) => {
           this.listed.push(path)
           return [{
-            name: 'entry.txt', path: `${path === '/' ? '' : path}/entry.txt`, type: 'file' as const, size: 3, mtimeMs: 1,
+            name: 'entry.txt', path: `${path === '/' ? '' : path}/entry.txt`, type: 'file' as const, size: 3, mtimeMs: 1, mode: 0o644,
           }]
         },
         stat: async path => ({
-          name: path.split('/').pop() ?? path, path, type: 'file' as const, size: 3, mtimeMs: 1,
+          name: path.split('/').pop() ?? path, path, type: 'file' as const, size: 3, mtimeMs: 1, mode: 0o644,
         }),
         readFile: async () => ({ bytes: 0 }),
         writeFile: async () => ({ bytes: 0 }),

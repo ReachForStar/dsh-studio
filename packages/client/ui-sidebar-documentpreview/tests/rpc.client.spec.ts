@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
-import { createReadPage, documentFileBytes, hostFileOf } from '../src/client/rpc.ts'
+import { createReadPage, createWriteFile, documentFileBytes, hostFileOf } from '../src/client/rpc.ts'
 import type { ReadWorkspaceFilePage, WorkspaceFilesReadRemote } from '../src/client/index.ts'
 import { ADDRESS, FILE, PATH, SESSION, page } from './fixtures.client.ts'
 
@@ -37,6 +37,31 @@ describe('createReadPage', () => {
     const readPage: ReadWorkspaceFilePage = createReadPage({ workspaceFiles: { read } })
     await expect(readPage(SESSION, PATH, 4, signal)).resolves.toEqual(page(4, ['d'], true))
     expect(read).toHaveBeenCalledWith(SESSION, PATH, { offset: 4 }, signal)
+  })
+})
+
+describe('createWriteFile', () => {
+  it('hands the Host the text and the version the editor read', async () => {
+    const write = vi.fn<WorkspaceFilesReadRemote['workspaceFiles']['write']>(
+      () => Promise.resolve({ ok: true, value: { absolutePath: '/host/work/notes.md', version: 'v2', bytes: 3 } }),
+    )
+    const signal = new AbortController().signal
+    const save = createWriteFile({ workspaceFiles: { write } })
+
+    await save(FILE, 'next', 'v1', signal)
+
+    expect(write).toHaveBeenCalledWith(SESSION, PATH, 'next', { expectedVersion: 'v1' }, signal)
+  })
+
+  it('writes without a guard when the editor read no version', async () => {
+    const write = vi.fn<WorkspaceFilesReadRemote['workspaceFiles']['write']>(
+      () => Promise.resolve({ ok: true, value: { absolutePath: '/host/work/notes.md', version: 'v2', bytes: 3 } }),
+    )
+    const save = createWriteFile({ workspaceFiles: { write } })
+
+    await save(FILE, 'fresh', undefined, new AbortController().signal)
+
+    expect(write).toHaveBeenCalledWith(SESSION, PATH, 'fresh', {}, expect.anything())
   })
 })
 

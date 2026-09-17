@@ -316,3 +316,26 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+.toolActive {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-secondary);
+}
+
+/* 编辑区：等宽、占满正文、保留滚动手感 */
+.editor {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 320px;
+  height: 100%;
+  padding: 12px 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+}

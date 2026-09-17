@@ -1,115 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
+import { Slider } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { ConversationSlotProps, InputZone } from '../contract/slots.ts'
 import { HeroShell, WorkspaceChip, workspaceLabel } from './EmptyHero.tsx'
+import type { WidthAxis } from './ConversationMainPanel.tsx'
 import css from './ConversationRoot.module.css'
 
 type ConversationContentProps = Omit<ConversationSlotProps, 'useSession' | 'useConversation'> & {
   session: SessionSnapshot | undefined
   phase: 'settling' | 'hero' | 'active'
   hero: boolean
-  onHandleStart: () => number
-  onHandleDrag: (width: number) => void
-  onHandleCommit: (width: number) => void
-  onHandleEnd: () => void
-}
-
-/** One transcript width handle: pointer capture + rAF-throttled symmetric
- * resize (both sides write the one centered width, so outward travel widens
- * by 2× the pointer distance). pointermove publishes the pointer's Y as a CSS
- * variable so the glow indicator rides it. Mirrors ui-layout AppFrame's
- * DragHandle capture model. */
-function WidthHandle(props: {
-  side: 'left' | 'right'
-  onStart: () => number
-  onDrag: (width: number) => void
-  onCommit: (width: number) => void
-  onEnd: () => void
-}) {
-  const [dragging, setDragging] = useState(false)
-  const base = useRef(0)
-  const origin = useRef(0)
-  const latest = useRef(0)
-  const frame = useRef<number | null>(null)
-  const callbacks = useRef(props)
-  callbacks.current = props
-
-  const outwardWidth = () => {
-    const dx = latest.current - origin.current
-    const outward = callbacks.current.side === 'right' ? dx : -dx
-    return base.current + outward * 2
-  }
-  const cancelFrame = () => {
-    if (frame.current !== null) { cancelAnimationFrame(frame.current); frame.current = null }
-  }
-  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.currentTarget.setPointerCapture(e.pointerId)
-    origin.current = e.clientX
-    latest.current = e.clientX
-    base.current = callbacks.current.onStart()
-    setDragging(true)
-  }, [])
-  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    const box = e.currentTarget.getBoundingClientRect()
-    e.currentTarget.style.setProperty('--dsh-width-handle-pointer-y', `${e.clientY - box.top}px`)
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
-    latest.current = e.clientX
-    frame.current ??= requestAnimationFrame(() => {
-      frame.current = null
-      callbacks.current.onDrag(outwardWidth())
-    })
-  }, [])
-  const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
-    e.currentTarget.releasePointerCapture(e.pointerId)
-    cancelFrame()
-    latest.current = e.clientX
-    // Only a gesture with actual travel commits: a press-and-release on a
-    // window-clamped width must not overwrite the wider stored preference
-    // with the clamped display value.
-    if (latest.current !== origin.current) callbacks.current.onCommit(outwardWidth())
-    setDragging(false)
-    callbacks.current.onEnd()
-  }, [])
-  // Releasing the button outside the window delivers pointercancel (or drops
-  // the capture silently) instead of pointerup; without this the glow's
-  // data-dragging state sticks on. The gesture is abandoned uncommitted —
-  // onEnd republishes the stored preference. releasePointerCapture inside
-  // onPointerUp also fires lostpointercapture, so this runs (idempotently)
-  // after every normal drag end too; keep both paths.
-  const onPointerCancel = useCallback(() => {
-    cancelFrame()
-    setDragging(false)
-    callbacks.current.onEnd()
-  }, [])
-
-  return (
-    <div
-      className={css.widthHandle}
-      data-side={props.side}
-      data-width-handle={props.side}
-      data-dragging={dragging || undefined}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
-      onLostPointerCapture={onPointerCancel}
-    />
-  )
+  widthAxis: WidthAxis | undefined
+  onContentWidthChange: (width: number) => void
 }
 
 /**
- * Render the existing Conversation body, Composer, and width handles.
- * @param props - original Conversation seats plus MainPanel-derived phase and width callbacks.
+ * Render the existing Conversation body, Composer, and content-width slider.
+ * @param props - original Conversation seats plus MainPanel-derived phase and width axis.
  * @returns the unchanged Conversation body subtree.
  */
 export function ConversationContent({
   sessionId, session, phase, hero, useSessions, useSessionPendingInteraction,
   useWorkspaces, useInput, useComposerBlock, renderSlot, renderSlotChain,
-  selectWorkspace, t, onHandleStart, onHandleDrag, onHandleCommit, onHandleEnd,
+  selectWorkspace, t, widthAxis, onContentWidthChange,
 }: ConversationContentProps) {
   const pendingInteraction = useSessionPendingInteraction(snapshot =>
     sessionId === undefined ? undefined : snapshot.get(sessionId))
@@ -264,22 +179,25 @@ export function ConversationContent({
 
   return (
     <div className={css.body}>
+      {/* Content width is a bounded value, so it is chosen rather than dragged:
+          the strip spans the column it sizes and only exists while a
+          transcript does. */}
+      {phase === 'active' && widthAxis !== undefined && (
+        <div className={css.widthSlider} data-conversation-width-slider="">
+          <Slider
+            min={widthAxis.min}
+            max={widthAxis.max}
+            value={widthAxis.value}
+            label={t('width.slider')}
+            valueText={t('width.sliderValue', { width: String(Math.round(widthAxis.value)) })}
+            onChange={onContentWidthChange}
+          />
+        </div>
+      )}
       <div className={css.scrollBody} data-conversation-scroll="">
         {sessionId === undefined ? null : renderSlot('conversation.session', {})}
         {composerSeat}
       </div>
-      {/* Width handles only while a transcript is on screen; the hero has no
-          content column to size. */}
-      {phase === 'active' && (['left', 'right'] as const).map(side => (
-        <WidthHandle
-          key={side}
-          side={side}
-          onStart={onHandleStart}
-          onDrag={onHandleDrag}
-          onCommit={onHandleCommit}
-          onEnd={onHandleEnd}
-        />
-      ))}
     </div>
   )
 }

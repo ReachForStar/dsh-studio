@@ -39,3 +39,9 @@
 - 解法：网关记录每个 PTY 所在的连接，最后一个持有者关闭（含 shell 自行退出）即关闭连接，exec/SFTP 按需重连；关连接失败只记日志。
 - 验证：`ssh-remotes` 网关 10 用例通过（新增 3 个生命周期用例）；测试用 `StubSshService` 扩充为按 id 共享句柄并提供可控 PTY 会话。
 - 结论与取舍记入 [SSH/SFTP 接缝](concepts/ssh-sftp-seam.md)，决策回合见 Agent Note `2026-09-17-terminal-releases-ssh-connection`。
+
+## [2026-09-17] feat | 会话宽度改用滑块，费用卡片按工作区聚合
+
+- 问题3b：删除会话列左右两条 40px 拖拽手柄与辉光，新增 `ui-primitives` 的 `Slider`（原生 range，`label` 必填），渲染为滚动区上方长条；范围 `[640, 列宽-176]`，每步发布 CSS 覆盖并存储，localStorage 键与钳制规则不变。新增概念页 [会话内容宽度轴](concepts/conversation-width-axis.md)。
+- 需求3：`StatsFloat` 口径从「所在会话」改为「当前工作区全部会话」——工作区经 `useWorkspaces` 反查，各会话 token 取会话列表行的 `tokenUsage` 投影值（当前会话用实时投影），花费按会话计价（持有的消息逐条计价，其余按卡 `default` 估算）。新增实体页 [统计浮层](entities/stats-float.md)。
+- 验证：`ui-primitives`/`ui-conversation`/`ui-polish` 定向用例通过；`StatsFloat.tsx` 覆盖率 100%（语句/分支/函数/行）；`pnpm run test:docs` 20 门禁通过；两条 Agent Note 已入库。

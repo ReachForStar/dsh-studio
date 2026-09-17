@@ -1,0 +1,51 @@
+/* Native range input, restyled: the platform thumb and track are the ones that
+ * carry keyboard and assistive-technology behavior, so they stay and only their
+ * paint changes. Both vendor prefixes are required — a pseudo-element either
+ * engine does not know voids the whole rule, so the track and thumb are
+ * declared once per engine rather than shared. */
+.slider {
+  box-sizing: border-box;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 3px;
+  background: var(--dsw-alias-border-l3);
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  /* Centres the 12px thumb on the 3px track. */
+  margin-top: -4.5px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--dsw-alias-scrollbar-hover-l1);
+}
+
+.slider::-moz-range-track {
+  height: 3px;
+  border-radius: 3px;
+  background: var(--dsw-alias-border-l3);
+}
+
+.slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--dsw-alias-scrollbar-hover-l1);
+}

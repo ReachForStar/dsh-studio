@@ -13,6 +13,7 @@ export const zh = {
   'stats.cost': '费用 {cost}',
   'stats.costDetail': '输入 {input} · 缓存命中 {cache} · 输出 {output}',
   'stats.costModels': '模型 {models}',
+  'stats.workspace': '工作区共 {sessions} 个会话',
   'stats.expand': '展开会话统计',
   // Excalidraw canvas tab.
   'excalidraw.title': '画布',
@@ -107,6 +108,7 @@ export const en = {
   'stats.cost': 'Cost {cost}',
   'stats.costDetail': 'Input {input} · Cache hit {cache} · Output {output}',
   'stats.costModels': 'Models {models}',
+  'stats.workspace': '{sessions} sessions in this workspace',
   'stats.expand': 'Expand session stats',
   'excalidraw.title': 'Canvas',
   'excalidraw.saving': 'Saving…',

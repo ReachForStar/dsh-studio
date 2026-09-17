@@ -162,6 +162,8 @@ export const zh = {
   'terminal.expandRest': '… 其余 {n} 行',
   'terminal.sendInput': '（发送输入）',
   'terminal.session': '终端 {sessionId}',
+  'width.slider': '调整会话内容宽度',
+  'width.sliderValue': '内容宽度 {width} 像素',
 } satisfies Record<string, string>
 
 /** The conversation namespace key union. */
@@ -324,4 +326,6 @@ export const en = {
   // aligned with these English values.
   'terminal.sendInput': '(send input)',
   'terminal.session': 'Terminal {sessionId}',
+  'width.slider': 'Adjust the conversation content width',
+  'width.sliderValue': 'Content width {width} pixels',
 } satisfies Record<ConversationKey, string>

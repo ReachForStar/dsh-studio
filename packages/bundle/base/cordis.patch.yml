@@ -263,6 +263,15 @@
     - id: tool-ssh
       name: '@reachforstar/dsh-tool-ssh'
 
+    # Remote A2A agents this deployment may call: `ctx.a2a` addresses the peers
+    # named in the `peers` config, and the model-facing tools list them and send
+    # one message to one peer. No peers means the tools report an empty set.
+    - id: a2a
+      name: '@reachforstar/dsh-a2a'
+
+    - id: tool-a2a
+      name: '@reachforstar/dsh-tool-a2a'
+
     - id: fs-observation-policy
       name: '@deepseek-ai/dsh-fs-observation-policy'
 

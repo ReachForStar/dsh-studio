@@ -69,6 +69,7 @@
     "@deepseek-ai/dsh-client-ui-layout": "workspace:^",
     "@deepseek-ai/dsh-client-ui-message-feedback": "workspace:^",
     "@deepseek-ai/dsh-client-ui-model-selection": "workspace:^",
+    "@reachforstar/dsh-a2a-host": "workspace:^",
     "@reachforstar/dsh-client-ui-polish": "workspace:^",
     "@deepseek-ai/dsh-client-ui-settings-models": "workspace:^",
     "@reachforstar/dsh-client-ui-ssh": "workspace:^",

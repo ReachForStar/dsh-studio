@@ -68,6 +68,12 @@
       "@deepseek-ai/dsh-api-gateway": ["./packages/api/gateway/src/index.ts"],
       "@deepseek-ai/dsh-api-gateway/client": ["./packages/api/gateway/src/client/index.ts"],
       "@deepseek-ai/dsh-api-gateway/types": ["./packages/api/gateway/src/types.ts"],
+      "@reachforstar/dsh-a2a": ["./packages/a2a/a2a/src/index.ts"],
+      "@reachforstar/dsh-a2a/schema": ["./packages/a2a/a2a/src/schema.ts"],
+      "@reachforstar/dsh-a2a/server": ["./packages/a2a/a2a/src/server.ts"],
+      "@reachforstar/dsh-a2a-host": ["./packages/a2a/a2a-host/src/index.ts"],
+      "@reachforstar/dsh-tool-a2a": ["./packages/a2a/tool-a2a/src/index.ts"],
+
       "@deepseek-ai/dsh-api-session-controller": ["./packages/api/session-controller/src/index.ts"],
       "@deepseek-ai/dsh-api-session-controller/client": ["./packages/api/session-controller/src/client/index.ts"],
       "@deepseek-ai/dsh-api-session-controller/types": ["./packages/api/session-controller/src/types.ts"],

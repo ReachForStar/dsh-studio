@@ -1,0 +1,176 @@
+import { randomUUID } from 'node:crypto'
+import type { A2AArtifact, A2AMessage, A2ATask, A2ATaskStatus, TaskState } from './schema.ts'
+
+/** ISO 8601 UTC with millisecond precision, as the protocol requires. */
+function now(): string {
+  return new Date().toISOString()
+}
+
+/** Retention bounds for one task table. */
+export interface TaskStoreOptions {
+  /** Tasks kept before the oldest terminal task is evicted. */
+  maxTasks?: number
+  /** Messages kept per task before the oldest is dropped. */
+  maxHistory?: number
+}
+
+/** The task table one A2A server works against. */
+export class TaskStore {
+  private readonly tasks = new Map<string, A2ATask>()
+  private readonly byContext = new Map<string, string[]>()
+  private readonly maxTasks: number
+  private readonly maxHistory: number
+
+  /**
+   * @param options - retention bounds; defaults suit a long-running agent.
+   */
+  constructor(options: TaskStoreOptions = {}) {
+    this.maxTasks = options.maxTasks ?? 500
+    this.maxHistory = options.maxHistory ?? 20
+  }
+
+  /**
+   * Read one task.
+   * @param id - task identity.
+   * @returns the task, or undefined when it is unknown or evicted.
+   */
+  get(id: string): A2ATask | undefined {
+    return this.tasks.get(id)
+  }
+
+  /**
+   * Record a new task.
+   * @param contextId - conversation to attach the task to; a fresh one when absent.
+   * @param metadata - peer-defined task metadata.
+   * @returns the created task, submitted and empty.
+   */
+  create(contextId?: string, metadata?: Record<string, unknown>): A2ATask {
+    const context = contextId ?? randomUUID()
+    const task: A2ATask = {
+      id: randomUUID(),
+      contextId: context,
+      status: { state: 'TASK_STATE_SUBMITTED', timestamp: now() },
+      artifacts: [],
+      history: [],
+      ...metadata === undefined ? {} : { metadata },
+    }
+    this.tasks.set(task.id, task)
+    const siblings = this.byContext.get(context) ?? []
+    siblings.push(task.id)
+    this.byContext.set(context, siblings)
+    this.evict()
+    return task
+  }
+
+  /**
+   * Read tasks, newest first as stored, without artifact content unless asked.
+   * @param filter - optional conversation and state filter.
+   * @param pageSize - rows to return, clamped to 1..100.
+   * @param includeArtifacts - whether to keep artifact content in the rows.
+   * @returns the selected rows.
+   */
+  list(
+    filter: { contextId?: string; status?: TaskState } = {},
+    pageSize = 50,
+    includeArtifacts = false,
+  ): A2ATask[] {
+    return this.selected(filter)
+      .slice(0, Math.min(Math.max(pageSize, 1), 100))
+      .map(task => includeArtifacts ? task : { ...task, artifacts: [] })
+  }
+
+  /**
+   * Count the tasks a filter selects, for `ListTasks` totals.
+   * @param filter - optional conversation and state filter.
+   * @returns how many tasks the filter selects.
+   */
+  count(filter: { contextId?: string; status?: TaskState } = {}): number {
+    return this.selected(filter).length
+  }
+
+  /** Every stored task, insertion order. */
+  all(): A2ATask[] {
+    return [...this.tasks.values()]
+  }
+
+  /**
+   * Append one message to a task's history, dropping the oldest beyond the bound.
+   * @param task - the task to append to.
+   * @param message - the message to record.
+   */
+  pushHistory(task: A2ATask, message: A2AMessage): void {
+    task.history.push(message)
+    if (task.history.length > this.maxHistory) {
+      task.history.splice(0, task.history.length - this.maxHistory)
+    }
+  }
+
+  /**
+   * Replace a task's status, optionally attaching a status message.
+   * @param task - the task to update.
+   * @param state - the new state.
+   * @param text - status message text; absent leaves the status message unset.
+   */
+  setStatus(task: A2ATask, state: TaskState, text?: string): void {
+    const status: A2ATaskStatus = { state, timestamp: now() }
+    if (text !== undefined && text.length > 0) {
+      status.message = {
+        messageId: randomUUID(),
+        contextId: task.contextId,
+        taskId: task.id,
+        role: 'ROLE_AGENT',
+        parts: [{ text }],
+      }
+    }
+    task.status = status
+  }
+
+  /**
+   * Append text to an artifact, creating it on first write.
+   * @param task - the task the artifact belongs to.
+   * @param artifactId - artifact identity, stable across updates.
+   * @param name - artifact name, used when the artifact is created.
+   * @param text - text to append.
+   */
+  appendArtifact(task: A2ATask, artifactId: string, name: string, text: string): void {
+    let artifact: A2AArtifact | undefined = task.artifacts.find(item => item.artifactId === artifactId)
+    if (artifact === undefined) {
+      artifact = { artifactId, name, parts: [] }
+      task.artifacts.push(artifact)
+    }
+    const last = artifact.parts[artifact.parts.length - 1]
+    if (last !== undefined && last.text !== undefined) last.text += text
+    else artifact.parts.push({ text })
+  }
+
+  /** Tasks matching a filter, in insertion order. */
+  private selected(filter: { contextId?: string; status?: TaskState }): A2ATask[] {
+    let rows = [...this.tasks.values()]
+    if (filter.contextId !== undefined) rows = rows.filter(task => task.contextId === filter.contextId)
+    if (filter.status !== undefined) rows = rows.filter(task => task.status.state === filter.status)
+    return rows
+  }
+
+  /** Drop the oldest terminal tasks once the table is over its bound. */
+  private evict(): void {
+    if (this.tasks.size <= this.maxTasks) return
+    for (const [id, task] of this.tasks) {
+      if (this.tasks.size <= this.maxTasks) break
+      if (!isTerminalState(task.status.state)) continue
+      this.tasks.delete(id)
+      const siblings = this.byContext.get(task.contextId)
+      if (siblings === undefined) continue
+      const index = siblings.indexOf(id)
+      if (index >= 0) siblings.splice(index, 1)
+      if (siblings.length === 0) this.byContext.delete(task.contextId)
+    }
+  }
+}
+
+/** Whether a state ends the task; kept local so the store owns no schema helper. */
+function isTerminalState(state: TaskState): boolean {
+  return state === 'TASK_STATE_COMPLETED'
+    || state === 'TASK_STATE_FAILED'
+    || state === 'TASK_STATE_CANCELED'
+    || state === 'TASK_STATE_REJECTED'
+}

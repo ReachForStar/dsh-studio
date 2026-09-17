@@ -6,9 +6,9 @@
  * File reads follow the composed filesystem's read access, including paths
  * outside the workspace. The selected Session header supplies the base for
  * relative paths, with the sandbox policy root as its no-cwd fallback, not a
- * read-containment restriction. Directory listings and change observations
- * remain workspace-scoped. File-kind checks and configured read caps apply to
- * every preview; this service exposes no mutations.
+ * read-containment restriction. Directory listings, change observations, and
+ * every write remain workspace-scoped: a preview may show a file the workspace
+ * does not own, and editing it is a different exposure than reading it.
  *
  * A page is cut from `streamText`, which decodes and rejects non-UTF-8 as it
  * goes, so the file is read only up to the first character past the page and
@@ -28,6 +28,7 @@ import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { FsVersion } from '@deepseek-ai/dsh-fs'
 import { Remote, RemoteError, TypertRemoteService, type TypertLookup } from '@deepseek-ai/dsh-typert-protocol'
 import { WorkspaceChangeFeed } from './changes.ts'
 import type {
@@ -39,6 +40,7 @@ import type {
   WorkspaceFileStat,
   WorkspaceFileText,
   WorkspaceFileWatchFrame,
+  WorkspaceFileWriteGuard,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -314,6 +316,45 @@ export class WorkspaceFiles extends TypertRemoteService {
   }
 
   /**
+   * Replace one regular file's UTF-8 text inside the Session's workspace,
+   * atomically and without following the workspace's boundaries outward.
+   * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
+   * @param path - absolute or workspace-relative path of an existing regular file.
+   * @param text - the complete next content of the file.
+   * @param guard - the version the caller read, when it edited from one.
+   * @param signal - caller cancellation.
+   * @returns the file's identity and the version this write produced.
+   */
+  @Remote
+  async write(
+    workspaceFileScope: WorkspaceFileScope,
+    path: string,
+    text: string,
+    guard: WorkspaceFileWriteGuard,
+    signal: AbortSignal,
+  ): Promise<WorkspaceFileStat> {
+    const bytes = Buffer.byteLength(text, 'utf8')
+    const limit = this.config.maxFileBytes
+    if (bytes > limit) {
+      throw new RemoteError('workspace-file/too-large', `${bytes} bytes of "${path}" exceed the ${limit} byte cap`, { path, limit })
+    }
+    const { target } = await this.locateWritable(workspaceFileScope, path, signal)
+    const expected = guard.expectedVersion === undefined
+      ? undefined
+      : { kind: 'replaceIfVersion' as const, version: FsVersion(guard.expectedVersion) }
+    let outcome
+    try {
+      outcome = await this.ctx.fs.writeText(target, text, expected, signal)
+    } catch (error) {
+      if (isStaleVersionRefusal(error)) {
+        throw new RemoteError('workspace-file/stale-version', `"${path}" changed since it was read`, { path }, { cause: error })
+      }
+      throw error
+    }
+    return { absolutePath: this.ctx.fs.processPath(target), version: outcome.version }
+  }
+
+  /**
    * Report one regular file's identity, version, and size without its content.
    * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
    * @param path - absolute path or path relative to the workspace root; files outside it are allowed.
@@ -446,6 +487,30 @@ export class WorkspaceFiles extends TypertRemoteService {
     return { target, info }
   }
 
+  /**
+   * The same gates as {@link locateFile}, plus the containment a write needs:
+   * reading may leave the workspace, writing into someone else's tree may not.
+   */
+  private async locateWritable(
+    workspaceFileScope: WorkspaceFileScope,
+    path: string,
+    signal: AbortSignal,
+  ): Promise<{ target: FsTarget }> {
+    const { root, workspaceRoot, entry } = await this.inspect(workspaceFileScope, path, signal)
+    if (entry.type !== 'file') {
+      throw new RemoteError('workspace-file/not-regular-file', `"${path}" is a ${entry.type}`, { path, kind: entry.type })
+    }
+    const target = await this.confine(root, workspaceRoot, path, signal)
+    const info = await this.ctx.fs.stat(target, signal)
+    if (info === undefined) {
+      throw new RemoteError('workspace-file/not-found', `no entry at "${path}"`, { path })
+    }
+    if (info.type !== 'file') {
+      throw new RemoteError('workspace-file/not-regular-file', `"${path}" is a ${info.type}`, { path, kind: info.type })
+    }
+    return { target }
+  }
+
   private statOf(target: FsTarget, info: FsInfo): WorkspaceFileStat {
     return {
       absolutePath: this.ctx.fs.processPath(target),
@@ -465,6 +530,15 @@ export class WorkspaceFiles extends TypertRemoteService {
       throw error
     }
   }
+}
+
+/**
+ * The backend's stale-version refusal, recognized by its code alone, for the
+ * same reason as {@link isNotTextRefusal}: the error class belongs to whichever
+ * `dsh-fs` instance the provider loaded.
+ */
+function isStaleVersionRefusal(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'FS_STALE_VERSION'
 }
 
 /**

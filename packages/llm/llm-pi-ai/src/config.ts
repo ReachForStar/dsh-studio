@@ -39,7 +39,10 @@ import type {
   PiAiModelProfile,
   PiAiReasoningEfforts,
   RouteCatalog,
+  RouteCatalogRequest,
 } from './catalog.ts'
+import { routeEndpointCatalog } from './discovery.ts'
+import type { EndpointCatalogSource } from './discovery.ts'
 import { buildProvider, supportedProtocols } from './provider.ts'
 
 /** Default maximum idle interval while an adapter stream read is outstanding. */
@@ -200,6 +203,14 @@ export interface ResolvedPiAiProviderProfile
   requestImageMaxBytes: number
   /** Immutable retry policy captured with this provider route. */
   retryPolicy: ResolvedRetryPolicy
+  /**
+   * How this route's models are read from its own endpoint, present only when
+   * the configuration listed none and the installed catalog describes none.
+   * Such a route resolves with an empty catalog here — its endpoint is read at
+   * request time — and only this field separates it from a route that has no
+   * catalog at all.
+   */
+  endpointCatalog?: EndpointCatalogSource
   /**
    * The pi-ai provider containing this route's serviceable models. Absent when
    * a stored route cannot be constructed; its configuration remains editable.
@@ -458,18 +469,28 @@ export function resolveProfiles(
     let catalog: RouteCatalog | undefined
     let piProvider: Provider | undefined
     let catalogError: string | undefined
+    // One statement of the route's facts, reused by both resolutions below so
+    // an endpoint-served catalog resolves through exactly the code a
+    // configured one does.
+    const catalogRequest: RouteCatalogRequest = {
+      provider,
+      ...source.api === undefined ? {} : { api: source.api },
+      ...source.baseURL === undefined ? {} : { baseURL: source.baseURL },
+      ...source.models === undefined ? {} : { models: source.models },
+      ...source.modelOverrides === undefined ? {} : { modelOverrides: source.modelOverrides },
+      ...source.compat === undefined ? {} : { compat: source.compat },
+      defaultInput,
+      defaultContextWindow: source.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW,
+      defaultMaxTokens: source.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
+    }
+    // A route whose models can only come from its endpoint has none to resolve
+    // yet. That absence is a promise the request path keeps, not a
+    // configuration error, so it resolves deferred even for a settings write
+    // — and the route it fails to materialize is the one this field marks.
+    const endpointCatalog = routeEndpointCatalog(catalogRequest)
+    const resolution = endpointCatalog === undefined ? validation : 'deferred'
     try {
-      catalog = resolveRouteModels({
-        provider,
-        ...source.api === undefined ? {} : { api: source.api },
-        ...source.baseURL === undefined ? {} : { baseURL: source.baseURL },
-        ...source.models === undefined ? {} : { models: source.models },
-        ...source.modelOverrides === undefined ? {} : { modelOverrides: source.modelOverrides },
-        ...source.compat === undefined ? {} : { compat: source.compat },
-        defaultInput,
-        defaultContextWindow: source.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW,
-        defaultMaxTokens: source.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
-      }, validation)
+      catalog = resolveRouteModels(catalogRequest, resolution)
       catalogError = catalog.modelErrors.values().next().value
       piProvider = buildProvider({
         provider,
@@ -480,7 +501,7 @@ export function resolveProfiles(
         namesCredential: source.apiKeyEnv !== undefined,
       })
     } catch (error) {
-      if (validation === 'strict' || !(error instanceof PiAiCatalogError)) throw error
+      if (resolution === 'strict' || !(error instanceof PiAiCatalogError)) throw error
       catalogError ??= error.message
     }
     const { apiKeyEnv, retryPolicy, models: _models, displayName: _displayName, ...rest } = source
@@ -498,6 +519,7 @@ export function resolveProfiles(
       ...rest.thinkingBudgets === undefined ? {} : { thinkingBudgets: { ...rest.thinkingBudgets } },
       configuredMaxTokens: catalog?.configuredMaxTokens ?? new Map(),
       modelErrors: catalog?.modelErrors ?? new Map(),
+      ...endpointCatalog === undefined ? {} : { endpointCatalog },
       ...piProvider === undefined ? {} : { piProvider },
       ...catalogError === undefined ? {} : { catalogError },
     })

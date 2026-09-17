@@ -191,13 +191,19 @@ describe('StatsFloat', () => {
     const { source } = makeSource()
     const view = render(<StatsFloat {...props(source, { tokenUsage: USAGE, sessionStats: sessionStats({ turns: 2, steps: 5 }) })} />)
     fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
-    expect(view.container.textContent).toBe('2 轮 · 5 步| 缓存命中 90%| 输入 100 tok · 输出 5 tok')
+    // 展开后：标题、收起提示、token chips，最后是计时与命中率等次级行。
+    expect(view.container.textContent).toContain('当前工作区')
+    expect(view.container.textContent).toContain('点击收起')
+    expect(view.container.textContent).toContain('输入100')
+    expect(view.container.textContent).toContain('输出5')
+    expect(view.container.textContent).toContain('2 轮 · 5 步')
+    expect(view.container.textContent).toContain('缓存命中 90%')
   })
 
   it('renders the cost row when the bill crosses the threshold', () => {
     const { source } = makeSource()
     const view = render(<StatsFloat {...props(source, { tokenUsage: BIG_USAGE, sessionStats: sessionStats({ turns: 1, steps: 1 }) })} />)
-    expect(view.container.textContent).toContain('费用 ¥1.35')
+    expect(view.container.textContent).toContain('¥1.35')
   })
 
   it('bills each assistant step at its own model rate from node request config', () => {
@@ -217,11 +223,12 @@ describe('StatsFloat', () => {
       tokenUsage: { uncachedInputTokens: 2_000_000, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 0 },
       sessionStats: sessionStats({ turns: 2, steps: 2 }),
     })} />)
-    expect(view.container.textContent).toContain('费用 ¥6.00')
+    expect(view.container.textContent).toContain('¥6.00')
     fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
     // The cost block shows input/cache/output buckets and per-model subtotals.
-    expect(view.container.textContent).toContain('输入 ¥6.00 · 缓存命中 ¥0.00 · 输出 ¥0.00')
-    expect(view.container.textContent).toContain('模型 deepseek-v4-flash ¥1.50 · deepseek-v4-pro ¥4.50')
+    expect(view.container.textContent).toContain('输入¥6.00')
+    expect(view.container.textContent).toContain('deepseek-v4-flash')
+    expect(view.container.textContent).toContain('deepseek-v4-pro')
   })
 
   it('falls back to the default card when no settled node carries a model id', () => {
@@ -235,9 +242,9 @@ describe('StatsFloat', () => {
       sessionStats: sessionStats({ turns: 1, steps: 1 }),
     })} />)
     // No model on the node → projection at the default card: ¥1.50.
-    expect(view.container.textContent).toContain('费用 ¥1.50')
+    expect(view.container.textContent).toContain('¥1.50')
     // No model attribution → no per-model breakdown row.
-    expect(view.container.textContent).not.toContain('模型 ')
+    expect(view.container.textContent).not.toContain('按模型')
   })
 
   it('renders nothing when there are no steps and no billed activity', () => {
@@ -261,12 +268,22 @@ describe('StatsFloat', () => {
     expect(view.container.textContent).toContain('工具调用 3s')
   })
 
+  it('shows only the timing groups when nothing was billed', () => {
+    const { source } = makeSource()
+    const view = render(<StatsFloat {...props(source, { sessionStats: sessionStats({ turns: 2, steps: 4 }) }, { workspace: 'unlisted' })} />)
+    // 没有用量也没有花费：胶囊回退到第一组文字统计。
+    expect(view.container.textContent).toContain('2 轮 · 4 步')
+    fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+    expect(view.container.textContent).toContain('当前工作区')
+    expect(view.container.textContent).not.toContain('总花费')
+  })
+
   it('omits the cache-hit group when nothing was billed on the input side', () => {
     const { source } = makeSource()
     const view = render(<StatsFloat {...props(source, {
       tokenUsage: { uncachedInputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 7 },
     })} />)
-    expect(view.container.textContent).toContain('输入 0 tok · 输出 7 tok')
+    expect(view.container.textContent).toContain('输出 7')
   })
 
   it('sums every session the workspace holds, and prices the rest at the card default', () => {
@@ -288,11 +305,11 @@ describe('StatsFloat', () => {
     fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
     // 1M input from the watched session + 1M from the other, both at the seed
     // default (¥1.5/M): tokens add up and the cost covers both sessions.
-    expect(view.container.textContent).toContain('输入 2M tok · 输出 0 tok')
+    expect(view.container.textContent).toContain('输入2M')
     expect(view.container.textContent).toContain('工作区共 2 个会话')
-    expect(view.container.textContent).toContain('费用 ¥3.00')
+    expect(view.container.textContent).toContain('¥3.00')
     // Two sessions contributed, so nothing is attributed to one model.
-    expect(view.container.textContent).not.toContain('模型 ')
+    expect(view.container.textContent).not.toContain('按模型')
   })
 
   it('skips a listed session that reports no billable activity', () => {
@@ -312,7 +329,7 @@ describe('StatsFloat', () => {
       },
     )} />)
     // The empty session contributes nothing, so the card stays single-session.
-    expect(view.container.textContent).toContain('费用 ¥1.50')
+    expect(view.container.textContent).toContain('¥1.50')
     expect(view.container.textContent).not.toContain('工作区共')
   })
 
@@ -323,7 +340,7 @@ describe('StatsFloat', () => {
       { tokenUsage: { uncachedInputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 } },
       { workspace: 'unlisted' },
     )} />)
-    expect(view.container.textContent).toContain('费用 ¥1.50')
+    expect(view.container.textContent).toContain('¥1.50')
     expect(view.container.textContent).not.toContain('工作区共')
   })
 
@@ -373,8 +390,8 @@ describe('StatsFloat', () => {
     const { source } = makeSource([bareTool, user, untimed, noTtft])
     const view = render(<StatsFloat {...props(source, { tokenUsage: USAGE })} />)
     // Two timed-assistant steps, LLM wall time 3s, no tool or TTFT groups.
-    expect(view.container.textContent).toContain('2 轮 · 2 步')
     fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+    expect(view.container.textContent).toContain('2 轮 · 2 步')
     expect(view.container.textContent).toContain('LLM 3s')
   })
 })

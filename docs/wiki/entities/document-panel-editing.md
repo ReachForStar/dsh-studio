@@ -37,8 +37,25 @@ status: active
 - **客户端 Remote 类型来自构建产物**：`@deepseek-ai/dsh-api-workspace-files/remote` 指向 `lib/typert.remote-client.d.ts`，由 Typert 生成器在**根构建**（`pnpm run build:lib:host` / 根 `tsdown --env.DSH_BUILD_FACE host`）时产出。新增 `@Remote` 方法后若不重建，客户端会报 `Property 'write' is missing`——**单包 `pnpm --filter <pkg> run bundle` 不会重生成**。
 - **测试目录不在包 tsconfig 内**：`tsc -b packages/<pkg>/tsconfig.json` 不检查 `tests/`，漏掉的类型错误只会在推送前的 `tsc -b tsconfig.client.json`（或 CI）暴露。
 
+## 二进制写入（writeBytes）
+
+office 文档是 zip，因此写入链路是独立的一条：
+
+- `packages/fs/fs`：`FileSystem.writeBytes` 是**具体方法**，默认以 `FS_UNSUPPORTED_BINARY_WRITE` 拒绝——纯文本通道的后端必须明说，而不是写坏文件；`FsWriteBytesOutcome` 只带 `operation` 与 `version`（字节没有 diff 基准）。
+- `fs-local`：`writeFileAtomic` 接受 `string | Uint8Array`，`writeBytes` 复用与 `writeText` 相同的守卫与锁。
+- `fs-sandbox`：同一个 `checkedTarget` 围栏。
+- `fs-ssh`：继承拒绝（helper 通道是文本），并把错误码列入透传名单。
+- `workspaceFiles.writeBytes`：base64 传输 + 工作区包含性 + `maxFileBytes` + 版本守卫；拒绝映射为 `workspace-file/binary-unsupported`。
+- 客户端：`rpc.createWriteFileBytes` → `face.saveBytes` → pane 通过 slot owner props 透出 `saveBytes`/`saving`/`saveFailure`。
+
+## office 渲染器
+
+- `src/client/office/{zip,xml,errors}.ts` + `OfficeBody.tsx`：zip 读写（`fflate`）、按**局部名**匹配 XML（忽略生产者前缀）、文本叶子替换（首个叶子取新文本、其余清空并打上 `xml:space="preserve"`）、共享编辑外壳。
+- `office/docx.ts`：解析 `word/document.xml` 为段落文本，返回的 `rebuild` 闭包持有全部部件，因此写回不会丢掉读取器不认识的内容。
+- `office/pptx.ts`：按编号顺序解析 `ppt/slides/slideN.xml`，每张幻灯片一组文本叶子。
+- `src/client/{docx,pptx}/`：注册为 `bytes-complete` 内置渲染器；编辑为**文本级**，版式/表格/图片/新增形状不在范围。
+- 视频渲染器（`src/client/video/`）：`<video controls preload="metadata" playsinline>`，mp4/m4v/webm/ogv/mov。
+
 ## 已知待办
 
-- **docx/pptx 预览与文本级编辑**：`fflate` 解压解析 `word/document.xml`／`ppt/slides/slideN.xml`；保存需要 **二进制写**，而文件系统 seam（`packages/fs/fs`）目前只有 `writeText`，需要新增 `writeBytes` 并落到 `fs-local`／`fs-sandbox`／`fs-ssh` 提供方。
-- **视频预览**：新增 bytes 模式渲染器（`<video controls>`，mp4/webm/ogv/mov/m4v）。
-- 字节模式查看器（PDF/HTML/图片）保持只读。
+- 字节模式查看器（PDF/HTML/图片）保持只读；`.doc`/`.ppt` 等解析不了的格式显示「无法打开」。

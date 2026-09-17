@@ -23,3 +23,7 @@ The card reads the workspace of the session it renders in from `useWorkspaces` a
 ## Consequences
 
 A session whose projection was never cached contributes nothing until it is opened once, so a workspace total can under-count a session that has never been rendered. The total is exact for the session on screen and estimated for the rest, and the card re-aggregates whenever the session list or a projection changes. Package tests cover the sum across sessions, the live-over-listed precedence, the skip of empty rows, both pricing paths, the single-contributor attribution, the per-model row disappearing, and the fallback when no workspace lists the session.
+
+## Presentation after the fact
+
+The card's figures and scope did not change; only its presentation did, in a second pass. The total became the hero figure, the input/cache/output split gained a share bar with its figures written out, the token triple became chips, each contributing model gained a row, and the timing line moved last. Collapsed, the capsule carries the total and the token triple, or the first token figure when nothing was billable.

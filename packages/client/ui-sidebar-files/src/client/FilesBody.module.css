@@ -98,12 +98,59 @@
 }
 
 .item {
+  display: flex;
+  align-items: center;
   margin: 0;
   padding: 0;
 }
 
+/* The delete affordance rides the row's end and takes no width until the row is
+   under the pointer or the button itself holds focus: the tree's names get the
+   whole column otherwise. */
+.rowDelete {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  padding: 3px;
+  color: var(--dsw-alias-label-tertiary);
+  line-height: 1;
+  background: transparent;
+  border: none;
+  border-radius: 22px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.rowDelete svg {
+  width: 14px;
+  height: 14px;
+}
+
+.item:hover .rowDelete,
+.rowDelete:focus-visible {
+  opacity: 1;
+}
+
+.rowDelete:hover {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* The confirmation's own line for a removal that did not happen. */
+.dialogFailure {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .row {
   display: flex;
+  flex: 1 1 auto;
   gap: 6px;
   align-items: center;
   width: 100%;

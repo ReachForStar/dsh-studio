@@ -20,8 +20,8 @@ import { FilesBody } from '../src/client/FilesBody.tsx'
 import type { FilesBodyProps } from '../src/client/FilesBody.tsx'
 import { zh } from '../src/client/locales.ts'
 import { createFilesStore } from '../src/client/store.ts'
-import { scriptedList } from './scripted-list.client.ts'
-import type { ScriptedList } from './scripted-list.client.ts'
+import { scriptedDelete, scriptedList } from './scripted-remote.client.ts'
+import type { ScriptedDelete, ScriptedList } from './scripted-remote.client.ts'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 
 export const SESSION = 's-test' as SessionId
@@ -50,6 +50,7 @@ export interface Mounted {
   readonly view: RenderResult
   readonly instance: FilesStoreInstance
   readonly script: ScriptedList
+  readonly removal: ScriptedDelete
   readonly face: FilesInjected
   readonly controller: AbortController
   readonly tabActions: MockedTabActions
@@ -61,7 +62,8 @@ export interface Mounted {
 function harness(cwd: string | null) {
   const instance = createFilesStore().create()
   const script = scriptedList()
-  const face = filesFace(script.list)(SESSION, instance.actions)
+  const removal = scriptedDelete()
+  const face = filesFace(script.list, removal.remove)(SESSION, instance.actions)
   const controller = new AbortController()
   const tabActions: MockedTabActions = {
     openResource: vi.fn<SidebarRightTabActions['openResource']>(),
@@ -88,7 +90,7 @@ function harness(cwd: string | null) {
     ...face,
     t: makeTranslate(zh),
   }
-  return { instance, script, face, controller, tabActions, shared }
+  return { instance, script, removal, face, controller, tabActions, shared }
 }
 
 /**

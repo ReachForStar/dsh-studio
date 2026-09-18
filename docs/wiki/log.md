@@ -116,3 +116,18 @@
 - 代码：删除 `MutationDiffPanel.tsx` / `.module.css` 与 `conversation.view` 的 `files` 注册（slot 只剩 `git`/`excalidraw`/`ssh`）、`diff.*` 全部文案；宿主删掉只服务于它的 `POST /git/list` 与同日加入的 `POST /git/delete`（`/git/read`、`/git/write` 保留，Git 面板右列编辑器在用）。
 - 连带：同日加入的「永久删除」能力随面板消失（只能从该面板触达），若要保留需从 `ctx.fs` 接缝补 remove（右侧栏树与 `workspaceFiles` Remote 都没有）；`verify-client-ui-i18n` 红项由 8 降到 7；`verify-client-catalog` 跑 `pnpm run gen-client-catalog` 后清偿（从 office 批起就过期）。
 - 文档：包 README 双语删掉文件面板条目与永久删除限制、路由表与 slot 表同步；删除 `feature/2026-09-18-file-panel-delete` Agent Note 三件套，新增 `simplification/2026-09-18-remove-duplicate-file-panel`（含备选方案与延期项）；重写实体页 [fork Web 面板](entities/fork-web-panels.md)、更新 index 与 [门禁红项清单](queries/fork-gate-debt.md)。
+
+## [2026-09-18] feat | 删除能力接到 ctx.fs 接缝与右侧栏「工作区文件」树
+
+- 接缝：`ctx.fs.remove(path, opts?, signal?, sandboxPolicy?)`——唯一按**路径**寻址的变更（与 `lstat` 对称，因为 `resolve()` 跟随末段链接，删链接必须绕开 target）；符号链接按链接删、目录仅在 `recursive` 下连内容删、非空目录不带 `recursive` 报新码 `FS_NOT_EMPTY`、返回 `FsRemoveOutcome.kind`；不带版本守卫。
+- Provider：`fs-local`（`fsio.removePath`，Node `rm` 不跟随树内链接）、`fs-sandbox`（围栏**父目录**规范化路径）、`fs-ssh` + SSH helper（新增 `fs.remove` 操作，`FS_NOT_EMPTY` 入错误码表）、`fs-sftp`（SFTP `remove` + 父目录围栏）。
+- Remote：`workspaceFiles.delete(scope, path, {recursive}, signal)`——`lstat` 探存在、父目录上证明包含性、`FS_NOT_EMPTY` → `workspace-file/not-empty`；命名为 `delete` 而非 `remove`，因为客户端命名空间服务占用 `remove` 作生命周期方法，遮蔽它会让 `@deepseek-ai/dsh-api-remotes` 整个客户端插件启动失败。
+- UI：`ui-sidebar-files`（上游包，fork 打补丁）行内删除控件 + `Modal` 二次确认；确认前不发请求，成功后丢行、剪子树层与展开项并重读父层，失败时弹窗保持打开显示映射文案；新增 `paths.ts`（`childPath`/`isUnder`）避免 store↔face 循环导入。
+- 踩坑两条（已写入实体页）：Remote 方法名撞命名空间服务时客户端**没有任何控制台报错**，用 `vitest --config vitest.e2e.config.ts packages/api/remotes/tests/built-lib.e2e.ts` 能在 Node 里拿到真实错误；改名 `@Remote` 后必须重建宿主 typert 产物与全部客户端 bundle，否则表现为对话框一直转「正在删除…」而网络面板无请求。
+- 验证：Windows 相关包 462 测试 + WSL 48 文件 643 测试通过；`fs/fs`、`fs-local`、`fs-sandbox`、`workspace-files`、`ui-sidebar-files` 触及源码覆盖率 100%；`typecheck`、`test:docs` 20/20 通过，`lint` 无新增；`dsh web` 手工删除文件与含内容目录均成功且磁盘同步消失。新增实体页 [工作区文件删除](entities/workspace-file-deletion.md) 与 Agent Note。
+
+## [2026-09-18] docs | 补齐 A2A 子系统文档并清偿 4 项门禁红项
+
+- 新增 `docs/subsystems/a2a.md`（+ 中文 + i18n）与 `packages/a2a/README.md`（组 README，+ 中文 + i18n），并在 `scripts/gen-cordis-catalog.ts` 登记 `SERVICE_PAGE`/`linkedTypePages`（a2a、a2aHost 与六个 A2A 类型）、`scripts/gen-doc-graphs.ts` 登记两个服务角色、`scripts/gen-tool-catalog.ts` 登记 `tool-a2a`。
+- 连带清偿：`verify-doc-graphs`、`verify-tool-catalog`、`verify-client-catalog`、`verify-config-catalog`（a2a-host 的 5 个配置字段补 JSDoc）转绿；`pnpm run doc-sync` 仍余 3 项既有欠账（pi-agent-loop 配置 JSDoc、会话 v3 持久化产物、web-app 内联 apiKey），已更新 [门禁红项清单](queries/fork-gate-debt.md)。
+- 生成物同步：`docs/subsystems/{workspace,filesystem,a2a}.md`、`docs/{capability-seams,event-producer-consumer,tool-catalog}.md` 及其中文侧、`packages/extensions/tool-cordis/src/api-catalog.ts`、`packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`。

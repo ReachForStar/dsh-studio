@@ -12,6 +12,7 @@ import type { BigIntStats, Dirent, Stats } from 'node:fs'
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { TextDecoder, promisify } from 'node:util'
 import { FsError, FsTargetKey, FsVersion } from '@deepseek-ai/dsh-fs'
+import type { FsRemoveOutcome } from '@deepseek-ai/dsh-fs'
 import { BINARY_SAMPLE_BYTES, createUtf8StreamDecoder, decodeUtf8, decodeUtf8Stream, detectLineEndings, isBinarySample, normalizeLineEndings } from '@deepseek-ai/dsh-fs'
 import type { LineEndings } from '@deepseek-ai/dsh-fs'
 import { copyFileDaclWin32, replaceFileWin32 } from './win32.ts'
@@ -279,6 +280,50 @@ export async function probeNoFollow(absolutePath: string): Promise<PathLinkInfo 
     type: pathLinkType(info),
     size: Number(info.size),
   }
+}
+
+// --- Removal ---
+
+/**
+ * Remove one path entry: a file, a symbolic link, or a directory.
+ *
+ * Probed without following the final component, so a symbolic link goes as the
+ * link itself and never as what it points at. A directory is removed with its
+ * contents only under `recursive`; otherwise a non-empty one is refused with
+ * `FS_NOT_EMPTY`, and `rm` never follows a link inside a removed tree.
+ * @param absolutePath - absolute path of the entry to remove.
+ * @param recursive - whether a directory may be removed with its contents.
+ * @param signal - aborts before the entry is removed.
+ * @returns what the removed entry was.
+ */
+export async function removePath(
+  absolutePath: string,
+  recursive: boolean,
+  signal?: AbortSignal,
+): Promise<FsRemoveOutcome> {
+  throwIfAborted(signal, 'remove')
+  const info = await probeNoFollow(absolutePath)
+  if (info === null) throw new FsError(`cannot remove "${absolutePath}": not found`, 'FS_NOT_FOUND')
+  if (info.type === 'directory' && !recursive) {
+    const children = await readdir(absolutePath)
+    if (children.length > 0) {
+      throw new FsError(`cannot remove "${absolutePath}": the directory is not empty`, 'FS_NOT_EMPTY')
+    }
+  }
+  throwIfAborted(signal, 'remove')
+  try {
+    await rm(absolutePath, { recursive: true, force: false })
+  } catch (error: unknown) {
+    /* v8 ignore next -- the entry passed the preflight probe; losing it in between is a race. */
+    if (isENOENT(error)) throw new FsError(`cannot remove "${absolutePath}": not found`, 'FS_NOT_FOUND', { cause: error })
+    /* v8 ignore next -- Windows chmod does not deny removal; POSIX covers permission translation. */
+    if (isPermissionError(error)) {
+      throw new FsError(`cannot remove "${absolutePath}": permission denied`, 'FS_PERMISSION_DENIED', { cause: error })
+    }
+    /* v8 ignore next -- needs an I/O fault the test filesystems cannot produce. */
+    throw new FsError(`cannot remove "${absolutePath}": ${errorMessage(error)}`, 'FS_IO_ERROR', { cause: error })
+  }
+  return { kind: info.type }
 }
 
 // --- Directory listing ---

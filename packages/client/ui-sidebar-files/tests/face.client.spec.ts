@@ -14,11 +14,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceDirectoryListing } from '@deepseek-ai/dsh-api-workspace-files/types'
-import { childPath, createList, filesFace } from '../src/client/face.ts'
-import type { WorkspaceFilesListRemote } from '../src/client/face.ts'
+import { createDelete, createList, filesFace } from '../src/client/face.ts'
+import type { WorkspaceFilesTreeRemote } from '../src/client/face.ts'
+import { childPath, isUnder } from '../src/client/paths.ts'
 import { createFilesStore } from '../src/client/store.ts'
 import type { DirLevel } from '../src/client/store.ts'
-import { scriptedList } from './scripted-list.client.ts'
+import { scriptedDelete, scriptedList } from './scripted-remote.client.ts'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 
 const SESSION = 's-1' as SessionId
@@ -30,11 +31,22 @@ const LEVEL: DirLevel = { entries: [{ name: 'src', type: 'directory' }], truncat
 function mount() {
   const instance = createFilesStore().create()
   const script = scriptedList()
-  const face = filesFace(script.list)(SESSION, instance.actions)
-  return { ...script, face, snapshot: () => instance.getSnapshot().byTab[TAB] }
+  const removal = scriptedDelete()
+  const face = filesFace(script.list, removal.remove)(SESSION, instance.actions)
+  return { ...script, removal, face, snapshot: () => instance.getSnapshot().byTab[TAB] }
 }
 
 describe('filesFace', () => {
+  it('does nothing for a record that already ended', async () => {
+    const { face, removal, snapshot } = mount()
+    const controller = new AbortController()
+    face.start(TAB, ROOT, controller.signal)
+    controller.abort()
+    await expect(face.deleteEntry(TAB, ROOT, 'src', true, controller.signal)).resolves.toBeNull()
+    expect(removal.remove).not.toHaveBeenCalled()
+    expect(snapshot()).toBeUndefined()
+  })
+
   it('start seeds the tab and lists the root with the session and the absolute root path', async () => {
     const { face, list, settle, snapshot } = mount()
     const controller = new AbortController()
@@ -116,7 +128,7 @@ describe('createList', () => {
       entries: [{ name: 'a.ts', type: 'file', size: 3 }],
       truncated: true,
     }
-    const list = vi.fn<WorkspaceFilesListRemote['workspaceFiles']['list']>()
+    const list = vi.fn<WorkspaceFilesTreeRemote['workspaceFiles']['list']>()
       .mockResolvedValue({ ok: true, value: listing })
     const signal = new AbortController().signal
     const result = await createList({ workspaceFiles: { list } })(SESSION, `${ROOT}/src`, signal)
@@ -126,18 +138,38 @@ describe('createList', () => {
 
   it('returns a failure as the endpoint reported it', async () => {
     const error = new RemoteError('workspace-file/not-directory', 'file', { path: 'x', kind: 'file' })
-    const list = vi.fn<WorkspaceFilesListRemote['workspaceFiles']['list']>()
+    const list = vi.fn<WorkspaceFilesTreeRemote['workspaceFiles']['list']>()
       .mockResolvedValue({ ok: false, error })
     const result = await createList({ workspaceFiles: { list } })(SESSION, `${ROOT}/x`, new AbortController().signal)
     expect(result).toEqual({ ok: false, error })
   })
 })
 
-describe('childPath', () => {
+describe('createDelete', () => {
+  it('passes the session, the absolute path, the recursive flag, and the signal through', async () => {
+    const remove = vi.fn<WorkspaceFilesTreeRemote['workspaceFiles']['delete']>()
+      .mockResolvedValue({ ok: true, value: { kind: 'directory' } })
+    const signal = new AbortController().signal
+    const result = await createDelete({ workspaceFiles: { delete: remove } })(SESSION, `${ROOT}/src`, true, signal)
+    expect(remove).toHaveBeenCalledWith(SESSION, `${ROOT}/src`, { recursive: true }, signal)
+    expect(result).toEqual({ ok: true, value: { kind: 'directory' } })
+  })
+})
+
+describe('childPath and isUnder', () => {
   it('joins with one slash whatever the parent ends in', () => {
     expect(childPath('/work/app', 'src')).toBe('/work/app/src')
     expect(childPath('/work/app/', 'src')).toBe('/work/app/src')
     expect(childPath('/', 'etc')).toBe('/etc')
     expect(childPath('C:\\work\\', 'src')).toBe('C:\\work/src')
+  })
+
+  it('counts strict descendants only, across the root and drive spellings', () => {
+    expect(isUnder('/work/app/src', '/work/app')).toBe(true)
+    expect(isUnder('/work/app/src/deep', '/work/app')).toBe(true)
+    expect(isUnder('/work/application', '/work/app')).toBe(false)
+    expect(isUnder('/work/app', '/work/app')).toBe(false)
+    expect(isUnder('/etc/hosts', '/')).toBe(true)
+    expect(isUnder('C:\\work/src', 'C:\\work\\')).toBe(true)
   })
 })

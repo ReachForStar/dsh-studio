@@ -40,7 +40,7 @@ status: active
 
 ## 文件面板去重（2026-09-18）
 
-fork 的「文件」标签页（`MutationDiffPanel`，id `files`）与右侧栏「工作区文件」树重复：同一批文件、两棵目录树、两个编辑器。按用户要求**保留右侧栏（上游）而删除顶部标签页**：`MutationDiffPanel` 与其样式、`diff.*` 文案、只服务于它的 `/git/list` 与同日加入的 `/git/delete` 一并移除（含对应测试），slot 注册只剩 `git`/`excalidraw`/`ssh`。代价是 Web 端暂无删除文件的能力——右侧栏树与 `workspaceFiles` Remote 都没有 remove 操作，要补得从 `ctx.fs` 接缝往下做。决策记录见 [移除重复的文件面板（Agent Note）](../../../.agents/notes/implemented/simplification/2026-09-18-remove-duplicate-file-panel.md)。
+fork 的「文件」标签页（`MutationDiffPanel`，id `files`）与右侧栏「工作区文件」树重复：同一批文件、两棵目录树、两个编辑器。按用户要求**保留右侧栏（上游）而删除顶部标签页**：`MutationDiffPanel` 与其样式、`diff.*` 文案、只服务于它的 `/git/list` 与同日加入的 `/git/delete` 一并移除（含对应测试），slot 注册只剩 `git`/`excalidraw`/`ssh`。删除能力随后补到了存留的那棵树上（`ctx.fs.remove` → `workspaceFiles.delete` → 行内删除按钮），见 [工作区文件删除](workspace-file-deletion.md)。决策记录见 [移除重复的文件面板（Agent Note）](../../../.agents/notes/implemented/simplification/2026-09-18-remove-duplicate-file-panel.md)。
 
 ## 踩坑
 

@@ -14,6 +14,7 @@ import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-sto
 import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { WorkspaceDirectoryEntry } from '@deepseek-ai/dsh-api-workspace-files/types'
+import { childPath, isUnder } from './paths.ts'
 
 /**
  * One directory's contents, as one expanded level of the tree.
@@ -76,6 +77,7 @@ type FilesActions = {
   loaded: (draft: FilesState, tabId: TabId, path: string, level: DirLevel) => void
   failed: (draft: FilesState, tabId: TabId, path: string, failure: RemoteFailure) => void
   toggled: (draft: FilesState, tabId: TabId, path: string) => void
+  removed: (draft: FilesState, tabId: TabId, parent: string, name: string) => void
   scrolled: (draft: FilesState, tabId: TabId, scrollTop: number) => void
   reset: (draft: FilesState, tabId: TabId) => void
   forget: (draft: FilesState, tabId: TabId) => void
@@ -143,6 +145,34 @@ export function createFilesStore(): EngineStoreHandle<FilesState, FilesActions> 
         const at = state.expanded.indexOf(path)
         if (at >= 0) state.expanded.splice(at, 1)
         else state.expanded.push(path)
+      },
+      /**
+       * Drop one removed entry, and the subtree it took with it.
+       *
+       * The row leaves the level it was listed in — the set of things the reader
+       * was told exists — and a removed directory's own cached levels and
+       * expansion go with it, so expanding it again cannot redraw what is gone.
+       * The face re-lists the parent afterwards; this keeps the tree honest in
+       * the meantime.
+       * @param d - draft state.
+       * @param tabId - the tab being drawn.
+       * @param parent - absolute path of the directory the entry was listed in.
+       * @param name - the entry's basename.
+       */
+      removed: (d, tabId: TabId, parent: string, name: string) => {
+        const state = bucket(d, tabId)
+        const level = state.levels[parent]
+        if (level !== undefined && level.kind === 'ready') {
+          state.levels[parent] = {
+            kind: 'ready',
+            level: { ...level.level, entries: level.level.entries.filter(entry => entry.name !== name) },
+          }
+        }
+        const path = childPath(parent, name)
+        state.levels = Object.fromEntries(
+          Object.entries(state.levels).filter(([known]) => known !== path && !isUnder(known, path)),
+        )
+        state.expanded = state.expanded.filter(expanded => expanded !== path && !isUnder(expanded, path))
       },
       /**
        * Record where one tab's body is scrolled to.

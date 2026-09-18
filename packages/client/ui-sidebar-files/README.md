@@ -41,6 +41,8 @@ The root is the session's working directory, read from `useSessions().byId[sessi
 | `file` | Opens `dsh-resource://file/session/<sessionId>/<encoded path relative to the root>`, built by `fileAddressFor` from `@deepseek-ai/dsh-util-workspace-path` from the entry's absolute path and the tree's root, through `useTabInfo().tab.actions.openResource`, landing in the tab's own pane. |
 | `other` | Shown greyed and not clickable, so the directory is reported whole. |
 
+Every row that is a file or a directory also carries a delete control on its trailing edge, revealed while the row is hovered or the control focused. It opens a confirmation dialog naming the entry — and, for a directory, that its contents go with it — before calling `remote.workspaceFiles.delete(sessionId, absolutePath, { recursive })` on the same namespace. Nothing leaves the tree until the Host confirms it: the removed row and the subtree below it (its cached levels and its expansion) drop together, then the parent level is re-listed, so the listing on screen stays the Host's. A failed removal keeps the dialog open with the mapped reason (`workspace-file/not-empty`, `not-found`, `outside-workspace`, or the transport's message), and deletion is permanent — there is no trash and no undo.
+
 A level cut by the endpoint's entry cap ends with a marker; an empty level says so; a level that failed shows one line per code — `workspace-file/not-found`, `outside-workspace`, `not-directory` — and the transport's own message otherwise. Reload drops every listed level and asks again for the expanded ones; collapsed levels are fetched again when they next open. A session without a working directory shows a single line instead of a tree.
 
 State lives in the type's own store, bucketed by tab id: `root`, `levels` (loading / ready / failed per absolute path), `expanded`, and `scrollTop`, which the body tracks locally while scrolling and commits once when it unmounts. Because the store outlives the body, switching to another sidebar tab and back remounts the tree with its levels intact and its scroll offset restored. The owner's `signal` ends a bucket: on abort the tab is forgotten, and neither a listing that settles afterwards nor the unmount's offset commit writes anything.
@@ -57,7 +59,7 @@ None; directory listings travel over the Remote and assemble no model request.
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
-- **Listing only.** No search, artifact filter, drag-and-drop, rename, context menu, current-file highlight, or filesystem watching; a level changes only through reload.
+- **Listing and removal only.** No search, artifact filter, drag-and-drop, rename, context menu, current-file highlight, or filesystem watching; a level changes only through reload, and removal is permanent.
 - **One root.** The tree is rooted at the session's working directory; there is no way to browse above it, and the Host refuses paths outside the workspace root anyway.
 
 <a id="dev-note"></a>

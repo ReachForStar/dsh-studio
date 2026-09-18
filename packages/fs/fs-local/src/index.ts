@@ -16,6 +16,8 @@ import type {
   FsEditRequest,
   FsInfo,
   FsPathInfo,
+  FsRemoveOptions,
+  FsRemoveOutcome,
   FsTarget,
   FsWriteBytesOutcome,
   FsWriteIntent,
@@ -33,6 +35,7 @@ import {
   readTextForDiff,
   readWholeBytes,
   readWholeText,
+  removePath,
   resolveLocalTarget,
   restoreLineEndings,
   streamWholeText,
@@ -173,6 +176,14 @@ export class LocalFileSystem extends FileSystem {
       ...(entry.version !== undefined ? { version: entry.version } : {}),
       ...(entry.size !== undefined ? { size: entry.size } : {}),
     }))
+  }
+
+  override async remove(
+    path: string,
+    opts?: FsRemoveOptions,
+    signal?: AbortSignal,
+  ): Promise<FsRemoveOutcome> {
+    return removePath(localDisplayPath(opts?.cwd ?? this.config.cwd, path), opts?.recursive === true, signal)
   }
 
   override async writeText(

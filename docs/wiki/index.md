@@ -16,6 +16,7 @@ updated: 2026-09-18
 - [文档面板的编辑与保存（workspaceFiles.write）](entities/document-panel-editing.md) — 写接口的守卫与包含性、pane 级编辑器、Typert 产物需根构建重生成，以及 office 预览的 fflate 浏览器入口踩坑与构建期 builtin 守卫。
 - [远端工作区 provider（fs-sftp / subprocess-sftp）](entities/remote-workspace-providers.md) — 基于 `ctx.sshSftp` 的远端 fs/subprocess：路径标识、版本与原子发布、终端 pid 发现，以及 Web 工作区不可用的踩坑。
 - [fork Web 面板（ui-polish 的 Git/SSH/画布标签页）](entities/fork-web-panels.md) — 面板职责、`/git/*` 路由表、`ctx.fs` 接缝之外的守卫与编辑边界，以及文件面板去重（为何留右侧栏、删掉的删除能力如何补）。
+- [工作区文件删除（ctx.fs.remove → workspaceFiles.delete → 右侧栏文件树）](entities/workspace-file-deletion.md) — 四层删除链的各层要点、父目录围栏与 `FS_NOT_EMPTY`，以及 `workspaceFiles/remove` 与客户端命名空间服务撞名导致整包启动失败、改方法名后必须重建两侧产物的踩坑。
 
 ## 概念 concepts
 

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/remote/fs-sftp/README.md
-README.md: eb809798328030758a8fcde861d50cf39f9d65a1
+README.md: 71e9ad3b4e3f068a5bc08c8bbecb67c6f30e877f
 README.zh.md: 155831c99358a0b7677aa6c61a1e383a9bab84df

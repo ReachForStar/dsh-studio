@@ -3,7 +3,8 @@
  * Remote targets are POSIX absolute paths; identity is the canonical (realpath)
  * path of existing files and the deepest-existing-ancestor join for missing
  * suffixes. Mutations stage a temp file in the target's directory and publish
- * it with an SFTP rename, so readers never observe a partial file.
+ * it with an SFTP rename, so readers never observe a partial file; removal is
+ * addressed by path and takes a symbolic link as the link it is.
  * @module @reachforstar/dsh-fs-sftp
  */
 
@@ -25,6 +26,8 @@ import type {
   FsEditRequest,
   FsInfo,
   FsPathInfo,
+  FsRemoveOptions,
+  FsRemoveOutcome,
   FsTarget,
   FsVersion as FsVersionType,
   FsWriteBytesOutcome,
@@ -555,6 +558,79 @@ export class SftpFileSystem extends FileSystem {
         before: original,
         after: edited.content,
       }
+    })
+  }
+
+  /**
+   * Fence the removal by the per-call policy and return the remote path it must
+   * use. The entry's PARENT canonicalizes because the entry itself may be a
+   * symbolic link: removing a link touches the link, never its target, so the
+   * containment check runs where the removal actually happens. A symlinked
+   * ancestor still canonicalizes into the check.
+   * @param display - the lexical remote path of the entry to remove.
+   * @param sandboxPolicy - the per-call mode and workspace root; omit for the
+   *   deployment fallback.
+   * @param signal - aborts the canonicalizing round-trip.
+   * @returns the remote path the removal must use.
+   */
+  private async checkedRemoval(
+    display: string,
+    sandboxPolicy: SandboxExecutionPolicy | undefined,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const policy = sandboxPolicy ?? this.ctx.sandboxPolicy.resolve()
+    const { mode } = policy
+    if (mode === 'danger-full-access') return display
+    if (mode === 'read-only') {
+      throw new FsError(`cannot remove "${display}": file access denied under read-only mode`, 'FS_SANDBOX_DENIED')
+    }
+    // `canonical` joins a base with a path; the parent is already absolute, so
+    // the base is only there to satisfy the signature.
+    const parent = await this.canonical(SEP, parentOf(display), signal)
+    let contained = false
+    for (const root of writableRoots(policy)) {
+      if (isRemotePathUnder(parent, root)) {
+        contained = true
+        break
+      }
+    }
+    if (!contained) {
+      throw new FsError(`cannot remove "${display}": file access denied under workspace-write mode`, 'FS_SANDBOX_DENIED')
+    }
+    const base = basename(display)
+    return parent.endsWith(SEP) ? `${parent}${base}` : `${parent}${SEP}${base}`
+  }
+
+  override async remove(
+    path: string,
+    opts?: FsRemoveOptions,
+    signal?: AbortSignal,
+    sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsRemoveOutcome> {
+    const display = this.remotePath(opts?.cwd ?? this.config.cwd, path)
+    const recursive = opts?.recursive === true
+    const target = await this.checkedRemoval(display, sandboxPolicy, signal)
+    return this.withLock(target, async () => {
+      signal?.throwIfAborted()
+      const existing = await this.sftpStat(target, signal)
+      if (existing === undefined) throw new FsError(`cannot remove "${display}": not found`, 'FS_NOT_FOUND')
+      const conn = await this.connection()
+      if (existing.type === 'directory' && !recursive) {
+        const children = await conn.sftp.list(target).catch((error: unknown) => {
+          throw this.translateError(error, 'remove', signal)
+        })
+        if (children.length > 0) {
+          throw new FsError(`cannot remove "${display}": the directory is not empty`, 'FS_NOT_EMPTY')
+        }
+      }
+      try {
+        // The seam's removal stats with lstat semantics, so a link goes as the
+        // link and a recursive walk never descends through one.
+        await conn.sftp.remove(target, { recursive })
+      } catch (error: unknown) {
+        throw this.translateError(error, 'remove', signal)
+      }
+      return { kind: existing.type }
     })
   }
 

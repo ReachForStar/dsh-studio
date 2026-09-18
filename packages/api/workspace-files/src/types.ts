@@ -115,6 +115,27 @@ export interface WorkspaceDirectoryListing {
 }
 
 /**
+ * What one delete request may do beyond naming a path.
+ */
+export interface WorkspaceFileDeleteOptions {
+  /**
+   * Remove a directory together with everything inside it. Without it a
+   * directory is removed only while empty, and a non-empty one fails with
+   * `workspace-file/not-empty`.
+   */
+  readonly recursive?: boolean
+}
+
+/**
+ * Outcome of one deletion: what the deleted path entry was. A symbolic link
+ * reports `symlink`, never what it pointed at, because deletion takes the link.
+ */
+export interface WorkspaceFileDeletion {
+  /** Type of the removed path entry, as the backend observed it before removal. */
+  readonly kind: 'file' | 'directory' | 'symlink' | 'other'
+}
+
+/**
  * One observation of a workspace file made by an instrumented filesystem
  * operation. Frames report observations, not deltas: a consumer already
  * holding `version` learns nothing new from the frame and can ignore it.
@@ -177,5 +198,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly path: string
       readonly kind: 'file' | 'symlink' | 'other'
     }
+    /** A non-empty directory was asked to be deleted without `recursive`; nothing was deleted. */
+    'workspace-file/not-empty': { readonly path: string }
   }
 }

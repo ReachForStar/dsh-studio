@@ -24,6 +24,8 @@ const posixSuite = process.platform === 'win32' ? describe.skip : describe
 /** One booted provider + its remote (test-server-root) file helpers. */
 interface RemoteFs {
   fs: SftpFileSystem
+  /** Local disk directory the SFTP root maps to, for out-of-band fixtures. */
+  root: string
   /** Write one file under the SFTP root (the "remote disk"). */
   remoteWrite: (rel: string, content: string | Uint8Array) => Promise<void>
   remoteExists: (rel: string) => Promise<boolean>
@@ -52,6 +54,7 @@ async function boot(mode: SandboxMode, workspaceRoot: string = '/ws'): Promise<R
   const fs = ctx.fs as SftpFileSystem
   return {
     fs,
+    root: server.root,
     remoteWrite: async (rel, content) => {
       const path = join(server.root, ...rel.split('/'))
       await mkdir(join(path, '..'), { recursive: true })
@@ -188,6 +191,36 @@ posixSuite('sftp filesystem provider', () => {
     expect(outcome.before).toBe('alpha\nbeta\n')
     expect(outcome.after).toBe('gamma\nbeta\n')
     expect(await remote.remoteRead('ws/e.txt')).toBe('gamma\r\nbeta\r\n')
+  })
+
+  it('removes a file, an empty directory, and (only when asked) a directory tree', async () => {
+    await remote.remoteWrite('ws/gone.txt', 'x')
+    expect(await remote.fs.remove('ws/gone.txt')).toEqual({ kind: 'file' })
+    expect(await remote.remoteExists('ws/gone.txt')).toBe(false)
+
+    await mkdir(join(remote.root, 'ws', 'empty'), { recursive: true })
+    expect(await remote.fs.remove('ws/empty')).toEqual({ kind: 'directory' })
+    expect(await remote.remoteExists('ws/empty')).toBe(false)
+
+    await remote.remoteWrite('ws/tree/deep/leaf.txt', 'leaf')
+    await expect(remote.fs.remove('ws/tree')).rejects.toMatchObject({ code: 'FS_NOT_EMPTY' })
+    expect(await remote.remoteRead('ws/tree/deep/leaf.txt')).toBe('leaf')
+    expect(await remote.fs.remove('ws/tree', { recursive: true })).toEqual({ kind: 'directory' })
+    expect(await remote.remoteExists('ws/tree')).toBe(false)
+  })
+
+  it('reports a missing entry as not found', async () => {
+    await expect(remote.fs.remove('ws/never.txt')).rejects.toMatchObject({ code: 'FS_NOT_FOUND' })
+  })
+
+  it('fences removal by the writable roots', async () => {
+    await remote.remoteWrite('else.txt', 'outside')
+    await expect(remote.fs.remove('/else.txt')).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    expect(await remote.remoteExists('else.txt')).toBe(true)
+
+    await remote.remoteWrite('tmp/temp.txt', 't')
+    expect(await remote.fs.remove('/tmp/temp.txt')).toEqual({ kind: 'file' })
+    expect(await remote.remoteExists('tmp/temp.txt')).toBe(false)
   })
 
   it('denies writes outside the writable roots under workspace-write', async () => {

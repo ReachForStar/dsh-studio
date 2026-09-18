@@ -14,6 +14,7 @@ import type {
   FsEditRequest,
   FsInfo,
   FsPathInfo,
+  FsRemoveOutcome,
   FsTarget,
   FsWriteIntent,
   FsWriteOutcome,
@@ -82,6 +83,10 @@ class FakeFileSystem extends FileSystem {
     const after = content.split(edit.oldString).join(edit.newString)
     this.files.set(target.targetKey, after)
     return { version: FsVersion('v3'), before: content, after }
+  }
+  override async remove(path: string): Promise<FsRemoveOutcome> {
+    if (path.length === 0) throw new FsError('cannot remove an empty path', 'FS_NOT_FOUND')
+    return { kind: 'file' }
   }
 }
 

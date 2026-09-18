@@ -2,19 +2,19 @@
 import { posix } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { FileSystem, FsError } from '@deepseek-ai/dsh-fs'
-import type { FsDirEntry, FsEditOutcome, FsEditRequest, FsErrorCode, FsInfo, FsPathInfo, FsTarget, FsVersion, FsWriteIntent, FsWriteOutcome } from '@deepseek-ai/dsh-fs'
+import type { FsDirEntry, FsEditOutcome, FsEditRequest, FsErrorCode, FsInfo, FsPathInfo, FsRemoveOptions, FsRemoveOutcome, FsTarget, FsVersion, FsWriteIntent, FsWriteOutcome } from '@deepseek-ai/dsh-fs'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type {} from '@deepseek-ai/dsh-ssh'
 import { RemoteOperationError } from '@deepseek-ai/dsh-ssh/protocol'
-import { editResultSchema, entriesSchema, infoSchema, pathInfoSchema, targetSchema, textStreamIdSchema, writeResultSchema } from '@deepseek-ai/dsh-ssh/schemas'
+import { editResultSchema, entriesSchema, infoSchema, pathInfoSchema, removeResultSchema, targetSchema, textStreamIdSchema, writeResultSchema } from '@deepseek-ai/dsh-ssh/schemas'
 import { z } from 'zod'
 
 const errorCodes: Record<FsErrorCode, true> = {
   FS_NOT_FOUND: true, FS_NOT_DIRECTORY: true, FS_NOT_TEXT: true, FS_NOT_REGULAR_FILE: true,
   FS_TOO_LARGE: true, FS_PERMISSION_DENIED: true, FS_SANDBOX_DENIED: true, FS_IO_ERROR: true,
   FS_STALE_VERSION: true, FS_NOT_OBSERVED: true, FS_AMBIGUOUS_EDIT: true, FS_EDIT_NOT_FOUND: true, FS_ABORTED: true,
-  FS_UNSUPPORTED_BINARY_WRITE: true,
+  FS_UNSUPPORTED_BINARY_WRITE: true, FS_NOT_EMPTY: true,
 }
 
 /** Remote filesystem paired with the SSH subprocess and sandbox providers. */
@@ -85,6 +85,18 @@ export class SshFileSystem extends FileSystem {
   ): Promise<FsWriteOutcome> {
     const policy = sandboxPolicy ?? this.ctx.sandboxPolicy.resolve()
     return await this.call('fs.write', { target, content, expected, policy }, writeResultSchema, signal) as FsWriteOutcome
+  }
+
+  override async remove(
+    path: string, opts?: FsRemoveOptions, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsRemoveOutcome> {
+    const policy = sandboxPolicy ?? this.ctx.sandboxPolicy.resolve()
+    return await this.call(
+      'fs.remove',
+      { path, cwd: opts?.cwd, recursive: opts?.recursive, policy },
+      removeResultSchema,
+      signal,
+    )
   }
 
   override async editText(

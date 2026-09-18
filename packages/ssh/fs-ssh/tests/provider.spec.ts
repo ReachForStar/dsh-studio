@@ -119,6 +119,31 @@ describe('SSH filesystem provider', () => {
     for (const [, params] of dispatch.mock.calls) expect(params).toMatchObject({ policy: { mode: 'read-only', workspaceRoot: '/remote/work' } })
   })
 
+  it('forwards a removal with its base directory, recursive flag and explicit policy', async () => {
+    const { fs, dispatch } = await setup()
+    dispatch.mockResolvedValueOnce({ kind: 'directory' })
+    const signal = new AbortController().signal
+    const policy: SandboxExecutionPolicy = { mode: 'workspace-write', workspaceRoot: '/remote/work' }
+    expect(await fs.remove('/remote/work/tree', { cwd: '/remote/work', recursive: true }, signal, policy))
+      .toEqual({ kind: 'directory' })
+    expect(dispatch).toHaveBeenLastCalledWith(
+      'fs.remove',
+      { path: '/remote/work/tree', cwd: '/remote/work', recursive: true, policy },
+      signal,
+    )
+  })
+
+  it('resolves the deployment policy for a removal without an explicit one, and keeps its error codes', async () => {
+    const { fs, dispatch } = await setup()
+    dispatch.mockRejectedValueOnce(new RemoteOperationError('not empty', 'FS_NOT_EMPTY'))
+    await expect(fs.remove('/remote/work/tree', { recursive: false })).rejects.toMatchObject({ code: 'FS_NOT_EMPTY' })
+    expect(dispatch).toHaveBeenLastCalledWith(
+      'fs.remove',
+      { path: '/remote/work/tree', cwd: undefined, recursive: false, policy: { mode: 'read-only', workspaceRoot: '/remote/work' } },
+      undefined,
+    )
+  })
+
   it('pulls text through completion without an unnecessary close request', async () => {
     const { fs, dispatch } = await setup()
     dispatch.mockResolvedValueOnce(streamId).mockResolvedValueOnce({ done: false, value: '' })

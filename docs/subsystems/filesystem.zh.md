@@ -241,6 +241,10 @@ interface FileReadOutcome {
 
 已观测状态是 `dsh-fs-observation-policy` 插件内部持有的 `WeakMap<owner, Map<targetKey, FsObservation>>`。映射中没有条目表示未见；`{ kind: 'absent' }` 表示 `read` 的元数据未命中，或 `str_replace_editor` 的 `view`、`str_replace`、`insert` 命令发生元数据未命中，从而确认缺失；`{ kind: 'present', version }` 表示 read、write 或 edit 观测到该版本。写入决策把未见和缺失映射到 `createIfAbsent`，把存在映射到 `replaceIfVersion`；编辑决策把未见映射到 `FS_NOT_OBSERVED`，把缺失映射到 `FS_NOT_FOUND`，把存在映射到其版本守卫。所有者从事件 actor 推导（通常是 `exec.agent.session`），被视为不透明且从不读取。dispose（资源释放）时丢弃全部数据（HMR（热模块替换）安全），策略不执行任何文件系统 I/O。
 
+## 删除（提供方约定）
+
+`remove` 是接缝里唯一按路径寻址的变更操作，与 `lstat` 对称：`resolve` 命名的是路径指向的对象，因此无法命名调用方想删掉的那个链接。提供方以 `lstat` 语义探测，符号链接按链接本身删除而非它指向的对象，目录仅在 `recursive` 下连同内容删除（空目录无需该标志；非空目录不带它则以 `FS_NOT_EMPTY` 失败），并回报该条目原本是什么——`file`、`directory`、`symlink` 或 `other`。它不带版本守卫，也不应有：删除以路径陈述，而不是从内容推导，所以调用方看过后又被改动的文件仍是它命名的那个文件。
+
 ## 错误分类体系（提供方约定）
 
 文件系统故障使用稳定的 `FsErrorCode` 字符串，由 `FsError`（`HarnessError`）携带。工具注册表在错误结果上保留 `{ name, code }`，使重试、权限和 UI 层可以按 code 分支而无需解析文本。
@@ -266,9 +270,10 @@ type FsErrorCode =
   | 'FS_EDIT_NOT_FOUND'
   | 'FS_ABORTED'
   | 'FS_UNSUPPORTED_BINARY_WRITE'
+  | 'FS_NOT_EMPTY'
 ```
 
-目录列表使用 `FS_NOT_DIRECTORY`、`FS_PERMISSION_DENIED` 与 `FS_IO_ERROR` 区分已存在但并非目录的目标、被拒绝的列表操作和意外的后端 I/O 失败。`FS_SANDBOX_DENIED` 是强制执行沙箱的后端（`dsh-fs-sandbox`）所作的策略拒绝——模式边界拒绝了写入/编辑——与 `FS_PERMISSION_DENIED`（宿主内核拒绝）不同。`FS_NOT_OBSERVED` 表示策略插件没有此所有者的先前观测记录（或 `createIfAbsent` 遇到了现有文件）。`FS_NOT_FOUND` 也表示策略因确认缺失而拒绝 edit。`FS_STALE_VERSION` 表示后端版本不再与观测到的版本匹配（或提供方本身收到针对缺失目标的 edit）。新鲜度授权没有部分/完整之分，因此不存在 `FS_PARTIAL_OBSERVATION`。
+目录列表使用 `FS_NOT_DIRECTORY`、`FS_PERMISSION_DENIED` 与 `FS_IO_ERROR` 区分已存在但并非目录的目标、被拒绝的列表操作和意外的后端 I/O 失败。`FS_SANDBOX_DENIED` 是强制执行沙箱的后端（`dsh-fs-sandbox`）所作的策略拒绝——模式边界拒绝了写入/编辑——与 `FS_PERMISSION_DENIED`（宿主内核拒绝）不同。`FS_NOT_EMPTY` 是删除被拒：该目录仍有调用方未授权一并删除的内容。`FS_NOT_OBSERVED` 表示策略插件没有此所有者的先前观测记录（或 `createIfAbsent` 遇到了现有文件）。`FS_NOT_FOUND` 也表示策略因确认缺失而拒绝 edit。`FS_STALE_VERSION` 表示后端版本不再与观测到的版本匹配（或提供方本身收到针对缺失目标的 edit）。新鲜度授权没有部分/完整之分，因此不存在 `FS_PARTIAL_OBSERVATION`。
 
 ## 文件 IO 不设超时
 
@@ -276,7 +281,7 @@ type FsErrorCode =
 
 ## 服务与插件
 
-`FileSystem`（`ctx.fs`，abstract）拥有提供方原语：`resolve`、`processPath`、`processPathFromHostPath`、`fileUrl`、`contains`、`stat`、`lstat`、`readText`、`streamText`、`readBytes`、`listDir`、`writeText` 与 `editText`。`dsh-fs-observation-policy` **不注册服务**。它通过 `fs/*` 事件门禁添加策略，根据未见、缺失或存在状态对写入与编辑意图 waterfall 作出决策，并记录 `FsObservation` 值。执行器是 `dsh-tool-fs`：它通过 `ctx.fs` 读取、写入或编辑，分发 waterfall，并 emit 记录事件。下方生成的 [`ctx.fs` 小节](#ctxfs--filesystem-abstract-seam) 展示确切的 `ctx.fs` 签名。
+`FileSystem`（`ctx.fs`，abstract）拥有提供方原语：`resolve`、`processPath`、`processPathFromHostPath`、`fileUrl`、`contains`、`stat`、`lstat`、`readText`、`streamText`、`readBytes`、`listDir`、`writeText`、`writeBytes` 与 `editText`、`remove`。`dsh-fs-observation-policy` **不注册服务**。它通过 `fs/*` 事件门禁添加策略，根据未见、缺失或存在状态对写入与编辑意图 waterfall 作出决策，并记录 `FsObservation` 值。执行器是 `dsh-tool-fs`：它通过 `ctx.fs` 读取、写入或编辑，分发 waterfall，并 emit 记录事件。下方生成的 [`ctx.fs` 小节](#ctxfs--filesystem-abstract-seam) 展示确切的 `ctx.fs` 签名。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -436,6 +441,27 @@ abstract listDir(target: FsTarget, signal?: AbortSignal): Promise<FsDirEntry[]>
 abstract writeText( target: FsTarget, content: string, expected?: FsWriteIntent, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsWriteOutcome>
 
 /**
+ * Atomically create or replace a file with raw bytes. The same intent and
+ * policy rules as {@link writeText} apply; there is no diff basis, so the
+ * outcome names only the operation and the new version.
+ *
+ * The base implementation refuses. A backend that cannot carry binary
+ * content — a filesystem whose channel encodes text — must say so rather than
+ * write a decoded or truncated file, and a consumer that must persist bytes
+ * (an edited office document, an image editor) then fails where the user can
+ * see why.
+ * @param target - the resolved target to write.
+ * @param content - the complete new file content.
+ * @param expected - the write intent guarding the write; omit for unconditional.
+ * @param signal - aborts before atomic publication takes effect.
+ * @param sandboxPolicy - the per-call mode and workspace root this write
+ *   runs under; a sandboxing backend fences the write by it, the bare backend
+ *   ignores it. Omit to leave the backend its own default.
+ * @returns the outcome, including the version the write produced.
+ */
+writeBytes( target: FsTarget, content: Uint8Array, expected?: FsWriteIntent, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsWriteBytesOutcome>
+
+/**
  * Atomically edit literal text. When supplied, the version guard is checked
  * before matching so stale content reports `FS_STALE_VERSION`; omission edits
  * the current content without a freshness precondition.
@@ -449,6 +475,26 @@ abstract writeText( target: FsTarget, content: string, expected?: FsWriteIntent,
  * @returns the outcome, including the version the edit produced.
  */
 abstract editText( target: FsTarget, edit: FsEditRequest, expected?: { version: FsVersion }, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsEditOutcome>
+
+/**
+ * Remove one path entry: a file, a symbolic link, or a directory.
+ *
+ * Addressed by PATH, not by a resolved target, and with `lstat` semantics: a
+ * symbolic link is removed as the link it is, never as what it points at, so
+ * this is the one mutation that must not resolve its argument first. A
+ * directory is removed with its contents only under
+ * {@link FsRemoveOptions.recursive}; otherwise a non-empty directory fails
+ * with `FS_NOT_EMPTY` and an empty one is removed.
+ * @param path - absolute path, or one resolved against `opts.cwd`.
+ * @param opts - the base directory and whether a directory may take its
+ *   contents with it.
+ * @param signal - aborts before the entry is removed.
+ * @param sandboxPolicy - the per-call mode and workspace root this removal
+ *   runs under; a sandboxing backend fences the removal by it, the bare
+ *   backend ignores it. Omit to leave the backend its own default.
+ * @returns what the removed entry was.
+ */
+abstract remove( path: string, opts?: FsRemoveOptions, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsRemoveOutcome>
 ```
 
 Types: [SandboxExecutionPolicy](sandbox.zh.md)

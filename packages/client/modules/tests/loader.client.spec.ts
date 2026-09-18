@@ -389,6 +389,57 @@ describe('require resolution', () => {
     await expect(b.loader.import('a', '', {})).rejects.toThrow('require("ghost") missed the module table')
   })
 
+  it('resolves a sibling chunk required from a factory by its relative file name', async () => {
+    const built: string[] = []
+    const b = bench([row('a')], {
+      a: (req) => {
+        built.push('a')
+        const runtime = req('./client.rolldown-runtime.js') as { helpers: string }
+        return { runtime: runtime.helpers }
+      },
+    }, {
+      // The combo carries the closure: its registration arrives with the entry
+      // script, before any materialization.
+      pending: [{
+        id: 'a',
+        chunk: 'client.rolldown-runtime.js',
+        factory: () => { built.push('runtime'); return { helpers: 'shared' } },
+      }],
+    })
+    const exports = await b.loader.import('a', '', {})
+    expect((exports as { runtime: string }).runtime).toBe('shared')
+    expect(built).toEqual(['a', 'runtime'])
+    expect(b.loader.loadCache.get('a')?.edges.has('./client.rolldown-runtime.js')).toBe(true)
+  })
+
+  it('resolves a sibling chunk required by another chunk before its own prologue', async () => {
+    const b = bench([row('a')], {
+      a: req => ({ shared: req('./client.shared.js') }),
+    }, {
+      pending: [
+        {
+          id: 'a',
+          chunk: 'client.shared.js',
+          factory: (req) => {
+            const runtime = req('./client.rolldown-runtime.js') as { marker: string }
+            return { runtime: runtime.marker }
+          },
+        },
+        { id: 'a', chunk: 'client.rolldown-runtime.js', factory: () => ({ marker: 'runtime' }) },
+      ],
+    })
+    const exports = await b.loader.import('a', '', {})
+    expect((exports as { shared: { runtime: string } }).shared.runtime).toBe('runtime')
+    expect(b.loader.loadCache.has('a/client.rolldown-runtime.js')).toBe(true)
+  })
+
+  it('a relative chunk require without its registration is loud', async () => {
+    const b = bench([row('a')], { a: req => ({ dep: req('./client.missing.js') }) })
+    await expect(b.loader.import('a', '', {})).rejects.toThrow(
+      'require("./client.missing.js") missed the module table',
+    )
+  })
+
   it('a require cycle is fatal', async () => {
     const b = bench([row('a'), row('b')], {
       a: req => ({ dep: req('b') }),

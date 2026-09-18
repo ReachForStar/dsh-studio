@@ -147,6 +147,21 @@ export function optionalStringArray(subject: string, field: string, value: unkno
 }
 
 /**
+ * Specifiers one emitted client chunk's factory prologue requires. The prologue
+ * is the interop block emitted ahead of the first bundled region; its calls run
+ * at materialization, so every one must be a module-table row or a package-local
+ * chunk whose factory the arrival script already registered.
+ * @param code - one emitted client chunk.
+ * @returns the required specifiers, in emission order.
+ */
+export function prologueRequires(code: string): string[] {
+  const firstRegion = code.indexOf('//#region')
+  const prologue = firstRegion === -1 ? code : code.slice(0, firstRegion)
+  return [...prologue.matchAll(/^[\t ]*(?:var|let|const) [A-Za-z_$][\w$]* = require\("([^"]+)"\);\r?$/gmu)]
+    .map(match => match[1] as string)
+}
+
+/**
  * Narrow an unknown parsed JSON value to the `dsh.client` declaration. Shared
  * by the node half's Loader scan and the roster generator, so both read a
  * package's browser declaration through one validator.

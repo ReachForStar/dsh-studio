@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use this package to configure the Web GUI background, automatic context-compaction threshold, and model rate card. It also adds workspace file, Git, Excalidraw, and SSH/SFTP views without changing the agent loop. Choose it when a Web profile needs these product-facing controls; the package adds client bundle weight because it embeds Excalidraw and xterm.js.
+Use this package to configure the Web GUI background, automatic context-compaction threshold, and model rate card. It also adds Git, Excalidraw, and SSH/SFTP views without changing the agent loop. Choose it when a Web profile needs these product-facing controls; the package adds client bundle weight because it embeds Excalidraw and xterm.js.
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ Mount this package in a Web browser roster when the profile needs configurable p
 
 ### When to choose it
 
-Choose this package for a local Web profile that needs background customization, model cost display, workspace file operations, or a full SSH/SFTP terminal. Do not mount it in a headless profile; its browser slots and host HTTP routes require the Web composition.
+Choose this package for a local Web profile that needs background customization, model cost display, or a full SSH/SFTP terminal. Do not mount it in a headless profile; its browser slots and host HTTP routes require the Web composition.
 
 ### Minimal configuration
 
@@ -48,10 +48,10 @@ Web GUI polish plugin, browser half plus a small host half — enhancements that
 
 - **Whole-app background image.** The plugin owns its `ui-polish` settings namespace and paints the image onto the body (`cover` / fixed / centered), marking the document with `data-ds-bg-image`. Its injected global stylesheet overrides the base tokens (`--dsw-alias-bg-base`, `--dsw-specific-sidebar-fill`) to transparent while the attribute is set, so the structural surfaces — app frame, conversation, details, and sidebar — yield to the image; content elements that need contrast (cards, code blocks, buttons) keep their own fills. The settings row in the General section uploads (with size/type validation), previews, and removes the image. The image is persisted as a **file on disk** (served at `/bg/current`) — the settings document stores only the short URL, never megabytes of base64 — so it survives restarts without bloating the settings file.
 - **Workspace stats float with cost.** A `conversation.composer.dock` entry pinned to the viewport's top-right via `position: fixed` shows the durable `sessionStats` figures of the session on screen (window-fold fallback for assemblies without that projection) plus the tokens and spend of **every session in its workspace**: each session reports its tokens through the projection values its row in the session list carries, and the session on screen reports its live projection instead. Spend is priced per session — a session whose settled messages this client holds is billed message by message at each message's own model and settle time (so time-tiered models like deepseek switch between peak and off-peak prices, and length-tiered models pick the tier covering the input length), while a session known only through its projection is billed at the card's `default` rate, because the wire projection carries bucket totals without model attribution; the per-model breakdown row therefore appears only when a single session contributed. The card leads with the workspace total, then splits it into input, cache, and output buckets over a share bar with the exact figures beside it, shows the token triple as chips, and lists each contributing model with its own share and subtotal; timing and cache-hit figures sit last as the quietest line. Collapsed, it is a capsule carrying the total and the token triple. The **rate card** (CNY per 1M tokens) is the built-in `src/client/model-pricing.json` seed converted once from the amaxsmp gateway pricing; the General-settings **Model rate card** row edits the card as JSON and persists it in the settings document, so a custom card survives restarts and re-prices the float immediately. Unknown models fall back to the card's `default` entry.
-- **File panel.** A `conversation.view` tab (between the trajectory and Git tabs) browsing the workspace repository's directory tree: directories expand lazily via `/git/list`, and selecting a file reads its current content through `/git/read` into an editable textarea; saving writes it back via `/git/write` — the file is edited in place, never handed to a third-party app. Every row also carries a delete action: a confirmation dialog names the entry (and, for a directory, that its contents go with it), then `/git/delete` removes the file — or, with `recursive`, the directory — and the tree re-reads its expanded levels. Deletion is permanent; the host refuses the workspace root, paths escaping it, and a non-empty directory without `recursive`.
 - **SSH/SFTP panel.** A `conversation.view` tab with stored connection selection, remote command probing, interactive PTY, and SFTP directory/file operations. Control calls use the generated `ssh` Remote namespace; PTY output and exit use the shared Remote Event stream; file transfers use authenticated Host Fetch routes.
-- **Git panel.** A `conversation.view` tab (in the top tab ring right after the file tab) showing the workspace repository the browser is currently viewing: branch, working-tree changes with per-file diffs, a commit box (`add -A` + commit), a push action, and recent commits in a two-column layout. Selecting a changed file opens it in the right column for in-place editing (same `/git/read` + `/git/write`).
+- **Git panel.** A `conversation.view` tab (in the top tab ring right after the trajectory tab) showing the workspace repository the browser is currently viewing: branch, working-tree changes with per-file diffs, a commit box (`add -A` + commit), a push action, and recent commits in a two-column layout. Selecting a changed file opens it in the right column for in-place editing (same `/git/read` + `/git/write`).
 - **Excalidraw canvas tab.** A `conversation.view` tab embedding the Excalidraw whiteboard in-document (no iframe). The canvas persists scene files to `<workspace>/.dsh/excalidraw/scene.json` through `/scene/current` and `/scene/write` — the same file the model-facing `excalidraw_*` tools in `@reachforstar/dsh-tool-excalidraw` read and write, so model-drawn content appears live via a fingerprint poll. Excalidraw and its dependencies inline into the client bundle (large); react/react-dom come from the platform.
+- **No file-browsing tab.** Browsing and previewing files stays with the built-in right-sidebar Files tree and the document preview pane; this package ships no duplicate file view.
 - **Automatic context compaction threshold.** A General-settings row selects the context-pressure ratio (50–80%, or the 80% harness default when unset) at which the session's compaction backend compacts automatically. The choice persists in the `ui-polish` settings document; the node half reads it per step and, when it is below the harness default, measures pressure at `agent/pre-step` and asks the agent's own compaction service (via the roster's agent-addressed service face) to compact first — never double-compacting with the built-in 0.8 listener.
 
 The host half registers the `/git`, `/bg`, and `/scene` route prefixes on the host webserver, resolving each request's `cwd` against the live workspace registry (switching workspaces switches the repository without a restart), and runs `git` through `execFile` with array arguments (no shell). Paths containing `..` or separators are rejected, unknown cwds fall back to the host process cwd, and a non-repo directory shows a quiet notice.
@@ -120,7 +120,6 @@ The node half registers three prefixes on the host webserver; every request carr
 
 | Route | Method | Purpose |
 |---|---|---|
-| `/git/list` | POST `{cwd, dir?}` | Directory entries (files + subdirs), directories first; `dir` is repo-relative. |
 | `/git/read` | POST `{cwd, path}` | File content (or a data URL for image previews). |
 | `/git/write` | POST `{cwd, path, content}` | Overwrite a file in place. |
 | `/git/status` | GET `?cwd` | Branch + porcelain working-tree status. |
@@ -146,7 +145,6 @@ The browser half registers into five slots:
 | `settings.general.item` | `polish-compaction` | Automatic-compaction threshold select. |
 | `settings.general.item` | `polish-pricing` | Model rate card JSON editor. |
 | `conversation.composer.dock` | `polish-stats` | Workspace stats float with cost (viewport-pinned). |
-| `conversation.view` | `files` | Workspace file browser / editor. |
 | `conversation.view` | `git` | Git panel (status, diff, commit, push, log). |
 | `conversation.view` | `excalidraw` | Excalidraw whiteboard tab. |
 | `conversation.view` | `ssh` | SSH/SFTP PTY panel. |
@@ -166,8 +164,7 @@ None.
 
 - **Fixed-position floats** — the stats card pins itself with `position: fixed` (the standalone plugin cannot reparent core layout), so it overlays the viewport corner regardless of the composer's own position.
 - **Token-override transparency** — while a background image is active, every surface painting the base tokens becomes transparent, including some content elements that read `--dsw-alias-bg-base` (e.g. code blocks), which can reduce their contrast on a busy image.
-- **Plain-text file editing** — the file and git panels edit files in a monospace textarea, not a syntax-highlighted editor.
-- **Permanent deletion** — the file panel's delete action removes the entry outright: no trash, no undo, no recovery, and removing a directory takes its contents with it.
+- **Plain-text file editing** — the Git panel edits files in a monospace textarea, not a syntax-highlighted editor.
 - **Background upload cap** — images are capped at 2MB (the served copy is a file on disk; the settings document keeps only the URL).
 - **Bundle weight** — the Excalidraw canvas tab inlines the whiteboard library into the client bundle (~12 MB uncompressed), so the whole plugin bundle is heavy; the canvas tab is the only consumer of that weight.
 

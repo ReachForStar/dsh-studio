@@ -11,9 +11,6 @@
  *  - `POST /git/diff` {cwd, path}       → `git diff -- <path>`.
  *  - `POST /git/read` {cwd, path}       → UTF-8 file content (view/edit).
  *  - `POST /git/write` {cwd, path, content} → overwrite the file in place.
- *  - `POST /git/delete` {cwd, path, recursive?} → remove a file, or a directory
- *    (a non-empty directory requires `recursive: true`).
- *  - `POST /git/list` {cwd, dir?}       → directory entries (files + subdirs).
  *
  * The target directory is chosen per request from `cwd`, which the host
  * resolves against its known workspace paths — an unknown directory is
@@ -23,7 +20,7 @@
 
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { readFile, writeFile, readdir, lstat, rm, stat } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
@@ -251,70 +248,6 @@ export async function handleGitRequest(
       if (content.length > 16 * 1024 * 1024) throw new Error('git panel: file content too large')
       await writeFile(abs, content, 'utf8')
       json(res, 200, { ok: true })
-      return
-    }
-
-    if (method === 'POST' && path === '/git/delete') {
-      const body = await readJson(req)
-      const cwd = resolveCwd(bodyPath(body, 'cwd'))
-      const abs = resolveRepoPath(cwd, bodyPath(body, 'path'))
-      if (abs === resolve(cwd)) throw new Error('git panel: the workspace root cannot be deleted')
-      // lstat, not stat: a symlink is removed as the link it is, never as
-      // whatever it points at.
-      const info = await lstat(abs)
-      if (info.isDirectory()) {
-        // A non-empty directory is only removed when the caller says so: the
-        // browser's confirmation distinguishes the two, so an accidental
-        // request cannot take a tree with it.
-        if (body['recursive'] !== true && (await readdir(abs)).length > 0) {
-          throw new Error('git panel: the directory is not empty; pass recursive to delete it with its contents')
-        }
-        await rm(abs, { recursive: true })
-      } else {
-        await rm(abs)
-      }
-      json(res, 200, { ok: true })
-      return
-    }
-
-    if (method === 'POST' && path === '/git/list') {
-      const body = await readJson(req)
-      const cwd = resolveCwd(bodyPath(body, 'cwd'))
-      // `dir` is optional: the workspace root when omitted; a repo-relative
-      // subdirectory otherwise (same escape guard as file paths).
-      const rawDir = body['dir']
-      const dirPath = typeof rawDir === 'string' && rawDir.length > 0 ? rawDir : ''
-      const abs = resolveRepoPath(cwd, dirPath === '' ? '.' : dirPath)
-      const entries = await readdir(abs, { withFileTypes: true })
-      const items = await Promise.all(entries
-        .filter(entry => !entry.name.startsWith('.git'))
-        .map(async (entry) => {
-          let type: 'dir' | 'file'
-          let size: number | null = null
-          let modifiedMs: number | null = null
-          try {
-            const info = await stat(join(abs, entry.name))
-            type = info.isDirectory() ? 'dir' : 'file'
-            if (type === 'file') {
-              size = info.size
-              modifiedMs = info.mtimeMs
-            }
-          } catch {
-            type = 'file'
-          }
-          return {
-            name: entry.name,
-            type,
-            path: dirPath === '' ? entry.name : `${dirPath}/${entry.name}`,
-            size,
-            modifiedMs,
-          }
-        }))
-      // Directories first, then files, each alphabetical.
-      items.sort((a, b) => a.type === b.type
-        ? a.name.localeCompare(b.name)
-        : a.type === 'dir' ? -1 : 1)
-      json(res, 200, { items })
       return
     }
 

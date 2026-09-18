@@ -523,9 +523,11 @@ export class SftpSubprocessRuntime extends SubprocessRuntime {
       pid,
       output,
       done,
+      // oxlint-disable-next-line typescript/require-await -- Preserve promise rejection semantics at the async provider contract.
       write: async (data: string) => {
         session.write(Buffer.from(data, 'utf8'))
       },
+      // oxlint-disable-next-line typescript/require-await -- Preserve promise rejection semantics at the async provider contract.
       resize: async (cols: number, rows: number) => {
         session.resize(cols, rows)
       },

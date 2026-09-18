@@ -36,6 +36,7 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - `verify-doc-graphs` 的解析期两类报错：`A2AHostService.store` 缺显式类型、`TaskStore.list` 默认参数缺显式类型（typert 分析要求公开成员显式标注）。
 - `pnpm run lint` 中本批新增的 `sonarjs(no-identical-functions)`：`remote/ssh/tests/stub-service.ts` 的两个会话 stub 抽出共享基类 `StubSession`。
 - `test:docs`（doc-quick）20/20、`pnpm run typecheck` 全通过。
+- **客户端 bundle 无 Node builtin 门禁**（已补）：动态 bundle 的 factory 序言里出现 Node builtin 时，构建与服务都通过，直到浏览器启动才变成「entry did not activate / import failed」。2026-09-18 在 `packages/client/tsdown.client.ts` 加 `dsh-client-prologue-builtins`（序言 require 到 Node builtin 即构建失败）；`fflate` 默认解析到 Node 版是首个实例。
 
 ## 复发预防
 

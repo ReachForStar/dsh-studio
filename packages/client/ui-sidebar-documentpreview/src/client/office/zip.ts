@@ -6,8 +6,12 @@
  * one means packing them again in the same shape. `fflate` is a maintained,
  * dependency-free implementation of exactly this, so nothing here hand-rolls
  * DEFLATE or a central directory.
+ *
+ * The browser subpath, not `fflate`: the package's default export condition is
+ * its Node build, whose top-level `createRequire("module")` the client bundle
+ * would inline as a `require("module")` the module table cannot answer.
  */
-import { unzipSync, zipSync } from 'fflate'
+import { unzipSync, zipSync } from 'fflate/browser'
 
 /** Every part of one archive, keyed by its in-archive path. */
 export type ZipParts = Record<string, Uint8Array>

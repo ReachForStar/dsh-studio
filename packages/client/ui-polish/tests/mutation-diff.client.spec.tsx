@@ -88,6 +88,9 @@ beforeAll(() => {
     if (url.startsWith('/git/write')) {
       return Promise.resolve(jsonResponse({ ok: true }))
     }
+    if (url.startsWith('/git/delete')) {
+      return Promise.resolve(jsonResponse({ ok: true }))
+    }
     return Promise.resolve(jsonResponse({}))
   }))
 })
@@ -110,7 +113,7 @@ describe('MutationDiffPanel (file panel)', () => {
     const view = render(<MutationDiffPanel {...withWorkspace} />)
     await vi.waitFor(() => { expect(view.container.textContent).toContain('readme.md') })
     // Directory entries expand into their fetched children.
-    fireEvent.click(screen.getByRole('button', { name: /src/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'src/' }))
     await vi.waitFor(() => { expect(view.container.textContent).toContain('readme.md') })
   })
 
@@ -118,7 +121,7 @@ describe('MutationDiffPanel (file panel)', () => {
     const { source } = sessionSource(SID)
     const view = render(<MutationDiffPanel {...props(source)} useWorkspaces={workspaceWorkspaces()} />)
     await vi.waitFor(() => { expect(view.container.textContent).toContain('readme.md') })
-    fireEvent.click(screen.getByRole('button', { name: /readme.md/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^readme\.md/ }))
     await vi.waitFor(() => { expect(view.container.textContent).toContain('hello workspace') })
     const textarea = view.container.querySelector('textarea') as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'edited' } })
@@ -126,6 +129,60 @@ describe('MutationDiffPanel (file panel)', () => {
     await vi.waitFor(() => {
       const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
       expect(calls.some(call => String(call[0]).startsWith('/git/write'))).toBe(true)
+    })
+  })
+
+  it('deletes a file only after the confirmation, then reloads the listing', async () => {
+    const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>
+    fetchMock.mockClear()
+    const { source } = sessionSource(SID)
+    const view = render(<MutationDiffPanel {...props(source)} useWorkspaces={workspaceWorkspaces()} />)
+    await vi.waitFor(() => { expect(view.container.textContent).toContain('readme.md') })
+    fireEvent.click(screen.getByRole('button', { name: 'diff.delete readme.md' }))
+    // The confirmation is up and nothing has been removed yet.
+    expect(view.baseElement.textContent).toContain('diff.deleteTitle')
+    expect(fetchMock.mock.calls.some(call => String(call[0]).startsWith('/git/delete'))).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'diff.confirmDelete' }))
+    await vi.waitFor(() => {
+      const call = fetchMock.mock.calls.find(entry => String(entry[0]).startsWith('/git/delete'))
+      expect(call).toBeDefined()
+      const request = call?.[1] as { body?: string }
+      expect(JSON.parse(request.body ?? '')).toEqual({ path: 'readme.md', recursive: false, cwd: WORKSPACE })
+    })
+    // The tree re-reads its levels after the removal.
+    await vi.waitFor(() => {
+      expect(fetchMock.mock.calls.filter(entry => String(entry[0]).startsWith('/git/list')).length).toBeGreaterThan(1)
+    })
+  })
+
+  it('cancels the confirmation without deleting anything', async () => {
+    const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>
+    fetchMock.mockClear()
+    const { source } = sessionSource(SID)
+    const view = render(<MutationDiffPanel {...props(source)} useWorkspaces={workspaceWorkspaces()} />)
+    await vi.waitFor(() => { expect(view.container.textContent).toContain('readme.md') })
+    fireEvent.click(screen.getByRole('button', { name: 'diff.delete readme.md' }))
+    fireEvent.click(screen.getByRole('button', { name: 'diff.cancel' }))
+    expect(fetchMock.mock.calls.some(call => String(call[0]).startsWith('/git/delete'))).toBe(false)
+  })
+
+  it('deletes a directory recursively, and clears the open file under it', async () => {
+    const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>
+    fetchMock.mockClear()
+    const { source } = sessionSource(SID)
+    const view = render(<MutationDiffPanel {...props(source)} useWorkspaces={workspaceWorkspaces()} />)
+    await vi.waitFor(() => { expect(view.container.textContent).toContain('readme.md') })
+    fireEvent.click(screen.getByRole('button', { name: 'src/' }))
+    fireEvent.click(screen.getByRole('button', { name: /^readme\.md/ }))
+    await vi.waitFor(() => { expect(view.container.textContent).toContain('hello workspace') })
+    fireEvent.click(screen.getByRole('button', { name: 'diff.delete src' }))
+    expect(view.baseElement.textContent).toContain('diff.deleteDirDescription')
+    fireEvent.click(screen.getByRole('button', { name: 'diff.confirmDelete' }))
+    await vi.waitFor(() => {
+      const call = fetchMock.mock.calls.find(entry => String(entry[0]).startsWith('/git/delete'))
+      expect(call).toBeDefined()
+      const request = call?.[1] as { body?: string }
+      expect(JSON.parse(request.body ?? '')).toEqual({ path: 'src', recursive: true, cwd: WORKSPACE })
     })
   })
 

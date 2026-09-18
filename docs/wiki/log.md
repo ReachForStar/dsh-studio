@@ -143,3 +143,15 @@
 - 按 [缺口清单](queries/a2a-v1.0.1-conformance-gaps.md) 的修法逐条落地：推送配置四方法改回 `-32003`、`GetExtendedAgentCard` 按卡片能力回 `-32004`、终态任务收消息/订阅回 `-32004`（订阅的拒绝抢在 SSE 头之前）、取消终态任务回 `-32002`、`A2A-Version` 头两侧落地（`A2A_PROTOCOL_VERSION` 单一常量，缺省/空按 0.3 回 `-32009`，patch 号忽略）、`contextId`/`taskId` 不匹配回 -32602。
 - 细节四项：`ListTasks` 按 status timestamp 降序（id 兜底）+ base64url 游标分页（行类型 `A2ATaskRow`，非法 token 回 -32602）、`includeArtifacts: false` 整体省略 artifacts、`historyLength: 0` 省略 history。
 - 测试同步：server/client/task-store 三个 spec 改写并新增用例（终态拒绝、版本头、游标、运行中订阅），a2a 三包 103 用例全绿；Agent Note 见 `.agents/notes/implemented/bug-fix/2026-09-18-a2a-v1-0-1-conformance.md`，README（英中）与 `docs/subsystems/a2a.md` 的协议面表述已更新。
+
+## [2026-09-18] feat | 第二轮合并上游（882 提交）并适配 fork 功能
+
+- 按 [合并决策](decisions/2026-09-upstream-sync.md) 同一策略完成 upstream/master（ddefc45f，882 提交）全量合并：51 个冲突文件按来源取舍，merge commit f810df99。
+- 跨包 API 适配：`SubprocessTerminalHandle` 新增 `inspectActivity`（sftp provider 用 /proc 前台探针实现）、`textFace` 四参、`DocumentBodyOwner` 携带 save 字段（OfficeBody 透传）；tsdown 客户端插件正则覆盖 ESM 默认导入的 `__toESM` 互操作形态（fork Excalidraw 依赖树的 pica 动态块）。
+- 修复与门禁：fflate 恢复 `^0.8.2`（0.8.3 修 jsdom 跨 realm 判定，office 测试 4 文件转绿）、上游已删 `tool-present` 的构建残留清理、`gen-tool-catalog` 补 a2a 工具名、设置节清单补 `ssh`、圆角门禁补 `corner-shape: round`；typecheck / build / test:docs 20 门禁全绿，全量单测失败均归因为负载/环境（逐项隔离复跑 + 上游一致性判定，见 [Windows 门禁踩坑](queries/windows-merge-gates.md) 新增条目）。
+
+## [2026-09-18] feat | 实验能力可视化开关（可选 bundle）
+
+- Browser Use / Computer Use / Auto review 成为 `OPTIONAL_BUNDLES` 可选 bundle（`apps/cli` 依赖 + `dsh.bundle.patch`），Web 侧边栏 **Plugins** 页 Official 组一键开关；用户专属配置不进 bundle。
+- 决策页：[实验能力可视化开关](decisions/2026-09-visual-experimental-toggle.md)；[web-lab 试验页](queries/web-lab-profile-and-experimental-plugins.md) 已更新指引。
+- 验证：临时 profile `--dump-config` 确认三 bundle 解析与行插入、无激活告警；plugin-manager / app-boot / ui-plugin-manager / browser-use / computer-use 相关 402 条测试全绿。

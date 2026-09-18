@@ -27,6 +27,8 @@ base bundle 挂载 `ssh-local` + `tool-ssh`；Web 表面在此禁用工具行、
 |---|---|---|
 | [`ssh/`](ssh/README.zh.md) | 定义连接定义注册表契约（settings 支撑）、活动连接句柄与 exec/SFTP 词汇。 | `ctx.sshSftp` |
 | [`ssh-local/`](ssh-local/README.zh.md) | 基于 `ssh2` 实现接缝：按定义共享连接、主机密钥校验、安全算法默认值与并行分片大文件传输。 | （注册 `ctx.sshSftp`） |
+| [`fs-sftp/`](fs-sftp/README.zh.md) | 在已保存连接上以 SFTP 实现 `ctx.fs`：远端规范路径、带版本守卫的原子变更，以及与本地后端一致的文本机制。 | （注册 `ctx.fs`） |
+| [`subprocess-sftp/`](subprocess-sftp/README.zh.md) | 以 SSH exec/PTY 通道实现 `ctx.subprocess`：流式命令、收集或管道 stdio、终端前台信号，无需远端 helper。 | （注册 `ctx.subprocess`） |
 | [`tool-ssh/`](tool-ssh/README.zh.md) | 向模型暴露连接管理、远程命令执行与 SFTP 传输/浏览工具。 | （注册于 `ctx.tools`） |
 | [`host/ssh-remotes`](../host/ssh-remotes/README.zh.md) | 浏览器侧 Host Remote 网关：定义增删查与连通性探测。 | `ctx.sshSftpGateway`（wire 命名空间 `ssh`） |
 | [`client/ui-ssh`](../client/ui-ssh/README.zh.md) | Web 设置页连接管理界面。 | （注册于 `settings.section`） |

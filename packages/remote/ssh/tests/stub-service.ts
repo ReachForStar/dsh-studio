@@ -8,6 +8,7 @@ import { SshConnectionId, SshError, SshService } from '../src/index.ts'
 import type {
   SshConnection,
   SshExecRequest,
+  SshExecSession,
   SshExecSpec,
   SshPtyExitInfo,
   SshPtySession,
@@ -16,29 +17,17 @@ import type {
 } from '../src/index.ts'
 
 /**
- * One scripted terminal the stub handed out. Termination is reported exactly
- * once and replayed to a subscriber that arrives after it, which is the
- * contract the real provider's session keeps.
+ * Shared scripted-session state: written bytes are recorded, and termination
+ * is reported exactly once and replayed to a subscriber that arrives after it,
+ * which is the contract both real session kinds keep.
  */
-export class StubSshPtySession implements SshPtySession {
+abstract class StubSession {
   /** True once the session terminated. */
   closed = false
   /** Bytes written to the session, in order. */
   readonly written: Uint8Array[] = []
   private readonly exits = new Set<(info: SshPtyExitInfo) => void>()
   private terminated: SshPtyExitInfo | undefined
-
-  write(data: Uint8Array): void {
-    this.written.push(data)
-  }
-
-  resize(): void {
-    // No window to resize in a stub.
-  }
-
-  onOutput(): () => void {
-    return () => undefined
-  }
 
   onExit(callback: (info: SshPtyExitInfo) => void): () => void {
     if (this.terminated !== undefined) {
@@ -51,7 +40,7 @@ export class StubSshPtySession implements SshPtySession {
     }
   }
 
-  /** Report the shell's termination to every subscriber, once. */
+  /** Report the session's termination to every subscriber, once. */
   exit(info: SshPtyExitInfo = { exitCode: 0, signal: null, dropped: false }): void {
     if (this.terminated !== undefined) return
     this.terminated = info
@@ -64,6 +53,50 @@ export class StubSshPtySession implements SshPtySession {
   close(): Promise<void> {
     this.exit({ exitCode: null, signal: null, dropped: true })
     return Promise.resolve()
+  }
+}
+
+/**
+ * One scripted terminal the stub handed out.
+ */
+export class StubSshPtySession extends StubSession implements SshPtySession {
+  write(data: Uint8Array): void {
+    this.written.push(data)
+  }
+
+  resize(): void {
+    // No window to resize in a stub.
+  }
+
+  onOutput(): () => void {
+    return () => undefined
+  }
+}
+
+/**
+ * One scripted non-interactive exec channel: writes are recorded, stdin-end
+ * and termination follow the SshExecSession contract.
+ */
+export class StubSshExecSession extends StubSession implements SshExecSession {
+  /** True once endStdin was called. */
+  stdinEnded = false
+
+  write(data: Uint8Array): void {
+    if (this.closed) throw new SshError('SSH_EXEC_FAILED', 'ssh exec session is closed')
+    this.written.push(data)
+  }
+
+  endStdin(): void {
+    if (this.closed) throw new SshError('SSH_EXEC_FAILED', 'ssh exec session is closed')
+    this.stdinEnded = true
+  }
+
+  onStdout(): () => void {
+    return () => undefined
+  }
+
+  onStderr(): () => void {
+    return () => undefined
   }
 }
 
@@ -84,6 +117,8 @@ export class StubSshService extends SshService {
   readonly closed: string[] = []
   /** Terminals the stub handed out, in order. */
   readonly ptys: StubSshPtySession[] = []
+  /** Exec sessions the stub handed out, in order. */
+  readonly execSessions: StubSshExecSession[] = []
   /** SFTP directory listings the stub served, in order. */
   readonly listed: string[] = []
 
@@ -114,6 +149,11 @@ export class StubSshService extends SshService {
       openPty: async () => {
         const session = new StubSshPtySession()
         this.ptys.push(session)
+        return session
+      },
+      openExec: async () => {
+        const session = new StubSshExecSession()
+        this.execSessions.push(session)
         return session
       },
       sftp: {

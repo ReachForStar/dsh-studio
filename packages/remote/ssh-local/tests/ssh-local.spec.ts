@@ -367,6 +367,10 @@ describe('ssh-local sftp operations', () => {
 })
 
 cwdSuite('ssh-local remote cwd (POSIX remote shell)', () => {
+  beforeEach(async () => {
+    await startServer()
+  })
+
   it('prefixes a cd to the command', async () => {
     const ctx = await setup()
     await ctx.sshSftp.save(saveInput())

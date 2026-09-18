@@ -80,3 +80,18 @@
 
 - office：文件系统 seam 新增 `writeBytes`（基类拒绝 + `fs-local` 实现 + `fs-sandbox` 围栏 + `fs-ssh` 错误码透传），`workspaceFiles.writeBytes`，客户端 `createWriteFileBytes`/`face.saveBytes`/pane 透出 `saveBytes`；新增 `office/{zip,xml,errors}` 与 `OfficeBody` 外壳、`docx`/`pptx` 渲染器（`fflate` + 局部名 XML 匹配 + 文本叶子替换）。相关文件 100% 覆盖，`test:docs` 20/20。
 - 视频渲染器与费用卡片改版的沉淀见对应提交。
+
+## [2026-09-18] feat | 远端工作区 provider（fs-sftp / subprocess-sftp）与 ssh 接缝扩展
+
+- 两个 fork provider 包：`@reachforstar/dsh-fs-sftp`（`ctx.fs`：远端 realpath 标识、`mtime:size:mode` 版本、临时文件 + SFTP rename 原子发布、`ln` 无覆盖创建、按调用沙箱围栏）与 `@reachforstar/dsh-subprocess-sftp`（`ctx.subprocess`：一条 shell 命令含 cwd/env 层、收集/管道 stdio、PTY wrapper 输出 pid 行、`/proc` 前台判定）。远端只需 OpenSSH，无 helper。
+- `ssh` 接缝新增 `SshConnection.openExec`（流式全双工非交互通道）、`SshPtyOptions.command`、`SshSftp.openRead(path, {start,end})`；`dsh-fs` 抽出共享文本机制 `text.ts`（二进制/UTF-8/行尾/字面量编辑）。
+- 验证：WSL（Ubuntu-22.04，仓库副本 `/home/xyx/dsh-test`）中 new 包 42/42、`ssh-local`+`fs`+`fs-local` 276 通过；对照 HEAD 复现并修复 `ssh-local` 缺密钥时的 `ENOENT` 泄漏与未启动的 cwd 子套件；测试服务器 exec 改 `spawn` + 管道 stdio 转发。
+- 踩坑：profile patch 的 `name` 是命中行插件名校验，写不同 name 会被静默跳过（换 provider 必须 `disabled` + `insert`）；Web 工作区路径走宿主 `node:fs` 校验，远端路径 attach 失败，故 Web 端到端未成（上游 ssh README 记录同一限制）。
+- 新增实体页 [远端工作区 provider](entities/remote-workspace-providers.md)，更新 [SSH/SFTP 能力接缝](concepts/ssh-sftp-seam.md) 与 [web-lab 试验 profile](queries/web-lab-profile-and-experimental-plugins.md)；代码侧文档：两包 README 双语、`docs/subsystems/ssh-sftp.md`、Agent Note。
+
+## [2026-09-18] chore | 补全 doc-sync/lint 暴露的 JSDoc 与类型标注，盘点门禁红项
+
+- 修掉本批与在途批共 5 类 JSDoc/类型标注缺口：`A2AHostService.store` 与 `TaskStore.list` 显式类型、a2a/office/pi-agent-loop/`fs/text.ts`/两个新 provider 的 `@param`/`@returns`；`verify-export-jsdoc` 全仓库转绿。
+- `remote/ssh/tests/stub-service.ts` 两个会话 stub 的重复 `onExit`/`exit`/`close` 抽为共享基类 `StubSession`，消除 `sonarjs(no-identical-functions)`。
+- 盘点结论：fork 自研包在 `doc-sync`（A2A 子系统页与类型分类、tool-a2a 目录登记、client/persistence catalog 过期、web-app 内联 `apiKey`）、`lint`（tool-excalidraw、pi-agent-loop 弃用 API）、`constraints`（a2a repository、pi 版本）、依赖分类与 per-file 100% 覆盖率上均有欠账；fork CI 不跑这些门禁。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)。
+- 本批验证：`test:docs` 20/20、`typecheck` 通过、WSL 25 文件 446 测试通过、Windows 68 文件 757 测试通过；两新包覆盖率未达 per-file 100%（73.8%/62.9% 与 80.8%/65.4%）。

@@ -27,6 +27,8 @@ A leaf `cordis.yml` selects the local provider and the model-facing tools it nee
 |---|---|---|
 | [`ssh/`](ssh/README.md) | Defines the connection-definition registry contract (settings-backed), the live-connection handles, and the exec/SFTP vocabulary shared by Providers and Consumers. | `ctx.sshSftp` |
 | [`ssh-local/`](ssh-local/README.md) | Implements the seam over `ssh2`: shared per-definition connections, host-key verification, secure algorithm defaults, and parallel-chunked large transfers. | (registers `ctx.sshSftp`) |
+| [`fs-sftp/`](fs-sftp/README.md) | Implements `ctx.fs` over SFTP on a saved connection: remote canonical paths, version-guarded atomic mutations, and the local backend's text mechanics. | (registers `ctx.fs`) |
+| [`subprocess-sftp/`](subprocess-sftp/README.md) | Implements `ctx.subprocess` over SSH exec/PTY channels: streaming commands, collected or piped stdio, and terminal foreground signalling without a remote helper. | (registers `ctx.subprocess`) |
 | [`tool-ssh/`](tool-ssh/README.md) | Exposes connection management, remote command execution, and SFTP transfer/browse tools to the model. | (registers on `ctx.tools`) |
 | [`host/ssh-remotes`](../host/ssh-remotes/README.md) | Host Remote gateway for the browser: list/save/remove definitions and the connectivity probe. | `ctx.sshSftpGateway` (wire namespace `ssh`) |
 | [`client/ui-ssh`](../client/ui-ssh/README.md) | Web Settings page for managing saved connections. | (registers on `settings.section`) |

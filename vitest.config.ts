@@ -48,6 +48,10 @@ const windowsUnsupportedPackages = process.platform === 'win32'
       'packages/sandbox/sandbox-local',
       // OpenSSH multiplexing and Unix-socket helper streams require POSIX endpoints.
       'packages/ssh/*',
+      // The fork's SFTP-backed fs/subprocess providers target POSIX remotes; their
+      // suites drive the in-process test server through a POSIX shell.
+      'packages/remote/fs-sftp',
+      'packages/remote/subprocess-sftp',
     ]
   : []
 

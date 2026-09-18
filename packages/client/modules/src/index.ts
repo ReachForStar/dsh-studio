@@ -24,7 +24,7 @@
  */
 
 import { createHash, randomBytes } from 'node:crypto'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
 import { dirname, isAbsolute, join } from 'node:path'
@@ -33,7 +33,7 @@ import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Entry } from '@deepseek-ai/cordis-plugin-loader'
 import type { IndexInjection } from '@deepseek-ai/dsh-host-webserver'
-import { exactPackageSpecifier, parseDshClient, stripClientSuffix } from './client/manifest.ts'
+import { exactPackageSpecifier, parseDshClient, prologueRequires, stripClientSuffix } from './client/manifest.ts'
 import type { WebBootBatch, WebBootBatchPhase, WebBootEntry, WebBootGraph } from './client/manifest.ts'
 
 export { stripClientSuffix } from './client/manifest.ts'
@@ -137,8 +137,18 @@ interface WebPluginRecord {
   meta: PkgMeta
   /** Exact build artifact included in the startup batches. */
   bundle: Buffer
+  /** Synchronously required package-local chunks shipped inside every combo that carries the entry. */
+  syncChunks: SyncChunk[]
   /** Pre-read filesystem baseline handed to the HMR watcher. */
   baseline: ClientArtifactBaseline
+}
+
+/** One package-local chunk file the entry's materialization requires from its prologue. */
+interface SyncChunk {
+  /** Published chunk file name (`client.*.js`). */
+  fileName: string
+  /** Exact build artifact bytes served with the entry's revision. */
+  bundle: Buffer
 }
 
 /** Immutable inputs captured for one resource in a generated combo. */
@@ -182,6 +192,45 @@ const SOURCE_MAP_TRAILER = /(?:\r?\n)?\/\/# sourceMappingURL=[^\r\n]*(?:\r?\n)?$
 const SOURCE_URL_TRAILER = /(?:\r?\n)?\/\/# sourceURL=([^\r\n]+)(?:\r?\n)?$/
 /** Published package-local client chunk names accepted by the on-demand route. */
 const CLIENT_CHUNK = /^client\.[A-Za-z0-9][A-Za-z0-9._-]*\.js$/
+
+/**
+ * The transitive package-local chunk files a client entry's materialization can
+ * require synchronously. CJS client bundles hoist their interop helpers into a
+ * shared chunk that every sibling chunk's prologue requires; the browser's
+ * synchronous `require` only resolves already-registered factories, so every
+ * combo carrying the entry must register those chunk factories first.
+ * @param clientPath - absolute path of the entry's client bundle (its directory holds the sibling chunks).
+ * @returns the chunk files in deterministic (sorted) order.
+ */
+function syncChunkClosure(clientPath: string): SyncChunk[] {
+  const dir = dirname(clientPath)
+  const present = new Set(readdirSync(dir).filter(name => CLIENT_CHUNK.test(name) && name !== 'client.js'))
+  const requiresOf = new Map<string, string[]>()
+  for (const name of present) {
+    const requires = prologueRequires(readFileSync(join(dir, name), 'utf8'))
+      .map(spec => spec.startsWith('./') ? spec.slice(2) : undefined)
+      .filter((target): target is string => target !== undefined && present.has(target))
+    requiresOf.set(name, requires)
+  }
+  const entryRequires = prologueRequires(readFileSync(clientPath, 'utf8'))
+    .map(spec => spec.startsWith('./') ? spec.slice(2) : undefined)
+    .filter((target): target is string => target !== undefined && present.has(target))
+  const closure = new Set<string>(entryRequires)
+  const stack = [...present]
+  while (stack.length > 0) {
+    const name = stack.pop() as string
+    for (const required of requiresOf.get(name) ?? []) {
+      if (!closure.has(required)) {
+        closure.add(required)
+        stack.push(required)
+      }
+    }
+  }
+  return [...closure].sort().map(fileName => ({
+    fileName,
+    bundle: readFileSync(join(dir, fileName)),
+  }))
+}
 
 /** Resolve `exports["./client"]` to a relative path, accepting the string and one-level conditional forms. */
 function clientExportOf(pkgName: string, exportsField: unknown): string | undefined {
@@ -401,15 +450,27 @@ function buildCombo(
   sourceMapOf: (clientPath: string) => Record<string, unknown> | undefined,
   revision?: string,
 ): ComboArtifact {
-  const resources = records.map(record => ({
-    id: record.entry.id,
-    rev: record.entry.rev,
-    clientPath: record.meta.clientPath,
-    fileName: 'client.js',
-    bundle: record.bundle,
-  }))
+  const resources: ComboResource[] = []
+  for (const record of records) {
+    resources.push({
+      id: record.entry.id,
+      rev: record.entry.rev,
+      clientPath: record.meta.clientPath,
+      fileName: 'client.js',
+      bundle: record.bundle,
+    })
+    for (const chunk of record.syncChunks) {
+      resources.push({
+        id: record.entry.id,
+        rev: record.entry.rev,
+        clientPath: join(dirname(record.meta.clientPath), chunk.fileName),
+        fileName: chunk.fileName,
+        bundle: chunk.bundle,
+      })
+    }
+  }
   const rev = revision ?? comboRevision(resources)
-  const entries = resources.map(resource => resource.id)
+  const entries = records.map(record => record.entry.id)
   const url = comboUrl(entries, rev)
   const sourceMapUrl = comboUrl(entries, rev, true)
   return {
@@ -680,6 +741,7 @@ export class ClientModuleRegistry extends Service {
     if (rev === record.entry.rev) return rev
     record.entry = graphRow(id, rev, record.meta)
     record.bundle = bundle
+    record.syncChunks = syncChunkClosure(record.meta.clientPath)
     this.composed = this.compose()
     for (const notify of this.rebuildListeners) {
       // Containment: rebuilt() runs inside the HMR watch callback — a
@@ -909,20 +971,21 @@ export class ClientModuleRegistry extends Service {
   }
 
   /**
-   * Read the activation-time bundle snapshot.
+   * Read the activation-time bundle snapshot plus its synchronous chunk closure.
    * @param pkgName - package that declares the client bundle.
    * @param clientPath - absolute path of the built client artifact.
-   * @returns the immutable bytes plus the pre-read filesystem baseline.
+   * @returns the immutable bytes, the closure artifacts, and the pre-read filesystem baseline.
    * @throws {MissingClientBundleError} when the read fails with `ENOENT`; other filesystem errors are rethrown unchanged.
    */
   private initialBundleSnapshot(pkgName: string, clientPath: string): {
     bundle: Buffer
+    syncChunks: SyncChunk[]
     baseline: ClientArtifactBaseline
   } {
     try {
       const baseline = this.captureArtifactBaseline(clientPath)
       const bundle = readFileSync(clientPath)
-      return { bundle, baseline }
+      return { bundle, syncChunks: syncChunkClosure(clientPath), baseline }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       throw new MissingClientBundleError(pkgName, clientPath, error)
@@ -1006,6 +1069,7 @@ export class ClientModuleRegistry extends Service {
       sourceKey: source.sourceKey,
       meta: source.meta,
       bundle: snapshot.bundle,
+      syncChunks: snapshot.syncChunks,
       baseline: snapshot.baseline,
     })
     return true

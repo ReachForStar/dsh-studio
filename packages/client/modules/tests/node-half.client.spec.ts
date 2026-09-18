@@ -1,6 +1,6 @@
 /** Node-half composition diagnostics for package metadata and built client bundles. */
 
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { SourceMap } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -813,6 +813,57 @@ describe('client bundle activation', () => {
     expect(chunk.body.toString('utf8')).toContain(`sourceMappingURL=${url.replace('.js?', '.js.map?')}`)
     expect((await routeRequest(route, url.replace('.js?', '.js.map?'))).status).toBe(200)
     expect((await routeRequest(route, url.replace(`rev=${row.rev}`, 'rev=stale'))).status).toBe(404)
+  })
+
+  it('serves the synchronous chunk closure inside every combo that carries the entry', async () => {
+    const packageName = '@fixture/sync-closure'
+    const clientPath = writePackage(packageName)
+    mkdirSync(dirname(clientPath), { recursive: true })
+    const registration = (chunk: string | undefined, prologue: string = '') => [
+      'window.__ModuleLoader__.load({',
+      `  id: ${JSON.stringify(packageName)},`,
+      ...(chunk === undefined ? [] : [`  chunk: ${JSON.stringify(chunk)},`]),
+      '  factory: (require) => {',
+      ...prologue.split('\n'),
+      '    return {};',
+      '  }',
+      '});',
+      '',
+    ].join('\n')
+    writeFileSync(clientPath, registration(undefined,
+      '    const require_runtime = require("./client.rolldown-runtime.js");'))
+    writeFileSync(join(dirname(clientPath), 'client.rolldown-runtime.js'), registration('client.rolldown-runtime.js'))
+    writeFileSync(join(dirname(clientPath), 'client.lazy.js'), registration('client.lazy.js',
+      '    const require_shared = require("./client.shared.js");'))
+    writeFileSync(join(dirname(clientPath), 'client.shared.js'), registration('client.shared.js'))
+    const { service, route } = constructWithRoute([packageName])
+    const row = service.graph().entries[0]!
+
+    const combo = await routeRequest(route, row.url)
+    expect(combo.status).toBe(200)
+    const body = combo.body.toString('utf8')
+    // The transitive synchronous closure (the runtime via the entry, the
+    // shared chunk via the lazy chunk) registers inside the combo; the lazy
+    // chunk itself stays on its on-demand route.
+    expect(body).toContain('"client.rolldown-runtime.js"')
+    expect(body).toContain('"client.shared.js"')
+    expect(body).not.toContain('"client.lazy.js"')
+    const map = await routeRequest(route, row.url.replace('.js&', '.js.map&'))
+    expect(map.status).toBe(200)
+    expect((JSON.parse(map.body.toString('utf8')) as { sections: unknown[] }).sections).toHaveLength(3)
+
+    // A rebuild that swaps the synchronously required chunk re-composes the combo.
+    writeFileSync(join(dirname(clientPath), 'client.extra.js'), registration('client.extra.js'))
+    const lazy = readFileSync(join(dirname(clientPath), 'client.lazy.js'), 'utf8')
+    writeFileSync(join(dirname(clientPath), 'client.lazy.js'),
+      lazy.replace('"./client.shared.js"', '"./client.extra.js"'))
+    const entryStat = statSync(clientPath)
+    utimesSync(clientPath, entryStat.atime, new Date(entryStat.mtimeMs + 1_000))
+    const nextRev = service.rebuilt(packageName)!
+    expect(nextRev).not.toBe(row.rev)
+    const nextCombo = await routeRequest(route, row.url.replace(`rev=${row.rev}`, `rev=${nextRev}`))
+    expect(nextCombo.body.toString('utf8')).toContain('"client.extra.js"')
+    expect(nextCombo.body.toString('utf8')).not.toContain('"client.shared.js"')
   })
 
   it('publishes a new chunk revision when a completed build rewrites only the entry timestamp', async () => {

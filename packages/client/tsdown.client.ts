@@ -17,7 +17,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve as resolvePath, 
 import { fileURLToPath } from 'node:url'
 import { Rolldown, type TsdownPlugin, type UserConfig } from 'tsdown'
 import { transform } from 'lightningcss'
-import { optionalStringArray } from './modules/src/client/manifest.ts'
+import { optionalStringArray, prologueRequires } from './modules/src/client/manifest.ts'
 import { PLATFORM_MODULES, PRELOADED_CLIENT_EXTERNALS } from './web/src/platform.ts'
 import { clientBuildEnvironmentDefines } from '../../scripts/client-build-environment.ts'
 import { BundleInputIsolation, physicalBundleInput } from '../../scripts/bundle-input-isolation.ts'
@@ -458,21 +458,6 @@ function clientExternals(id: string): ReadonlySet<string> {
   ])
   clientExternalCache.set(id, externals)
   return externals
-}
-
-/**
- * Specifiers one emitted client factory requires in its prologue. The prologue
- * is the interop block emitted ahead of the first bundled region; those calls
- * run at materialization, so every specifier there must be a module-table row
- * the browser can answer.
- * @param code - one emitted client chunk.
- * @returns the required specifiers, in emission order.
- */
-export function prologueRequires(code: string): string[] {
-  const firstRegion = code.indexOf('//#region')
-  const prologue = firstRegion === -1 ? code : code.slice(0, firstRegion)
-  return [...prologue.matchAll(/^[\t ]*(?:var|let|const) [A-Za-z_$][\w$]* = require\("([^"]+)"\);\r?$/gmu)]
-    .map(match => match[1] as string)
 }
 
 /**

@@ -31,6 +31,7 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [attachment.md](attachment.md) | durable image identity and metadata, validation inputs, verified reads, and the `AttachmentStore` seam |
 | [shell.md](shell.md) | the shell executor seam: `ShellExecRequest`/`Spec`, `ShellRunResult`, background `ShellProcess` handles |
 | [ssh-sftp.md](ssh-sftp.md) | the SSH/SFTP seam: `SshConnectionDefinition` registry, `SshExecRequest`/`Spec`/`Result`, host-key verification, the `SshError` taxonomy |
+| [a2a.md](a2a.md) | the agent-to-agent wire: A2A v1.0.1 over JSON-RPC 2.0 with SSE streaming, the configured peer registry (`ctx.a2a`), and the advertised endpoint (`ctx.a2aHost`) |
 | [subprocess.md](subprocess.md) | the subprocess seam: fully-explicit `SubprocessSpawnSpec`, offset-based output readers, unclassified `SubprocessOutcome`, and the managed `DSH_*` environment vocabulary |
 | [ssh.md](ssh.md) | the POSIX SSH connection and remote filesystem, subprocess and sandbox providers |
 | [terminal.md](terminal.md) | persistent terminal ids, backend/session contracts, send readiness, bounded reads, and owner-visible snapshots |

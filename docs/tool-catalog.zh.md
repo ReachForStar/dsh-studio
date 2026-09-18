@@ -33,6 +33,7 @@
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 pwsh 工具，持久 bash 工具的 Windows 对应物；部署组合提供 pwsh 方言的 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`、`ctx.fs` | `tool/call`、`fs/observed after view presence/absence, edit absence, or successful mutation`、`tool/result` | - | 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。 |
 | `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`、`excalidraw_export`、`excalidraw_read`、`excalidraw_write` | `ctx.tools`、`ctx.workspaceRegistry` | `tool/call`、`tool/result` | - | 白板场景工具从调用 agent 的会话推导目标工作区；没有归属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 `@reachforstar/dsh-client-ui-polish` 的 Web 画布标签页共享。 |
+| `@reachforstar/dsh-tool-a2a` | `a2a_peers`、`a2a_send` | `ctx.tools`、`ctx.a2a` | `tool/call`、`tool/result` | - | a2a_peers 列出已配置的 peer 名字，a2a_send 按名字向其中一个发送消息，可续接此前的任务或上下文；端点永远不由模型指定，因此采集 schema 时不需要可达的 peer。 |
 | `@deepseek-ai/dsh-tool-fs` | `edit`、`read`、`read_image`、`write` | `ctx.tools`、`ctx.fs`、`ctx.systemPrompt`、`ctx.attachments (image-tool registration)`、`ctx.llm + an image-capable route (image-tool execution)` | `tool/call`、`fs/write-intent or fs/edit-intent for mutations`、`fs/observed after read presence/absence or successful file operation`、`durable attachment (read_image)`、`tool/result` | - | 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。 |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`、`grep` | `ctx.tools`、`ctx.subprocess`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | glob 和 grep 是无条件可用的发现工具，通过 ctx.subprocess spawn 随包提供的 ripgrep 二进制文件（`@vscode/ripgrep`），并作为普通前台调用运行，绝不作为后台任务；无需在宿主机安装 `rg`，也不经过 shell 层。本目录使用 `sampleOverCapGlobResults: true`；部署必须显式选择该行为。结果超过上限时，会通过可选的 ctx.spillStore 后端保存完整的格式化列表；在共置部署中，如果后端公开本地路径，返回的定位信息可供后续读取／搜索。 |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`、`terminal_list`、`terminal_open`、`terminal_read`、`terminal_send`、`terminal_signal` | `ctx.tools`、`ctx.terminals`、`ctx.systemPrompt`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | 这 6 个终端工具需要选择启用，用于补充一次性 bash／文件系统工具。`terminal_send(run_in_background: true)` 会注册到 `ctx.jobs`；schema 不包含 TUI、具名按键序列、BEL、调整尺寸、自动启动和跨 agent 共享。 |
@@ -1572,6 +1573,59 @@ Overwrite the current workspace's Excalidraw canvas scene from a complete scene 
 Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
 The whiteboard scene tools derive the target workspace from the calling agent's session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish.
+
+<a id="reachforstardsh-tool-a2a"></a>
+
+## `@reachforstar/dsh-tool-a2a`
+
+### `a2a_peers`
+
+List the remote A2A agents this deployment can call, with the name each is addressed by and the display name from its published agent card. Call it before `a2a_send` when you do not already know which peers exist. It reports a peer whose card could not be read beside that peer instead of failing the whole listing.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+
+### `a2a_send`
+
+Send one message to a remote A2A agent and return its answer. Address a peer by the name `a2a_peers` reports, or by an endpoint URL. The peer works in its own environment: it can read and write files there, but it cannot see this workspace. Pass the `contextId` a previous call returned to continue the same conversation, so the peer keeps its earlier turns; omit it to start a new one. This call waits for the peer to finish, which can take minutes — prefer delegating a complete unit of work over many small round trips.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "peer": {
+      "type": "string",
+      "description": "Peer name from `a2a_peers`, or the endpoint URL of an unconfigured agent."
+    },
+    "message": {
+      "type": "string",
+      "description": "The message to send, as a self-contained request the peer can act on."
+    },
+    "contextId": {
+      "type": "string",
+      "description": "Conversation to continue, from an earlier answer; omit to start a new one."
+    },
+    "taskId": {
+      "type": "string",
+      "description": "Task to continue, from an earlier answer; omit unless you are resuming that task."
+    }
+  },
+  "required": [
+    "peer",
+    "message"
+  ]
+}
+```
+
+Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+
+a2a_peers lists the configured peer names and a2a_send addresses one by name, optionally continuing an earlier task or context; the model never names an endpoint, so the harvest needs no reachable peer.
 
 <a id="deepseek-aidsh-tool-fs"></a>
 

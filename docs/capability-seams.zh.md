@@ -21,6 +21,11 @@ flowchart LR
   svc_computerUse["ctx.computerUse<br/>Computer-use provider registration"]
   pkg_experimental_computer_use_cua_driver_mcp["experimental-computer-use-cua-driver-mcp"]
   pkg_experimental_computer_use_cua_driver_native["experimental-computer-use-cua-driver-native"]
+  pkg_a2a["a2a"]
+  svc_a2a["ctx.a2a<br/>Agent-to-agent (A2A) peer registry and wire"]
+  pkg_tool_a2a["tool-a2a"]
+  pkg_a2a_host["a2a-host"]
+  svc_a2aHost["ctx.a2aHost<br/>Advertised A2A endpoint"]
   pkg_attachment["attachment"]
   svc_attachments["ctx.attachments<br/>Durable binary attachment storage"]
   pkg_attachment_local["attachment-local"]
@@ -247,6 +252,8 @@ flowchart LR
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
   svc_cordisInspect["ctx.cordisInspect<br/>Dynamic Cordis inspect registry"]
+  pkg_a2a --> svc_a2a
+  pkg_a2a_host --> svc_a2aHost
   pkg_agent --> svc_agents
   pkg_agent_default_model --> svc_agentDefaultModel
   pkg_agent_loop --> svc_agentLoop
@@ -380,6 +387,7 @@ flowchart LR
   pkg_workflow --> svc_workflowEngine
   pkg_workflow_ptc --> svc_workflowEngine
   pkg_workspace --> svc_workspaceRegistry
+  svc_a2a --> pkg_tool_a2a
   svc_agentDefaultModel --> pkg_api_session_controller
   svc_agentDefaultModel --> pkg_headless
   svc_agentLoop --> pkg_base
@@ -525,6 +533,8 @@ flowchart LR
 | `ctx.mcpResources` | `seam` | [`mcp-resources`](../packages/mcp/mcp-resources) | [`mcp-client`](../packages/mcp/mcp-client) | [`mcp-resources`](../packages/mcp/mcp-resources) | - | 连接所有者提供的操作在调用 agent 的作用域内服务于共享资源工具。 |
 | `ctx.browserUse` | `seam` | [`browser-use`](../packages/browser-use/browser-use) | [`experimental-browser-use-playwright-mcp`](../packages/experimental/browser-use-playwright-mcp), [`experimental-browser-use-chrome-devtools-mcp`](../packages/experimental/browser-use-chrome-devtools-mcp), [`experimental-browser-use-stagehand-native`](../packages/experimental/browser-use-stagehand-native) | [`experimental-browser-use-playwright-mcp`](../packages/experimental/browser-use-playwright-mcp), [`experimental-browser-use-chrome-devtools-mcp`](../packages/experimental/browser-use-chrome-devtools-mcp), [`experimental-browser-use-stagehand-native`](../packages/experimental/browser-use-stagehand-native) | - | 每个服务实例注册一个提供方拥有的名称。提供方按实时 Session 拥有自己的工具与浏览器资源；共享服务不提供浏览器操作 API。 |
 | `ctx.computerUse` | `seam` | [`computer-use`](../packages/computer-use/computer-use) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | - | 每个服务实例只注册一个提供方自定的名称。各提供方也拥有自己的模型工具；服务不提供通用操作 API、运行时选择或 Session 流程锁。 |
+| `ctx.a2a` | `core` | `a2a` | - | `tool-a2a` | - | 拥有 A2A v1.0.1 协议、内存任务存储与已配置的 peer 注册表；peer 以名字寻址，模型永远不会自己发明一个端点。 |
+| `ctx.a2aHost` | `core` | `a2a-host` | - | - | - | 绑定 peer 用来发现它的独立监听端，提供 agent card，并通过执行器驱动 peer 指名的 harness 会话。 |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | 宿主会在会话事件之前提交已接受的图片；提供方适配器将已授权的持久引用解析为提供方原生内容。 |
 | `ctx.fileUploads` | `core` | [`client-file-upload`](../packages/client/file-upload) | - | [`api-session-controller`](../packages/api/session-controller) | - | 负责流式接收、持久存储和暂存回执生命周期；Session Controller 将回执绑定到已接受的提交。 |
 | `ctx.llm` | `seam` | [`llm`](../packages/llm/llm) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-replay`](../packages/test-support/llm-replay) | [`agent-loop`](../packages/core/agent-loop), [`compaction-basic`](../packages/compaction/compaction-basic) | - | 适配器注册提供方实现；agent loop（智能体循环）与压缩功能调用提供方无关的流服务。 |

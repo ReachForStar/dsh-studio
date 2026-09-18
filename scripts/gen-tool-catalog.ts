@@ -49,6 +49,8 @@ import * as ToolCordis from '@deepseek-ai/dsh-tool-cordis'
 import * as ToolPresent from '@deepseek-ai/dsh-tool-present'
 import * as ToolFs from '@deepseek-ai/dsh-tool-fs'
 import * as ToolFsSearch from '@deepseek-ai/dsh-tool-fs-search'
+import * as ToolA2A from '@reachforstar/dsh-tool-a2a'
+import * as A2AService from '@reachforstar/dsh-a2a'
 import * as ToolExcalidraw from '@reachforstar/dsh-tool-excalidraw'
 import * as ToolStrReplaceEditor from '@deepseek-ai/dsh-tool-str-replace-editor'
 import TerminalSessionService from '@deepseek-ai/dsh-terminal'
@@ -393,6 +395,21 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'The whiteboard scene tools derive the target workspace from the calling agent\'s session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish.',
+  },
+  {
+    pkg: '@reachforstar/dsh-tool-a2a',
+    dir: 'tool-a2a',
+    source: 'packages/a2a/tool-a2a/src/index.ts',
+    requires: ['ctx.tools', 'ctx.a2a'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      // Peers are configuration the deployment owns, so the harvest mounts an
+      // empty registry: the schemas are the same whatever names an operator saves.
+      await ctx.plugin(A2AService, { peers: {} })
+      await ctx.plugin(ToolA2A)
+    },
+    note:
+      'a2a_peers lists the configured peer names and a2a_send addresses one by name, optionally continuing an earlier task or context; the model never names an endpoint, so the harvest needs no reachable peer.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-fs',

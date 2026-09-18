@@ -29,6 +29,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent pwsh tool, the Windows counterpart of the persistent bash tool; deployment composition supplies a pwsh-dialect PTY backend and may override the model-facing environment description. |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`, `ctx.fs` | `tool/call`, `fs/observed after view presence/absence, edit absence, or successful mutation`, `tool/result` | - | Standalone view/create/unique literal replace/line insert tool over the filesystem seam; it composes with any shell or terminal API. |
 | `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`, `excalidraw_export`, `excalidraw_read`, `excalidraw_write` | `ctx.tools`, `ctx.workspaceRegistry` | `tool/call`, `tool/result` | - | The whiteboard scene tools derive the target workspace from the calling agent's session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish. |
+| `@reachforstar/dsh-tool-a2a` | `a2a_peers`, `a2a_send` | `ctx.tools`, `ctx.a2a` | `tool/call`, `tool/result` | - | a2a_peers lists the configured peer names and a2a_send addresses one by name, optionally continuing an earlier task or context; the model never names an endpoint, so the harvest needs no reachable peer. |
 | `@deepseek-ai/dsh-tool-fs` | `edit`, `read`, `read_image`, `write` | `ctx.tools`, `ctx.fs`, `ctx.systemPrompt`, `ctx.attachments (image-tool registration)`, `ctx.llm + an image-capable route (image-tool execution)` | `tool/call`, `fs/write-intent or fs/edit-intent for mutations`, `fs/observed after read presence/absence or successful file operation`, `durable attachment (read_image)`, `tool/result` | - | The read-before-write/edit policy is added by `@deepseek-ai/dsh-fs-observation-policy` (an `fs/*` event-gate plugin, no schema change); a deployment that loads these tools is expected to also load it. The image tool is not registered without `ctx.attachments`; its schema is route-independent, and execution refuses unless the exact routed model declares image input. |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`, `grep` | `ctx.tools`, `ctx.subprocess`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | glob and grep are unconditional discovery tools that spawn the packaged ripgrep binary (`@vscode/ripgrep`) through ctx.subprocess as ordinary foreground calls (never background jobs) — no host `rg` install and no shell layer. The catalog uses `sampleOverCapGlobResults: true`; deployments must choose that behavior explicitly. Capped results save the complete formatted list through the optional ctx.spillStore backend; returned locators are follow-up-readable/searchable when the backend exposes local paths in co-located deployments. |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`, `terminal_list`, `terminal_open`, `terminal_read`, `terminal_send`, `terminal_signal` | `ctx.tools`, `ctx.terminals`, `ctx.systemPrompt`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The six terminal tools are opt-in and complement one-shot shell/filesystem tools. `terminal_send(run_in_background: true)` registers with `ctx.jobs`; TUI, named key sequences, BEL, resize, auto-start, and cross-agent sharing are absent from the schema. |
@@ -1566,6 +1567,59 @@ Overwrite the current workspace's Excalidraw canvas scene from a complete scene 
 Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
 The whiteboard scene tools derive the target workspace from the calling agent's session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish.
+
+<a id="reachforstardsh-tool-a2a"></a>
+
+## `@reachforstar/dsh-tool-a2a`
+
+### `a2a_peers`
+
+List the remote A2A agents this deployment can call, with the name each is addressed by and the display name from its published agent card. Call it before `a2a_send` when you do not already know which peers exist. It reports a peer whose card could not be read beside that peer instead of failing the whole listing.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+
+### `a2a_send`
+
+Send one message to a remote A2A agent and return its answer. Address a peer by the name `a2a_peers` reports, or by an endpoint URL. The peer works in its own environment: it can read and write files there, but it cannot see this workspace. Pass the `contextId` a previous call returned to continue the same conversation, so the peer keeps its earlier turns; omit it to start a new one. This call waits for the peer to finish, which can take minutes — prefer delegating a complete unit of work over many small round trips.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "peer": {
+      "type": "string",
+      "description": "Peer name from `a2a_peers`, or the endpoint URL of an unconfigured agent."
+    },
+    "message": {
+      "type": "string",
+      "description": "The message to send, as a self-contained request the peer can act on."
+    },
+    "contextId": {
+      "type": "string",
+      "description": "Conversation to continue, from an earlier answer; omit to start a new one."
+    },
+    "taskId": {
+      "type": "string",
+      "description": "Task to continue, from an earlier answer; omit unless you are resuming that task."
+    }
+  },
+  "required": [
+    "peer",
+    "message"
+  ]
+}
+```
+
+Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+
+a2a_peers lists the configured peer names and a2a_send addresses one by name, optionally continuing an earlier task or context; the model never names an endpoint, so the harvest needs no reachable peer.
 
 <a id="deepseek-aidsh-tool-fs"></a>
 

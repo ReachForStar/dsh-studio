@@ -126,6 +126,21 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'One provider-owned name per service instance. Each provider also owns its model tools; the service has no common action API, runtime selection, or Session workflow lock.',
   },
   {
+    key: 'a2a',
+    pkg: 'a2a',
+    title: 'Agent-to-agent (A2A) peer registry and wire',
+    mode: 'core',
+    consumers: ['tool-a2a'],
+    note: 'Owns the A2A v1.0.1 wire, the in-memory task store, and the configured peer registry; a peer is addressed by name, so the model never invents an endpoint.',
+  },
+  {
+    key: 'a2aHost',
+    pkg: 'a2a-host',
+    title: 'Advertised A2A endpoint',
+    mode: 'core',
+    note: 'Binds the separate listener peers discover, serves the agent card, and drives the harness session a peer names through its executor.',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

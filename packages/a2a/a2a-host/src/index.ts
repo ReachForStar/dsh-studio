@@ -49,10 +49,15 @@ export interface Config {
   turnTimeoutMs?: number
   /** Card identity and advertised skills. */
   card?: {
+    /** Display name peers see for this agent. */
     name?: string
+    /** One-line description of what this agent does. */
     description?: string
+    /** Card version this deployment advertises. */
     version?: string
+    /** URL a peer reads for human documentation. */
     documentationUrl?: string
+    /** Skills the card advertises; a peer discovers capabilities from them. */
     skills?: AgentSkill[]
   }
 }

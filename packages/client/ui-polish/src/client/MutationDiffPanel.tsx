@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import { Button, IconTrashOutline16, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 // Type-only: pulls the session/workspace slot hooks (useSession/useWorkspaces).
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -94,6 +95,9 @@ export function MutationDiffPanel({ useSession, useWorkspaces, t }: MutationDiff
   /** Data URL for an image file preview (read-only; images are not editable). */
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /** Entry awaiting the delete confirmation; null closes the dialog. */
+  const [pendingDelete, setPendingDelete] = useState<DirEntry | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Load the workspace root listing on mount / workspace switch.
@@ -104,6 +108,7 @@ export function MutationDiffPanel({ useSession, useWorkspaces, t }: MutationDiff
     setSelected(null)
     setContent(null)
     setImageDataUrl(null)
+    setPendingDelete(null)
     if (cwd === undefined) return
     let cancelled = false
     gitFetch<{ items: DirEntry[] }>('/git/list', cwd, { method: 'POST', body: JSON.stringify({}) })
@@ -179,15 +184,25 @@ export function MutationDiffPanel({ useSession, useWorkspaces, t }: MutationDiff
       const kids = children[entry.path]
       return (
         <li key={entry.path}>
-          <button
-            type="button" className={css.dir}
-            aria-expanded={open}
-            onClick={() => { void toggleDir(entry.path) }}
-          >
-            <span className={css.dirArrow} aria-hidden>{open ? '▾' : '▸'}</span>
-            <span className={css.dirGlyph} aria-hidden>▤</span>
-            <span className={css.filePath}>{entry.name}/</span>
-          </button>
+          <div className={css.row}>
+            <button
+              type="button" className={css.dir}
+              aria-expanded={open}
+              onClick={() => { void toggleDir(entry.path) }}
+            >
+              <span className={css.dirArrow} aria-hidden>{open ? '▾' : '▸'}</span>
+              <span className={css.dirGlyph} aria-hidden>▤</span>
+              <span className={css.filePath}>{entry.name}/</span>
+            </button>
+            <button
+              type="button" className={css.rowDelete}
+              aria-label={`${t('diff.delete')} ${entry.name}`}
+              title={t('diff.delete')}
+              onClick={() => { setPendingDelete(entry) }}
+            >
+              <IconTrashOutline16 className={css.rowDeleteIcon} />
+            </button>
+          </div>
           {open && (
             <ul className={css.nested}>
               {kids === undefined
@@ -200,20 +215,30 @@ export function MutationDiffPanel({ useSession, useWorkspaces, t }: MutationDiff
     }
     return (
       <li key={entry.path}>
-        <button
-          type="button"
-          className={selected === entry.path ? css.fileSelected : css.file}
-          onClick={() => { void openFile(entry.path) }}
-        >
-          <span className={css.fileGlyph} aria-hidden>{fileGlyph(entry.name)}</span>
-          <span className={css.filePath}>{entry.name}</span>
-          {entry.size !== null && (
-            <span className={css.fileMeta}>
-              {formatSize(entry.size)}
-              {entry.modifiedMs !== null && ` · ${formatModified(entry.modifiedMs)}`}
-            </span>
-          )}
-        </button>
+        <div className={css.row}>
+          <button
+            type="button"
+            className={selected === entry.path ? css.fileSelected : css.file}
+            onClick={() => { void openFile(entry.path) }}
+          >
+            <span className={css.fileGlyph} aria-hidden>{fileGlyph(entry.name)}</span>
+            <span className={css.filePath}>{entry.name}</span>
+            {entry.size !== null && (
+              <span className={css.fileMeta}>
+                {formatSize(entry.size)}
+                {entry.modifiedMs !== null && ` · ${formatModified(entry.modifiedMs)}`}
+              </span>
+            )}
+          </button>
+          <button
+            type="button" className={css.rowDelete}
+            aria-label={`${t('diff.delete')} ${entry.name}`}
+            title={t('diff.delete')}
+            onClick={() => { setPendingDelete(entry) }}
+          >
+            <IconTrashOutline16 className={css.rowDeleteIcon} />
+          </button>
+        </div>
       </li>
     )
   }
@@ -226,6 +251,63 @@ export function MutationDiffPanel({ useSession, useWorkspaces, t }: MutationDiff
       .then((result) =>{  setRootItems(result.items) })
       .catch((e: unknown) =>{  setError(e instanceof Error ? e.message : String(e)) })
   }, [cwd])
+
+  /** Re-read the root and every expanded level after a mutation removed entries. */
+  const reloadTree = useCallback(async (): Promise<void> => {
+    if (cwd === undefined) return
+    setError(null)
+    try {
+      const root = await gitFetch<{ items: DirEntry[] }>('/git/list', cwd, { method: 'POST', body: JSON.stringify({}) })
+      setRootItems(root.items)
+      const levels = await Promise.all([...expanded].map(async (dir) => {
+        try {
+          const listing = await gitFetch<{ items: DirEntry[] }>('/git/list', cwd, {
+            method: 'POST',
+            body: JSON.stringify({ dir }),
+          })
+          return [dir, listing.items] as const
+        } catch {
+          // A level whose directory was deleted with the entry simply disappears.
+          return undefined
+        }
+      }))
+      const next: Record<string, readonly DirEntry[]> = {}
+      for (const level of levels) {
+        if (level !== undefined) next[level[0]] = level[1]
+      }
+      setChildren(next)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }, [cwd, expanded])
+
+  /** Delete the confirmed entry, then drop it from the tree and the editor. */
+  const confirmDelete = async (): Promise<void> => {
+    if (cwd === undefined || pendingDelete === null) return
+    const target = pendingDelete
+    setDeleting(true)
+    setError(null)
+    try {
+      await gitFetch('/git/delete', cwd, {
+        method: 'POST',
+        body: JSON.stringify({ path: target.path, recursive: target.type === 'dir' }),
+      })
+      setPendingDelete(null)
+      // The editor can only hold a path that still exists: the entry itself, or
+      // an entry inside a deleted directory.
+      if (selected !== null && (selected === target.path || selected.startsWith(`${target.path}/`))) {
+        setSelected(null)
+        setContent(null)
+        setImageDataUrl(null)
+      }
+      setExpanded(prev => new Set([...prev].filter(path => path !== target.path && !path.startsWith(`${target.path}/`))))
+      await reloadTree()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className={css.view} data-ui-polish-diff="">
@@ -296,6 +378,31 @@ export function MutationDiffPanel({ useSession, useWorkspaces, t }: MutationDiff
             </div>
           </div>
         )}
+      <Modal
+        open={pendingDelete !== null}
+        onClose={() => { setPendingDelete(null) }}
+        title={t('diff.deleteTitle')}
+        closeLabel={t('diff.close')}
+        description={pendingDelete === null
+          ? ''
+          : t(pendingDelete.type === 'dir' ? 'diff.deleteDirDescription' : 'diff.deleteFileDescription', { name: pendingDelete.path })}
+        className={css.deleteDialog as string}
+        footer={(
+          <>
+            <Button variant="outline" autoFocus onClick={() => { setPendingDelete(null) }}>
+              {t('diff.cancel')}
+            </Button>
+            <Button
+              variant="outline"
+              className={css.deleteConfirm}
+              disabled={deleting}
+              onClick={() => { void confirmDelete() }}
+            >
+              {deleting ? t('diff.deleting') : t('diff.confirmDelete')}
+            </Button>
+          </>
+        )}
+      />
     </div>
   )
 }

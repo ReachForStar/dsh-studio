@@ -28,6 +28,7 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `pnpm run lint` | `pi-agent-loop/src/agent.ts` 调已弃用的 `snapshotEvents`；`tests/translator.spec.ts` 多余类型断言 | pi 后端批 | 迁到同步读取的替代 API；删掉多余断言 |
 | `pnpm run constraints` | `dsh-a2a{,-host}`、`dsh-tool-a2a` 的 `repository` 应为 `git+https://github.com/deepseek-ai/deepseek-harness.git` + 对应 `directory`；`dsh-pi-agent-loop` 版本须与根 `0.1.6-alpha.1` 一致 | A2A / pi 批 | 直接改 manifest |
 | `verify-package-dependencies` | `workspace-files` 引 `FsVersion`、`ui-polish` 引 `tool-excalidraw#sanitizeScene`/`SCENE_RELATIVE`、`home-paths#dshHomePath` 未分类 | office / excalidraw 批 | 在 `scripts/package-dependency-policy.ts` 的分类表登记为 safe 或 peer-required |
+| `verify-client-ui-i18n` | 8 处硬编码 UI 文案：`ui-polish` 的 `CompactionRow`（`80%（默认）`）、`GitPanel.statusLabel`（untracked/modified/added/deleted/renamed/changed）、`MutationDiffPanel.fileGlyph` 的 `'J'` 字形返回 | ui-polish 批 | 前两类走 locale 字典；字形函数返回单字符标记而非文案，需在该门禁里加一条有理由的例外（或改判定启发式） |
 | `test:coverage` per-file 100% | 实测：`a2a/src/{index,client,server,task-store}.ts` 82–98%、`a2a-host/src/{index,executor}.ts` 82–96%、`tool-a2a/src/index.ts` 83%、`remote/fs-sftp/src/index.ts` 73.8% 语句 / 62.9% 分支、`remote/subprocess-sftp/src/index.ts` 80.8% / 65.4% | 各 fork 批 | 逐文件补分支与错误路径测试（远端 shell 探测失败、abort、符号链接、并发创建等） |
 
 ## 本批（2026-09-18 远端工作区）已修掉的红项

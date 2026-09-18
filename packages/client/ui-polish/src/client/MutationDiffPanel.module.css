@@ -66,6 +66,55 @@
   padding: 0;
 }
 
+/* One tree row: the entry control plus its delete action, so the row hover
+   reveals the action without nesting a button inside the entry button. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowDelete {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease-out, color 150ms ease-out, background-color 150ms ease-out;
+}
+
+.row:hover .rowDelete,
+.rowDelete:focus-visible {
+  opacity: 1;
+}
+
+.rowDelete:hover {
+  background: color-mix(in srgb, var(--dsw-alias-error) 14%, transparent);
+  color: var(--dsw-alias-error);
+}
+
+.rowDelete:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent);
+  outline-offset: -2px;
+}
+
+.rowDeleteIcon {
+  pointer-events: none;
+}
+
 .nested {
   list-style: none;
   margin: 0;
@@ -260,4 +309,19 @@
   max-height: 62vh;
   object-fit: contain;
   border-radius: 6px;
+}
+
+/* Delete confirmation: the destructive action reads as one, and cancelling
+   keeps the default focus. */
+.deleteDialog {
+  max-width: 420px;
+}
+
+.deleteConfirm {
+  border-color: color-mix(in srgb, var(--dsw-alias-error) 55%, transparent);
+  color: var(--dsw-alias-error);
+}
+
+.deleteConfirm:hover:not(:disabled) {
+  border-color: var(--dsw-alias-error);
 }

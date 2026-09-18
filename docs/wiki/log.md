@@ -102,3 +102,10 @@
 - 根因：office 批（Word/PowerPoint 预览与文本级编辑）为 docx/pptx 引入 `fflate`，而 `fflate` 的 exports 先列 `node` 条件，动态客户端 bundle 解析到 `esm/index.mjs`，其顶层 `createRequire("module")` 被内联进 factory 序言 → 模块表无该词条 → 整个插件 import 失败。
 - 修复：`office/zip.ts` 改从 `fflate/browser` 导入；`packages/client/tsdown.client.ts` 新增 `dsh-client-prologue-builtins`（产物序言出现 Node builtin `require` 即构建失败，报错给出浏览器子路径 / `clientPlugins` alias 两条修法），纯函数 `prologueRequires()` 配 3 条用例；规则写入 `packages/client/AGENTS.md` 第 7 条。
 - 验证：`pnpm run build:lib:client` 全量客户端面构建通过（守卫对全部 bundle 无假阳性）；浏览器重载无 console 错误、插件激活；`scripts/client-bundle-purity.spec.ts` + `ui-sidebar-documentpreview` + `client/web` 共 49 文件 400 测试通过。
+
+## [2026-09-18] feat | fork 文件面板支持删除（永久删除 + 二次确认）
+
+- 宿主：`packages/client/ui-polish/src/git-service.ts` 新增 `POST /git/delete {cwd, path, recursive?}`——沿用 `resolveRepoPath` 守卫，拒绝工作区根，用 `lstat` 判定类型（符号链接按链接删），文件直接删、目录仅在 `recursive: true` 时连同内容删。
+- 客户端：`MutationDiffPanel` 每行加删除按钮 → `Modal` 确认（目录文案点明内容一并删除）→ 删除后重读根与所有已展开层级，并清空被删条目（或其祖先）对应的编辑区选择；中英文案入 locale 字典；新增 `rowDelete`/`deleteDialog` 样式。
+- 边界：`/git/*` 位于 `ctx.fs` 接缝与沙箱策略之外（守卫是工作区相对路径）；删除永久不可撤销，已写入包 README 已知限制。
+- 验证：宿主 5 组新用例（删除/非空目录拒绝/递归/根拒绝/逃逸）；客户端 3 个新用例（确认拦截、取消不发请求、目录带 recursive）；手工在 `pnpm dsh web` 的文件面板删除 `tmp/` 下临时文件，列表与磁盘同步消失。新增实体页 [fork Web 面板](entities/fork-web-panels.md) 与 Agent Note。

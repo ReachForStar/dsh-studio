@@ -11,6 +11,8 @@
  *  - `POST /git/diff` {cwd, path}       → `git diff -- <path>`.
  *  - `POST /git/read` {cwd, path}       → UTF-8 file content (view/edit).
  *  - `POST /git/write` {cwd, path, content} → overwrite the file in place.
+ *  - `POST /git/delete` {cwd, path, recursive?} → remove a file, or a directory
+ *    (a non-empty directory requires `recursive: true`).
  *  - `POST /git/list` {cwd, dir?}       → directory entries (files + subdirs).
  *
  * The target directory is chosen per request from `cwd`, which the host
@@ -21,7 +23,7 @@
 
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { readFile, writeFile, readdir, stat } from 'node:fs/promises'
+import { readFile, writeFile, readdir, lstat, rm, stat } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
@@ -248,6 +250,29 @@ export async function handleGitRequest(
       if (typeof content !== 'string') throw new Error('git panel: body field "content" must be a string')
       if (content.length > 16 * 1024 * 1024) throw new Error('git panel: file content too large')
       await writeFile(abs, content, 'utf8')
+      json(res, 200, { ok: true })
+      return
+    }
+
+    if (method === 'POST' && path === '/git/delete') {
+      const body = await readJson(req)
+      const cwd = resolveCwd(bodyPath(body, 'cwd'))
+      const abs = resolveRepoPath(cwd, bodyPath(body, 'path'))
+      if (abs === resolve(cwd)) throw new Error('git panel: the workspace root cannot be deleted')
+      // lstat, not stat: a symlink is removed as the link it is, never as
+      // whatever it points at.
+      const info = await lstat(abs)
+      if (info.isDirectory()) {
+        // A non-empty directory is only removed when the caller says so: the
+        // browser's confirmation distinguishes the two, so an accidental
+        // request cannot take a tree with it.
+        if (body['recursive'] !== true && (await readdir(abs)).length > 0) {
+          throw new Error('git panel: the directory is not empty; pass recursive to delete it with its contents')
+        }
+        await rm(abs, { recursive: true })
+      } else {
+        await rm(abs)
+      }
       json(res, 200, { ok: true })
       return
     }

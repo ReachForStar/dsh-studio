@@ -25,7 +25,9 @@ import type {
   SshConnection,
   SshConnectionDefinition,
   SshExecRequest,
+  SshExecSession,
   SshExecSpec,
+  SshOpenExecRequest,
   SshPtyExitInfo,
   SshPtyOptions,
   SshPtySession,
@@ -313,7 +315,14 @@ async function resolveAuth(auth: SshAuth, strictPrivateKeyPermissions: boolean):
   if (auth.kind === 'password') return { password: auth.password }
   // v8 ignore start -- the POSIX permission check is unreachable on Windows, the platform this suite runs on
   if (strictPrivateKeyPermissions && process.platform !== 'win32') {
-    const info = await stat(auth.privateKeyPath)
+    let info: Awaited<ReturnType<typeof stat>>
+    try {
+      info = await stat(auth.privateKeyPath)
+    } catch (error) {
+      // A missing key file must surface as the same friendly error as an
+      // unreadable one, not a raw ENOENT from the permission probe.
+      throw new SshError('SSH_AUTH_FAILED', `ssh cannot read private key "${auth.privateKeyPath}": ${error instanceof Error ? error.message : String(error)}`)
+    }
     if ((info.mode & 0o077) !== 0) {
       throw new SshError('SSH_AUTH_FAILED', `ssh private key "${auth.privateKeyPath}" has too-open permissions (mode ${info.mode.toString(8)}); chmod 600 it first`)
     }
@@ -332,20 +341,40 @@ async function resolveAuth(auth: SshAuth, strictPrivateKeyPermissions: boolean):
   }
 }
 
+/** Shared exit-reporting state of one live session (PTY or exec). */
+abstract class LiveSessionBase {
+  /** True once the session terminated (remote exit, drop, or local close). */
+  closed = false
+  private exitInfo: SshPtyExitInfo | undefined
+  private readonly exitListeners = new Set<(info: SshPtyExitInfo) => void>()
+
+  onExit(callback: (info: SshPtyExitInfo) => void): () => void {
+    this.exitListeners.add(callback)
+    if (this.exitInfo !== undefined) callback(this.exitInfo)
+    return () => {
+      this.exitListeners.delete(callback)
+    }
+  }
+
+  protected finish(info: SshPtyExitInfo): void {
+    if (this.closed) return
+    this.closed = true
+    this.exitInfo = info
+    for (const listener of [...this.exitListeners]) listener(info)
+  }
+}
+
 /** One live interactive PTY session over a shell channel. */
-class LocalPtySession implements SshPtySession {
+class LocalPtySession extends LiveSessionBase implements SshPtySession {
   /** Output chunks in arrival order, replayed to subscribers that attach later. */
   private readonly buffer: Uint8Array[] = []
   private readonly outputListeners = new Set<(data: Uint8Array) => void>()
-  private readonly exitListeners = new Set<(info: SshPtyExitInfo) => void>()
-  private exitInfo: SshPtyExitInfo | undefined
-  /** True once the session terminated (remote exit, drop, or local close). */
-  closed = false
 
   constructor(
     private readonly shell: ClientChannel,
     private readonly onEnded: () => void,
   ) {
+    super()
     const deliver = (chunk: Buffer): void => {
       this.buffer.push(chunk)
       for (const listener of [...this.outputListeners]) listener(chunk)
@@ -389,26 +418,120 @@ class LocalPtySession implements SshPtySession {
     }
   }
 
-  onExit(callback: (info: SshPtyExitInfo) => void): () => void {
-    this.exitListeners.add(callback)
-    if (this.exitInfo !== undefined) callback(this.exitInfo)
+  close(): Promise<void> {
+    if (this.closed) return Promise.resolve()
+    this.finish({ exitCode: null, signal: null, dropped: true })
+    // Close, not destroy: wait for the server's CHANNEL_CLOSE reply so a
+    // close() that resolves has flushed every queued request (window-change
+    // included) through the server.
+    this.shell.close()
+    return new Promise<void>((resolve) => {
+      if (this.shell.closed) {
+        resolve()
+        return
+      }
+      this.shell.once('close', () => {
+        resolve()
+      })
+    })
+  }
+}
+
+/** One live non-interactive exec channel with replaying output subscriptions. */
+class LocalExecSession extends LiveSessionBase implements SshExecSession {
+  /** Output chunks in arrival order, replayed to subscribers that attach later. */
+  private readonly stdoutBuffer: Uint8Array[] = []
+  private readonly stderrBuffer: Uint8Array[] = []
+  private readonly stdoutListeners = new Set<(data: Uint8Array) => void>()
+  private readonly stderrListeners = new Set<(data: Uint8Array) => void>()
+  private stdinEnded = false
+
+  constructor(
+    private readonly stream: ClientChannel,
+    private readonly onEnded: () => void,
+  ) {
+    super()
+    const deliver = (target: 'stdout' | 'stderr', chunk: Buffer): void => {
+      const buffer = target === 'stdout' ? this.stdoutBuffer : this.stderrBuffer
+      const listeners = target === 'stdout' ? this.stdoutListeners : this.stderrListeners
+      buffer.push(chunk)
+      for (const listener of [...listeners]) listener(chunk)
+    }
+    this.stream.on('data', (chunk: Buffer) => {
+      /* v8 ignore next -- ssh2 streams deliver Buffers only */
+      if (Buffer.isBuffer(chunk)) deliver('stdout', chunk)
+    })
+    this.stream.stderr.on('data', (chunk: Buffer) => {
+      /* v8 ignore next -- ssh2 streams deliver Buffers only */
+      if (Buffer.isBuffer(chunk)) deliver('stderr', chunk)
+    })
+    this.stream.on('exit', (code: number | null, streamSignal?: string) => {
+      this.finish({
+        exitCode: typeof code === 'number' ? code : null,
+        signal: typeof streamSignal === 'string' ? streamSignal : null,
+        dropped: false,
+      })
+    })
+    const drop = (): void => {
+      this.finish({ exitCode: null, signal: null, dropped: true })
+    }
+    this.stream.on('error', drop)
+    this.stream.on('close', () => {
+      drop()
+      this.onEnded()
+    })
+  }
+
+  write(data: Uint8Array): void {
+    if (this.closed) throw new SshError('SSH_EXEC_FAILED', 'ssh exec session is closed')
+    this.stream.write(data)
+  }
+
+  endStdin(): void {
+    if (this.closed) throw new SshError('SSH_EXEC_FAILED', 'ssh exec session is closed')
+    // v8 ignore next -- the closed guard above makes a second end unreachable
+    if (this.stdinEnded) return
+    this.stdinEnded = true
+    this.stream.end()
+  }
+
+  onStdout(callback: (data: Uint8Array) => void): () => void {
+    for (const chunk of [...this.stdoutBuffer]) callback(chunk)
+    this.stdoutListeners.add(callback)
     return () => {
-      this.exitListeners.delete(callback)
+      this.stdoutListeners.delete(callback)
+    }
+  }
+
+  onStderr(callback: (data: Uint8Array) => void): () => void {
+    for (const chunk of [...this.stderrBuffer]) callback(chunk)
+    this.stderrListeners.add(callback)
+    return () => {
+      this.stderrListeners.delete(callback)
     }
   }
 
   close(): Promise<void> {
     if (this.closed) return Promise.resolve()
     this.finish({ exitCode: null, signal: null, dropped: true })
-    this.shell.destroy()
-    return Promise.resolve()
-  }
-
-  private finish(info: SshPtyExitInfo): void {
-    if (this.closed) return
-    this.closed = true
-    this.exitInfo = info
-    for (const listener of [...this.exitListeners]) listener(info)
+    // Non-PTY OpenSSH ignores channel signals; closing the session kills the
+    // remote command (its stdio is the channel). The signal is best-effort for
+    // servers that honor it.
+    try {
+      this.stream.signal('KILL')
+    } catch {
+      /* v8 ignore next -- the channel may already be gone; close below still settles it */
+    }
+    this.stream.close()
+    return new Promise<void>((resolve) => {
+      if (this.stream.closed) {
+        resolve()
+        return
+      }
+      this.stream.once('close', () => {
+        resolve()
+      })
+    })
   }
 }
 
@@ -418,6 +541,8 @@ class LocalConnection implements SshConnection {
   private sftpPromise: Promise<SFTPWrapper> | undefined
   /** Live PTY sessions, closed on connection close. */
   private readonly ptySessions = new Set<LocalPtySession>()
+  /** Live exec sessions, closed on connection close. */
+  private readonly execSessions = new Set<LocalExecSession>()
 
   constructor(
     readonly id: SshConnectionId,
@@ -585,6 +710,9 @@ class LocalConnection implements SshConnection {
     for (const session of [...this.ptySessions]) {
       void session.close().catch(() => undefined)
     }
+    for (const session of [...this.execSessions]) {
+      void session.close().catch(() => undefined)
+    }
     await new Promise<void>((resolve) => {
       const done = (): void => { resolve() }
       this.client.once('close', done)
@@ -600,12 +728,27 @@ class LocalConnection implements SshConnection {
 
   async openPty(options: SshPtyOptions): Promise<SshPtySession> {
     this.assertOpen()
+    // A PTY with a command runs that command through the user's shell; without
+    // one the server opens the login shell.
+    const open = (callback: (error: Error | undefined, shell: ClientChannel) => void): void => {
+      if (options.command === undefined) {
+        this.client.shell({
+          term: options.term ?? 'xterm-256color',
+          cols: options.cols,
+          rows: options.rows,
+        }, callback)
+        return
+      }
+      this.client.exec(options.command, {
+        pty: {
+          term: options.term ?? 'xterm-256color',
+          cols: options.cols,
+          rows: options.rows,
+        },
+      }, callback)
+    }
     return new Promise<SshPtySession>((resolve, reject) => {
-      this.client.shell({
-        term: options.term ?? 'xterm-256color',
-        cols: options.cols,
-        rows: options.rows,
-      }, (error, shell) => {
+      open((error, shell) => {
         if (error !== undefined) {
           reject(new SshError('SSH_PTY_FAILED', `ssh pty open failed: ${error.message}`))
           return
@@ -617,6 +760,51 @@ class LocalConnection implements SshConnection {
         resolve(session)
       })
     })
+  }
+
+  async openExec(request: SshOpenExecRequest): Promise<SshExecSession> {
+    this.assertOpen()
+    request.signal?.throwIfAborted()
+    // v8 ignore start -- the remote cwd prefix is exercised by the POSIX-only cwd suite
+    const command = request.cwd === undefined
+      ? request.command
+      : `cd ${shellQuote(request.cwd)} && ${request.command}`
+    /* v8 ignore stop */
+    // The session must be created inside the exec callback: a fast command
+    // finishes (exit + close) within the same socket read that opens the
+    // channel, so listeners attached in a later microtask would miss the
+    // termination report.
+    const session = await new Promise<LocalExecSession>((resolve, reject) => {
+      this.client.exec(command, (error, channel) => {
+        // v8 ignore start -- exec() fails only after the connection dropped,
+        // which assertOpen above already turns into SSH_CLOSED
+        if (error !== undefined) {
+          reject(new SshError('SSH_EXEC_FAILED', `ssh exec failed: ${error.message}`))
+          return
+        }
+        /* v8 ignore stop */
+        const s = new LocalExecSession(channel, () => {
+          this.execSessions.delete(s)
+        })
+        this.execSessions.add(s)
+        resolve(s)
+      })
+    })
+    const onAbort = (): void => {
+      void session.close().catch(() => undefined)
+    }
+    if (request.signal !== undefined) {
+      if (request.signal.aborted) {
+        this.execSessions.delete(session)
+        await session.close().catch(() => undefined)
+        throw new SshError('SSH_EXEC_FAILED', 'ssh exec aborted before the channel opened')
+      }
+      request.signal.addEventListener('abort', onAbort, { once: true })
+      session.onExit(() => {
+        request.signal?.removeEventListener('abort', onAbort)
+      })
+    }
+    return session
   }
 }
 
@@ -971,7 +1159,7 @@ class LocalSftp implements SshSftp {
     })
   }
 
-  async openRead(remotePath: string): Promise<SshReadableFile> {
+  async openRead(remotePath: string, options?: { start?: number; end?: number }): Promise<SshReadableFile> {
     const sftp = await this.channel()
     let size: number | null
     try {
@@ -981,7 +1169,10 @@ class LocalSftp implements SshSftp {
     } catch (error) {
       throw sftpError('openRead', remotePath, error)
     }
-    const stream = sftp.createReadStream(remotePath)
+    const stream = sftp.createReadStream(remotePath, {
+      ...options?.start !== undefined ? { start: options.start } : {},
+      ...options?.end !== undefined ? { end: options.end } : {},
+    })
     let released = false
     return {
       size,

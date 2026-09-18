@@ -2,7 +2,7 @@
 
 English | [中文](ssh-sftp.zh.md)
 
-The SSH/SFTP capability seam spans a Service Definition ([dsh-ssh](../../packages/remote/ssh), `ctx.sshSftp`), Service Provider ([dsh-ssh-local](../../packages/remote/ssh-local)), Consumer ([dsh-tool-ssh](../../packages/remote/tool-ssh), the twelve `ssh_*`/`sftp_*` schemas), and the Web GUI gateway ([dsh-host-ssh-remotes](../../packages/host/ssh-remotes)) with its Settings page ([dsh-client-ui-ssh](../../packages/client/ui-ssh)). Definitions and remembered host keys persist in the `ssh` settings namespace.
+The SSH/SFTP capability seam spans a Service Definition ([dsh-ssh](../../packages/remote/ssh), `ctx.sshSftp`), Service Provider ([dsh-ssh-local](../../packages/remote/ssh-local)), Consumer ([dsh-tool-ssh](../../packages/remote/tool-ssh), the twelve `ssh_*`/`sftp_*` schemas), and the Web GUI gateway ([dsh-host-ssh-remotes](../../packages/host/ssh-remotes)) with its Settings page ([dsh-client-ui-ssh](../../packages/client/ui-ssh)). Definitions and remembered host keys persist in the `ssh` settings namespace. Two further Providers serve a remote workspace over that same registry: [dsh-fs-sftp](../../packages/remote/fs-sftp) registers `ctx.fs` and [dsh-subprocess-sftp](../../packages/remote/subprocess-sftp) registers `ctx.subprocess`, both on a saved connection and without a remote helper.
 
 Source: [`packages/remote/ssh/src/types.ts`](../../packages/remote/ssh/src/types.ts)
 
@@ -13,6 +13,10 @@ The service owns a settings-backed registry of `SshConnectionDefinition`s: id (b
 ## Connection handles
 
 `connect(id)` returns the provider's shared handle per definition id; `close` evicts it. A handle exposes `exec(spec)` — a foreground command with bounded output and an owned timeout that kills the remote command — and `sftp`, the SFTP operation surface (list/stat/readFile/writeFile/mkdir/remove/rename).
+
+## Streaming exec sessions
+
+`openExec(request)` opens one live, full-duplex non-interactive channel for a long-running command: raw stdout/stderr bytes arrive through replaying subscriptions, `write`/`endStdin` feed the command, and exactly one `onExit` report settles the session; `close()` kills the remote command. It carries no timeout — the caller owns termination through `close()` or the request's abort signal. PTY sessions take an optional `command` (executed inside the PTY through the user's shell, absent opens the login shell), and `SshSftp.openRead` accepts an inclusive `{start, end}` byte window for ranged reads.
 
 ## Request vs. spec: the `resolveExec()` split
 

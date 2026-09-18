@@ -385,6 +385,8 @@
     { "path": "./packages/host/webserver" },
     { "path": "./packages/remote/ssh" },
     { "path": "./packages/remote/ssh-local" },
+    { "path": "./packages/remote/fs-sftp" },
+    { "path": "./packages/remote/subprocess-sftp" },
     { "path": "./packages/remote/tool-ssh" },
     { "path": "./packages/host/ssh-remotes" },
     { "path": "./packages/sdk/client" },

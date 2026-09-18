@@ -289,6 +289,8 @@
       "@reachforstar/dsh-ssh-local/invariant": ["./packages/remote/ssh-local/src/invariant.ts"],
       "@reachforstar/dsh-tool-ssh": ["./packages/remote/tool-ssh/src"],
       "@reachforstar/dsh-tool-ssh/invariant": ["./packages/remote/tool-ssh/src/invariant.ts"],
+      "@reachforstar/dsh-fs-sftp": ["./packages/remote/fs-sftp/src"],
+      "@reachforstar/dsh-subprocess-sftp": ["./packages/remote/subprocess-sftp/src"],
       "@reachforstar/dsh-subagent-pi": ["./packages/subagent/subagent-pi/src"],
       "@reachforstar/dsh-subagent-pi/wire": ["./packages/subagent/subagent-pi/src/wire.ts"],
       "@reachforstar/dsh-subagent-pi/run": ["./packages/subagent/subagent-pi/src/run.ts"],

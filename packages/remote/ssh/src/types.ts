@@ -99,6 +99,11 @@ export interface SshPtyOptions {
   rows: number
   /** TERM environment value advertised to the remote shell (default `xterm-256color`). */
   term?: string
+  /**
+   * Command to run inside the PTY (the server executes it through the user's
+   * shell); absent opens the login shell.
+   */
+  command?: string
 }
 
 /** One termination report of a PTY session; delivered exactly once. */
@@ -237,9 +242,11 @@ export interface SshSftp {
    * Open one remote file for streaming reads without touching the host disk
    * (the browser-download side of the capability).
    * @param remotePath - the absolute remote path of a regular file.
+   * @param options - read window: `start`, the 0-based first byte, and
+   *   `end`, the inclusive last byte; absent reads the whole file.
    * @returns the readable with the server-reported size.
    */
-  openRead(remotePath: string): Promise<SshReadableFile>
+  openRead(remotePath: string, options?: { start?: number; end?: number }): Promise<SshReadableFile>
   /**
    * Open one remote file for streaming writes, truncating it first (the
    * browser-upload side of the capability).
@@ -247,6 +254,44 @@ export interface SshSftp {
    * @returns the writable; call {@link SshWritableFile.done} to await success.
    */
   openWrite(remotePath: string): Promise<SshWritableFile>
+}
+
+/**
+ * A caller's request to open one streaming exec session (non-interactive,
+ * full-duplex; the long-lived counterpart of {@link SshConnection.exec}).
+ * There is no timeout here: a session outlives any single command deadline,
+ * and the caller owns termination through the session and its signal.
+ */
+export interface SshOpenExecRequest {
+  command: string
+  /** Remote working directory; the provider prefixes a `cd` to the command. */
+  cwd?: string
+  /** Abort signal — providers kill the command when it fires. */
+  signal?: AbortSignal
+}
+
+/**
+ * One live non-interactive exec channel. Raw stdout/stderr bytes arrive
+ * through {@link onStdout}/{@link onStderr} subscriptions (output that
+ * arrived before a subscription is replayed to it); termination is reported
+ * exactly once through {@link onExit}. Writes and stdin-end after termination
+ * throw {@link SshError} with `SSH_EXEC_FAILED`.
+ */
+export interface SshExecSession {
+  /** Send bytes to the command's stdin. */
+  write(data: Uint8Array): void
+  /** Close the command's stdin (idempotent). */
+  endStdin(): void
+  /** Subscribe to raw stdout bytes. @returns an unsubscribe function. */
+  onStdout(callback: (data: Uint8Array) => void): () => void
+  /** Subscribe to raw stderr bytes. @returns an unsubscribe function. */
+  onStderr(callback: (data: Uint8Array) => void): () => void
+  /** Subscribe to the single termination report. @returns an unsubscribe function. */
+  onExit(callback: (info: SshPtyExitInfo) => void): () => void
+  /** True once the session terminated (remote exit, drop, or local close). */
+  readonly closed: boolean
+  /** Kill the remote command and close the channel; idempotent. */
+  close(): Promise<void>
 }
 
 /**
@@ -258,6 +303,12 @@ export interface SshConnection {
   readonly id: SshConnectionId
   /** Run one foreground command; nonzero exits resolve with a result, not a rejection. */
   exec(spec: SshExecSpec): Promise<SshRunResult>
+  /**
+   * Open one streaming exec session (non-interactive, full-duplex).
+   * @param request - the command, optional remote cwd, and abort signal.
+   * @returns the live session.
+   */
+  openExec(request: SshOpenExecRequest): Promise<SshExecSession>
   /**
    * Open an interactive PTY shell on this connection.
    * @param options - initial window size and shell environment hints.

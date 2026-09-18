@@ -2,7 +2,7 @@
 
 [English](ssh-sftp.md) | 中文
 
-SSH/SFTP 能力接缝横跨 Service Definition（[dsh-ssh](../../packages/remote/ssh)，`ctx.sshSftp`）、Service Provider（[dsh-ssh-local](../../packages/remote/ssh-local)）、Consumer（[dsh-tool-ssh](../../packages/remote/tool-ssh)，十二个 `ssh_*`/`sftp_*` schema）与 Web GUI 网关（[dsh-host-ssh-remotes](../../packages/host/ssh-remotes)）及其设置页（[dsh-client-ui-ssh](../../packages/client/ui-ssh)）。定义与记住的主机密钥持久化在 `ssh` settings 命名空间。
+SSH/SFTP 能力接缝横跨 Service Definition（[dsh-ssh](../../packages/remote/ssh)，`ctx.sshSftp`）、Service Provider（[dsh-ssh-local](../../packages/remote/ssh-local)）、Consumer（[dsh-tool-ssh](../../packages/remote/tool-ssh)，十二个 `ssh_*`/`sftp_*` schema）与 Web GUI 网关（[dsh-host-ssh-remotes](../../packages/host/ssh-remotes)）及其设置页（[dsh-client-ui-ssh](../../packages/client/ui-ssh)）。定义与记住的主机密钥持久化在 `ssh` settings 命名空间。另有两只 Provider 基于同一注册表服务远端工作区：[dsh-fs-sftp](../../packages/remote/fs-sftp) 注册 `ctx.fs`，[dsh-subprocess-sftp](../../packages/remote/subprocess-sftp) 注册 `ctx.subprocess`，二者都只需已保存连接、无需远端 helper。
 
 Source: [`packages/remote/ssh/src/types.ts`](../../packages/remote/ssh/src/types.ts)
 
@@ -13,6 +13,10 @@ Source: [`packages/remote/ssh/src/types.ts`](../../packages/remote/ssh/src/types
 ## 连接句柄
 
 `connect(id)` 返回 provider 按定义 id 的共享句柄；`close` 逐出。句柄暴露 `exec(spec)`——有界输出与自有超时（会杀掉远程命令）的前台命令——与 `sftp`（list/stat/readFile/writeFile/mkdir/remove/rename）。
+
+## 流式 exec 会话
+
+`openExec(request)` 为长驻命令开一条活动全双工非交互通道：原始 stdout/stderr 字节经可重放订阅送达，`write`/`endStdin` 喂给命令，恰好一次 `onExit` 报告结算该会话；`close()` 杀掉远程命令。它不设超时——终止由调用方经 `close()` 或请求的 abort 信号拥有。PTY 会话接受可选 `command`（在 PTY 内经用户 shell 执行；缺省则打开登录 shell），`SshSftp.openRead` 接受闭区间 `{start, end}` 字节窗口以做范围读取。
 
 ## 请求与 spec：`resolveExec()` 拆分
 

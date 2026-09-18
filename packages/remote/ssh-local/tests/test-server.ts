@@ -7,7 +7,7 @@
  * through the channel's `status`/`handle`/`data`/`name` helpers.
  */
 
-import { exec as shellExec, spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { generateKeyPairSync } from 'node:crypto'
 import {
   mkdir,
@@ -297,21 +297,24 @@ export class TestSshServer {
   readonly sftp: SftpTestServer
   readonly root: string
   /** Live exec child processes, force-killed on stop. */
-  private readonly running = new Set<ReturnType<typeof shellExec>>()
+  private readonly running = new Set<ChildProcess>()
+  /** Detach exec children into their own POSIX process group (real-OpenSSH session semantics). */
+  private readonly detachedExec: boolean
   private readonly ssh: Server
   /** Live client connections, destroyed on stop. */
   private readonly clients = new Set<Connection>()
 
-  private constructor(ssh: Server, root: string) {
+  private constructor(ssh: Server, root: string, detachedExec: boolean) {
     this.ssh = ssh
     this.root = root
     this.sftp = new SftpTestServer(root)
+    this.detachedExec = detachedExec
   }
 
   /** Boot a server on an ephemeral loopback port with a fresh temp root. */
-  static async start(): Promise<TestSshServer> {
+  static async start(options: { detachedExec?: boolean } = {}): Promise<TestSshServer> {
     const root = await mkdtemp(join(tmpdir(), 'dsh-ssh-test-'))
-    const harness = new TestSshServer(new Server({ hostKeys: [generateHostKey()] }), root)
+    const harness = new TestSshServer(new Server({ hostKeys: [generateHostKey()] }), root, options.detachedExec === true)
     harness.ssh.on('connection', (client: Connection) => {
       harness.clients.add(client)
       client.on('error', () => undefined)
@@ -408,15 +411,48 @@ export class TestSshServer {
 
   /** Run one exec request through the real local shell, streaming into the channel. */
   async runRemoteCommand(command: string, channel: ServerChannel): Promise<void> {
-    const child = shellExec(command, { cwd: this.root, windowsHide: true }, (error, stdout, stderr) => {
-      this.running.delete(child)
-      if (channel.destroyed) return
-      channel.write(stdout)
-      if (stderr.length > 0) channel.stderr.write(stderr)
-      channel.exit(error === null ? 0 : typeof error.code === 'number' ? error.code : 1)
-      channel.close()
+    // spawn (not the exec callback form): long-running commands and PTY
+    // wrappers must stream output and receive stdin while alive; the callback
+    // form delivers only buffered output at exit and never forwards data.
+    let spawnFailed = false
+    const child = spawn('sh', ['-c', command], {
+      cwd: this.root,
+      windowsHide: true,
+      stdio: 'pipe',
+      // POSIX: own process group per session, matching OpenSSH's per-session
+      // group so foreground-group signalling targets only the session.
+      ...(this.detachedExec && process.platform !== 'win32' ? { detached: true } : {}),
     })
     this.running.add(child)
+    child.stdout?.on('data', (chunk: Buffer) => {
+      if (!channel.destroyed) channel.write(chunk)
+    })
+    child.stderr?.on('data', (chunk: Buffer) => {
+      if (!channel.destroyed) channel.stderr.write(chunk)
+    })
+    child.on('error', () => {
+      // spawn itself failed (no sh on the host): the exit below reports 127
+      spawnFailed = true
+    })
+    child.on('exit', (code, signalName) => {
+      this.running.delete(child)
+      if (channel.destroyed) return
+      if (signalName !== null) {
+        channel.exit(signalName)
+      } else {
+        channel.exit(spawnFailed ? 127 : code ?? 1)
+      }
+      channel.close()
+    })
+    // The client's stdin is the channel's data; forward it to the child. The
+    // server side reports a client EOF as `end` on the subchannel (no `eof`
+    // event is emitted for subchannels).
+    channel.on('data', (data: Buffer) => {
+      if (!child.stdin.destroyed) child.stdin.write(data)
+    })
+    channel.on('end', () => {
+      if (!child.stdin.destroyed) child.stdin.end()
+    })
     // Kill the real process tree when the client drops the channel, so a
     // runaway command cannot hold the temp root hostage during teardown.
     const drop = (): void => {

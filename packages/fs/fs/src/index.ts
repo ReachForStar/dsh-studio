@@ -30,6 +30,18 @@ export {
   FsTargetKey,
   FsVersion,
 } from './types.ts'
+export {
+  BINARY_SAMPLE_BYTES,
+  applyLiteralEdit,
+  createUtf8StreamDecoder,
+  decodeUtf8,
+  decodeUtf8Stream,
+  detectLineEndings,
+  isBinarySample,
+  normalizeLineEndings,
+  restoreLineEndings,
+} from './text.ts'
+export type { LineEndings } from './text.ts'
 export type {
   FsEditOutcome,
   FsEditRequest,

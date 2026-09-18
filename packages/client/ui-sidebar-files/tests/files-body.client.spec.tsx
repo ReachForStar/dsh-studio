@@ -14,7 +14,7 @@ import { act, cleanup, fireEvent } from '@testing-library/react'
 import { makeTranslate, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
 import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
-import { failureLine, orderEntries } from '../src/client/FilesBody.tsx'
+import { failureLine, orderEntries, removalFailureLine } from '../src/client/FilesBody.tsx'
 import type { DirLevel } from '../src/client/store.ts'
 import { zh } from '../src/client/locales.ts'
 import { mountBody, ROOT, SESSION, TAB } from './mount.client.tsx'
@@ -30,6 +30,15 @@ const ROOT_LEVEL: DirLevel = {
 }
 
 afterEach(() => { cleanup() })
+
+/** The dialog's confirm control: the footer's last button, which is not the header's close. */
+function confirmButton(): HTMLElement {
+  const dialog = document.querySelector('[role="dialog"]')
+  if (dialog === null) throw new Error('expected an open confirmation dialog')
+  const button = [...dialog.querySelectorAll('button')].find(candidate => candidate.textContent === zh['delete.confirm'])
+  if (button === undefined) throw new Error('expected a confirm button')
+  return button
+}
 
 /** Row labels in document order. */
 function names(root: HTMLElement): string[] {
@@ -164,6 +173,76 @@ describe('FilesBody', () => {
     expect(failed?.textContent).toBe(zh['error.notFound'])
   })
 
+  it('offers a removal per entry, confirms it by name, and sends nothing when cancelled', async () => {
+    const { view, script, removal } = mountBody()
+    await act(() => script.settle({ ok: true, value: ROOT_LEVEL }))
+    const del = view.container.querySelector(`[data-files-path="${ROOT}/README.md"] [data-files-delete]`)!
+    expect(del.getAttribute('aria-label')).toBe('删除 README.md')
+    fireEvent.click(del)
+    const dialog = document.querySelector('[role="dialog"]')!
+    expect(dialog.getAttribute('aria-label')).toBe(zh['delete.title'])
+    expect(dialog.textContent).toContain('永久删除文件 README.md？')
+    fireEvent.click([...dialog.querySelectorAll('button')].find(button => button.textContent === zh['delete.cancel'])!)
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(removal.remove).not.toHaveBeenCalled()
+  })
+
+  it('closes the confirmation from its own close control without sending anything', async () => {
+    const { view, script, removal } = mountBody()
+    await act(() => script.settle({ ok: true, value: ROOT_LEVEL }))
+    fireEvent.click(view.container.querySelector(`[data-files-path="${ROOT}/README.md"] [data-files-delete]`)!)
+    const dialog = document.querySelector('[role="dialog"]')!
+    const close = [...dialog.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === zh['delete.cancel'])!
+    fireEvent.click(close)
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(removal.remove).not.toHaveBeenCalled()
+  })
+
+  it('removes a confirmed file, drops the row at once, and re-lists the level from the Host', async () => {
+    const { view, script, removal } = mountBody()
+    await act(() => script.settle({ ok: true, value: ROOT_LEVEL }))
+    fireEvent.click(view.container.querySelector(`[data-files-path="${ROOT}/README.md"] [data-files-delete]`)!)
+    script.list.mockClear()
+    fireEvent.click(confirmButton())
+    expect(removal.calls()).toEqual([{ path: `${ROOT}/README.md`, recursive: false }])
+    expect(removal.outstanding()).toEqual([`${ROOT}/README.md`])
+    // Nothing leaves the tree until the Host confirms it: the row is still the
+    // reader's while the request is in flight.
+    expect(view.container.querySelector(`[data-files-path="${ROOT}/README.md"]`)).not.toBeNull()
+    await act(() => removal.settle({ ok: true, value: { kind: 'file' } }))
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(view.container.querySelector(`[data-files-path="${ROOT}/README.md"]`)).toBeNull()
+    expect(script.list.mock.calls.map(call => call[1])).toEqual([ROOT])
+    // The re-listed level is the Host's, so the dropped row cannot linger on a
+    // directory that changed meanwhile.
+    await act(() => script.settle({ ok: true, value: { entries: [{ name: 'src', type: 'directory' }], truncated: false } }))
+    expect(view.container.querySelector(`[data-files-path="${ROOT}/README.md"]`)).toBeNull()
+  })
+
+  it('confirms a directory with its contents and sends the recursive flag', async () => {
+    const { view, script, removal } = mountBody()
+    await act(() => script.settle({ ok: true, value: ROOT_LEVEL }))
+    fireEvent.click(view.container.querySelector(`[data-files-path="${ROOT}/src"] [data-files-delete]`)!)
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('永久删除目录 src 及其全部内容？')
+    fireEvent.click(confirmButton())
+    expect(removal.calls()).toEqual([{ path: `${ROOT}/src`, recursive: true }])
+  })
+
+  it('keeps the dialog open and names a failed removal', async () => {
+    const { view, script, removal } = mountBody()
+    await act(() => script.settle({ ok: true, value: ROOT_LEVEL }))
+    fireEvent.click(view.container.querySelector(`[data-files-path="${ROOT}/src"] [data-files-delete]`)!)
+    fireEvent.click(confirmButton())
+    await act(() => removal.settle({
+      ok: false,
+      error: new RemoteError('workspace-file/not-empty', 'not empty', { path: `${ROOT}/src` }),
+    }))
+    const dialog = document.querySelector('[role="dialog"]')!
+    expect(dialog.querySelector('[data-files-delete-failure]')?.textContent).toBe(zh['delete.notEmpty'])
+    expect(dialog).not.toBeNull()
+    expect(view.container.querySelector(`[data-files-path="${ROOT}/src"]`)).not.toBeNull()
+  })
+
   it('reload resets every level and lists the expanded ones again', async () => {
     const { view, script, controller, instance } = mountBody()
     const child = `${ROOT}/src`
@@ -250,5 +329,23 @@ describe('failureLine', () => {
   it('carries an unclassified failure\'s own message', () => {
     const failure = { code: 'remote/transport', message: 'socket closed' } as unknown as RemoteFailure
     expect(failureLine(t, failure)).toBe('读取失败：socket closed')
+  })
+})
+
+describe('removalFailureLine', () => {
+  const t = makeTranslate(zh)
+
+  it('names each removal failure', () => {
+    expect(removalFailureLine(t, new RemoteError('workspace-file/not-empty', 'x', { path: 'p' })))
+      .toBe(zh['delete.notEmpty'])
+    expect(removalFailureLine(t, new RemoteError('workspace-file/not-found', 'x', { path: 'p' })))
+      .toBe(zh['delete.notFound'])
+    expect(removalFailureLine(t, new RemoteError('workspace-file/outside-workspace', 'x', { path: 'p' })))
+      .toBe(zh['delete.outsideWorkspace'])
+  })
+
+  it("carries an unclassified failure's own message", () => {
+    const failure = { code: 'remote/transport', message: 'socket closed' } as unknown as RemoteFailure
+    expect(removalFailureLine(t, failure)).toBe('删除失败：socket closed')
   })
 })

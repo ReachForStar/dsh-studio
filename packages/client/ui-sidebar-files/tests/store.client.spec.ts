@@ -78,6 +78,48 @@ describe('createFilesStore', () => {
     expect(getSnapshot().byTab[TAB]).toEqual({ root: ROOT, levels: {}, expanded: [ROOT, child], scrollTop: 0 })
   })
 
+  it('drops a removed entry from its level and takes its subtree levels and expansion with it', () => {
+    const store = createFilesStore().create()
+    const { actions } = store
+    const getSnapshot = (): ReturnType<typeof store.getSnapshot> => store.getSnapshot()
+    const child = `${ROOT}/src`
+    const grandchild = `${child}/deep`
+    actions.start(TAB, ROOT)
+    actions.loaded(TAB, ROOT, { entries: [...LEVEL.entries, { name: 'gone.txt', type: 'file' }], truncated: false })
+    actions.loaded(TAB, child, LEVEL)
+    actions.loaded(TAB, grandchild, LEVEL)
+    actions.toggled(TAB, child)
+    actions.toggled(TAB, grandchild)
+    actions.removed(TAB, ROOT, 'src')
+    expect(getSnapshot().byTab[TAB]!.levels[ROOT]).toEqual({
+      kind: 'ready',
+      level: { entries: [{ name: 'README.md', type: 'file', size: 12 }, { name: 'gone.txt', type: 'file' }], truncated: false },
+    })
+    expect(getSnapshot().byTab[TAB]!.levels[child]).toBeUndefined()
+    expect(getSnapshot().byTab[TAB]!.levels[grandchild]).toBeUndefined()
+    expect(getSnapshot().byTab[TAB]!.expanded).toEqual([ROOT])
+  })
+
+  it('removes from a level that was never listed without inventing one', () => {
+    const store = createFilesStore().create()
+    const { actions } = store
+    const getSnapshot = (): ReturnType<typeof store.getSnapshot> => store.getSnapshot()
+    actions.start(TAB, ROOT)
+    actions.removed(TAB, ROOT, 'never-listed')
+    expect(getSnapshot().byTab[TAB]!.levels).toEqual({})
+  })
+
+  it('leaves a sibling whose name only prefixes the removed one', () => {
+    const store = createFilesStore().create()
+    const { actions } = store
+    const getSnapshot = (): ReturnType<typeof store.getSnapshot> => store.getSnapshot()
+    actions.start(TAB, ROOT)
+    actions.loaded(TAB, ROOT, { entries: [{ name: 'src', type: 'directory' }, { name: 'src-old', type: 'directory' }], truncated: false })
+    actions.loaded(TAB, `${ROOT}/src-old`, LEVEL)
+    actions.removed(TAB, ROOT, 'src')
+    expect(getSnapshot().byTab[TAB]!.levels[`${ROOT}/src-old`]).toEqual({ kind: 'ready', level: LEVEL })
+  })
+
   it('remembers where the body is scrolled to', () => {
     const store = createFilesStore().create()
     const { actions } = store

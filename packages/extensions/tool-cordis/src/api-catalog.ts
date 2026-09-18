@@ -82,6 +82,73 @@ export interface TypeApiEntry {
 /** Every harness `ctx.<key>` service, sorted by key. */
 export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
+    key: 'a2a',
+    summary: 'Peer registry and one-call vocabulary over the A2A client.',
+    description: 'Peer registry and one-call vocabulary over the A2A client.\n\nA reference is resolved against the configured peers first and treated as an endpoint URL otherwise, so a model or operator can address an agent this deployment never configured. Names are resolved per call rather than cached: a peer\'s endpoint and credentials are configuration, and a stale client would keep calling an endpoint the deployment has since changed.',
+    methods: [
+      {
+        signature: 'list(): string[]',
+        description: 'Every configured peer name, in configuration order.',
+        parameters: [],
+        returns: 'the configured peer names.',
+      },
+      {
+        signature: 'resolve(ref: A2APeerRef): A2APeerConfig',
+        description: 'Resolve one peer reference to its configuration.',
+        parameters: [{ name: 'ref', description: 'a configured peer name, or an endpoint URL.' }],
+        returns: 'the peer configuration to call.',
+        throws: ['Error when the reference names no configured peer and is not a URL.'],
+      },
+      {
+        signature: 'async send(request: A2ASendRequest): Promise<A2APeerReply>',
+        description: 'Send one text message to a peer and read its answer.',
+        parameters: [{ name: 'request', description: 'the peer, the message text, and any continuation.' }],
+        returns: 'the peer\'s answer and the addressing that continues it.',
+        throws: ['Error when the peer is unknown or the call fails.'],
+      },
+      {
+        signature: 'async card(ref: A2APeerRef, signal?: AbortSignal): Promise<AgentCard>',
+        description: 'Read one peer\'s card.',
+        parameters: [{ name: 'ref', description: 'a configured peer name, or an endpoint URL.' }, { name: 'signal', description: 'cancellation owned by the caller.' }],
+        returns: 'the peer\'s card.',
+      },
+      {
+        signature: 'async inspect(signal?: AbortSignal): Promise<A2APeerInfo[]>',
+        description: 'Read every peer\'s card, reporting each failure beside its peer.',
+        parameters: [{ name: 'signal', description: 'cancellation owned by the caller.' }],
+        returns: 'one row per configured peer, in configuration order.',
+      },
+    ],
+  },
+  {
+    key: 'a2aHost',
+    summary: 'The A2A endpoint this deployment serves.',
+    description: 'The A2A endpoint this deployment serves.\n\nBinding happens in A2AHostService.init: a port that cannot be taken fails the plugin\'s fiber at load, which is where a deployment learns that its advertised endpoint is not the one it is serving.',
+    methods: [
+      {
+        signature: 'readonly card: AgentCard',
+        description: 'The card peers read, rewritten once the bound port is known.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly store: TaskStore = new TaskStore()',
+        description: 'The task table this endpoint serves.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly ready: Promise<void>',
+        description: 'Resolves once the listener is bound, and rejects when it cannot bind.\n\nCordis runs a nested plugin\'s `init` outside the outer fiber\'s readiness, so a deployment that must know its endpoint before serving waits here.',
+        parameters: [],
+      },
+      {
+        signature: 'async start(): Promise<void>',
+        description: 'Create the executor and bind the listener.\n\nCalled by Service.init when this class is mounted as a plugin and by apply when the module is mounted; both paths must bind before they resolve, so a deployment learns at boot that its advertised endpoint is the one it serves.',
+        parameters: [],
+        returns: 'a promise resolved once the listener is bound.',
+      },
+    ],
+  },
+  {
     key: 'agentDefaultModel',
     summary: 'Owns the default model selection independently of any Host or transport.',
     description: 'Owns the default model selection independently of any Host or transport. The composition entry remains usable without a settings provider; when one is mounted, its user layer is read live.',
@@ -1013,10 +1080,22 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the outcome, including the version the write produced.',
       },
       {
+        signature: 'writeBytes( target: FsTarget, content: Uint8Array, expected?: FsWriteIntent, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsWriteBytesOutcome>',
+        description: 'Atomically create or replace a file with raw bytes. The same intent and policy rules as writeText apply; there is no diff basis, so the outcome names only the operation and the new version.\n\nThe base implementation refuses. A backend that cannot carry binary content — a filesystem whose channel encodes text — must say so rather than write a decoded or truncated file, and a consumer that must persist bytes (an edited office document, an image editor) then fails where the user can see why.',
+        parameters: [{ name: 'target', description: 'the resolved target to write.' }, { name: 'content', description: 'the complete new file content.' }, { name: 'expected', description: 'the write intent guarding the write; omit for unconditional.' }, { name: 'signal', description: 'aborts before atomic publication takes effect.' }, { name: 'sandboxPolicy', description: 'the per-call mode and workspace root this write runs under; a sandboxing backend fences the write by it, the bare backend ignores it. Omit to leave the backend its own default.' }],
+        returns: 'the outcome, including the version the write produced.',
+      },
+      {
         signature: 'abstract editText( target: FsTarget, edit: FsEditRequest, expected?: { version: FsVersion }, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsEditOutcome>',
         description: 'Atomically edit literal text. When supplied, the version guard is checked before matching so stale content reports `FS_STALE_VERSION`; omission edits the current content without a freshness precondition.',
         parameters: [{ name: 'target', description: 'the resolved target to edit.' }, { name: 'edit', description: 'the literal search/replace request.' }, { name: 'expected', description: 'the version guard; omit for an unconditional edit.' }, { name: 'signal', description: 'aborts before atomic publication takes effect.' }, { name: 'sandboxPolicy', description: 'the per-call mode and workspace root this edit runs under; a sandboxing backend fences the edit by it, the bare backend ignores it. Omit to leave the backend its own default.' }],
         returns: 'the outcome, including the version the edit produced.',
+      },
+      {
+        signature: 'abstract remove( path: string, opts?: FsRemoveOptions, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsRemoveOutcome>',
+        description: 'Remove one path entry: a file, a symbolic link, or a directory.\n\nAddressed by PATH, not by a resolved target, and with `lstat` semantics: a symbolic link is removed as the link it is, never as what it points at, so this is the one mutation that must not resolve its argument first. A directory is removed with its contents only under FsRemoveOptions.recursive; otherwise a non-empty directory fails with `FS_NOT_EMPTY` and an empty one is removed.',
+        parameters: [{ name: 'path', description: 'absolute path, or one resolved against `opts.cwd`.' }, { name: 'opts', description: 'the base directory and whether a directory may take its contents with it.' }, { name: 'signal', description: 'aborts before the entry is removed.' }, { name: 'sandboxPolicy', description: 'the per-call mode and workspace root this removal runs under; a sandboxing backend fences the removal by it, the bare backend ignores it. Omit to leave the backend its own default.' }],
+        returns: 'what the removed entry was.',
       },
     ],
   },
@@ -3163,6 +3242,24 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the complete related file using the ordinary file-size and access checks.',
       },
       {
+        signature: '@Remote async write( workspaceFileScope: WorkspaceFileScope, path: string, text: string, guard: WorkspaceFileWriteGuard, signal: AbortSignal, ): Promise<WorkspaceFileStat>',
+        description: 'Replace one regular file\'s UTF-8 text inside the Session\'s workspace, atomically and without following the workspace\'s boundaries outward.',
+        parameters: [{ name: 'workspaceFileScope', description: 'header-derived workspace root for the Session identity on the wire.' }, { name: 'path', description: 'absolute or workspace-relative path of an existing regular file.' }, { name: 'text', description: 'the complete next content of the file.' }, { name: 'guard', description: 'the version the caller read, when it edited from one.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the file\'s identity and the version this write produced.',
+      },
+      {
+        signature: '@Remote async writeBytes( workspaceFileScope: WorkspaceFileScope, path: string, data: string, guard: WorkspaceFileWriteGuard, signal: AbortSignal, ): Promise<WorkspaceFileStat>',
+        description: 'Replace one regular file\'s bytes inside the Session\'s workspace, with the same guards as write. Used by editors of formats the browser cannot express as text — an edited office document is a zip.',
+        parameters: [{ name: 'workspaceFileScope', description: 'header-derived workspace root for the Session identity on the wire.' }, { name: 'path', description: 'absolute or workspace-relative path of an existing regular file.' }, { name: 'data', description: 'the complete next content, base64 encoded.' }, { name: 'guard', description: 'the version the caller read, when it edited from one.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the file\'s identity and the version this write produced.',
+      },
+      {
+        signature: '@Remote async delete( workspaceFileScope: WorkspaceFileScope, path: string, options: WorkspaceFileDeleteOptions, signal: AbortSignal, ): Promise<WorkspaceFileDeletion>',
+        description: 'Delete one path entry inside the Session\'s workspace: a regular file, a symbolic link, or — under `recursive` — a directory with everything inside it. The entry is addressed as a path, not as a resolved target, so a link is deleted as the link it is and never as what it points at.\n\nNamed `delete` rather than `remove` because the client\'s namespace service owns `remove` for its own mount lifecycle, and a remote method may not shadow it.',
+        parameters: [{ name: 'workspaceFileScope', description: 'header-derived workspace root for the Session identity on the wire.' }, { name: 'path', description: 'absolute path or path relative to the workspace root.' }, { name: 'options', description: 'whether a directory may be deleted with its contents.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'what the deleted path entry was.',
+      },
+      {
         signature: '@Remote async stat(workspaceFileScope: WorkspaceFileScope, path: string, signal: AbortSignal): Promise<WorkspaceFileStat>',
         description: 'Report one regular file\'s identity, version, and size without its content.',
         parameters: [{ name: 'workspaceFileScope', description: 'header-derived workspace root for the Session identity on the wire.' }, { name: 'path', description: 'absolute path or path relative to the workspace root; files outside it are allowed.' }, { name: 'signal', description: 'caller cancellation.' }],
@@ -3814,6 +3911,50 @@ export const EVENT_API: readonly EventApiEntry[] = [
 /** Shapes of every exported type the Service and Event signatures reference (transitively), sorted by name. */
 export const TYPE_API: readonly TypeApiEntry[] = [
   {
+    name: 'A2AArtifact',
+    declaration: 'export interface A2AArtifact {\n    artifactId: string;\n    name?: string;\n    description?: string;\n    parts: A2APart[];\n    metadata?: Record<string, unknown>;\n}',
+  },
+  {
+    name: 'A2AMessage',
+    declaration: 'export interface A2AMessage {\n    messageId: string;\n    contextId?: string;\n    taskId?: string;\n    role: Role;\n    parts: A2APart[];\n    metadata?: Record<string, unknown>;\n    extensions?: string[];\n    referenceTaskIds?: string[];\n}',
+  },
+  {
+    name: 'A2APart',
+    declaration: 'export interface A2APart {\n    text?: string;\n    raw?: string;\n    url?: string;\n    data?: unknown;\n    filename?: string;\n    mediaType?: string;\n    metadata?: Record<string, unknown>;\n}',
+  },
+  {
+    name: 'A2APeerCall',
+    declaration: 'export interface A2APeerCall {\n    contextId?: string;\n    taskId?: string;\n    signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'A2APeerConfig',
+    declaration: 'export interface A2APeerConfig {\n    url: string;\n    apiKey?: string;\n    cardPath?: string;\n    timeoutMs?: number;\n}',
+  },
+  {
+    name: 'A2APeerInfo',
+    declaration: 'export interface A2APeerInfo {\n    name: string;\n    url: string;\n    title?: string;\n    error?: string;\n}',
+  },
+  {
+    name: 'A2APeerRef',
+    declaration: 'export type A2APeerRef = string;',
+  },
+  {
+    name: 'A2APeerReply',
+    declaration: 'export interface A2APeerReply {\n    text: string;\n    taskId?: string;\n    contextId?: string;\n    state?: string;\n}',
+  },
+  {
+    name: 'A2ASendRequest',
+    declaration: 'export interface A2ASendRequest extends A2APeerCall {\n    readonly peer: A2APeerRef;\n    readonly text: string;\n}',
+  },
+  {
+    name: 'A2ATask',
+    declaration: 'export interface A2ATask {\n    id: string;\n    contextId: string;\n    status: A2ATaskStatus;\n    artifacts: A2AArtifact[];\n    history: A2AMessage[];\n    metadata?: Record<string, unknown>;\n}',
+  },
+  {
+    name: 'A2ATaskStatus',
+    declaration: 'export interface A2ATaskStatus {\n    state: TaskState;\n    message?: A2AMessage;\n    timestamp: string;\n}',
+  },
+  {
     name: 'AdapterRegistrationHandle',
     declaration: 'export interface AdapterRegistrationHandle {\n    (): void;\n    replace(providers: string[]): void;\n}',
   },
@@ -3834,12 +3975,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type AgentCancelCause = {\n    readonly kind: \'user\';\n} | {\n    readonly kind: \'parent\';\n} | {\n    readonly kind: \'hook\';\n    readonly reason: string;\n} | {\n    readonly kind: \'disposed\';\n};',
   },
   {
+    name: 'AgentCard',
+    declaration: 'export interface AgentCard {\n    name: string;\n    description: string;\n    supportedInterfaces: AgentInterface[];\n    provider?: {\n        url: string;\n        organization: string;\n    };\n    version: string;\n    documentationUrl?: string;\n    capabilities: {\n        streaming?: boolean;\n        pushNotifications?: boolean;\n        extendedAgentCard?: boolean;\n    };\n    securitySchemes?: Record<string, SecurityScheme>;\n    securityRequirements?: Array<{\n        schemes: Record<string, {\n            list: string[];\n        }>;\n    }>;\n    defaultInputModes: string[];\n    defaultOutputModes: string[];\n    skills: AgentSkill[];\n    iconUrl?: string;\n}',
+  },
+  {
     name: 'AgentFactory',
     declaration: 'export interface AgentFactory {\n    createAgent(ownerCtx: Context, options: CreateAgentOptions): Promise<AgentHandle>;\n    resume(ownerCtx: Context, options: ResumeAgentOptions): Promise<AgentHandle>;\n}',
   },
   {
     name: 'AgentHandle',
     declaration: 'export interface AgentHandle {\n    agent: Agent;\n    dispose(): Promise<void>;\n}',
+  },
+  {
+    name: 'AgentInterface',
+    declaration: 'export interface AgentInterface {\n    url: string;\n    protocolBinding: string;\n    tenant?: string;\n    protocolVersion: string;\n}',
   },
   {
     name: 'AgentOptions',
@@ -3886,12 +4035,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface AgentSetupCommit {\n    commit(): void;\n}',
   },
   {
+    name: 'AgentSkill',
+    declaration: 'export interface AgentSkill {\n    id: string;\n    name: string;\n    description: string;\n    tags: string[];\n    examples?: string[];\n    inputModes?: string[];\n    outputModes?: string[];\n}',
+  },
+  {
     name: 'AgentStatus',
     declaration: 'export type AgentStatus = \'idle\' | \'running\';',
   },
   {
     name: 'ApiKeyRecord',
     declaration: 'export interface ApiKeyRecord {\n    readonly kind: \'api-key\';\n    readonly key?: string;\n    readonly env?: Readonly<Record<string, string>>;\n}',
+  },
+  {
+    name: 'APIKeySecurityScheme',
+    declaration: 'export interface APIKeySecurityScheme {\n    description?: string;\n    location: \'header\' | \'query\' | \'cookie\';\n    name: string;\n}',
   },
   {
     name: 'ApiSessionAgentError',
@@ -4502,6 +4659,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FsPathInfo {\n    version: FsVersion;\n    type: \'file\' | \'directory\' | \'symlink\' | \'other\';\n    size?: number;\n}',
   },
   {
+    name: 'FsRemoveOptions',
+    declaration: 'export interface FsRemoveOptions {\n    readonly cwd?: string;\n    readonly recursive?: boolean;\n}',
+  },
+  {
+    name: 'FsRemoveOutcome',
+    declaration: 'export interface FsRemoveOutcome {\n    readonly kind: \'file\' | \'directory\' | \'symlink\' | \'other\';\n}',
+  },
+  {
     name: 'FsTarget',
     declaration: 'export interface FsTarget {\n    targetKey: FsTargetKey;\n    displayPath: string;\n}',
   },
@@ -4512,6 +4677,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FsVersion',
     declaration: 'export type FsVersion = Branded<\'FsVersion\'>;',
+  },
+  {
+    name: 'FsWriteBytesOutcome',
+    declaration: 'export interface FsWriteBytesOutcome {\n    operation: \'create\' | \'update\';\n    version: FsVersion;\n}',
   },
   {
     name: 'FsWriteIntent',
@@ -5230,6 +5399,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly parentAgent?: Agent;\n    readonly agentOptions?: AgentOptions;\n    readonly backend?: AgentBackend;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
   },
   {
+    name: 'Role',
+    declaration: 'export type Role = \'ROLE_USER\' | \'ROLE_AGENT\';',
+  },
+  {
     name: 'RunnerFailureRule',
     declaration: 'export interface RunnerFailureRule {\n    allowedExitCodes?: readonly number[];\n    fatalSignatures: readonly string[];\n    informationalLines?: readonly string[];\n}',
   },
@@ -5304,6 +5477,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SearchResultView',
     declaration: 'export type SearchResultView = SearchMatchesResultView | SearchPathsResultView;',
+  },
+  {
+    name: 'SecurityScheme',
+    declaration: 'export interface SecurityScheme {\n    apiKeySecurityScheme?: APIKeySecurityScheme;\n    [key: string]: unknown;\n}',
   },
   {
     name: 'SendTeamMessageRequest',
@@ -6214,6 +6391,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type TableValueOf<S extends DomainSpec, N extends keyof S[\'tables\']> = S[\'tables\'][N] extends DomainTableSpec<string, infer V> ? V : never;',
   },
   {
+    name: 'TaskState',
+    declaration: 'export type TaskState = \'TASK_STATE_UNSPECIFIED\' | \'TASK_STATE_SUBMITTED\' | \'TASK_STATE_WORKING\' | \'TASK_STATE_COMPLETED\' | \'TASK_STATE_FAILED\' | \'TASK_STATE_CANCELED\' | \'TASK_STATE_INPUT_REQUIRED\' | \'TASK_STATE_REJECTED\' | \'TASK_STATE_AUTH_REQUIRED\';',
+  },
+  {
+    name: 'TaskStore',
+    declaration: 'export class TaskStore {\n    constructor(options: TaskStoreOptions = {});\n    get(id: string): A2ATask | undefined;\n    create(contextId?: string, metadata?: Record<string, unknown>): A2ATask;\n    list(filter: {\n        contextId?: string;\n        status?: TaskState;\n    } = {}, pageSize: number = 50, includeArtifacts: boolean = false): A2ATask[];\n    count(filter: {\n        contextId?: string;\n        status?: TaskState;\n    } = {}): number;\n    all(): A2ATask[];\n    pushHistory(task: A2ATask, message: A2AMessage): void;\n    setStatus(task: A2ATask, state: TaskState, text?: string): void;\n    appendArtifact(task: A2ATask, artifactId: string, name: string, text: string): void;\n}',
+  },
+  {
+    name: 'TaskStoreOptions',
+    declaration: 'export interface TaskStoreOptions {\n    maxTasks?: number;\n    maxHistory?: number;\n}',
+  },
+  {
     name: 'TeamId',
     declaration: 'export type TeamId = Branded<\'TeamId\'>;',
   },
@@ -6826,6 +7015,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type WorkspaceFileChange = {\n    readonly absolutePath: string;\n    readonly version: string;\n} | {\n    readonly absolutePath: string;\n    readonly absent: true;\n};',
   },
   {
+    name: 'WorkspaceFileDeleteOptions',
+    declaration: 'export interface WorkspaceFileDeleteOptions {\n    readonly recursive?: boolean;\n}',
+  },
+  {
+    name: 'WorkspaceFileDeletion',
+    declaration: 'export interface WorkspaceFileDeletion {\n    readonly kind: \'file\' | \'directory\' | \'symlink\' | \'other\';\n}',
+  },
+  {
     name: 'WorkspaceFileRange',
     declaration: 'export interface WorkspaceFileRange {\n    readonly offset?: number;\n    readonly limit?: number;\n}',
   },
@@ -6844,6 +7041,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WorkspaceFileWatchFrame',
     declaration: 'export type WorkspaceFileWatchFrame = {\n    readonly kind: \'ready\';\n} | {\n    readonly kind: \'change\';\n    readonly change: WorkspaceFileChange;\n};',
+  },
+  {
+    name: 'WorkspaceFileWriteGuard',
+    declaration: 'export interface WorkspaceFileWriteGuard {\n    readonly expectedVersion?: string;\n}',
   },
   {
     name: 'WorkspaceFollowFrame',

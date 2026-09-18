@@ -234,6 +234,69 @@ describe('the per-call policy override (escalation)', () => {
   })
 })
 
+describe('removal fencing', () => {
+  it('denies removal under read-only, leaving the entry on disk', async () => {
+    await boot('read-only')
+    const path = join(workspace, 'kept.txt')
+    await writeFile(path, 'x')
+    await expect(fs.remove(path)).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    expect(existsSync(path)).toBe(true)
+  })
+
+  it('removes inside the workspace, a directory tree included', async () => {
+    await boot('workspace-write')
+    await mkdir(join(workspace, 'tree', 'deep'), { recursive: true })
+    await writeFile(join(workspace, 'tree', 'deep', 'leaf.txt'), 'leaf')
+    expect(await fs.remove(join(workspace, 'tree'), { recursive: true })).toEqual({ kind: 'directory' })
+    expect(existsSync(join(workspace, 'tree'))).toBe(false)
+  })
+
+  it('resolves a relative removal against opts.cwd, and against the configured base without one', async () => {
+    await boot('workspace-write')
+    await mkdir(join(workspace, 'nested'))
+    await writeFile(join(workspace, 'nested', 'here.txt'), 'x')
+    await writeFile(join(workspace, 'there.txt'), 'y')
+
+    expect(await fs.remove('here.txt', { cwd: join(workspace, 'nested') })).toEqual({ kind: 'file' })
+    // No cwd: the backend's configured base (the workspace) resolves it.
+    expect(await fs.remove('there.txt')).toEqual({ kind: 'file' })
+    expect(existsSync(join(workspace, 'there.txt'))).toBe(false)
+  })
+
+  it('denies removal outside the workspace, and one reached through a link that leaves it', async () => {
+    await boot('workspace-write')
+    const reachable = join(outside, 'reachable.txt')
+    await writeFile(reachable, 'outside')
+    await symlink(outside, join(workspace, 'out'))
+
+    await expect(fs.remove(reachable)).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    // `out/` realpaths to the outside directory, so the link's contents are fenced
+    // even though the requested path is spelled inside the workspace.
+    await expect(fs.remove(join(workspace, 'out', 'reachable.txt'))).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    expect(existsSync(reachable)).toBe(true)
+  })
+
+  it('removes the link itself, which touches nothing outside the workspace', async () => {
+    await boot('workspace-write')
+    const reachable = join(outside, 'reachable.txt')
+    await writeFile(reachable, 'outside')
+    await symlink(reachable, join(workspace, 'link.txt'))
+
+    expect(await fs.remove(join(workspace, 'link.txt'))).toEqual({ kind: 'symlink' })
+    expect(existsSync(join(workspace, 'link.txt'))).toBe(false)
+    expect(await readFile(reachable, 'utf8')).toBe('outside')
+  })
+
+  it('a danger-full-access stamp bypasses the fence for that call', async () => {
+    await boot('read-only')
+    const path = join(outside, 'granted-removal.txt')
+    await writeFile(path, 'x')
+    expect(await fs.remove(path, undefined, undefined, { mode: 'danger-full-access', workspaceRoot: workspace }))
+      .toEqual({ kind: 'file' })
+    expect(existsSync(path)).toBe(false)
+  })
+})
+
 describe('registration and HMR safety', () => {
   it('registers as ctx.fs and unregisters cleanly from a child fiber', async () => {
     await boot('workspace-write')

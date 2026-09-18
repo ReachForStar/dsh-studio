@@ -41,6 +41,8 @@ kind: "package-reference"
 | `file` | 经 `useTabInfo().tab.actions.openResource` 打开 `dsh-resource://file/session/<sessionId>/<encoded path relative to the root>`，地址由 `@deepseek-ai/dsh-util-workspace-path` 的 `fileAddressFor` 从条目的绝对路径与树的根生成，落在该 tab 自己的 pane 里。 |
 | `other` | 灰显且不可点击，从而完整呈现目录内容。 |
 
+每个文件行与目录行的末端还带一个删除控件，hover 该行或控件获得焦点时显现。它先打开确认弹窗，点名该条目（目录则说明连同内容一起删），确认后才对同一命名空间调用 `remote.workspaceFiles.delete(sessionId, absolutePath, { recursive })`。Host 确认之前树上什么都不变：被删的行与它下方的子树（已缓存的层与展开状态）一起消失，随后重读父层，因此屏幕上的列表始终来自 Host。删除失败时弹窗保持打开并显示对应原因（`workspace-file/not-empty`、`not-found`、`outside-workspace` 或传输层消息）；删除是永久的，没有回收站也无法撤销。
+
 被端点条目上限截断的层以一条标记收尾；空层如实说明；失败的层按错误码各显示一行（`workspace-file/not-found`、`outside-workspace`、`not-directory`），其他情况显示传输层自己的消息。重新读取丢弃所有已列出的层并只对展开中的层重新请求；折叠的层在下次打开时重新拉取。没有工作目录的会话只显示一行说明，而不是树。
 
 状态保存在类型自己的存储里，按 tab id 分桶：`root`、`levels`（每个绝对路径的 loading / ready / failed）、`expanded` 与 `scrollTop`——滚动期间偏移由正文自己记录，卸载时一次性写入。存储比 body 活得久，切到其他侧栏 tab 再切回来时树带着已加载的层重新挂载，滚动位置也随之恢复。owner 的 `signal` 终结一个桶：中止时忘掉该 tab，其后才结算的列表与卸载时的偏移提交都什么也不写。
@@ -57,7 +59,7 @@ kind: "package-reference"
 ## 已知限制与暂缓事项
 
 <a id="known-limitations-and-deferred-work"></a>
-- **只有列目录。**没有搜索、产物过滤、拖拽、重命名、右键菜单、当前文件高亮或文件系统监听；一层只会因重新读取而变化。
+- **只有列目录与删除。**没有搜索、产物过滤、拖拽、重命名、右键菜单、当前文件高亮或文件系统监听；一层只会因重新读取而变化，且删除不可撤销。
 - **只有一个根。**树以会话工作目录为根；没有办法浏览到它之上，而 Host 本来也拒绝工作区根之外的路径。
 
 <a id="dev-note"></a>

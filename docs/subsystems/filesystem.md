@@ -241,6 +241,10 @@ interface FileReadOutcome {
 
 Observed state is a `WeakMap<owner, Map<targetKey, FsObservation>>` held inside the `dsh-fs-observation-policy` plugin. Missing map entry means unseen; `{ kind: 'absent' }` means a `read` or `str_replace_editor` `view`, `str_replace`, or `insert` metadata miss confirmed absence; `{ kind: 'present', version }` means a read, write, or edit observed that version. The write decision maps unseen and absent to `createIfAbsent`, while present maps to `replaceIfVersion`; the edit decision maps unseen to `FS_NOT_OBSERVED`, absent to `FS_NOT_FOUND`, and present to its version guard. The owner is derived from the event actor (normally `exec.agent.session`), treated as opaque and never read. Disposal drops everything (HMR safety), and the policy performs no filesystem I/O.
 
+## Removal (provider contract)
+
+`remove` is the seam's one PATH-addressed mutation, the counterpart of `lstat`: `resolve` names what a path points AT, so it cannot name the link a caller wants deleted. A provider probes with `lstat` semantics, removes a symbolic link as the link rather than as its target, removes a directory with its contents only under `recursive` (an empty directory needs no flag; a non-empty one without it fails with `FS_NOT_EMPTY`), and reports what the entry was — `file`, `directory`, `symlink`, or `other`. It carries no version guard, and none is wanted: a removal is stated as a path rather than derived from content, so a file that changed since the caller looked is still the file it named.
+
 ## Error taxonomy (provider contract)
 
 Filesystem failures use stable `FsErrorCode` strings carried by `FsError` (`HarnessError`). The tool registry preserves `{ name, code }` on error results, so retry, permission, and UI layers can branch without parsing text.
@@ -266,9 +270,10 @@ type FsErrorCode =
   | 'FS_EDIT_NOT_FOUND'
   | 'FS_ABORTED'
   | 'FS_UNSUPPORTED_BINARY_WRITE'
+  | 'FS_NOT_EMPTY'
 ```
 
-`FS_NOT_DIRECTORY`, `FS_PERMISSION_DENIED`, and `FS_IO_ERROR` are used by directory listing to distinguish an existing non-directory target, a denied listing, and an unexpected backend I/O failure. `FS_SANDBOX_DENIED` is a POLICY refusal from a sandbox-enforcing backend (`dsh-fs-sandbox`) — the mode fence denied a write/edit — distinct from `FS_PERMISSION_DENIED` (the host kernel refusing). `FS_NOT_OBSERVED` means the policy plugin has no prior-observation record for this owner (or a `createIfAbsent` hit an existing file). `FS_NOT_FOUND` also represents an edit rejected from confirmed absence. `FS_STALE_VERSION` means the backend version no longer matches the observed one (or the provider itself receives an edit for a missing target). Freshness authorization has no partial/full distinction, so there is no `FS_PARTIAL_OBSERVATION`.
+`FS_NOT_DIRECTORY`, `FS_PERMISSION_DENIED`, and `FS_IO_ERROR` are used by directory listing to distinguish an existing non-directory target, a denied listing, and an unexpected backend I/O failure. `FS_SANDBOX_DENIED` is a POLICY refusal from a sandbox-enforcing backend (`dsh-fs-sandbox`) — the mode fence denied a write/edit — distinct from `FS_PERMISSION_DENIED` (the host kernel refusing). `FS_NOT_OBSERVED` means the policy plugin has no prior-observation record for this owner (or a `createIfAbsent` hit an existing file). `FS_NOT_EMPTY` is a removal refused because the directory still holds entries the caller did not authorize going with it. `FS_NOT_FOUND` also represents an edit rejected from confirmed absence. `FS_STALE_VERSION` means the backend version no longer matches the observed one (or the provider itself receives an edit for a missing target). Freshness authorization has no partial/full distinction, so there is no `FS_PARTIAL_OBSERVATION`.
 
 ## No timeouts on file IO
 
@@ -276,7 +281,7 @@ type FsErrorCode =
 
 ## The service and the plugin
 
-`FileSystem` (`ctx.fs`, abstract) owns the provider primitives: `resolve`, `processPath`, `processPathFromHostPath`, `fileUrl`, `contains`, `stat`, `lstat`, `readText`, `streamText`, `readBytes`, `listDir`, `writeText`, and `editText`. `dsh-fs-observation-policy` registers **no service** — it is a plugin that adds policy through the `fs/*` event gate: it decides the write/edit intent waterfalls from unseen/absent/present state and records `FsObservation` values. The executor is `dsh-tool-fs`: it reads/writes/edits through `ctx.fs`, dispatches the waterfalls, and emits the recording event. The generated [`ctx.fs` section](#ctxfs--filesystem-abstract-seam) below shows the exact signatures.
+`FileSystem` (`ctx.fs`, abstract) owns the provider primitives: `resolve`, `processPath`, `processPathFromHostPath`, `fileUrl`, `contains`, `stat`, `lstat`, `readText`, `streamText`, `readBytes`, `listDir`, `writeText`, `writeBytes`, `editText`, and `remove`. `dsh-fs-observation-policy` registers **no service** — it is a plugin that adds policy through the `fs/*` event gate: it decides the write/edit intent waterfalls from unseen/absent/present state and records `FsObservation` values. The executor is `dsh-tool-fs`: it reads/writes/edits through `ctx.fs`, dispatches the waterfalls, and emits the recording event. The generated [`ctx.fs` section](#ctxfs--filesystem-abstract-seam) below shows the exact signatures.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -436,6 +441,27 @@ abstract listDir(target: FsTarget, signal?: AbortSignal): Promise<FsDirEntry[]>
 abstract writeText( target: FsTarget, content: string, expected?: FsWriteIntent, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsWriteOutcome>
 
 /**
+ * Atomically create or replace a file with raw bytes. The same intent and
+ * policy rules as {@link writeText} apply; there is no diff basis, so the
+ * outcome names only the operation and the new version.
+ *
+ * The base implementation refuses. A backend that cannot carry binary
+ * content — a filesystem whose channel encodes text — must say so rather than
+ * write a decoded or truncated file, and a consumer that must persist bytes
+ * (an edited office document, an image editor) then fails where the user can
+ * see why.
+ * @param target - the resolved target to write.
+ * @param content - the complete new file content.
+ * @param expected - the write intent guarding the write; omit for unconditional.
+ * @param signal - aborts before atomic publication takes effect.
+ * @param sandboxPolicy - the per-call mode and workspace root this write
+ *   runs under; a sandboxing backend fences the write by it, the bare backend
+ *   ignores it. Omit to leave the backend its own default.
+ * @returns the outcome, including the version the write produced.
+ */
+writeBytes( target: FsTarget, content: Uint8Array, expected?: FsWriteIntent, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsWriteBytesOutcome>
+
+/**
  * Atomically edit literal text. When supplied, the version guard is checked
  * before matching so stale content reports `FS_STALE_VERSION`; omission edits
  * the current content without a freshness precondition.
@@ -449,6 +475,26 @@ abstract writeText( target: FsTarget, content: string, expected?: FsWriteIntent,
  * @returns the outcome, including the version the edit produced.
  */
 abstract editText( target: FsTarget, edit: FsEditRequest, expected?: { version: FsVersion }, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsEditOutcome>
+
+/**
+ * Remove one path entry: a file, a symbolic link, or a directory.
+ *
+ * Addressed by PATH, not by a resolved target, and with `lstat` semantics: a
+ * symbolic link is removed as the link it is, never as what it points at, so
+ * this is the one mutation that must not resolve its argument first. A
+ * directory is removed with its contents only under
+ * {@link FsRemoveOptions.recursive}; otherwise a non-empty directory fails
+ * with `FS_NOT_EMPTY` and an empty one is removed.
+ * @param path - absolute path, or one resolved against `opts.cwd`.
+ * @param opts - the base directory and whether a directory may take its
+ *   contents with it.
+ * @param signal - aborts before the entry is removed.
+ * @param sandboxPolicy - the per-call mode and workspace root this removal
+ *   runs under; a sandboxing backend fences the removal by it, the bare
+ *   backend ignores it. Omit to leave the backend its own default.
+ * @returns what the removed entry was.
+ */
+abstract remove( path: string, opts?: FsRemoveOptions, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsRemoveOutcome>
 ```
 
 Types: [SandboxExecutionPolicy](sandbox.md)

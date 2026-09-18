@@ -115,6 +115,31 @@ export interface FsDirEntry {
 }
 
 /**
+ * Why one path removal is requested: what it resolves against, and whether a
+ * directory may be removed with everything inside it.
+ */
+export interface FsRemoveOptions {
+  /** Base directory for a relative `path`; the backend's own default when omitted. */
+  readonly cwd?: string
+  /**
+   * Remove a directory together with its contents. Without it a directory is
+   * removed only while empty — a non-empty one fails with `FS_NOT_EMPTY`.
+   * Irrelevant for a non-directory entry.
+   */
+  readonly recursive?: boolean
+}
+
+/**
+ * Outcome of a path removal: what the entry was when it was removed. A
+ * symbolic link reports `symlink`, never the type it points at, because removal
+ * takes the link itself.
+ */
+export interface FsRemoveOutcome {
+  /** Type of the removed path entry. */
+  readonly kind: 'file' | 'directory' | 'symlink' | 'other'
+}
+
+/**
  * Guarded write intent. `createIfAbsent` rejects an existing target with
  * `FS_NOT_OBSERVED`; `replaceIfVersion` rejects absence or mismatch with
  * `FS_STALE_VERSION`. Omitting the intent from `writeText` means unconditional
@@ -198,6 +223,7 @@ export type FsErrorCode =
   | 'FS_EDIT_NOT_FOUND'
   | 'FS_ABORTED'
   | 'FS_UNSUPPORTED_BINARY_WRITE'
+  | 'FS_NOT_EMPTY'
 
 /**
  * Typed filesystem error. Extends {@link HarnessError} so it carries a stable

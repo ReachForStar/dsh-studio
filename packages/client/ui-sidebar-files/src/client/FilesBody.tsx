@@ -10,17 +10,18 @@
  * ink, then the one control at its end, reload, which drops every listed level
  * and asks again for the expanded ones.
  */
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import clsx from 'clsx'
 import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
 import type { PropsLocale, PropsRuntime, PropsStore, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import {
-  FileTypeIcon, IconFolderClose16, IconFolderOpen16, IconRefreshOutline16, classifyFileType,
+  Button, FileTypeIcon, IconFolderClose16, IconFolderOpen16, IconRefreshOutline16, IconTrashOutline16,
+  Modal, classifyFileType,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { fileAddressFor, pathPartsOf } from '@deepseek-ai/dsh-util-workspace-path'
 import type { WorkspaceDirectoryEntry } from '@deepseek-ai/dsh-api-workspace-files/types'
-import { childPath } from './face.ts'
+import { childPath } from './paths.ts'
 import type { FilesInjected } from './face.ts'
 import type {} from './locales.ts'
 import type { FilesTabState, createFilesStore } from './store.ts'
@@ -67,6 +68,23 @@ export function failureLine(t: TranslateNS<'sidebarFiles'>, failure: RemoteFailu
   }
 }
 
+/**
+ * Say why a removal failed, in terms of the entry rather than of the transport.
+ * @param t - namespace-bound translate.
+ * @param failure - the settled Remote failure.
+ * @returns the line to show inside the confirmation dialog.
+ */
+export function removalFailureLine(t: TranslateNS<'sidebarFiles'>, failure: RemoteFailure): string {
+  switch (failure.code) {
+    // The dialog confirms a directory with its contents, so this only reaches a
+    // caller that asked without `recursive` — the dialog says nothing was removed.
+    case 'workspace-file/not-empty': return t('delete.notEmpty')
+    case 'workspace-file/not-found': return t('delete.notFound')
+    case 'workspace-file/outside-workspace': return t('delete.outsideWorkspace')
+    default: return t('delete.unavailable', { message: failure.message })
+  }
+}
+
 /* jscpd:ignore-start -- the header row is the document preview's (ui-sidebar-documentpreview
    TextPreview `usePathClipped`), copied because a plugin bundle shares runtime code
    only through the platform modules. TODO: once the artifact and slot surfaces
@@ -100,17 +118,32 @@ function usePathClipped(
 }
 /* jscpd:ignore-end */
 
-/** What every level shares: the tab's tree and the two gestures. */
+/** What every level shares: the tab's tree and the three gestures. */
 interface TreeContext {
   readonly state: FilesTabState
   readonly onToggle: (path: string) => void
   readonly onOpen: (path: string) => void
+  readonly onDelete: (parent: string, entry: WorkspaceDirectoryEntry) => void
   readonly t: TranslateNS<'sidebarFiles'>
 }
 
 /** One entry's row, and its children when it is an expanded directory. */
 function Entry({ parent, entry, tree }: { parent: string; entry: WorkspaceDirectoryEntry; tree: TreeContext }): ReactNode {
   const path = childPath(parent, entry.name)
+  // Sibling of the row's own button, never nested inside it: a button inside a
+  // button is invalid HTML and swallows the row's click.
+  const remove = (
+    <button
+      type="button"
+      className={css.rowDelete}
+      aria-label={`${tree.t('delete')} ${entry.name}`}
+      title={tree.t('delete')}
+      data-files-delete={entry.type}
+      onClick={() => { tree.onDelete(parent, entry) }}
+    >
+      <IconTrashOutline16 />
+    </button>
+  )
   if (entry.type === 'directory') {
     const expanded = tree.state.expanded.includes(path)
     return (
@@ -119,6 +152,7 @@ function Entry({ parent, entry, tree }: { parent: string; entry: WorkspaceDirect
           {expanded ? <IconFolderOpen16 className={css.icon} /> : <IconFolderClose16 className={css.icon} />}
           <span className={css.name}>{entry.name}</span>
         </button>
+        {remove}
         {expanded && <ul className={css.level}><Level path={path} tree={tree} /></ul>}
       </li>
     )
@@ -130,6 +164,7 @@ function Entry({ parent, entry, tree }: { parent: string; entry: WorkspaceDirect
           <FileTypeIcon kind={classifyFileType(entry.name)} size={16} className={css.fileIcon} />
           <span className={css.name}>{entry.name}</span>
         </button>
+        {remove}
       </li>
     )
   }
@@ -166,9 +201,15 @@ function Level({ path, tree }: { path: string; tree: TreeContext }): ReactNode {
   )
 }
 
+/** One entry awaiting its confirmation: what the dialog names, and whether it is a directory. */
+interface PendingRemoval {
+  readonly parent: string
+  readonly entry: WorkspaceDirectoryEntry
+}
+
 /** The file tree's body: the workspace root and whatever the reader has opened under it. */
 export function FilesBody({
-  useTabInfo, sessionId, useSessions, useStore, actions, start, load, toggle, t,
+  useTabInfo, sessionId, useSessions, useStore, actions, start, load, toggle, deleteEntry, t,
 }: FilesBodyProps): ReactNode {
   const { tab } = useTabInfo()
   const { signal, actions: tabActions } = tab
@@ -178,6 +219,11 @@ export function FilesBody({
   const pathTextRef = useRef<HTMLSpanElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const scrollTopRef = useRef(0)
+  /** The removal the dialog is confirming; null closes it. */
+  const [pending, setPending] = useState<PendingRemoval | null>(null)
+  const [removing, setRemoving] = useState(false)
+  /** Why the last confirmed removal failed; the dialog stays open on it. */
+  const [removeFailure, setRemoveFailure] = useState<string | null>(null)
   usePathClipped(pathRef, pathTextRef, state?.root)
   // Come back where the reader was: loaded levels outlive the body in the
   // store, so a remounted tree lays out at its full height before this runs
@@ -216,7 +262,21 @@ export function FilesBody({
     onToggle: (path) => { toggle(tab.id, path, state.levels[path] !== undefined, signal) },
     // Every row is under the tree's root, so its address is session-relative.
     onOpen: (path) => { tabActions.openResource(fileAddressFor(sessionId, state.root, path)) },
+    onDelete: (parent, entry) => {
+      setRemoveFailure(null)
+      setPending({ parent, entry })
+    },
     t,
+  }
+  const confirmRemoval = async (removal: PendingRemoval): Promise<void> => {
+    setRemoving(true)
+    setRemoveFailure(null)
+    const failure = await deleteEntry(
+      tab.id, removal.parent, removal.entry.name, removal.entry.type === 'directory', signal,
+    )
+    if (failure !== null) setRemoveFailure(removalFailureLine(t, failure))
+    else setPending(null)
+    setRemoving(false)
   }
   // Reload drops every level and asks again for the expanded ones; a collapsed
   // level is fetched again the next time it opens.
@@ -255,6 +315,30 @@ export function FilesBody({
       >
         <ul className={css.level}><Level path={state.root} tree={tree} /></ul>
       </div>
+      {pending !== null && (
+        <Modal
+          open
+          onClose={() => { setPending(null) }}
+          title={t('delete.title')}
+          closeLabel={t('delete.cancel')}
+          description={t(
+            pending.entry.type === 'directory' ? 'delete.dirDescription' : 'delete.fileDescription',
+            { name: pending.entry.name },
+          )}
+          footer={(
+            <>
+              <Button variant="outline" autoFocus onClick={() => { setPending(null) }}>
+                {t('delete.cancel')}
+              </Button>
+              <Button variant="outline" disabled={removing} onClick={() => { void confirmRemoval(pending) }}>
+                {removing ? t('delete.deleting') : t('delete.confirm')}
+              </Button>
+            </>
+          )}
+        >
+          {removeFailure !== null && <p className={css.dialogFailure} data-files-delete-failure>{removeFailure}</p>}
+        </Modal>
+      )}
     </div>
   )
 }

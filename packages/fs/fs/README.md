@@ -33,7 +33,7 @@ Pick [`fs-local`](../fs-local/README.md) for ordinary host files or [`fs-sandbox
 
 ### What the service lets you do
 
-Through `ctx.fs` you can resolve any path to a stable target identity, read a whole text file or stream it in chunks, read raw bytes up to an explicit cap, list one directory level, atomically create or replace a file, and apply a literal text edit atomically. The version guard on both mutations is optional: omit it for unconditional create-or-overwrite, or supply it to fail when the file changed since you last observed it. Every operation returns data or a typed `FsError` carrying a stable code such as `FS_NOT_FOUND`, `FS_STALE_VERSION`, or `FS_AMBIGUOUS_EDIT`, so callers branch on the code, never on message text.
+Through `ctx.fs` you can resolve any path to a stable target identity, read a whole text file or stream it in chunks, read raw bytes up to an explicit cap, list one directory level, atomically create or replace a file, apply a literal text edit atomically, and remove one path entry — a file, a symbolic link, or a directory. The version guard on both mutations is optional: omit it for unconditional create-or-overwrite, or supply it to fail when the file changed since you last observed it. Every operation returns data or a typed `FsError` carrying a stable code such as `FS_NOT_FOUND`, `FS_STALE_VERSION`, or `FS_AMBIGUOUS_EDIT`, so callers branch on the code, never on message text.
 
 -----
 
@@ -49,7 +49,7 @@ This section explains the design decisions behind the contract and points at the
 
 The contract is built on one separation and three commitments:
 
-- **Contract over mechanism.** The service names what a storage layer can do — resolve, stat, read, list, write, edit — and never how it stores bytes. Backends own target identity, execution-world coordinates, decoding, binary rejection, and atomicity.
+- **Contract over mechanism.** The service names what a storage layer can do — resolve, stat, read, list, write, edit, remove — and never how it stores bytes. Backends own target identity, execution-world coordinates, decoding, binary rejection, and atomicity.
 - **Policy stays off the base class.** Observed-state, read-before-edit, and version-guarded mutations are a plugin's job (`dsh-fs-observation-policy`), added by supplying the optional guard — so a sandboxed or remote backend inherits no model-facing observation policy.
 - **`editText` stays on the seam.** Version check, literal match, and atomic rewrite share one critical section, so error attribution and one-wins/one-stale concurrency stay correct; a remote backend may implement it as a native compare-and-edit.
 - **Bounds live at this seam.** `readBytes` requires `maxBytes` and fails with `FS_TOO_LARGE` rather than truncating, so no backend ever buffers an unbounded file. `readByteRange` is bounded by its window instead: a backend transfers at most the requested `length` beyond the prefix it skips, so the caller's cap on `length` is the guard.

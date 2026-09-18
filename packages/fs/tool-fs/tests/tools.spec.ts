@@ -21,6 +21,7 @@ import type {
   FsEditRequest,
   FsInfo,
   FsPathInfo,
+  FsRemoveOutcome,
   FsTarget,
   FsWriteIntent,
   FsWriteOutcome,
@@ -103,6 +104,9 @@ class FakeFs extends FileSystem {
     const after = content.split(edit.oldString).join(edit.newString)
     this.files.set(target.targetKey, after)
     return { version: FsVersion('v3'), before: content, after }
+  }
+  override async remove(): Promise<FsRemoveOutcome> {
+    throw new Error('not used by the tool-fs fake')
   }
 }
 

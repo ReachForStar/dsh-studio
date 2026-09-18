@@ -1,10 +1,10 @@
 /** Real helper dispatch over private in-memory transport, without changing the Harness process cwd. */
-import { symlink, writeFile } from 'node:fs/promises'
+import { mkdir, symlink, writeFile } from 'node:fs/promises'
 import { describe, expect, it, vi } from 'vitest'
 import { LocalSandboxProvider } from '@deepseek-ai/dsh-sandbox-local'
 import { z } from 'zod'
 import { createHelperHarness as helper } from './fixtures/helper.ts'
-import { targetSchema, writeResultSchema, editResultSchema, infoSchema, entriesSchema } from '../src/schemas.ts'
+import { targetSchema, writeResultSchema, editResultSchema, infoSchema, entriesSchema, removeResultSchema } from '../src/schemas.ts'
 
 
 const policy = (workspaceRoot: string) => ({ mode: 'workspace-write', workspaceRoot })
@@ -40,6 +40,30 @@ describe.skipIf(process.platform === 'win32')('SSH helper runtime', () => {
       await test.client.request('fs.edit', { target, edit: { oldString: 'third', newString: 'fourth', replaceAll: false }, policy: policy(test.root) }, editResultSchema)
       expect(await test.client.request('fs.readText', { target }, z.string())).toBe('fourth text')
       await expect(test.client.request('fs.write', { target, content: 'denied', policy: { mode: 'read-only', workspaceRoot: test.root } }, writeResultSchema)).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    } finally { await test.close() }
+  })
+
+  it('removes a path through the helper, with the sandbox policy and the recursive flag applied remotely', async () => {
+    const test = await helper()
+    try {
+      await writeFile(`${test.root}/gone.txt`, 'x')
+      await mkdir(`${test.root}/tree/deep`, { recursive: true })
+      await writeFile(`${test.root}/tree/deep/leaf.txt`, 'leaf')
+      expect(await test.client.request('fs.remove', { path: 'gone.txt', cwd: test.root, policy: policy(test.root) }, removeResultSchema))
+        .toEqual({ kind: 'file' })
+      await expect(test.client.request('fs.remove', { path: 'tree', cwd: test.root, policy: policy(test.root) }, removeResultSchema))
+        .rejects.toMatchObject({ code: 'FS_NOT_EMPTY' })
+      expect(await test.client.request('fs.remove', { path: 'tree', cwd: test.root, recursive: true, policy: policy(test.root) }, removeResultSchema))
+        .toEqual({ kind: 'directory' })
+      await expect(test.client.request('fs.remove', { path: 'missing.txt', cwd: test.root, policy: policy(test.root) }, removeResultSchema))
+        .rejects.toMatchObject({ code: 'FS_NOT_FOUND' })
+      // No cwd: the negotiated workspace is the base.
+      await writeFile(`${test.root}/no-cwd.txt`, 'x')
+      expect(await test.client.request('fs.remove', { path: 'no-cwd.txt', policy: policy(test.root) }, removeResultSchema))
+        .toEqual({ kind: 'file' })
+      await writeFile(`${test.root}/kept.txt`, 'x')
+      await expect(test.client.request('fs.remove', { path: 'kept.txt', cwd: test.root, policy: { mode: 'read-only', workspaceRoot: test.root } }, removeResultSchema))
+        .rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
     } finally { await test.close() }
   })
 

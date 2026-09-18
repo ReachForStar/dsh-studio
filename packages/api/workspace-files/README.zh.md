@@ -92,7 +92,7 @@ kind: "package-reference"
 
 ### 设计概念
 
-经 `ctx.fs` 的读取使用后端的读取权限；沙箱后端限制写与编辑，而不限制读取。`write` 替换单个文件的文本，`writeBytes` 替换其字节；两者都限制在会话工作区内、套用相同的 `maxFileBytes` 上限，并携带编辑器读到的版本作为守卫，因此底下已被改动的文件会以 `workspace-file/stale-version` 失败而不是被覆盖。无法存储二进制内容的后端返回 `workspace-file/binary-unsupported`，而不是写下一个被改坏的文件。Typert lookup 从 live Session header 或持久层的 header-only `stat` 导出 `WorkspaceFileScope`，所以 cold subagent Session 不需要激活 Agent 或读取事件正文。本服务增加普通文件检查与有界传输，工作区包含要求只属于目录列举与变更观察。页从 `streamText` 切出，后者逐块解码并拒绝非 UTF-8：切页器对窗口之前的行只计数不保留，对窗口内的每个片段先按字节上限验收再缓冲，并在窗口之后的第一个字符处返回。流之前的一次 `stat` 给出页所报告的版本与大小。
+经 `ctx.fs` 的读取使用后端的读取权限；沙箱后端限制写与编辑，而不限制读取。`write` 替换单个文件的文本，`writeBytes` 替换其字节；两者都限制在会话工作区内、套用相同的 `maxFileBytes` 上限，并携带编辑器读到的版本作为守卫，因此底下已被改动的文件会以 `workspace-file/stale-version` 失败而不是被覆盖。无法存储二进制内容的后端返回 `workspace-file/binary-unsupported`，而不是写下一个被改坏的文件。`delete` 按路径删除一个条目——文件、符号链接，或在 `recursive` 下连同内容的目录——并回报删掉了什么；包含性在条目的父目录上证明，因此链接按链接删除，而未带 `recursive` 的非空目录以 `workspace-file/not-empty` 失败。Typert lookup 从 live Session header 或持久层的 header-only `stat` 导出 `WorkspaceFileScope`，所以 cold subagent Session 不需要激活 Agent 或读取事件正文。本服务增加普通文件检查与有界传输，工作区包含要求只属于目录列举与变更观察。页从 `streamText` 切出，后者逐块解码并拒绝非 UTF-8：切页器对窗口之前的行只计数不保留，对窗口内的每个片段先按字节上限验收再缓冲，并在窗口之后的第一个字符处返回。流之前的一次 `stat` 给出页所报告的版本与大小。
 
 ### 源码地图
 

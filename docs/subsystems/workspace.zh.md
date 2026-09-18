@@ -388,6 +388,48 @@ Host Remote file reads and workspace directory observations over the composed fi
 @Remote async readRelated( workspaceFileScope: WorkspaceFileScope, path: string, relativePath: string, signal: AbortSignal, ): Promise<WorkspaceFileBytes>
 
 /**
+ * Replace one regular file's UTF-8 text inside the Session's workspace,
+ * atomically and without following the workspace's boundaries outward.
+ * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
+ * @param path - absolute or workspace-relative path of an existing regular file.
+ * @param text - the complete next content of the file.
+ * @param guard - the version the caller read, when it edited from one.
+ * @param signal - caller cancellation.
+ * @returns the file's identity and the version this write produced.
+ */
+@Remote async write( workspaceFileScope: WorkspaceFileScope, path: string, text: string, guard: WorkspaceFileWriteGuard, signal: AbortSignal, ): Promise<WorkspaceFileStat>
+
+/**
+ * Replace one regular file's bytes inside the Session's workspace, with the
+ * same guards as {@link write}. Used by editors of formats the browser
+ * cannot express as text — an edited office document is a zip.
+ * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
+ * @param path - absolute or workspace-relative path of an existing regular file.
+ * @param data - the complete next content, base64 encoded.
+ * @param guard - the version the caller read, when it edited from one.
+ * @param signal - caller cancellation.
+ * @returns the file's identity and the version this write produced.
+ */
+@Remote async writeBytes( workspaceFileScope: WorkspaceFileScope, path: string, data: string, guard: WorkspaceFileWriteGuard, signal: AbortSignal, ): Promise<WorkspaceFileStat>
+
+/**
+ * Delete one path entry inside the Session's workspace: a regular file, a
+ * symbolic link, or — under `recursive` — a directory with everything inside
+ * it. The entry is addressed as a path, not as a resolved target, so a link is
+ * deleted as the link it is and never as what it points at.
+ *
+ * Named `delete` rather than `remove` because the client's namespace service
+ * owns `remove` for its own mount lifecycle, and a remote method may not
+ * shadow it.
+ * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
+ * @param path - absolute path or path relative to the workspace root.
+ * @param options - whether a directory may be deleted with its contents.
+ * @param signal - caller cancellation.
+ * @returns what the deleted path entry was.
+ */
+@Remote async delete( workspaceFileScope: WorkspaceFileScope, path: string, options: WorkspaceFileDeleteOptions, signal: AbortSignal, ): Promise<WorkspaceFileDeletion>
+
+/**
  * Report one regular file's identity, version, and size without its content.
  * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
  * @param path - absolute path or path relative to the workspace root; files outside it are allowed.

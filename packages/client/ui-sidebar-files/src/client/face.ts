@@ -18,10 +18,12 @@
  * record goes away the bucket and the tab's listing bookkeeping are forgotten,
  * so no later settlement writes to it.
  */
-import type { ClientRemote, RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientRemote, RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type { BoundActions } from '@deepseek-ai/dsh-client-store'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { WorkspaceFileDeletion } from '@deepseek-ai/dsh-api-workspace-files/types'
+import { childPath } from './paths.ts'
 import type { DirLevel, createFilesStore } from './store.ts'
 
 /**
@@ -38,16 +40,40 @@ export type ListWorkspaceDirectory = (
 ) => Promise<RemoteResult<DirLevel>>
 
 /**
- * The slice of the Client Remote face this package calls: the `workspaceFiles`
- * namespace's `list`, exactly as the Host's generated client declares it.
+ * One deletion, bound to a Remote face.
+ *
+ * The endpoint takes the same session-scoped scope as a listing, so a path
+ * means the same entry here as it does in the tree that listed it.
  */
+export type DeleteWorkspaceEntry = (
+  sessionId: SessionId,
+  path: string,
+  recursive: boolean,
+  signal: AbortSignal,
+) => Promise<RemoteResult<WorkspaceFileDeletion>>
+
+/**
+ * The slice of the Client Remote face this package calls: the
+ * `workspaceFiles` namespace's `list` and `delete`, exactly as the Host's
+ * generated client declares them.
+ */
+export type WorkspaceFilesTreeRemote = {
+  readonly workspaceFiles: Pick<ClientRemote['workspaceFiles'], 'list' | 'delete'>
+}
+
+/** The listing half of the tree's Remote slice. */
 export type WorkspaceFilesListRemote = {
   readonly workspaceFiles: Pick<ClientRemote['workspaceFiles'], 'list'>
 }
 
+/** The deletion half of the tree's Remote slice. */
+export type WorkspaceFilesDeleteRemote = {
+  readonly workspaceFiles: Pick<ClientRemote['workspaceFiles'], 'delete'>
+}
+
 /**
  * Bind the listing to one Remote face, keeping only what the tree stores.
- * @param remote - the Client Remote face carrying the `workspaceFiles` namespace.
+ * @param remote - the Client Remote face carrying `workspaceFiles.list`.
  * @returns the listing the tree's face performs.
  */
 export function createList(remote: WorkspaceFilesListRemote): ListWorkspaceDirectory {
@@ -59,16 +85,13 @@ export function createList(remote: WorkspaceFilesListRemote): ListWorkspaceDirec
 }
 
 /**
- * The absolute path of one child entry.
- *
- * Joined with `/` whatever the parent's separators: the Host resolves mixed
- * separators, and the tree only needs a stable key.
- * @param parent - absolute path of the listed directory.
- * @param name - the entry's basename.
- * @returns the child's absolute path.
+ * Bind the deletion to one Remote face, passing the directory flag the endpoint
+ * needs to take a directory's contents with it.
+ * @param remote - the Client Remote face carrying `workspaceFiles.delete`.
+ * @returns the deletion the tree's face performs.
  */
-export function childPath(parent: string, name: string): string {
-  return `${parent.replace(/[/\\]+$/, '')}/${name}`
+export function createDelete(remote: WorkspaceFilesDeleteRemote): DeleteWorkspaceEntry {
+  return (sessionId, path, recursive, signal) => remote.workspaceFiles.delete(sessionId, path, { recursive }, signal)
 }
 
 /** The tree's injected business face, as the body receives it. */
@@ -95,15 +118,36 @@ export interface FilesInjected {
    * @param signal - the tab record's lifetime.
    */
   readonly toggle: (tabId: TabId, path: string, loaded: boolean, signal: AbortSignal) => void
+  /**
+   * Delete one listed entry, then re-list the level it came from.
+   *
+   * The confirmation dialog is the one caller that reads this result: every
+   * other writer reports through the store.
+   * @param tabId - the tab being drawn.
+   * @param parent - absolute path of the directory the entry was listed in.
+   * @param name - the entry's basename.
+   * @param recursive - whether a directory is deleted with its contents.
+   * @param signal - the tab record's lifetime.
+   * @returns the failure to carry into the dialog, or null once the entry is gone.
+   */
+  readonly deleteEntry: (
+    tabId: TabId,
+    parent: string,
+    name: string,
+    recursive: boolean,
+    signal: AbortSignal,
+  ) => Promise<RemoteFailure | null>
 }
 
 /**
- * Bind the tree's face to one directory listing.
+ * Bind the tree's face to one directory listing and one deletion.
  * @param list - the bound `workspaceFiles.list` call.
+ * @param removeEntry - the bound `workspaceFiles.delete` call.
  * @returns the Slot `inject` factory: session and bound actions in, face out.
  */
 export function filesFace(
   list: ListWorkspaceDirectory,
+  removeEntry: DeleteWorkspaceEntry,
 ): (sessionId: SessionId, actions: BoundActions<ReturnType<typeof createFilesStore>>) => FilesInjected {
   return (
     sessionId: SessionId,
@@ -143,6 +187,19 @@ export function filesFace(
       toggle(tabId, path, loaded, signal) {
         actions.toggled(tabId, path)
         if (!loaded) load(tabId, path, signal)
+      },
+      deleteEntry(tabId, parent, name, recursive, signal) {
+        // A record that already ended has no dialog left to answer: the tab is
+        // unmounted and its bucket forgotten, so there is nothing to report.
+        if (signal.aborted) return Promise.resolve(null)
+        return removeEntry(sessionId, childPath(parent, name), recursive, signal).then((result) => {
+          if (!result.ok) return result.error
+          actions.removed(tabId, parent, name)
+          // The listing is the Host's, so the dropped row is confirmed against
+          // the directory itself: another writer may have changed it meanwhile.
+          load(tabId, parent, signal)
+          return null
+        })
       },
     }
   }

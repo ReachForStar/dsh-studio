@@ -1,14 +1,15 @@
 /**
  * Workspace file service: read-only file previews, workspace directory
- * listings, and the filesystem-observation change feed, exposed as
- * `workspaceFiles`.
+ * listings, workspace-scoped deletions, and the filesystem-observation change
+ * feed, exposed as `workspaceFiles`.
  *
  * File reads follow the composed filesystem's read access, including paths
  * outside the workspace. The selected Session header supplies the base for
  * relative paths, with the sandbox policy root as its no-cwd fallback, not a
- * read-containment restriction. Directory listings, change observations, and
- * every write remain workspace-scoped: a preview may show a file the workspace
- * does not own, and editing it is a different exposure than reading it.
+ * read-containment restriction. Directory listings, change observations,
+ * every write, and every deletion remain workspace-scoped: a preview may show a
+ * file the workspace does not own, and editing or removing it is a different
+ * exposure than reading it.
  *
  * A page is cut from `streamText`, which decodes and rejects non-UTF-8 as it
  * goes, so the file is read only up to the first character past the page and
@@ -37,6 +38,8 @@ import type {
   WorkspaceDirectoryListing,
   WorkspaceFileBytes,
   WorkspaceFileRange,
+  WorkspaceFileDeletion,
+  WorkspaceFileDeleteOptions,
   WorkspaceFileStat,
   WorkspaceFileText,
   WorkspaceFileWatchFrame,
@@ -403,6 +406,45 @@ export class WorkspaceFiles extends TypertRemoteService {
   }
 
   /**
+   * Delete one path entry inside the Session's workspace: a regular file, a
+   * symbolic link, or — under `recursive` — a directory with everything inside
+   * it. The entry is addressed as a path, not as a resolved target, so a link is
+   * deleted as the link it is and never as what it points at.
+   *
+   * Named `delete` rather than `remove` because the client's namespace service
+   * owns `remove` for its own mount lifecycle, and a remote method may not
+   * shadow it.
+   * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
+   * @param path - absolute path or path relative to the workspace root.
+   * @param options - whether a directory may be deleted with its contents.
+   * @param signal - caller cancellation.
+   * @returns what the deleted path entry was.
+   */
+  @Remote
+  async delete(
+    workspaceFileScope: WorkspaceFileScope,
+    path: string,
+    options: WorkspaceFileDeleteOptions,
+    signal: AbortSignal,
+  ): Promise<WorkspaceFileDeletion> {
+    const { root } = await this.inspect(workspaceFileScope, path, signal)
+    const target = await this.confinePath(root, path, signal)
+    try {
+      return await this.ctx.fs.remove(target, { recursive: options.recursive === true }, signal)
+    } catch (error) {
+      if (isNotEmptyRefusal(error)) {
+        throw new RemoteError(
+          'workspace-file/not-empty',
+          `"${path}" is a directory with contents; pass recursive to remove it with them`,
+          { path },
+          { cause: error },
+        )
+      }
+      throw error
+    }
+  }
+
+  /**
    * Report one regular file's identity, version, and size without its content.
    * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
    * @param path - absolute path or path relative to the workspace root; files outside it are allowed.
@@ -511,6 +553,32 @@ export class WorkspaceFiles extends TypertRemoteService {
   }
 
   /**
+   * The same containment as {@link confine} for a path that is about to be
+   * DELETED, which is why the entry itself does not canonicalize: deletion takes
+   * a symbolic link as the link, so resolving the entry would name — and then
+   * delete — whatever it points at. The entry's parent canonicalizes instead,
+   * so a symlinked ancestor still realpaths into the check, and the entry's own
+   * name is kept.
+   * @param root - the resolved workspace root.
+   * @param path - the requested path, absolute or workspace-relative.
+   * @param signal - caller cancellation.
+   * @returns the absolute lexical path the removal must use.
+   */
+  private async confinePath(root: FsTarget, path: string, signal: AbortSignal): Promise<string> {
+    const rootPath = this.ctx.fs.processPath(root)
+    // Path flavour follows the workspace root's own spelling: the backend
+    // resolves both sides in the same world.
+    /* v8 ignore next -- native Windows coverage exercises the drive spelling; the Linux lane covers the POSIX one. */
+    const paths = rootPath.startsWith('/') ? posix : win32
+    const lexical = paths.resolve(rootPath, path)
+    const parent = await this.ctx.fs.resolve(paths.dirname(lexical), { signal })
+    if (!this.ctx.fs.contains(root, parent)) {
+      throw new RemoteError('workspace-file/outside-workspace', `"${path}" is outside the workspace`, { path })
+    }
+    return lexical
+  }
+
+  /**
    * All gates for a regular file, ending in the one stat that names its version
    * and size. The stat re-checks what `lstat` saw: the file may have gone or
    * changed kind in between.
@@ -587,6 +655,15 @@ export class WorkspaceFiles extends TypertRemoteService {
  */
 function isBinaryWriteRefusal(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'FS_UNSUPPORTED_BINARY_WRITE'
+}
+
+/**
+ * The backend's refusal of a non-empty directory removal, recognized by its
+ * code alone, for the same reason as {@link isNotTextRefusal}: the error class
+ * belongs to whichever `dsh-fs` instance the provider loaded.
+ */
+function isNotEmptyRefusal(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'FS_NOT_EMPTY'
 }
 
 /**

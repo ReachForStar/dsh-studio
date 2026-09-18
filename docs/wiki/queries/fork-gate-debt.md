@@ -18,9 +18,10 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 
 | 门禁 | 报错 | 归属 | 修复方向 |
 | --- | --- | --- | --- |
-| `verify-doc-graphs`、`verify-cordis-catalog` | 服务签名引用未分类类型：`AgentCard`、`A2APeerRef`、`A2APeerConfig`、`A2APeerReply`、`A2ASendRequest`、`A2APeerInfo`（a2a）；`FsWriteBytesOutcome`（`ctx.fs.writeBytes`）；`WorkspaceFileWriteGuard`（`workspaceFiles.write`/`writeBytes`） | A2A 批 + office 批 | 前者需要 `docs/subsystems/a2a.md` 并在 `scripts/gen-cordis-catalog.ts` 的 `LINK_MAP` 登记；后两者归 `filesystem.md` / 相应 API 页 |
-| `verify-subsystem-pages` | `packages/a2a/README.md: package group has no group README` | A2A 批 | 新建 `packages/a2a/README{,.zh}.md` + i18n（组 README 需链 `../../docs/subsystems/a2a.md`） |
-| `verify-tool-catalog` | `tool-a2a` 未登记进 `TOOL_PACKAGES` | A2A 批 | 在 `scripts/gen-tool-catalog.ts` 补 `ToolPackage`（dir/pkg/source/requires/writes/mount） |
+| ~~`verify-doc-graphs`、`verify-cordis-catalog`~~ **已清偿（2026-09-18 A2A 文档批）** | 服务签名引用未分类类型：A2A 六个类型、`FsWriteBytesOutcome`、`WorkspaceFileWriteGuard` | A2A 批 + office 批 | — |
+| ~~`verify-subsystem-pages`（A2A 组 README）~~ **已清偿（2026-09-18 A2A 文档批）** | `packages/a2a/README.md: package group has no group README` | A2A 批 | — |
+| ~~`verify-tool-catalog`~~ **已清偿（2026-09-18 A2A 文档批）** | `tool-a2a` 未登记进 `TOOL_PACKAGES` | A2A 批 | — |
+| `verify-config-catalog` | `pi-agent-loop` 约 16 处配置字段缺 JSDoc 散文（`a2a-host` 的 5 处已清偿） | pi 后端批 | 给每个 `Config` 字段补一句用途说明 |
 | `verify-client-catalog` | ~~`slot-catalog.ts` 过期~~ **已清偿（2026-09-18 文件面板去重批）** | office 批 | — |
 | `verify-persistence-catalog`、`verify-persistence-changes` | `docs/persistence-{catalog,schema}` 过期 | 会话 v3 `backend` 字段批 | `pnpm run gen-persistence-catalog` 后提交生成物（diff 可能覆盖多份双语文档） |
 | `verify-config-source-ownership` | `packages/bundle/web-app/cordis.patch.yml:289` 内联 `apiKey: !!js process.env.DSH_A2A_API_KEY` | A2A 批 | 让 `dsh-a2a-host` 接受 `apiKeyEnv` 并经 `ctx.credentials`/环境快照解析，patch 只写变量名（与 `llm-*` 的 `apiKeyEnv` 同型） |
@@ -37,8 +38,14 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - `verify-doc-graphs` 的解析期两类报错：`A2AHostService.store` 缺显式类型、`TaskStore.list` 默认参数缺显式类型（typert 分析要求公开成员显式标注）。
 - `pnpm run lint` 中本批新增的 `sonarjs(no-identical-functions)`：`remote/ssh/tests/stub-service.ts` 的两个会话 stub 抽出共享基类 `StubSession`。
 - `test:docs`（doc-quick）20/20、`pnpm run typecheck` 全通过。
+- `verify-config-catalog` 的 `a2a-host` 部分（2026-09-18 A2A 文档批清偿）：`Config.card` 的五个字段补 JSDoc；余下 `pi-agent-loop` 的 ~16 处仍欠。
 - `verify-client-catalog`（2026-09-18 文件面板去重时清偿）：`slot-catalog.ts` 从 office 批起就过期（缺 `DocxBody`/`PptxBody` 等渲染器、多出已删除的 `MutationDiffPanel`），已跑 `pnpm run gen-client-catalog` 提交生成物。
 - **客户端 bundle 无 Node builtin 门禁**（已补）：动态 bundle 的 factory 序言里出现 Node builtin 时，构建与服务都通过，直到浏览器启动才变成「entry did not activate / import failed」。2026-09-18 在 `packages/client/tsdown.client.ts` 加 `dsh-client-prologue-builtins`（序言 require 到 Node builtin 即构建失败）；`fflate` 默认解析到 Node 版是首个实例。
+
+## 上游包被 fork 打补丁的地方（合并上游时需一并带过去）
+
+- `packages/client/ui-sidebar-files`：`ctx.fs` 接缝的删除能力落到这棵树上后，该上游包多了每行删除控件 + 确认弹窗、`paths.ts`、以及 `workspaceFiles.delete` 的接线（见 [工作区文件删除](../entities/workspace-file-deletion.md)）。
+- `packages/client/ui-sidebar-documentpreview`：office 文档预览与文本级编辑（见 [文档面板的编辑与保存](../entities/document-panel-editing.md)）。
 
 ## 复发预防
 

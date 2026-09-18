@@ -869,6 +869,59 @@ describe('symlink targetKey identity', () => {
   })
 })
 
+describe('remove', () => {
+  it('removes a file and reports what it was', async () => {
+    await writeFile(join(dir, 'gone.txt'), 'x')
+    expect(await fs.remove('gone.txt')).toEqual({ kind: 'file' })
+    expect(await fs.stat(await fs.resolve('gone.txt'))).toBeUndefined()
+  })
+
+  it('removes a link as the link, keeping what it points at', async () => {
+    await writeFile(join(dir, 'real.txt'), 'hello')
+    await symlink(join(dir, 'real.txt'), join(dir, 'link.txt'))
+    expect(await fs.remove('link.txt')).toEqual({ kind: 'symlink' })
+    expect(await fs.stat(await fs.resolve('link.txt'))).toBeUndefined()
+    expect(await readFile(join(dir, 'real.txt'), 'utf8')).toBe('hello')
+  })
+
+  it('removes an empty directory, and refuses a non-empty one until asked to recurse', async () => {
+    await mkdir(join(dir, 'empty'))
+    expect(await fs.remove('empty')).toEqual({ kind: 'directory' })
+
+    await mkdir(join(dir, 'tree', 'deep'), { recursive: true })
+    await writeFile(join(dir, 'tree', 'deep', 'leaf.txt'), 'leaf')
+    await expect(fs.remove('tree')).rejects.toMatchObject({ code: 'FS_NOT_EMPTY' })
+    expect(await readFile(join(dir, 'tree', 'deep', 'leaf.txt'), 'utf8')).toBe('leaf')
+
+    expect(await fs.remove('tree', { recursive: true })).toEqual({ kind: 'directory' })
+    expect(await fs.stat(await fs.resolve('tree'))).toBeUndefined()
+  })
+
+  it('never follows a link inside a removed tree', async () => {
+    await mkdir(join(dir, 'tree'), { recursive: true })
+    await writeFile(join(dir, 'outside.txt'), 'survives')
+    await symlink(join(dir, 'outside.txt'), join(dir, 'tree', 'escape.txt'))
+
+    expect(await fs.remove('tree', { recursive: true })).toEqual({ kind: 'directory' })
+    expect(await readFile(join(dir, 'outside.txt'), 'utf8')).toBe('survives')
+  })
+
+  it('resolves a relative path against opts.cwd and reports a missing entry', async () => {
+    await mkdir(join(dir, 'nested'))
+    await writeFile(join(dir, 'nested', 'here.txt'), 'x')
+    expect(await fs.remove('here.txt', { cwd: join(dir, 'nested') })).toEqual({ kind: 'file' })
+    await expect(fs.remove('nested/never.txt')).rejects.toMatchObject({ code: 'FS_NOT_FOUND' })
+  })
+
+  it('honors a pre-aborted signal', async () => {
+    await writeFile(join(dir, 'kept.txt'), 'x')
+    const controller = new AbortController()
+    controller.abort()
+    await expect(fs.remove('kept.txt', undefined, controller.signal)).rejects.toMatchObject({ code: 'FS_ABORTED' })
+    expect(await readFile(join(dir, 'kept.txt'), 'utf8')).toBe('x')
+  })
+})
+
 describe('HMR / disposal', () => {
   it('disposing the fiber withdraws ctx.fs', async () => {
     const local = new Context()

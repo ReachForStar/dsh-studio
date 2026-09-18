@@ -218,6 +218,18 @@ export async function runSshHelper(transport: HelperTransport): Promise<void> {
         }, signal)
       return Buffer.from(bytes).toString('base64')
     }
+    if (method === 'fs.remove') {
+      const input = z.object({
+        path: z.string(), cwd: remotePath.optional(), recursive: z.boolean().optional(), policy: policySchema,
+      }).strict().parse(raw)
+      const resolved = await policy(input.policy, signal)
+      return await ctx.fs.remove(
+        input.path,
+        { cwd: input.cwd ?? workspace, recursive: input.recursive === true },
+        signal,
+        resolved,
+      )
+    }
     if (method === 'fs.write' || method === 'fs.edit') {
       const input = z.object({
         target: targetSchema, content: z.string().optional(), edit: editSchema.optional(),

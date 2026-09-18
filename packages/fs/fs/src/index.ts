@@ -18,6 +18,8 @@ import type {
   FsInfo,
   FsPathInfo,
   FsObservation,
+  FsRemoveOptions,
+  FsRemoveOutcome,
   FsTarget,
   FsVersion,
   FsWriteBytesOutcome,
@@ -50,6 +52,8 @@ export type {
   FsInfo,
   FsObservation,
   FsPathInfo,
+  FsRemoveOptions,
+  FsRemoveOutcome,
   FsTarget,
   FsWriteBytesOutcome,
   FsWriteIntent,
@@ -327,6 +331,31 @@ export abstract class FileSystem extends Service {
     signal?: AbortSignal,
     sandboxPolicy?: SandboxExecutionPolicy,
   ): Promise<FsEditOutcome>
+
+  /**
+   * Remove one path entry: a file, a symbolic link, or a directory.
+   *
+   * Addressed by PATH, not by a resolved target, and with `lstat` semantics: a
+   * symbolic link is removed as the link it is, never as what it points at, so
+   * this is the one mutation that must not resolve its argument first. A
+   * directory is removed with its contents only under
+   * {@link FsRemoveOptions.recursive}; otherwise a non-empty directory fails
+   * with `FS_NOT_EMPTY` and an empty one is removed.
+   * @param path - absolute path, or one resolved against `opts.cwd`.
+   * @param opts - the base directory and whether a directory may take its
+   *   contents with it.
+   * @param signal - aborts before the entry is removed.
+   * @param sandboxPolicy - the per-call mode and workspace root this removal
+   *   runs under; a sandboxing backend fences the removal by it, the bare
+   *   backend ignores it. Omit to leave the backend its own default.
+   * @returns what the removed entry was.
+   */
+  abstract remove(
+    path: string,
+    opts?: FsRemoveOptions,
+    signal?: AbortSignal,
+    sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsRemoveOutcome>
 }
 
 export default FileSystem

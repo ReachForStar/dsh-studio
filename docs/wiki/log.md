@@ -131,3 +131,9 @@
 - 新增 `docs/subsystems/a2a.md`（+ 中文 + i18n）与 `packages/a2a/README.md`（组 README，+ 中文 + i18n），并在 `scripts/gen-cordis-catalog.ts` 登记 `SERVICE_PAGE`/`linkedTypePages`（a2a、a2aHost 与六个 A2A 类型）、`scripts/gen-doc-graphs.ts` 登记两个服务角色、`scripts/gen-tool-catalog.ts` 登记 `tool-a2a`。
 - 连带清偿：`verify-doc-graphs`、`verify-tool-catalog`、`verify-client-catalog`、`verify-config-catalog`（a2a-host 的 5 个配置字段补 JSDoc）转绿；`pnpm run doc-sync` 仍余 3 项既有欠账（pi-agent-loop 配置 JSDoc、会话 v3 持久化产物、web-app 内联 apiKey），已更新 [门禁红项清单](queries/fork-gate-debt.md)。
 - 生成物同步：`docs/subsystems/{workspace,filesystem,a2a}.md`、`docs/{capability-seams,event-producer-consumer,tool-catalog}.md` 及其中文侧、`packages/extensions/tool-cordis/src/api-catalog.ts`、`packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`。
+
+## [2026-09-18] query | A2A v1.0.1 符合性缺口清单
+
+- 按 A2A 规范 tag `v1.0.1`（`specification/a2a.proto` + `docs/specification.md`）逐条核对现有实现（`920c7f52d9`）：11 个 RPC 方法名、TaskState 枚举、卡片必填字段、错误体格式、SSE 帧序均符合；但存在 7 处 MUST 级偏离——推送配置方法该回 `-32003` 却回 `-32004`、`GetExtendedAgentCard` 未声明能力却返回卡片、终态任务再发消息/订阅/取消三种行为不符（应分别回 `-32004`、`-32004`、`-32002`）、客户端不发且服务端忽略 `A2A-Version` 头、不拒绝 `contextId`/`taskId` 不匹配的消息。
+- 另有 4 处细节（`ListTasks` 未按状态时间降序、`includeArtifacts: false` 时给了空数组而非省略字段、`pageToken` 是偏移而非游标、`historyLength: 0` 未省略 `history`）与 6 项未实现能力（gRPC/HTTP+JSON 绑定、webhook 投递、扩展机制、卡片 JWS 签名、媒体类型校验、客户端推送方法）。
+- 结论与逐条修法、复现命令写入 [A2A v1.0.1 符合性缺口清单（待修）](queries/a2a-v1.0.1-conformance-gaps.md)，**全部留待下个会话修复**；上一轮"已实现"仅指方法面与工程接线已落地。

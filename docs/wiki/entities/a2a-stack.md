@@ -3,7 +3,7 @@ title: A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）
 type: entity
 tags: [a2a, 协议, 跨 agent, 出站调用, fork 扩展]
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-18
 sources: []
 status: active
 ---
@@ -30,7 +30,8 @@ fork 自研的 Agent2Agent 支持，位于 `packages/a2a/`，三个包都是 `@r
 - **端点自带监听器**：默认绑定 `127.0.0.1:9310`，而非挂在浏览器服务路径前缀下——对等端按 `origin + /.well-known/agent-card.json` 发现，前缀会迫使每个对等端额外配置卡片路径。`apply` 等待绑定完成，端口占用会让组合直接失败。
 - **对等端只来自配置**：模型工具不能注册对等端，出站调用被限制在运维批准过的端点内。
 - **任务表不落盘**：至多 500 条、淘汰最旧终态任务，重启即忘；持久历史在会话日志。
-- **推送到点拒绝**：四个 push-config 方法返回 `-32004 UNSUPPORTED_OPERATION`，不假装支持；卡片只声明 JSONRPC 绑定。
+- **推送到点拒绝**：四个 push-config 方法返回 `-32003 PUSH_NOTIFICATION_NOT_SUPPORTED`，不假装支持；卡片只声明 JSONRPC 绑定，未声明 `extendedAgentCard`，故 `GetExtendedAgentCard` 回 `-32004`。
+- **v1.0.1 符合性（2026-09-18 补齐）**：发往终态任务的消息与订阅终态任务回 `-32004`、取消终态任务回 `-32002`（`SubscribeToTask` 的拒绝抢在 SSE 头之前，错误走 JSON-RPC 应答）；`A2A-Version` 头由 `A2A_PROTOCOL_VERSION` 单一常量拥有（客户端发 `1.0`、服务端只收 `1.0`、缺省/空按规范视为 0.3 并回 `-32009`）；`ListTasks` 按 status timestamp 降序 + base64url 游标分页、`includeArtifacts: false` 整体省略 artifacts（行类型 `A2ATaskRow`）；`historyLength: 0` 省略 history；`contextId` 与 `taskId` 不匹配回 -32602。明细与修法见 [符合性缺口页](../queries/a2a-v1.0.1-conformance-gaps.md)。
 
 ## 踩坑
 
@@ -41,6 +42,7 @@ fork 自研的 Agent2Agent 支持，位于 `packages/a2a/`，三个包都是 `@r
 ## 已知限制与待办
 
 - gRPC / HTTP+JSON 绑定未实现，卡片也未声明。
+- 严格版本：只服务 `A2A-Version: 1.0`，不带版本头（= 0.3）的调用方被 `-32009` 拒绝。
 - 无推送通知；模型侧 `a2a_send` 等整轮结束，不向模型流式输出。
 - 只处理文本 part；文件与结构化 part 不翻译。
 - 覆盖率：`packages/a2a/*/src` 约 96% 语句 / 88% 分支，剩余为可选配置的 `? :` 分支，追 100% 需补组合用例。

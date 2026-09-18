@@ -137,3 +137,9 @@
 - 按 A2A 规范 tag `v1.0.1`（`specification/a2a.proto` + `docs/specification.md`）逐条核对现有实现（`920c7f52d9`）：11 个 RPC 方法名、TaskState 枚举、卡片必填字段、错误体格式、SSE 帧序均符合；但存在 7 处 MUST 级偏离——推送配置方法该回 `-32003` 却回 `-32004`、`GetExtendedAgentCard` 未声明能力却返回卡片、终态任务再发消息/订阅/取消三种行为不符（应分别回 `-32004`、`-32004`、`-32002`）、客户端不发且服务端忽略 `A2A-Version` 头、不拒绝 `contextId`/`taskId` 不匹配的消息。
 - 另有 4 处细节（`ListTasks` 未按状态时间降序、`includeArtifacts: false` 时给了空数组而非省略字段、`pageToken` 是偏移而非游标、`historyLength: 0` 未省略 `history`）与 6 项未实现能力（gRPC/HTTP+JSON 绑定、webhook 投递、扩展机制、卡片 JWS 签名、媒体类型校验、客户端推送方法）。
 - 结论与逐条修法、复现命令写入 [A2A v1.0.1 符合性缺口清单（待修）](queries/a2a-v1.0.1-conformance-gaps.md)，**全部留待下个会话修复**；上一轮"已实现"仅指方法面与工程接线已落地。
+
+## [2026-09-18] feat | A2A v1.0.1 符合性缺口全部修复
+
+- 按 [缺口清单](queries/a2a-v1.0.1-conformance-gaps.md) 的修法逐条落地：推送配置四方法改回 `-32003`、`GetExtendedAgentCard` 按卡片能力回 `-32004`、终态任务收消息/订阅回 `-32004`（订阅的拒绝抢在 SSE 头之前）、取消终态任务回 `-32002`、`A2A-Version` 头两侧落地（`A2A_PROTOCOL_VERSION` 单一常量，缺省/空按 0.3 回 `-32009`，patch 号忽略）、`contextId`/`taskId` 不匹配回 -32602。
+- 细节四项：`ListTasks` 按 status timestamp 降序（id 兜底）+ base64url 游标分页（行类型 `A2ATaskRow`，非法 token 回 -32602）、`includeArtifacts: false` 整体省略 artifacts、`historyLength: 0` 省略 history。
+- 测试同步：server/client/task-store 三个 spec 改写并新增用例（终态拒绝、版本头、游标、运行中订阅），a2a 三包 103 用例全绿；Agent Note 见 `.agents/notes/implemented/bug-fix/2026-09-18-a2a-v1-0-1-conformance.md`，README（英中）与 `docs/subsystems/a2a.md` 的协议面表述已更新。

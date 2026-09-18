@@ -20,6 +20,7 @@ export interface PiProviderModelConfig {
   readonly name: string
   readonly reasoning?: boolean
   readonly contextWindow: number
+  /** Output-token cap this model advertises to the Pi runtime. */
   readonly maxTokens: number
 }
 

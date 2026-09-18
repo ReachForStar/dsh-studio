@@ -127,12 +127,19 @@ export class PiEventTranslator {
 
   constructor(private readonly session: Session) {}
 
-  /** Remember the dsh request source for the next translated user message. */
+  /**
+   * Remember the dsh request source for the next translated user message.
+   * @param source - the dsh request source (with rpcId) of the in-flight prompt.
+   */
   setPendingUserSource(source: UserMessage['source']): void {
     this.pendingUserSource = source
   }
 
-  /** Subscribe to a Pi session and route every event into this dsh Session. */
+  /**
+   * Subscribe to a Pi session and route every event into this dsh Session.
+   * @param piSession - the Pi session whose event stream is translated.
+   * @returns an unsubscribe function removing this translator's listener.
+   */
   subscribe(piSession: { subscribe(listener: (event: unknown) => void): () => void }): () => void {
     return piSession.subscribe((event) => { this.handle(event as PiEvent) })
   }
@@ -160,7 +167,10 @@ export class PiEventTranslator {
     this.onAppended?.()
   }
 
-  /** Optional post-append hook; PiLoopAgent drains each appended batch to disk. */
+  /**
+   * Optional post-append hook; PiLoopAgent drains each appended batch to disk.
+   * @param onAppended - the hook invoked after every handled event.
+   */
   setOnAppended(onAppended: () => void): void {
     this.onAppended = onAppended
   }

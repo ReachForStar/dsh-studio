@@ -29,6 +29,7 @@ import { adaptPiTool } from './pi-tool-adapter.ts'
 
 /** The Pi AgentSession surface this driver needs; narrow so tests can supply a stub. */
 export interface PiAgentSessionLike {
+  /** Whether the Pi session currently has a turn in flight. */
   readonly isStreaming: boolean
   prompt(text: string): Promise<void>
   steer(text: string): Promise<void>
@@ -79,6 +80,7 @@ export class PiLoopAgent implements Agent {
   readonly options: AgentOptions
   readonly session: Session
   readonly inbox: Inbox
+  /** Lifetime scope owning this driver's registrations; disposed with the agent. */
   readonly scope: Scope
   readonly ctx: Context
 
@@ -197,6 +199,7 @@ export class PiLoopAgent implements Agent {
   /**
    * Register this session's dsh tools as Pi custom tools so a Pi turn can call
    * them through the dsh tool pipeline (stage 4 tool sharing).
+   * @param tools - the dsh tool runtime carrying the session's schemas and implementations.
    */
   registerDshTools(tools: unknown): void {
     const runner = this.piSession.extensionRunner
@@ -217,6 +220,7 @@ export class PiLoopAgent implements Agent {
   /**
    * Register this session's Pi tools into the dsh tool surface (reverse
    * direction of {@link registerDshTools}).
+   * @param tools - the dsh tool runtime receiving the Pi tool definitions.
    */
   registerPiTools(tools: unknown): void {
     const runner = this.piSession.extensionRunner
@@ -279,6 +283,10 @@ export class PiLoopAgent implements Agent {
     })()
   }
 
+  /**
+   * Tear the driver down: dispose its scope and every registration it owns.
+   * @returns a promise resolving when teardown completes.
+   */
   async dispose(): Promise<void> {
     await this.scope.dispose()
   }

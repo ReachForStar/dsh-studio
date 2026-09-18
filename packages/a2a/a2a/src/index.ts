@@ -79,7 +79,10 @@ export class A2AService extends Service {
     }))
   }
 
-  /** Every configured peer name, in configuration order. */
+  /**
+   * Every configured peer name, in configuration order.
+   * @returns the configured peer names.
+   */
   list(): string[] {
     return Object.keys(this.peers)
   }

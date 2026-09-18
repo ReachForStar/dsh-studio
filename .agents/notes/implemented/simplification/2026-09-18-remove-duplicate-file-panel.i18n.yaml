@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-09-18-remove-duplicate-file-panel.md
+2026-09-18-remove-duplicate-file-panel.md: 7bba683ff2d3bc4cbac244501a2277ac19ed5f2e
+2026-09-18-remove-duplicate-file-panel.zh.md: 16aec34a72cfadea6982711712b9e36f956b87d0

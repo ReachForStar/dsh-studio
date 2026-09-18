@@ -1,15 +1,13 @@
 /**
- * ui-polish browser half: four standalone GUI enhancements that need no core
+ * ui-polish browser half: standalone GUI enhancements that need no core
  * package changes —
  *  - whole-app background image (own settings namespace, own body painting,
  *    token-override transparency for the structural surfaces),
  *  - a session stats float with an estimated cost (a composer.dock entry that
  *    pins itself to the viewport's top-right via position:fixed),
- *  - a git panel as a conversation.view tab (right after the trajectory tab,
- *    talking to /git/* routes registered by the node half),
- *  - a floating file-mutation diff panel (a composer.dock entry that watches
- *    the session for newly settled write/edit calls and draws the applied
- *    change at the right edge).
+ *  - automatic-compaction threshold and model rate-card settings rows,
+ *  - Git, Excalidraw, and SSH/SFTP conversation.view tabs, talking to the
+ *    node half's /git and /scene routes and the ssh Remote surface.
  */
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
@@ -38,7 +36,6 @@ import { StatsFloat } from './StatsFloat.tsx'
 import { GitPanel } from './GitPanel.tsx'
 import { ExcalidrawPanel } from './ExcalidrawPanel.tsx'
 import { SshPanel, type SshPanelInjected, type SshPanelRpcResult } from './SshPanel.tsx'
-import { MutationDiffPanel } from './MutationDiffPanel.tsx'
 import { en, zh, type PolishKey } from './locales.ts'
 
 export type { BackgroundRowComponentProps, BackgroundRowInjected } from './BackgroundRow.tsx'
@@ -211,8 +208,6 @@ export function apply(ctx: ClientContext): void {
     }, StatsFloat)
   })
 
-  // File panel: a conversation.view tab (between the trajectory and Git tabs)
-  // listing every file a settled tool call operated on, with in-place editing.
   const sshRpc = async (
     method: string,
     payload: Record<string, unknown>,
@@ -264,15 +259,8 @@ export function apply(ctx: ClientContext): void {
   }
 
   ctx.slots.inject('conversation.view', function* () {
-    yield ctx.slots.register({
-      name: 'conversation.view',
-      id: 'files',
-      order: 15,
-      locale: NS,
-      label: () => t('diff.tab'),
-    }, MutationDiffPanel)
     // Git panel as a conversation view tab: appears in the top tab ring right
-    // after the file tab, rendered only when selected. Collapsed state and
+    // after the trajectory tab, rendered only when selected. Collapsed state and
     // fetch caching live in the component.
     yield ctx.slots.register({
       name: 'conversation.view',

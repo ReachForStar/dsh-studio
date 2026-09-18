@@ -109,3 +109,10 @@
 - 客户端：`MutationDiffPanel` 每行加删除按钮 → `Modal` 确认（目录文案点明内容一并删除）→ 删除后重读根与所有已展开层级，并清空被删条目（或其祖先）对应的编辑区选择；中英文案入 locale 字典；新增 `rowDelete`/`deleteDialog` 样式。
 - 边界：`/git/*` 位于 `ctx.fs` 接缝与沙箱策略之外（守卫是工作区相对路径）；删除永久不可撤销，已写入包 README 已知限制。
 - 验证：宿主 5 组新用例（删除/非空目录拒绝/递归/根拒绝/逃逸）；客户端 3 个新用例（确认拦截、取消不发请求、目录带 recursive）；手工在 `pnpm dsh web` 的文件面板删除 `tmp/` 下临时文件，列表与磁盘同步消失。新增实体页 [fork Web 面板](entities/fork-web-panels.md) 与 Agent Note。
+
+## [2026-09-18] refactor | 移除与右侧栏重复的「文件」标签页
+
+- 现象：顶部「文件」标签页（`MutationDiffPanel`）与内置右侧栏「工作区文件」树（`ui-sidebar-files`）功能重复——同一批文件两棵目录树、两个编辑器。按用户要求保留右侧栏、移除顶部标签页。
+- 代码：删除 `MutationDiffPanel.tsx` / `.module.css` 与 `conversation.view` 的 `files` 注册（slot 只剩 `git`/`excalidraw`/`ssh`）、`diff.*` 全部文案；宿主删掉只服务于它的 `POST /git/list` 与同日加入的 `POST /git/delete`（`/git/read`、`/git/write` 保留，Git 面板右列编辑器在用）。
+- 连带：同日加入的「永久删除」能力随面板消失（只能从该面板触达），若要保留需从 `ctx.fs` 接缝补 remove（右侧栏树与 `workspaceFiles` Remote 都没有）；`verify-client-ui-i18n` 红项由 8 降到 7；`verify-client-catalog` 跑 `pnpm run gen-client-catalog` 后清偿（从 office 批起就过期）。
+- 文档：包 README 双语删掉文件面板条目与永久删除限制、路由表与 slot 表同步；删除 `feature/2026-09-18-file-panel-delete` Agent Note 三件套，新增 `simplification/2026-09-18-remove-duplicate-file-panel`（含备选方案与延期项）；重写实体页 [fork Web 面板](entities/fork-web-panels.md)、更新 index 与 [门禁红项清单](queries/fork-gate-debt.md)。

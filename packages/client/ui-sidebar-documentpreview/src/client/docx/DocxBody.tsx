@@ -12,9 +12,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DocumentPreviewProps } from '../document/contract.ts'
 import { parseDocx } from '../office/docx.ts'
-import { OfficeBody } from '../office/OfficeBody.tsx'
+import { OfficeEditor } from '../office/OfficeEditor.tsx'
 import type {} from './locales.ts'
-import css from '../office/OfficeBody.module.css'
+import css from '../office/OfficeEditor.module.css'
 
 /** Standard document props plus the Word renderer's dictionary. */
 export type DocxBodyProps = DocumentPreviewProps & PropsLocale<'sidebarDocx'>
@@ -62,7 +62,7 @@ export function DocxBody({ content, t, saveBytes, saving, saveFailure }: DocxBod
   if (view.kind === 'failed') return <p className={css.error} role="alert">{t('failed')}</p>
 
   return (
-    <OfficeBody
+    <OfficeEditor
       blocks={drafts.map((text, index) => ({ heading: t('paragraph', { index: index + 1 }), texts: [text] }))}
       editing={editing}
       onEditing={setEditing}

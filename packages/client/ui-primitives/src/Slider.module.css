@@ -33,6 +33,7 @@
   margin-top: -4.5px;
   border: 0;
   border-radius: 50%;
+  corner-shape: round;
   background: var(--dsw-alias-scrollbar-hover-l1);
 }
 
@@ -47,5 +48,6 @@
   height: 12px;
   border: 0;
   border-radius: 50%;
+  corner-shape: round;
   background: var(--dsw-alias-scrollbar-hover-l1);
 }

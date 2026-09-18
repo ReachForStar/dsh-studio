@@ -18,6 +18,7 @@ import type {
   SubprocessOutcome,
   SubprocessOutputMode,
   SubprocessSpawnSpec,
+  SubprocessTerminalActivity,
   SubprocessTerminalEnvironment,
   SubprocessTerminalHandle,
   SubprocessTerminalSignal,
@@ -501,6 +502,9 @@ export class SftpSubprocessRuntime extends SubprocessRuntime {
     })
     let closing: Promise<void> | undefined
     let callerTerminated = false
+    // Activity revision is scoped to this handle; it moves on input, shell transitions, and changed foreground observations.
+    let activityKey: string | undefined
+    let activityRevision = 0
     const done = new Promise<SubprocessOutcome>((resolve, reject) => {
       session.onExit((info) => {
         if (outputEnded) return
@@ -526,6 +530,9 @@ export class SftpSubprocessRuntime extends SubprocessRuntime {
       // oxlint-disable-next-line typescript/require-await -- Preserve promise rejection semantics at the async provider contract.
       write: async (data: string) => {
         session.write(Buffer.from(data, 'utf8'))
+        // Input changed the remote shell's state without any observation yet.
+        activityKey = undefined
+        activityRevision += 1
       },
       // oxlint-disable-next-line typescript/require-await -- Preserve promise rejection semantics at the async provider contract.
       resize: async (cols: number, rows: number) => {
@@ -538,6 +545,34 @@ export class SftpSubprocessRuntime extends SubprocessRuntime {
         const processGroupId = Number.parseInt(processGroupIdText, 10)
         const waitingMatch = /waiting=(\d+)/u.exec(result.stdout)
         return { processGroupId, inputWaiting: waitingMatch?.[1] === '1' }
+      },
+      // The remote transport observes activity through the same /proc probe as
+      // inspectForeground: a shell group blocked on tty input is at its prompt
+      // (idle); anything else resolvable is busy; unresolvable is unknown.
+      inspectActivity: async (): Promise<SubprocessTerminalActivity> => {
+        if (outputEnded) {
+          if (activityKey !== 'idle') { activityKey = 'idle'; activityRevision += 1 }
+          return { state: 'idle', revision: activityRevision }
+        }
+        let state: SubprocessTerminalActivity['state']
+        let key: string
+        try {
+          const result = await this.exec(this.foregroundProbe(pid))
+          const processGroupIdText = /^tpgid=(\d+)/u.exec(result.stdout)?.[1]
+          if (processGroupIdText === undefined) {
+            state = 'unknown'
+            key = 'unknown'
+          } else {
+            state = /waiting=(\d+)/u.exec(result.stdout)?.[1] === '1' ? 'idle' : 'busy'
+            key = `${state}:${processGroupIdText}`
+          }
+        } catch (_incompleteRemoteObservation) {
+          // The probe exec is a separate session; its failure says nothing about the terminal.
+          state = 'unknown'
+          key = 'unknown'
+        }
+        if (key !== activityKey) { activityKey = key; activityRevision += 1 }
+        return { state, revision: activityRevision }
       },
       signalForeground: async (signalName: SubprocessTerminalSignal) => {
         const foreground = await handle.inspectForeground()

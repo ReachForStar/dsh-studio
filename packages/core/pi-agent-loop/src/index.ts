@@ -47,9 +47,13 @@ interface PiPersistence {
 
 /** Factory for opening one Pi session; injectable for tests. */
 export type OpenPiSession = (options: {
+  /** Working directory the Pi session's file tools resolve against. */
   cwd: string
+  /** Pi provider id the session's model route selects. */
   provider?: string
+  /** Model id within the selected provider. */
   modelId?: string
+  /** Gateways registered into the Pi runtime before model selection. */
   providers?: readonly PiProviderConfig[]
 }) => Promise<OpenedPiSession>
 
@@ -64,7 +68,12 @@ export interface PiLoopConfig {
    * `agentOptions.provider/model` (whose provider names dsh adapters, not Pi
    * providers); omit to fall back to dsh's selection.
    */
-  model?: { readonly provider: string; readonly modelId: string }
+  model?: {
+    /** Pi provider id of the fixed route. */
+    readonly provider: string
+    /** Model id within that provider. */
+    readonly modelId: string
+  }
 }
 
 /**

@@ -405,6 +405,7 @@ export async function discoverModels(
         name: model.name,
         contextWindow: model.contextWindow,
         maxTokens: model.maxTokens,
+        inputModalities: [...model.input],
       }))
     }
   }

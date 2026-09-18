@@ -1,106 +1,95 @@
-/**
- * The editing chrome both office renderers share: a preview of the parsed
- * blocks, an edit mode with one field per text leaf, and the save status.
- *
- * The parsers own what a document *is*; this component owns only how it is
- * shown and edited, so Word and PowerPoint differ by their block shape and
- * their dictionary, not by a second copy of the save plumbing.
- */
-import type { ReactNode } from 'react'
-import clsx from 'clsx'
+/** Office owns source loading, conversion failures, and font notices around the shared PDF view. */
+import { useEffect, type ReactNode } from 'react'
+import type { PropsLocale, PropsRenderSlots, PropsStore, SlotHookFactory } from '@deepseek-ai/dsh-client-ui-slots'
+import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
+import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
+import { Button, FileTypeIcon, classifyFileType } from '@deepseek-ai/dsh-client-ui-primitives'
+import { pathPartsOf } from '@deepseek-ai/dsh-util-workspace-path'
+import type { UseSidebarRightTabInfo } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type { DocumentBodyOwner, DocumentPreviewProps } from '../document/contract.ts'
+import { hostFileOf } from '../rpc.ts'
+import { LoadingIndicator } from '../LoadingIndicator.tsx'
+import type { ReadOfficeDocument } from './cache.ts'
+import type { OfficeStore } from './store.ts'
+import { FontNotice } from './FontNotice.tsx'
+import common from '../TextPreview.module.css'
 import css from './OfficeBody.module.css'
 
-/** One displayed block: a heading and its editable texts, in document order. */
-export interface OfficeBlock {
-  /** What the block is, shown above its texts (a paragraph index, a slide path). */
-  readonly heading: string
-  /** The block's text leaves. */
-  readonly texts: readonly string[]
-}
-
-/** Copy the chrome needs; each format supplies its own namespace's strings. */
-export interface OfficeCopy {
-  readonly edit: string
-  readonly stopEdit: string
-  readonly save: string
-  readonly saving: string
-  readonly unsaved: string
-  readonly failed: string
-}
-
-/** Props of the shared editing chrome. */
-export interface OfficeBodyProps {
-  readonly blocks: readonly OfficeBlock[]
-  /** Whether the document is being edited; the parent owns the mode. */
-  readonly editing: boolean
-  readonly onEditing: (next: boolean) => void
-  /** Replace every block's text, one array of texts per block. */
-  readonly onDraft: (blocks: readonly (readonly string[])[]) => void
-  readonly dirty: boolean
-  /** A write is in flight, owned by the pane that carries the tab's version. */
-  readonly saving: boolean
-  /** Failure line for the last refused write, already localized by the pane. */
-  readonly failure: string | undefined
-  readonly onSave: () => void
-  readonly copy: OfficeCopy
-}
-
-/** Render one document: read-only text, or the editable fields, plus the toolbar. */
-export function OfficeBody({
-  blocks, editing, onEditing, onDraft, dirty, saving, failure, onSave, copy,
-}: OfficeBodyProps): ReactNode {
-  const status = failure ?? (saving ? copy.saving : dirty ? copy.unsaved : undefined)
-  const set = (block: number, text: number, value: string): void => {
-    const next = blocks.map((entry, blockIndex) => blockIndex === block
-      ? entry.texts.map((line, textIndex) => textIndex === text ? value : line)
-      : entry.texts)
-    onDraft(next)
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotMap {
+    /** PDF presentation supplied with Office-owned converted bytes. */
+    'sidebar.right.tab.document.office.pdf': {
+      kind: 'keyed'
+      scope: 'session'
+      owner: DocumentBodyOwner
+      hookContext: UseSidebarRightTabInfo
+      inject: { hooks: { tabInfo: SlotHookFactory<'sidebar.right.tab.document', UseSidebarRightTabInfo> } }
+    }
   }
-  return (
-    <div className={css.office} data-office-preview data-office-editing={editing ? '' : undefined}>
-      <div className={css.toolbar}>
-        <button
-          type="button"
-          className={clsx(css.tool, editing && css.toolActive)}
-          aria-pressed={editing}
-          data-office-tool={editing ? 'edit-stop' : 'edit'}
-          onClick={() => { onEditing(!editing) }}
-        >
-          {editing ? copy.stopEdit : copy.edit}
-        </button>
-        {editing && (
-          <button
-            type="button"
-            className={css.tool}
-            disabled={!dirty || saving}
-            data-office-save
-            onClick={onSave}
-          >
-            {saving ? copy.saving : copy.save}
-          </button>
-        )}
-        {status !== undefined && <span className={css.status} data-office-status>{status}</span>}
-      </div>
-      {blocks.map((block, blockIndex) => (
-        <section key={block.heading} className={css.block} data-office-block={blockIndex}>
-          <h3 className={css.heading}>{block.heading}</h3>
-          {editing
-            ? block.texts.map((line, textIndex) => (
-              <textarea
-                key={textIndex}
-                className={css.field}
-                value={line}
-                spellCheck={false}
-                aria-label={`${block.heading} ${String(textIndex + 1)}`}
-                data-office-field={`${String(blockIndex)}-${String(textIndex)}`}
-                onChange={(event) => { set(blockIndex, textIndex, event.target.value) }}
-              />
-            ))
-            : block.texts.map((line, textIndex) => (
-              <p key={textIndex} className={css.line} data-office-line={`${String(blockIndex)}-${String(textIndex)}`}>{line}</p>
-            ))}
-        </section>
-      ))}
+}
+
+/** Office loading callbacks supplied by the registration's services. */
+export interface OfficeBodyInjected {
+  readonly read: ReadOfficeDocument
+  /** @param failure - declared file-read failure or conversion exception message. @returns localized display text. */
+  readonly describeFailure: (failure: RemoteFailure | { readonly message: string }) => string
+  /** @param tab - owning tab. @param signal - tab lifetime, including hidden bodies. */
+  readonly retainTab: (tab: TabId, signal: AbortSignal) => void
+}
+
+/** Office body inputs and its private PDF child. */
+export type OfficeBodyProps = DocumentPreviewProps & PropsStore<OfficeStore> & OfficeBodyInjected
+  & PropsLocale<'sidebarOffice'> & PropsRenderSlots<'sidebar.right.tab.document.office.pdf'>
+
+/**
+ * Load one Office revision and preserve its result while its tab remains open.
+ * @param props - renderer loading request, tab state, conversion callbacks, and PDF slot.
+ * @returns conversion status or the font notice and PDF scrollport.
+ */
+export function OfficeBody(props: OfficeBodyProps): ReactNode {
+  const { tab } = props.useTabInfo()
+  const { actions, read, retainTab, describeFailure, resourceAddress, t } = props
+  const request = props.content.kind === 'renderer' ? props.content : undefined
+  const revision = request?.revision
+  const held = props.useStore(state => state.byTab[tab.id])
+  const view = held?.revision === revision ? held : undefined
+  const settled = view?.file !== undefined || view?.failure !== undefined
+  useEffect(() => { retainTab(tab.id, tab.signal) }, [retainTab, tab.id, tab.signal])
+  useEffect(() => {
+    if (revision === undefined || settled || tab.signal.aborted) return
+    const controller = new AbortController()
+    const signal = AbortSignal.any([controller.signal, tab.signal])
+    actions.loading(tab.id, revision)
+    void read(hostFileOf(resourceAddress), signal).then((result) => {
+      if (signal.aborted) return
+      if (result.ok) actions.complete(tab.id, revision, result.value)
+      else actions.failed(tab.id, revision, { code: result.error.code, message: describeFailure(result.error) })
+    }, (error: unknown) => {
+      if (!signal.aborted) actions.failed(tab.id, revision, {
+        code: 'gateway/internal', message: describeFailure({ message: error instanceof Error ? error.message : String(error) }),
+      })
+    })
+    return () => { controller.abort() }
+  }, [revision, resourceAddress, tab.id, tab.signal, read, actions, describeFailure, settled])
+  const file = view?.file
+  useEffect(() => { if (file !== undefined) request?.loaded(file.version) }, [file, request?.loaded])
+  if (request === undefined) return null
+  if (view?.failure !== undefined) {
+    const { name } = pathPartsOf(resourceAddress)
+    return <div className={common.empty} data-textpreview-failed={view.failure.code}>
+      <FileTypeIcon kind={classifyFileType(name)} size={36} />
+      <p className={common.emptyLine}>{view.failure.message}</p>
+      <Button size="sm" onClick={request.reload}>{t('retry')}</Button>
     </div>
-  )
+  }
+  if (file === undefined) return <LoadingIndicator className={common.statusLine} label={t('loading')} />
+  return <div className={css.body}>
+    <FontNotice resourceAddress={resourceAddress} sourceVersion={file.version} fonts={file.missingFonts} t={t} />
+    <div className={css.scrollport} ref={props.scrollportRef}>
+      {props.renderSlot('sidebar.right.tab.document.office.pdf', {
+        resourceAddress, content: { kind: 'bytes', data: file.data }, wrap: props.wrap, scrollportRef: props.scrollportRef,
+        saveBytes: props.saveBytes, saving: props.saving, saveFailure: props.saveFailure,
+      }, { entryKey: '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/office', hookContext: props.useTabInfo })}
+    </div>
+  </div>
 }

@@ -10,6 +10,9 @@ export type TaskState =
   | 'TASK_STATE_REJECTED'
   | 'TASK_STATE_AUTH_REQUIRED'
 
+/** The protocol version this implementation speaks, as `Major.Minor`. */
+export const A2A_PROTOCOL_VERSION = '1.0'
+
 /** Message author. */
 export type Role = 'ROLE_USER' | 'ROLE_AGENT'
 

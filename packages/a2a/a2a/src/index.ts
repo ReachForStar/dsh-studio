@@ -9,10 +9,10 @@ export { A2AClient } from './client.ts'
 export type { A2AClientMessage, A2AClientOptions, A2ATaskPage } from './client.ts'
 export { createA2ARequestHandler, createA2AServer } from './server.ts'
 export type { A2AExecutor, A2AExecutorContext, A2ARequestHandlerOptions, A2AServer, A2AServerOptions, A2AStreamSink } from './server.ts'
-export { isTerminal, textOf } from './schema.ts'
+export { A2A_PROTOCOL_VERSION, isTerminal, textOf } from './schema.ts'
 export type * from './schema.ts'
 export { TaskStore } from './task-store.ts'
-export type { TaskStoreOptions } from './task-store.ts'
+export type { A2ATaskRow, TaskCursor, TaskStoreOptions } from './task-store.ts'
 export type {
   A2APeerCall,
   A2APeerConfig,

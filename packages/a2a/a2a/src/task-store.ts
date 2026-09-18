@@ -14,6 +14,17 @@ export interface TaskStoreOptions {
   maxHistory?: number
 }
 
+/** A task as `ListTasks` reports it: artifacts only when the caller asked for them. */
+export type A2ATaskRow = Omit<A2ATask, 'artifacts'> & { artifacts?: A2AArtifact[] }
+
+/** The position of one row in `TaskStore.list` order, as a page cursor. */
+export interface TaskCursor {
+  /** The row's status timestamp. */
+  timestamp: string
+  /** The row's task id, which also breaks timestamp ties. */
+  id: string
+}
+
 /** The task table one A2A server works against. */
 export class TaskStore {
   private readonly tasks = new Map<string, A2ATask>()
@@ -63,20 +74,33 @@ export class TaskStore {
   }
 
   /**
-   * Read tasks, newest first as stored, without artifact content unless asked.
+   * Read tasks, most recently updated first, without artifact content unless asked.
    * @param filter - optional conversation and state filter.
-   * @param pageSize - rows to return, clamped to 1..100.
+   * @param pageSize - rows to return; values under 1 read one row.
    * @param includeArtifacts - whether to keep artifact content in the rows.
-   * @returns the selected rows.
+   * @param after - cursor reading the page after the row it names; a row the
+   *   table no longer holds ends pagination with an empty page.
+   * @returns the selected rows, newest status timestamp first.
    */
   list(
     filter: { contextId?: string; status?: TaskState } = {},
     pageSize: number = 50,
     includeArtifacts: boolean = false,
-  ): A2ATask[] {
-    return this.selected(filter)
-      .slice(0, Math.min(Math.max(pageSize, 1), 100))
-      .map(task => includeArtifacts ? task : { ...task, artifacts: [] })
+    after: TaskCursor | undefined = undefined,
+  ): A2ATaskRow[] {
+    const rows = this.selected(filter)
+    let start = 0
+    if (after !== undefined) {
+      const index = rows.findIndex(task => task.id === after.id && task.status.timestamp === after.timestamp)
+      if (index < 0) return []
+      start = index + 1
+    }
+    return rows.slice(start, start + Math.max(pageSize, 1))
+      .map((task) => {
+        if (includeArtifacts) return task
+        const { artifacts: _artifacts, ...rest } = task
+        return rest as A2ATaskRow
+      })
   }
 
   /**
@@ -89,11 +113,11 @@ export class TaskStore {
   }
 
   /**
-   * Every stored task, insertion order.
-   * @returns every stored task, in insertion order.
+   * Every stored task, most recently updated first.
+   * @returns every stored task, by descending status timestamp.
    */
   all(): A2ATask[] {
-    return [...this.tasks.values()]
+    return this.selected({})
   }
 
   /**
@@ -146,12 +170,16 @@ export class TaskStore {
     else artifact.parts.push({ text })
   }
 
-  /** Tasks matching a filter, in insertion order. */
+  /** Tasks matching a filter, by descending status timestamp with id breaking ties. */
   private selected(filter: { contextId?: string; status?: TaskState }): A2ATask[] {
     let rows = [...this.tasks.values()]
     if (filter.contextId !== undefined) rows = rows.filter(task => task.contextId === filter.contextId)
     if (filter.status !== undefined) rows = rows.filter(task => task.status.state === filter.status)
-    return rows
+    // ISO 8601 UTC strings compare chronologically as plain strings.
+    return rows.sort((a, b) =>
+      a.status.timestamp === b.status.timestamp
+        ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+        : (a.status.timestamp < b.status.timestamp ? 1 : -1))
   }
 
   /** Drop the oldest terminal tasks once the table is over its bound. */

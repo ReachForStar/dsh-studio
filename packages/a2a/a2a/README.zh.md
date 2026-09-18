@@ -71,7 +71,7 @@ kind: "package-reference"
 
 ### 协议面
 
-提供 `SendMessage`、`SendStreamingMessage`、`GetTask`、`ListTasks`、`CancelTask`、`SubscribeToTask` 与 `GetExtendedAgentCard`；四个推送通知方法明确回 `-32004 UNSUPPORTED_OPERATION`，而不是假装支持。请求体上限 1 MiB；配置了 `apiKey` 时，缺少匹配 `X-Api-Key` 的请求以 `-32000` 拒绝。agent card 只声明 JSONRPC 接口。
+提供 `SendMessage`、`SendStreamingMessage`、`GetTask`、`ListTasks`、`CancelTask`、`SubscribeToTask` 与 `GetExtendedAgentCard`；四个推送通知方法回 `-32003 PUSH_NOTIFICATION_NOT_SUPPORTED`，不假装支持。发往终态任务的消息、订阅终态任务分别以 `-32004` 拒绝，取消终态任务以 `-32002` 拒绝；卡片未声明 `extendedAgentCard`，`GetExtendedAgentCard` 回 `-32004`。请求必须带 `A2A-Version: 1.0`——缺省或空值按规范视为 0.3，本端以 `-32009` 拒绝。请求体上限 1 MiB；配置了 `apiKey` 时，缺少匹配 `X-Api-Key` 的请求以 `-32000` 拒绝。agent card 只声明 JSONRPC 接口。
 
 ### 任务标识
 
@@ -88,7 +88,9 @@ kind: "package-reference"
 ## 已知限制与延期工作
 
 - **只有 JSONRPC**：不提供 gRPC 与 HTTP+JSON 绑定，agent card 也如此声明。
-- **没有推送通知**：四个配置方法返回 `-32004`；需要推送的调用方得轮询 `GetTask` 或挂住 `SubscribeToTask` 流。
+- **没有推送通知**：四个配置方法返回 `-32003`；需要推送的调用方得轮询 `GetTask` 或挂住 `SubscribeToTask` 流。
+- **没有扩展 agent card**：卡片未声明 `extendedAgentCard`，`GetExtendedAgentCard` 回 `-32004`。
+- **严格版本**：只服务 `A2A-Version: 1.0`；缺省或空值按规范视为 0.3，本端以 `-32009` 拒绝。
 - **任务只活在进程内**：任务表至多 500 条，淘汰最旧的终态任务，重启即忘；持久历史在会话日志。
 - **客户端只重试一次**：首帧之前被切断的流重试一次，其后的切断直接以错误交给调用方，不做断点续流。
 

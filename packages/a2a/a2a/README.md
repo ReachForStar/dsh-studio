@@ -70,7 +70,7 @@ The module exports `name` / `inject` / `apply` and **no default export**: the Lo
 
 ### Protocol surface
 
-`SendMessage`, `SendStreamingMessage`, `GetTask`, `ListTasks`, `CancelTask`, `SubscribeToTask`, and `GetExtendedAgentCard` are served; the four push-notification methods answer `-32004 UNSUPPORTED_OPERATION` instead of pretending. Bodies are capped at 1 MiB, and a configured `apiKey` rejects a request without a matching `X-Api-Key` with `-32000`. The agent card advertises the JSONRPC interface only.
+`SendMessage`, `SendStreamingMessage`, `GetTask`, `ListTasks`, `CancelTask`, `SubscribeToTask`, and `GetExtendedAgentCard` are served; the four push-notification methods answer `-32003 PUSH_NOTIFICATION_NOT_SUPPORTED` instead of pretending. Messages addressed to terminal tasks and subscriptions to terminal tasks are refused with `-32004`, cancellation of a terminal task with `-32002`, and `GetExtendedAgentCard` answers `-32004` because the card declares no `extendedAgentCard`. Requests must carry `A2A-Version: 1.0` — an absent or empty header is 0.3 as the protocol assumes, and this server answers it with `-32009`. Bodies are capped at 1 MiB, and a configured `apiKey` rejects a request without a matching `X-Api-Key` with `-32000`. The agent card advertises the JSONRPC interface only.
 
 ### Task identity
 
@@ -85,7 +85,9 @@ A task's `contextId` is the session it runs in, so a peer that reuses an earlier
 ## Known Limitations and Deferred Work
 
 - **JSONRPC only.** gRPC and HTTP+JSON bindings are not served, and the agent card says as much.
-- **No push notifications.** The four configuration methods answer `-32004`; a caller needing push polls `GetTask` or holds a `SubscribeToTask` stream.
+- **No push notifications.** The four configuration methods answer `-32003`; a caller needing push polls `GetTask` or holds a `SubscribeToTask` stream.
+- **No extended agent card.** The card declares no `extendedAgentCard`, so `GetExtendedAgentCard` answers `-32004`.
+- **Strict versioning.** Only `A2A-Version: 1.0` is served; an absent or empty header is 0.3 as the protocol assumes, and this server answers it with `-32009`.
 - **Tasks are process-local.** The store keeps at most 500 tasks, evicting the oldest terminal ones, so a restart forgets them; durable history is the session log.
 - **One retry on the client.** A stream cut before its first frame is retried once; later cuts surface as errors instead of resuming mid-stream.
 

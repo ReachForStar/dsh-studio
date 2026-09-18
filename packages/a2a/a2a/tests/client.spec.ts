@@ -30,11 +30,19 @@ async function rawServer(handler: (req: http.IncomingMessage, res: http.ServerRe
   return `http://127.0.0.1:${String((server.address() as AddressInfo).port)}/`
 }
 
-async function peerServer(executor: A2AExecutor): Promise<string> {
+async function peerServer(executor: A2AExecutor): Promise<{ url: string; server: ReturnType<typeof createA2AServer> }> {
   const server = createA2AServer({ card: CARD, executor, port: 0 })
   await server.ready
   cleanup.push(() => server.close())
-  return `http://127.0.0.1:${String((server.server.address() as AddressInfo).port)}/`
+  return { url: `http://127.0.0.1:${String((server.server.address() as AddressInfo).port)}/`, server }
+}
+
+async function waitFor(condition: () => boolean, timeoutMs = 2000): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error('condition was not reached in time')
+    await new Promise(resolve => setTimeout(resolve, 5))
+  }
 }
 
 const echo: A2AExecutor = {
@@ -45,7 +53,7 @@ const echo: A2AExecutor = {
 
 describe('A2AClient 基本调用', () => {
   it('读取卡片、发送消息并取回任务工件', async () => {
-    const client = new A2AClient({ url: await peerServer(echo) })
+    const client = new A2AClient({ url: (await peerServer(echo)).url })
     expect((await client.getCard()).name).toBe('peer')
     const task = await client.sendMessage({ text: 'hi' })
     expect(task.status.state).toBe('TASK_STATE_COMPLETED')
@@ -55,8 +63,7 @@ describe('A2AClient 基本调用', () => {
     const listed = await client.listTasks({ contextId: task.contextId })
     expect(listed.totalSize).toBe(1)
     expect(listed.tasks).toHaveLength(1)
-    const canceled = await client.cancelTask(task.id)
-    expect(canceled.status.state).toBe('TASK_STATE_COMPLETED')
+    await expect(client.cancelTask(task.id)).rejects.toThrow(/code -32002/)
   })
 
   it('支持自定义卡片路径并把非 2xx 报成错误', async () => {
@@ -68,10 +75,10 @@ describe('A2AClient 基本调用', () => {
     await expect(client.getCard({ path: '/custom.json' })).rejects.toThrow(/agent card request failed with HTTP 404/)
   })
 
-  it('把 apiKey 作为 X-Api-Key 发出，并支持自定义卡片路径', async () => {
+  it('把 apiKey 作为 X-Api-Key 发出，带上 A2A-Version 头，并支持自定义卡片路径', async () => {
     const seen: string[] = []
     const url = await rawServer((req, res) => {
-      seen.push(`${req.url ?? ''} ${String(req.headers['x-api-key'] ?? '')}`)
+      seen.push(`${req.url ?? ''} ${String(req.headers['x-api-key'] ?? '')} ${String(req.headers['a2a-version'] ?? '')}`)
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(req.url === '/card.json'
         ? JSON.stringify(CARD)
@@ -81,7 +88,7 @@ describe('A2AClient 基本调用', () => {
     expect((await client.getCard({ path: '/card.json' })).name).toBe('peer')
     await client.sendMessage({ text: 'hi' })
     expect(seen[0]?.startsWith('/card.json')).toBe(true)
-    expect(seen[1]).toBe('/ secret')
+    expect(seen[1]).toBe('/ secret 1.0')
   })
 
   it('对端只回 message 时报错而不是当成空任务', async () => {
@@ -103,12 +110,12 @@ describe('A2AClient 基本调用', () => {
   })
 
   it('调用方的取消信号会中断等待', async () => {
-    const url = await peerServer({
+    const url = (await peerServer({
       onMessage: async (ctx) => {
         await new Promise(resolve => setTimeout(resolve, 300))
         ctx.sink.appendArtifact('reply', 'reply', 'late', true)
       },
-    })
+    })).url
     const client = new A2AClient({ url })
     const controller = new AbortController()
     const pending = client.sendMessage({ text: 'hi' }, controller.signal)
@@ -117,12 +124,12 @@ describe('A2AClient 基本调用', () => {
   })
 
   it('超时预算会中断等待', async () => {
-    const url = await peerServer({
+    const url = (await peerServer({
       onMessage: async (ctx) => {
         await new Promise(resolve => setTimeout(resolve, 200))
         ctx.sink.appendArtifact('reply', 'reply', 'late', true)
       },
-    })
+    })).url
     const client = new A2AClient({ url, timeoutMs: 20 })
     await expect(client.sendMessage({ text: 'hi' })).rejects.toThrow()
   })
@@ -131,13 +138,13 @@ describe('A2AClient 基本调用', () => {
 describe('A2AClient 流式调用', () => {
   it('逐帧产出任务、状态、工件与终态', async () => {
     const client = new A2AClient({
-      url: await peerServer({
+      url: (await peerServer({
         onMessage: async (ctx) => {
           ctx.sink.sendStatus('TASK_STATE_WORKING')
           ctx.sink.appendArtifact('reply', 'reply', 'a')
           ctx.sink.appendArtifact('reply', 'reply', 'b', true)
         },
-      }),
+      })).url,
     })
     const frames: A2AStreamEvent[] = []
     for await (const event of client.sendMessageStream({ text: 'hi' })) frames.push(event)
@@ -208,20 +215,45 @@ describe('A2AClient 流式调用', () => {
     expect(attempts).toBe(1)
   })
 
-  it('订阅任务会持续产出事件', async () => {
+  it('订阅运行中任务会持续产出事件直到终态', async () => {
+    let release: (() => void) | undefined
+    const { url, server } = await peerServer({
+      onMessage: async (ctx) => {
+        ctx.sink.sendStatus('TASK_STATE_WORKING')
+        await new Promise<void>((resolve) => { release = resolve })
+        ctx.sink.appendArtifact('reply', 'reply', 'late', true)
+      },
+    })
+    const client = new A2AClient({ url })
+    const pending = client.sendMessage({ text: 'hi' })
+    await waitFor(() => server.store.all().length > 0)
+    const task = server.store.all()[0]!
+    // 先拿到首帧再放行执行器：首帧证明服务端已过终态校验并挂上订阅，
+    // 否则任务可能在订阅请求被处理前就结束。
+    const generator = client.subscribeToTask(task.id)
+    const firstFrame = await generator.next()
+    expect(firstFrame.value).toMatchObject({ task: { id: task.id } })
+    release?.()
+    const frames: A2AStreamEvent[] = [firstFrame.value as A2AStreamEvent]
+    for await (const event of generator) frames.push(event)
+    await pending
+    expect(frames.map(frame => Object.keys(frame)[0])).toEqual(['task', 'artifactUpdate', 'statusUpdate'])
+    expect(frames.at(-1)).toMatchObject({ statusUpdate: { status: { state: 'TASK_STATE_COMPLETED' } } })
+  })
+
+  it('订阅已终态任务时把 JSON-RPC 错误转成异常', async () => {
     const client = new A2AClient({
-      url: await peerServer({
+      url: (await peerServer({
         onMessage: async (ctx) => {
           ctx.sink.sendStatus('TASK_STATE_WORKING')
           ctx.sink.appendArtifact('reply', 'reply', 'x', true)
         },
-      }),
+      })).url,
     })
     const task = await client.sendMessage({ text: 'hi' })
-    const frames: A2AStreamEvent[] = []
-    for await (const event of client.subscribeToTask(task.id)) frames.push(event)
-    expect(frames).toHaveLength(1)
-    expect(frames[0]).toMatchObject({ task: { id: task.id } })
+    await expect((async () => {
+      for await (const event of client.subscribeToTask(task.id)) void event
+    })()).rejects.toThrow(/SubscribeToTask failed with code -32004/)
   })
 
   it('订阅失败时把状态码写进错误', async () => {

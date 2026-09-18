@@ -1,4 +1,4 @@
-import type { AgentCard, AgentSkill } from '@reachforstar/dsh-a2a'
+import { A2A_PROTOCOL_VERSION, type AgentCard, type AgentSkill } from '@reachforstar/dsh-a2a'
 
 /** What the card says about this deployment. */
 export interface CardConfig {
@@ -45,7 +45,7 @@ export function buildAgentCard(config: CardConfig): AgentCard {
     supportedInterfaces: [{
       url: config.url,
       protocolBinding: 'JSONRPC',
-      protocolVersion: '1.0',
+      protocolVersion: A2A_PROTOCOL_VERSION,
     }],
     version: config.version,
     ...config.documentationUrl === undefined ? {} : { documentationUrl: config.documentationUrl },

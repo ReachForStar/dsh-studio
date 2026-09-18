@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import http from 'node:http'
-import type { A2AStreamEvent, AgentCard, A2APart, A2ATask, Role, TaskState } from './schema.ts'
-import { isTerminal, textOf } from './schema.ts'
-import { TaskStore } from './task-store.ts'
+import type { A2AStreamEvent, A2AMessage, AgentCard, A2APart, A2ATask, Role, TaskState } from './schema.ts'
+import { A2A_PROTOCOL_VERSION, isTerminal, textOf } from './schema.ts'
+import { TaskStore, type TaskCursor } from './task-store.ts'
 
 /** How one execution reports progress back to the protocol. */
 export interface A2AStreamSink {
@@ -92,7 +92,10 @@ const INVALID_PARAMS = -32602
 const INTERNAL_ERROR = -32603
 const SERVER_ERROR = -32000
 const TASK_NOT_FOUND = -32001
+const TASK_NOT_CANCELABLE = -32002
+const PUSH_NOTIFICATION_NOT_SUPPORTED = -32003
 const UNSUPPORTED_OPERATION = -32004
+const VERSION_NOT_SUPPORTED = -32009
 
 /** How long `SubscribeToTask` waits for a running task before giving up. */
 const SUBSCRIBE_TIMEOUT_MS = 10 * 60 * 1000
@@ -244,6 +247,14 @@ export function createA2ARequestHandler(
     if (message.taskId !== undefined && existing === undefined) {
       throw a2aError(TASK_NOT_FOUND, 'TASK_NOT_FOUND', `Task not found: ${message.taskId}`, { taskId: message.taskId })
     }
+    // Terminal states (completed/failed/canceled/rejected) take no further messages;
+    // input-required and auth-required are interruptions the caller may continue.
+    if (existing !== undefined && isTerminal(existing.status.state)) {
+      throw a2aError(UNSUPPORTED_OPERATION, 'UNSUPPORTED_OPERATION', `Task ${existing.id} is ${existing.status.state} and cannot accept further messages`)
+    }
+    if (existing !== undefined && message.contextId !== undefined && message.contextId !== existing.contextId) {
+      throw a2aError(INVALID_PARAMS, 'INVALID_ARGUMENT', `contextId ${message.contextId} does not match task ${existing.id}`)
+    }
     const task = existing ?? store.create(message.contextId, message.metadata)
     store.pushHistory(task, {
       messageId: randomUUID(),
@@ -330,7 +341,11 @@ export function createA2ARequestHandler(
   }
 
   /** Serve one parsed JSON-RPC request. */
-  async function handleRequest(res: http.ServerResponse, body: string): Promise<void> {
+  async function handleRequest(res: http.ServerResponse, requestedVersion: string, body: string): Promise<void> {
+    if (requestedVersion !== A2A_PROTOCOL_VERSION) {
+      sendError(res, null, a2aError(VERSION_NOT_SUPPORTED, 'FAILED_PRECONDITION', `A2A protocol version ${requestedVersion} is not supported; this server speaks ${A2A_PROTOCOL_VERSION}`))
+      return
+    }
     let rpc: unknown
     try {
       rpc = JSON.parse(body)
@@ -360,7 +375,9 @@ export function createA2ARequestHandler(
           const historyLength = typeof params.historyLength === 'number' ? params.historyLength : undefined
           const result = structuredClone(task)
           if (historyLength !== undefined) {
-            result.history = historyLength <= 0 ? [] : task.history.slice(-historyLength)
+            // Zero means no history at all; the field is omitted rather than emptied.
+            if (historyLength <= 0) delete (result as { history?: A2AMessage[] }).history
+            else result.history = task.history.slice(-historyLength)
           }
           sendResult(res, rpc.id, result)
           return
@@ -371,13 +388,21 @@ export function createA2ARequestHandler(
             ...typeof params.status === 'string' ? { status: params.status as TaskState } : {},
           }
           const pageSize = typeof params.pageSize === 'number' ? Math.min(Math.max(params.pageSize, 1), 100) : 50
-          const offset = typeof params.pageToken === 'string' ? Number.parseInt(params.pageToken, 36) || 0 : 0
+          let cursor: TaskCursor | undefined
+          if (typeof params.pageToken === 'string' && params.pageToken.length > 0) {
+            cursor = decodePageToken(params.pageToken)
+            if (cursor === undefined) throw a2aError(INVALID_PARAMS, 'INVALID_ARGUMENT', 'params.pageToken is not a valid cursor')
+          }
           const totalSize = store.count(filter)
-          const rows = store.list(filter, 100, params.includeArtifacts === true).slice(offset, offset + pageSize)
+          // One extra row past the page detects whether a next page exists.
+          const rows = store.list(filter, pageSize + 1, params.includeArtifacts === true, cursor)
+          const hasMore = rows.length > pageSize
+          const page = hasMore ? rows.slice(0, pageSize) : rows
+          const last = page[page.length - 1]
           sendResult(res, rpc.id, {
-            tasks: rows,
-            nextPageToken: offset + pageSize < totalSize ? (offset + pageSize).toString(36) : '',
-            pageSize: rows.length,
+            tasks: page,
+            nextPageToken: hasMore && last !== undefined ? encodePageToken(last) : '',
+            pageSize: page.length,
             totalSize,
           })
           return
@@ -385,8 +410,7 @@ export function createA2ARequestHandler(
         case 'CancelTask': {
           const task = requireTask(store, params.id)
           if (isTerminal(task.status.state)) {
-            sendResult(res, rpc.id, structuredClone(task))
-            return
+            throw a2aError(TASK_NOT_CANCELABLE, 'TASK_NOT_CANCELABLE', `Task ${task.id} is ${task.status.state} and cannot be canceled`)
           }
           options.executor.onCancel?.({ taskId: task.id, contextId: task.contextId })
           store.setStatus(task, 'TASK_STATE_CANCELED')
@@ -398,13 +422,17 @@ export function createA2ARequestHandler(
           await subscribe(res, params.id)
           return
         case 'GetExtendedAgentCard':
+          // The card does not declare the capability, so the operation is a refusal.
+          if (options.card.capabilities.extendedAgentCard !== true) {
+            throw a2aError(UNSUPPORTED_OPERATION, 'UNSUPPORTED_OPERATION', 'an extended agent card is not configured')
+          }
           sendResult(res, rpc.id, structuredClone(options.card))
           return
         case 'CreateTaskPushNotificationConfig':
         case 'GetTaskPushNotificationConfig':
         case 'ListTaskPushNotificationConfigs':
         case 'DeleteTaskPushNotificationConfig':
-          throw a2aError(UNSUPPORTED_OPERATION, 'UNSUPPORTED_OPERATION', 'push notification configuration is not served')
+          throw a2aError(PUSH_NOTIFICATION_NOT_SUPPORTED, 'PUSH_NOTIFICATION_NOT_SUPPORTED', 'push notification configuration is not served')
         default:
           throw plainError(METHOD_NOT_FOUND, `Method not found: ${rpc.method}`)
       }
@@ -446,6 +474,11 @@ export function createA2ARequestHandler(
   async function subscribe(res: http.ServerResponse, taskId: unknown): Promise<void> {
     if (typeof taskId !== 'string') throw a2aError(INVALID_PARAMS, 'INVALID_ARGUMENT', 'params.id required')
     const task = requireTask(store, taskId)
+    // The refusal must leave before the response headers, so it travels as a
+    // JSON-RPC error instead of an SSE frame.
+    if (isTerminal(task.status.state)) {
+      throw a2aError(UNSUPPORTED_OPERATION, 'UNSUPPORTED_OPERATION', `Task ${task.id} is ${task.status.state} and cannot be subscribed to`)
+    }
     const frames = openEventStream(res)
     frames.send({ task: structuredClone(task) })
     if (isTerminal(task.status.state)) {
@@ -502,6 +535,7 @@ export function createA2ARequestHandler(
       res.end(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: SERVER_ERROR, message: 'unauthorized' } }))
       return
     }
+    const requestedVersion = requestedProtocolVersion(req)
     const chunks: Buffer[] = []
     let size = 0
     let rejected = false
@@ -519,7 +553,7 @@ export function createA2ARequestHandler(
     })
     req.on('end', () => {
       if (rejected) return
-      void handleRequest(res, Buffer.concat(chunks).toString('utf8')).catch((error: unknown) => {
+      void handleRequest(res, requestedVersion, Buffer.concat(chunks).toString('utf8')).catch((error: unknown) => {
         onError('handling an A2A request failed', error)
         if (!res.headersSent) {
           sendError(res, null, plainError(INTERNAL_ERROR, error instanceof Error ? error.message : String(error)))
@@ -537,6 +571,46 @@ function requireTask(store: TaskStore, id: unknown): A2ATask {
     throw a2aError(TASK_NOT_FOUND, 'TASK_NOT_FOUND', `Task not found: ${id}`, { taskId: id })
   }
   return task
+}
+
+/**
+ * The protocol version a request asks for. An absent or empty value is 0.3,
+ * the version the protocol assumes for legacy clients; the request parameter
+ * form the protocol allows takes over when the header is absent.
+ */
+function requestedProtocolVersion(req: http.IncomingMessage): string {
+  const header = req.headers['a2a-version']
+  const fromHeader = Array.isArray(header) ? header[0] : header
+  if (typeof fromHeader === 'string' && fromHeader.length > 0) return majorMinor(fromHeader)
+  try {
+    const fromQuery = new URL(req.url ?? '/', 'http://localhost').searchParams.get('A2A-Version')
+    if (fromQuery !== null && fromQuery.length > 0) return majorMinor(fromQuery)
+  } catch {
+    // A request URL that does not parse cannot carry the parameter; 0.3 stays assumed.
+  }
+  return '0.3'
+}
+
+/** Reduce a version string to the `Major.Minor` elements the protocol negotiates. */
+function majorMinor(version: string): string {
+  const parts = version.trim().split('.')
+  return parts.length >= 2 ? `${parts[0]}.${parts[1]}` : version.trim()
+}
+
+/** Encode one row as the `ListTasks` page token for the next page. */
+function encodePageToken(row: { id: string; status: { timestamp: string } }): string {
+  return Buffer.from(JSON.stringify({ t: row.status.timestamp, i: row.id }), 'utf8').toString('base64url')
+}
+
+/** Decode a `ListTasks` page token, or undefined when it is not one this server issued. */
+function decodePageToken(token: string): TaskCursor | undefined {
+  try {
+    const value = JSON.parse(Buffer.from(token, 'base64url').toString('utf8')) as { t?: unknown; i?: unknown }
+    if (typeof value.t !== 'string' || typeof value.i !== 'string') return undefined
+    return { timestamp: value.t, id: value.i }
+  } catch {
+    return undefined
+  }
 }
 
 /**

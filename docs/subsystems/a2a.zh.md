@@ -12,7 +12,7 @@ peer 是配置在 `dsh-a2a` 上的名字（URL、可选的 `apiKey`（以 `X-Api
 
 ## 服务端半边
 
-`ctx.a2aHost` 绑定自己的监听端（默认回环），对 `POST /` 应答 `SendMessage`、`SendStreamingMessage`、`GetTask`、`ListTasks`、`CancelTask`、`SubscribeToTask` 与 `GetExtendedAgentCard`；四个推送通知方法返回 `-32004 UNSUPPORTED_OPERATION` 而不是假装支持。`GET /.well-known/agent-card.json` 提供对外宣告的 agent card，`GET /health` 提供存活应答。它是独立监听端而非浏览器服务器的前缀，因为 peer 按 `origin + /.well-known/agent-card.json` 发现它。请求体上限 1 MiB；配置了 `apiKey` 时，缺少匹配 `X-Api-Key` 的调用以 `-32000` 被拒绝。
+`ctx.a2aHost` 绑定自己的监听端（默认回环），对 `POST /` 应答 `SendMessage`、`SendStreamingMessage`、`GetTask`、`ListTasks`、`CancelTask`、`SubscribeToTask` 与 `GetExtendedAgentCard`；四个推送通知方法返回 `-32003 PUSH_NOTIFICATION_NOT_SUPPORTED` 而不是假装支持。发往终态任务的消息、订阅终态任务分别以 `-32004` 拒绝，取消终态任务以 `-32002` 拒绝；卡片未声明 `extendedAgentCard`，`GetExtendedAgentCard` 回 `-32004`。调用必须带 `A2A-Version: 1.0`；缺省或空值按规范视为 0.3，服务端以 `-32009` 拒绝。`GET /.well-known/agent-card.json` 提供对外宣告的 agent card，`GET /health` 提供存活应答。它是独立监听端而非浏览器服务器的前缀，因为 peer 按 `origin + /.well-known/agent-card.json` 发现它。请求体上限 1 MiB；配置了 `apiKey` 时，缺少匹配 `X-Api-Key` 的调用以 `-32000` 被拒绝。
 
 ## 任务与会话标识
 

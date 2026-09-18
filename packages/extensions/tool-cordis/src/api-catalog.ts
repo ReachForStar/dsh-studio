@@ -3951,6 +3951,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface A2ATask {\n    id: string;\n    contextId: string;\n    status: A2ATaskStatus;\n    artifacts: A2AArtifact[];\n    history: A2AMessage[];\n    metadata?: Record<string, unknown>;\n}',
   },
   {
+    name: 'A2ATaskRow',
+    declaration: 'export type A2ATaskRow = Omit<A2ATask, \'artifacts\'> & {\n    artifacts?: A2AArtifact[];\n};',
+  },
+  {
     name: 'A2ATaskStatus',
     declaration: 'export interface A2ATaskStatus {\n    state: TaskState;\n    message?: A2AMessage;\n    timestamp: string;\n}',
   },
@@ -6391,12 +6395,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type TableValueOf<S extends DomainSpec, N extends keyof S[\'tables\']> = S[\'tables\'][N] extends DomainTableSpec<string, infer V> ? V : never;',
   },
   {
+    name: 'TaskCursor',
+    declaration: 'export interface TaskCursor {\n    timestamp: string;\n    id: string;\n}',
+  },
+  {
     name: 'TaskState',
     declaration: 'export type TaskState = \'TASK_STATE_UNSPECIFIED\' | \'TASK_STATE_SUBMITTED\' | \'TASK_STATE_WORKING\' | \'TASK_STATE_COMPLETED\' | \'TASK_STATE_FAILED\' | \'TASK_STATE_CANCELED\' | \'TASK_STATE_INPUT_REQUIRED\' | \'TASK_STATE_REJECTED\' | \'TASK_STATE_AUTH_REQUIRED\';',
   },
   {
     name: 'TaskStore',
-    declaration: 'export class TaskStore {\n    constructor(options: TaskStoreOptions = {});\n    get(id: string): A2ATask | undefined;\n    create(contextId?: string, metadata?: Record<string, unknown>): A2ATask;\n    list(filter: {\n        contextId?: string;\n        status?: TaskState;\n    } = {}, pageSize: number = 50, includeArtifacts: boolean = false): A2ATask[];\n    count(filter: {\n        contextId?: string;\n        status?: TaskState;\n    } = {}): number;\n    all(): A2ATask[];\n    pushHistory(task: A2ATask, message: A2AMessage): void;\n    setStatus(task: A2ATask, state: TaskState, text?: string): void;\n    appendArtifact(task: A2ATask, artifactId: string, name: string, text: string): void;\n}',
+    declaration: 'export class TaskStore {\n    constructor(options: TaskStoreOptions = {});\n    get(id: string): A2ATask | undefined;\n    create(contextId?: string, metadata?: Record<string, unknown>): A2ATask;\n    list(filter: {\n        contextId?: string;\n        status?: TaskState;\n    } = {}, pageSize: number = 50, includeArtifacts: boolean = false, after: TaskCursor | undefined = undefined): A2ATaskRow[];\n    count(filter: {\n        contextId?: string;\n        status?: TaskState;\n    } = {}): number;\n    all(): A2ATask[];\n    pushHistory(task: A2ATask, message: A2AMessage): void;\n    setStatus(task: A2ATask, state: TaskState, text?: string): void;\n    appendArtifact(task: A2ATask, artifactId: string, name: string, text: string): void;\n}',
   },
   {
     name: 'TaskStoreOptions',

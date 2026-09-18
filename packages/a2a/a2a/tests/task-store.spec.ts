@@ -38,18 +38,39 @@ describe('TaskStore', () => {
     expect(anonymous.metadata).toBeUndefined()
   })
 
-  it('按会话与状态筛选，并按页截断', () => {
+  it('按会话与状态筛选，按页截断，默认省略工件字段', () => {
     const store = new TaskStore()
     const first = store.create('ctx-1')
     const second = store.create('ctx-1')
     store.create('ctx-2')
     store.setStatus(first, 'TASK_STATE_COMPLETED')
-    expect(store.list({ contextId: 'ctx-1' }).map(task => task.id)).toEqual([first.id, second.id])
-    expect(store.list({ status: 'TASK_STATE_COMPLETED' })).toEqual([{ ...first, artifacts: [] }])
+    // 时间戳在 setStatus 之后拨，避免被状态更新覆盖。
+    first.status.timestamp = '2026-01-01T00:00:00.000Z'
+    second.status.timestamp = '2026-01-02T00:00:00.000Z'
+    expect(store.list({ contextId: 'ctx-1' }).map(task => task.id)).toEqual([second.id, first.id])
+    const done = store.list({ status: 'TASK_STATE_COMPLETED' })
+    expect(done).toHaveLength(1)
+    expect(done[0]?.id).toBe(first.id)
+    expect('artifacts' in done[0]!).toBe(false)
     expect(store.list({ contextId: 'ctx-1' }, 1)).toHaveLength(1)
     expect(store.list({ contextId: 'ctx-1' }, 0)).toHaveLength(1)
     expect(store.list({ contextId: 'ctx-1' }, 5000)).toHaveLength(2)
     expect(store.count()).toBe(3)
+  })
+
+  it('游标读取后续页，游标行不在表里时返回空页', () => {
+    const store = new TaskStore()
+    const first = store.create('ctx-1')
+    const second = store.create('ctx-1')
+    const third = store.create('ctx-1')
+    first.status.timestamp = '2026-01-01T00:00:00.000Z'
+    second.status.timestamp = '2026-01-02T00:00:00.000Z'
+    third.status.timestamp = '2026-01-03T00:00:00.000Z'
+    const firstPage = store.list({ contextId: 'ctx-1' }, 2)
+    expect(firstPage.map(task => task.id)).toEqual([third.id, second.id])
+    const cursor = { timestamp: second.status.timestamp, id: second.id }
+    expect(store.list({ contextId: 'ctx-1' }, 2, false, cursor).map(task => task.id)).toEqual([first.id])
+    expect(store.list({ contextId: 'ctx-1' }, 2, false, { timestamp: cursor.timestamp, id: 'ghost' })).toEqual([])
   })
 
   it('保留工件内容由调用方决定', () => {
@@ -57,7 +78,7 @@ describe('TaskStore', () => {
     const task = store.create()
     store.appendArtifact(task, 'reply', 'reply', 'hi')
     expect(store.list({}, 50, true)[0]?.artifacts).toHaveLength(1)
-    expect(store.list({}, 50)[0]?.artifacts).toEqual([])
+    expect('artifacts' in store.list({}, 50)[0]!).toBe(false)
   })
 
   it('历史超过上限时丢弃最旧的消息', () => {

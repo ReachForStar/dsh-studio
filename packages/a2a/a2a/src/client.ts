@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { A2A_PROTOCOL_VERSION } from './schema.ts'
+import type { A2ATaskRow } from './task-store.ts'
 import type { A2AStreamEvent, A2ATask, AgentCard, TaskState } from './schema.ts'
 
 /** How long one call waits for the peer before giving up. */
@@ -29,7 +31,7 @@ export interface A2AClientOptions {
 /** A running task's page, as `ListTasks` reports it. */
 export interface A2ATaskPage {
   /** Rows of this page, newest first. */
-  tasks: A2ATask[]
+  tasks: A2ATaskRow[]
   /** Token that reads the next page; empty at the end. */
   nextPageToken: string
   /** How many tasks the filter selects in total. */
@@ -55,6 +57,7 @@ export class A2AClient {
   private headers(): Record<string, string> {
     return {
       'Content-Type': 'application/json',
+      'A2A-Version': A2A_PROTOCOL_VERSION,
       ...this.apiKey === undefined ? {} : { 'X-Api-Key': this.apiKey },
     }
   }
@@ -69,6 +72,7 @@ export class A2AClient {
     const origin = new URL(this.url).origin
     const path = options.path ?? '/.well-known/agent-card.json'
     const response = await fetch(`${origin}${path}`, {
+      headers: { 'A2A-Version': A2A_PROTOCOL_VERSION },
       ...options.signal === undefined ? {} : { signal: options.signal },
     })
     if (!response.ok) throw new Error(`agent card request failed with HTTP ${response.status}`)
@@ -245,6 +249,14 @@ export class A2AClient {
     })
     if (!response.ok || response.body === null) {
       throw new Error(`A2A SubscribeToTask failed with HTTP ${response.status}: ${await response.text()}`)
+    }
+    // A refusal the server could answer before opening the stream (such as a
+    // task already terminal) arrives as a JSON-RPC body, not an SSE stream.
+    if ((response.headers.get('content-type') ?? '').includes('application/json')) {
+      const body = await response.json() as { error?: { code: number; message: string } }
+      throw new Error(body.error === undefined
+        ? `A2A SubscribeToTask answered JSON instead of a stream: ${JSON.stringify(body)}`
+        : `A2A SubscribeToTask failed with code ${body.error.code}: ${body.error.message}`)
     }
     const reader = response.body.getReader()
     const decoder = new TextDecoder()

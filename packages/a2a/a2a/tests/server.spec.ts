@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { EventEmitter } from 'node:events'
 import http from 'node:http'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -62,11 +63,15 @@ afterEach(async () => {
 async function call(
   url: string,
   body: unknown,
-  options: { key?: string; raw?: string } = {},
+  options: { key?: string; raw?: string; version?: string } = {},
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options.key === undefined ? {} : { 'X-Api-Key': options.key } },
+    headers: {
+      'Content-Type': 'application/json',
+      'A2A-Version': options.version ?? '1.0',
+      ...options.key === undefined ? {} : { 'X-Api-Key': options.key },
+    },
     body: options.raw ?? JSON.stringify(body),
   })
   return { status: response.status, body: await response.json() as Record<string, unknown> }
@@ -96,7 +101,7 @@ function artifactOf(frame: unknown): unknown {
 async function openStream(url: string, body: unknown): Promise<{ next(): Promise<unknown> }> {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
     body: JSON.stringify(body),
   })
   if (response.body === null) throw new Error('no stream body')
@@ -132,7 +137,7 @@ async function waitFor(condition: () => boolean, timeoutMs = 2000): Promise<void
 async function stream(url: string, body: unknown): Promise<unknown[]> {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
     body: JSON.stringify(body),
   })
   const text = await response.text()
@@ -182,7 +187,7 @@ describe('A2A 服务端发现与基础协议', () => {
     expect(notAnObject.body).toMatchObject({ id: null, error: { code: -32600 } })
   })
 
-  it('未知方法与未实现的推送配置分别返回 -32601 与 -32004', async () => {
+  it('未知方法与未实现的推送配置分别返回 -32601 与 -32003', async () => {
     const harness = await start(instant())
     const unknown = await call(harness.url, rpc('Nope'))
     expect(unknown.body.error).toEqual({ code: -32601, message: 'Method not found: Nope' })
@@ -193,9 +198,9 @@ describe('A2A 服务端发现与基础协议', () => {
       'DeleteTaskPushNotificationConfig',
     ]) {
       const reply = await call(harness.url, rpc(method, { id: 't' }))
-      expect(reply.body).toMatchObject({ error: { code: -32004, message: expect.stringContaining('push notification') as string } })
+      expect(reply.body).toMatchObject({ error: { code: -32003, message: expect.stringContaining('push notification') as string } })
       const data = (reply.body.error as { data: { reason: string; domain: string }[] }).data
-      expect(data[0]).toMatchObject({ reason: 'UNSUPPORTED_OPERATION', domain: 'a2a-protocol.org' })
+      expect(data[0]).toMatchObject({ reason: 'PUSH_NOTIFICATION_NOT_SUPPORTED', domain: 'a2a-protocol.org' })
     }
   })
 
@@ -283,6 +288,40 @@ describe('A2A 任务生命周期', () => {
     expect(task.status.message.parts[0]?.text).toBe('agent exploded')
   })
 
+  it('终态任务再收消息时返回 -32004，流式调用以错误帧送出', async () => {
+    const harness = await start(instant())
+    const sent = await call(harness.url, rpc('SendMessage', message('a')))
+    const id = (sent.body.result as { task: { id: string } }).task.id
+    const refused = await call(harness.url, rpc('SendMessage', message('again', { taskId: id })))
+    expect(refused.body.error).toMatchObject({ code: -32004 })
+    expect((refused.body.error as { data: { reason: string }[] }).data[0]).toMatchObject({ reason: 'UNSUPPORTED_OPERATION' })
+    const frames = await stream(harness.url, rpc('SendStreamingMessage', message('again', { taskId: id })))
+    expect(frames).toEqual([{ jsonrpc: '2.0', id: '1', error: { code: -32004, message: expect.stringContaining('cannot accept further messages') as string } }])
+  })
+
+  it('taskId 与 contextId 不匹配时返回 -32602，只给 taskId 时推断 contextId', async () => {
+    let finish = (): void => {}
+    const harness = await start({
+      onMessage: async () => {
+        await Promise.race([
+          new Promise<void>((resolve) => { finish = resolve }),
+          new Promise<void>((resolve) => { setTimeout(resolve, 2000).unref() }),
+        ])
+      },
+    })
+    try {
+      const sent = await call(harness.url, rpc('SendMessage', { ...message('a', { contextId: 'ctx' }), configuration: { returnImmediately: true } }))
+      const id = (sent.body.result as { task: { id: string } }).task.id
+      const mismatched = await call(harness.url, rpc('SendMessage', message('b', { taskId: id, contextId: 'other' })))
+      expect(mismatched.body.error).toMatchObject({ code: -32602 })
+      // 只给 taskId 时从任务推断 contextId，不拒绝。
+      const inferred = await call(harness.url, rpc('SendMessage', { ...message('c', { taskId: id }), configuration: { returnImmediately: true } }))
+      expect((inferred.body.result as { task: { id: string } }).task.id).toBe(id)
+    } finally {
+      finish()
+    }
+  })
+
   it('执行器自己报终态时不再改成 COMPLETED', async () => {
     const harness = await start({
       onMessage: (ctx) => {
@@ -319,8 +358,6 @@ describe('A2A 任务生命周期', () => {
 
   it('执行失败传入非 Error 值时写入字符串消息', async () => {
     // 协议把非 Error 的失败原因序列化成字符串，这里刻意抛一个非 Error 值。
-    // 协议把非 Error 的失败原因序列化成字符串，这里刻意抛一个非 Error 值。
-    // eslint-disable-next-line typescript/prefer-promise-reject-errors -- 非 Error 的失败值正是本用例要覆盖的输入
     const rejectWithString = (): Promise<never> => Promise.reject('plain')
     const harness = await start({ onMessage: rejectWithString })
     const reply = await call(harness.url, rpc('SendMessage', message('a')))
@@ -358,13 +395,13 @@ describe('A2A 流式与查询', () => {
     expect(frames).toEqual([{ jsonrpc: '2.0', id: '1', error: { code: -32001, message: 'Task not found: nope' } }])
   })
 
-  it('SubscribeToTask 对已终态任务只发当前状态并结束', async () => {
+  it('SubscribeToTask 对已终态任务在开流前回 -32004', async () => {
     const harness = await start(instant())
     const sent = await call(harness.url, rpc('SendMessage', message('a')))
     const id = (sent.body.result as { task: { id: string } }).task.id
-    const frames = await stream(harness.url, rpc('SubscribeToTask', { id }))
-    expect(frames).toHaveLength(1)
-    expect(frames[0]).toMatchObject({ task: { id, status: { state: 'TASK_STATE_COMPLETED' } } })
+    const refused = await call(harness.url, rpc('SubscribeToTask', { id }))
+    expect(refused.body.error).toMatchObject({ code: -32004 })
+    expect((refused.body.error as { data: { reason: string }[] }).data[0]).toMatchObject({ reason: 'UNSUPPORTED_OPERATION' })
   })
 
   it('SubscribeToTask 拒绝缺少 id 的请求', async () => {
@@ -380,35 +417,86 @@ describe('A2A 流式与查询', () => {
     const full = await call(harness.url, rpc('GetTask', { id }))
     expect((full.body.result as { history: unknown[] }).history).toHaveLength(1)
     const sliced = await call(harness.url, rpc('GetTask', { id, historyLength: 0 }))
-    expect((sliced.body.result as { history: unknown[] }).history).toEqual([])
+    expect('history' in (sliced.body.result as object)).toBe(false)
     const missing = await call(harness.url, rpc('GetTask', { id: 'nope' }))
     expect(missing.body.error).toMatchObject({ code: -32001 })
   })
 
-  it('ListTasks 按会话与状态筛选、分页，并可选择是否带工件', async () => {
+  it('ListTasks 按会话与状态筛选、游标分页，默认省略工件', async () => {
     const harness = await start(instant())
     await call(harness.url, rpc('SendMessage', { message: { messageId: 'm', role: 'ROLE_USER', parts: [{ text: 'a' }], contextId: 'ctx' } }))
     await call(harness.url, rpc('SendMessage', { message: { messageId: 'm', role: 'ROLE_USER', parts: [{ text: 'b' }], contextId: 'ctx' } }))
     await call(harness.url, rpc('SendMessage', { message: { messageId: 'm', role: 'ROLE_USER', parts: [{ text: 'c' }], contextId: 'other' } }))
     const all = await call(harness.url, rpc('ListTasks', { contextId: 'ctx', includeArtifacts: true }))
-    const page = all.body.result as { tasks: { artifacts: unknown[] }[]; totalSize: number; pageSize: number; nextPageToken: string }
+    const page = all.body.result as {
+      tasks: { id: string; artifacts: unknown[] }[]
+      totalSize: number
+      pageSize: number
+      nextPageToken: string
+    }
     expect(page.totalSize).toBe(2)
     expect(page.pageSize).toBe(2)
     expect(page.nextPageToken).toBe('')
     expect(page.tasks[0]?.artifacts).toHaveLength(1)
+    const omitted = await call(harness.url, rpc('ListTasks', { contextId: 'ctx' }))
+    expect('artifacts' in ((omitted.body.result as { tasks: unknown[] }).tasks[0] as object)).toBe(false)
     const firstPage = await call(harness.url, rpc('ListTasks', { contextId: 'ctx', pageSize: 1 }))
     const token = (firstPage.body.result as { nextPageToken: string }).nextPageToken
-    expect(token).toBe('1')
-    expect((firstPage.body.result as { tasks: { artifacts: unknown[] }[] }).tasks[0]?.artifacts).toEqual([])
+    expect(token.length).toBeGreaterThan(0)
+    expect((firstPage.body.result as { tasks: unknown[] }).tasks).toHaveLength(1)
     const secondPage = await call(harness.url, rpc('ListTasks', { contextId: 'ctx', pageSize: 1, pageToken: token }))
-    expect((secondPage.body.result as { tasks: unknown[] }).tasks).toHaveLength(1)
+    const second = (secondPage.body.result as { tasks: { id: string }[]; nextPageToken: string })
+    expect(second.tasks).toHaveLength(1)
+    expect(second.nextPageToken).toBe('')
+    expect(second.tasks[0]?.id).not.toBe((firstPage.body.result as { tasks: { id: string }[] }).tasks[0]?.id)
+    const staleToken = Buffer.from(JSON.stringify({ t: '2026-01-01T00:00:00.000Z', i: 'ghost' }), 'utf8').toString('base64url')
+    const stale = await call(harness.url, rpc('ListTasks', { contextId: 'ctx', pageSize: 1, pageToken: staleToken }))
+    expect((stale.body.result as { tasks: unknown[]; nextPageToken: string }).tasks).toEqual([])
+    const bad = await call(harness.url, rpc('ListTasks', { contextId: 'ctx', pageToken: 'not-a-cursor' }))
+    expect(bad.body.error).toMatchObject({ code: -32602 })
     const byStatus = await call(harness.url, rpc('ListTasks', { status: 'TASK_STATE_SUBMITTED' }))
     expect((byStatus.body.result as { tasks: unknown[] }).tasks).toEqual([])
     const clamped = await call(harness.url, rpc('ListTasks', { pageSize: 9999 }))
     expect((clamped.body.result as { tasks: unknown[] }).tasks.length).toBeLessThanOrEqual(100)
   })
 
-  it('CancelTask 把运行中的任务置为 CANCELED 并通知执行器', async () => {
+  it('排序按状态时间戳降序：新状态的任务排到最前', async () => {
+    const harness = await start(instant())
+    const first = await call(harness.url, rpc('SendMessage', message('a')))
+    const second = await call(harness.url, rpc('SendMessage', message('b')))
+    const firstId = (first.body.result as { task: { id: string } }).task.id
+    const secondId = (second.body.result as { task: { id: string } }).task.id
+    // 把第一个任务的状态时间戳拨到最旧，它就该沉底。
+    harness.server.store.get(firstId)!.status.timestamp = '2020-01-01T00:00:00.000Z'
+    const listed = await call(harness.url, rpc('ListTasks'))
+    expect((listed.body.result as { tasks: { id: string }[] }).tasks.map(task => task.id)).toEqual([secondId, firstId])
+  })
+
+  it('缺失或不支持的 A2A-Version 回 -32009，patch 号忽略', async () => {
+    const harness = await start(instant())
+    // 空值按规范视为 0.3，因此同样被拒绝。
+    const empty = await fetch(harness.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'A2A-Version': '' },
+      body: JSON.stringify(rpc('SendMessage', message('a'))),
+    })
+    expect((await empty.json() as { error: { code: number } }).error.code).toBe(-32009)
+    for (const version of ['0.3', '2.0', '1']) {
+      const reply = await call(harness.url, rpc('SendMessage', message('a')), { version })
+      expect(reply.body.error).toMatchObject({ code: -32009 })
+      expect((reply.body.error as { data: { reason: string }[] }).data[0]).toMatchObject({ reason: 'FAILED_PRECONDITION' })
+    }
+    const patched = await call(harness.url, rpc('SendMessage', message('a')), { version: '1.0.1' })
+    expect(patched.body.result).toBeDefined()
+    const query = await fetch(`${harness.url}?A2A-Version=0.3`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rpc('SendMessage', message('a'))),
+    })
+    expect((await query.json() as { error: { code: number } }).error.code).toBe(-32009)
+  })
+
+  it('CancelTask 把运行中的任务置为 CANCELED 并通知执行器，终态后再取消回 -32002', async () => {
     let finish = (): void => {}
     const onCancel = vi.fn((_context: { readonly taskId: string; readonly contextId: string }) => {})
     const harness = await start({
@@ -430,15 +518,27 @@ describe('A2A 流式与查询', () => {
       expect(onCancel.mock.calls[0]?.[0].taskId).toBe(id)
       expect(typeof onCancel.mock.calls[0]?.[0].contextId).toBe('string')
       const again = await call(harness.url, rpc('CancelTask', { id }))
-      expect((again.body.result as { status: { state: string } }).status.state).toBe('TASK_STATE_CANCELED')
+      expect(again.body.error).toMatchObject({ code: -32002 })
+      expect((again.body.error as { data: { reason: string }[] }).data[0]).toMatchObject({ reason: 'TASK_NOT_CANCELABLE' })
       expect(onCancel).toHaveBeenCalledTimes(1)
     } finally {
       finish()
     }
   })
 
-  it('GetExtendedAgentCard 返回本部署的卡片', async () => {
+  it('GetExtendedAgentCard 未声明能力时回 -32004', async () => {
     const harness = await start(instant())
+    const refused = await call(harness.url, rpc('GetExtendedAgentCard'))
+    expect(refused.body.error).toMatchObject({ code: -32004 })
+    expect((refused.body.error as { data: { reason: string }[] }).data[0]).toMatchObject({ reason: 'UNSUPPORTED_OPERATION' })
+  })
+
+  it('GetExtendedAgentCard 声明能力后返回卡片', async () => {
+    const card: AgentCard = {
+      ...CARD,
+      capabilities: { streaming: true, pushNotifications: false, extendedAgentCard: true },
+    }
+    const harness = await start(instant(), { card })
     const reply = await call(harness.url, rpc('GetExtendedAgentCard'))
     expect((reply.body.result as AgentCard).name).toBe('test-agent')
   })

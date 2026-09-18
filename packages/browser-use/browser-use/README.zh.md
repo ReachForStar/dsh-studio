@@ -1,6 +1,6 @@
 ---
 description: "浏览器操作 提供方 注册服务，供一次启用一个浏览器后端的部署使用。"
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-browser-use
@@ -30,6 +30,8 @@ kind: "package-reference"
 ```yaml
 - name: '@deepseek-ai/dsh-browser-use'
 ```
+
+该包同时是可选 bundle：dsh 安装自带且默认关闭，Web 侧边栏的 **插件** 页在 **官方** 组中提供它。打开开关即应用其 patch 层，将本服务与 Playwright MCP 提供方一起挂载。
 
 服务没有配置。提供方 插件注入 `browserUse` 并调用 `ctx.browserUse.register(BrowserUseProviderName(name))`；品牌类型从 `@deepseek-ai/dsh-browser-use/brand` 导出。返回的 effect 清理器释放该注册。
 

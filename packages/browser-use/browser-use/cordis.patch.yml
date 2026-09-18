@@ -1,0 +1,9 @@
+# Experimental Browser Use layer: the shared capability service plus the
+# Playwright MCP backend. The provider needs a downloaded Chromium; when it
+# is missing the row fails to activate and the rest of the composition loads.
+- insert:
+    - id: browser-use
+      name: '@deepseek-ai/dsh-browser-use'
+
+    - id: browser-use-playwright
+      name: '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp'

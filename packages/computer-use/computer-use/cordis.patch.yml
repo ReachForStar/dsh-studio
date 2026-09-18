@@ -1,0 +1,10 @@
+# Experimental Computer Use layer: the shared capability service plus the
+# Cua Driver MCP provider, which resolves `cua-driver` from PATH by default.
+# When the driver is not installed the row fails to activate and the rest of
+# the composition loads.
+- insert:
+    - id: computer-use
+      name: '@deepseek-ai/dsh-computer-use'
+
+    - id: computer-use-cua
+      name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp'

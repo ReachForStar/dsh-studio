@@ -1,6 +1,6 @@
 ---
 description: "计算机操作提供方注册：供每次启用一个桌面驱动的部署使用。"
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-computer-use
@@ -30,6 +30,8 @@ kind: "package-reference"
 ```yaml
 - name: '@deepseek-ai/dsh-computer-use'
 ```
+
+该包同时是可选 bundle：dsh 安装自带且默认关闭，Web 侧边栏的 **插件** 页在 **官方** 组中提供它。打开开关即应用其 patch 层，将本服务与 Cua Driver MCP 提供方一起挂载。
 
 服务没有配置项。提供方插件注入 `computerUse` 并调用 `ctx.computerUse.register(ComputerUseProviderName(name))`；该品牌类型从 `@deepseek-ai/dsh-computer-use/brand` 导出。返回的 effect 清理函数释放此次注册。
 

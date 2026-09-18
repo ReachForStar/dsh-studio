@@ -1,6 +1,6 @@
 ---
 description: "Browser-use provider registration for deployments that enable one browser backend at a time."
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-browser-use
@@ -30,6 +30,8 @@ Mount the service once beside the chosen provider in a Cordis composition:
 ```yaml
 - name: '@deepseek-ai/dsh-browser-use'
 ```
+
+The package is also an optional bundle: the dsh installation ships it switched off, and the Web sidebar's **Plugins** page offers it under **Official**. Switching it on applies its patch layer, which mounts this service beside the Playwright MCP provider.
 
 The service has no configuration. Provider plugins inject `browserUse` and call `ctx.browserUse.register(BrowserUseProviderName(name))`; the brand is exported from `@deepseek-ai/dsh-browser-use/brand`. The returned effect disposer releases that registration.
 

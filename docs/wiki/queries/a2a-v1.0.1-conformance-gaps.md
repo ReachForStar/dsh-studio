@@ -10,8 +10,7 @@ status: active
 
 # A2A v1.0.1 符合性缺口清单（已修）
 
-> 核对基准：A2A 规范 tag `v1.0.1`（`specification/a2a.proto` 与 `docs/specification.md`）。初查时代码为 `920c7f52d9`，行号会随后续改动漂移，按引用的代码片段定位。
-> **状态：11 处偏离已全部修复**（2026-09-18，随 Agent Note [a2a-v1-0.1 符合修复](../../../.agents/notes/implemented/bug-fix/2026-09-18-a2a-v1-0-1-conformance.md) 落地）。本文保留缺口明细与修法作为修复记录；「未实现能力」仍有效。
+> 核对基准：A2A 规范 tag `v1.0.1`（`specification/a2a.proto` 与 `docs/specification.md`）。行号会随后续改动漂移，按引用的代码片段定位。 **状态：11 处偏离已全部修复**（2026-09-18，随 Agent Note [a2a-v1-0.1 符合修复](../../../.agents/notes/implemented/bug-fix/2026-09-18-a2a-v1-0-1-conformance.md) 落地）。本文保留缺口明细与修法作为修复记录；「未实现能力」仍有效。
 
 ## 结论
 

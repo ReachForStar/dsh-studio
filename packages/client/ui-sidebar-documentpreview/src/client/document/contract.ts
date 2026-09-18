@@ -11,12 +11,44 @@ export interface DocumentTextPage {
 }
 
 /**
- * Contents prepared by the preview owner using ordinary file reads.
+ * Ordinary file contents, or a request for the selected renderer to load its content.
  * Byte arrays are transient UI input, never persisted layout or Session data.
  */
 export type DocumentContent =
   | { readonly kind: 'text'; readonly text: string; readonly pages: readonly DocumentTextPage[]; readonly eof: boolean }
   | { readonly kind: 'bytes'; readonly data: Uint8Array<ArrayBuffer> }
+  | {
+    readonly kind: 'renderer'
+    /** Changes on reload or implementation replacement; retained contents belong to one revision. */
+    readonly revision: number
+    /** Report the displayed source version; stale revisions cannot update the owner. @param version - loaded source version. */
+    readonly loaded: (version: string) => void
+    /** Cancel the current load and start a new revision. */
+    readonly reload: () => void
+  }
+
+/** Content and viewing inputs shared by document bodies and nested PDF presentation. */
+export interface DocumentBodyOwner {
+  /** Original file address, also readable through the standard useResource hook. */
+  readonly resourceAddress: string
+  /** Ordinary file content or a renderer-owned loading request; text accumulates until eof. */
+  readonly content: DocumentContent
+  /** The document toolbar's current wrapping preference. */
+  readonly wrap: boolean
+  /** Report a renderer-owned scrollport; passing `null` restores the shared body as the owner. */
+  readonly scrollportRef: RefCallback<HTMLElement>
+  /**
+   * Store one complete byte array as this file's content, guarded by the
+   * version the tab holds. Renderers whose format is not text (an office
+   * document is a zip) use this instead of the text editor in the pane;
+   * a renderer that only reads simply ignores it.
+   */
+  readonly saveBytes: (data: Uint8Array) => void
+  /** A write for this tab is in flight; the pane owns the lifecycle. */
+  readonly saving: boolean
+  /** Why the last write was refused, already localized for display. */
+  readonly saveFailure: string | undefined
+}
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
@@ -24,27 +56,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'sidebar.right.tab.document': {
       kind: 'keyed'
       scope: 'session'
-      owner: {
-        /** Original file address, also readable through the standard useResource hook. */
-        readonly resourceAddress: string
-        /** Loaded content; text is an accumulated prefix until eof. */
-        readonly content: DocumentContent
-        /** The document toolbar's current wrapping preference. */
-        readonly wrap: boolean
-        /** Report a renderer-owned scrollport; passing `null` restores the shared body as the owner. */
-        readonly scrollportRef: RefCallback<HTMLElement>
-        /**
-         * Store one complete byte array as this file's content, guarded by the
-         * version the tab holds. Renderers whose format is not text (an office
-         * document is a zip) use this instead of the text editor in the pane;
-         * a renderer that only reads simply ignores it.
-         */
-        readonly saveBytes: (data: Uint8Array) => void
-        /** A write for this tab is in flight; the pane owns the lifecycle. */
-        readonly saving: boolean
-        /** Why the last write was refused, already localized for display. */
-        readonly saveFailure: string | undefined
-      }
+      owner: DocumentBodyOwner
       hookContext: UseSidebarRightTabInfo
       inject: {
         hooks: {

@@ -16,9 +16,13 @@ import type { PiAgentSessionLike } from './agent.ts'
 
 /** One gateway model the Pi runtime should advertise. */
 export interface PiProviderModelConfig {
+  /** Model id the gateway serves. */
   readonly id: string
+  /** Display name shown by Pi's model picker. */
   readonly name: string
+  /** Whether the model emits reasoning content. */
   readonly reasoning?: boolean
+  /** Context window in tokens the runtime enforces. */
   readonly contextWindow: number
   /** Output-token cap this model advertises to the Pi runtime. */
   readonly maxTokens: number
@@ -26,10 +30,15 @@ export interface PiProviderModelConfig {
 
 /** One OpenAI-compatible gateway registered into Pi's ModelRuntime. */
 export interface PiProviderConfig {
+  /** Gateway id; also the provider name Pi routes by. */
   readonly id: string
+  /** Gateway base URL for the OpenAI-compatible API. */
   readonly baseUrl: string
+  /** Environment variable holding the gateway credential. */
   readonly apiKeyEnv: string
+  /** Wire dialect; only the OpenAI completions dialect is supported. */
   readonly api?: 'openai-completions'
+  /** Models the gateway serves. */
   readonly models: readonly PiProviderModelConfig[]
 }
 
@@ -57,6 +66,7 @@ export interface OpenPiSessionOptions {
 
 /** One opened Pi AgentSession plus its disposal. */
 export interface OpenedPiSession {
+  /** The live session surface; the loop drives its event stream. */
   readonly session: PiAgentSessionLike
   dispose(): void
 }

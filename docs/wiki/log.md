@@ -134,7 +134,7 @@
 
 ## [2026-09-18] query | A2A v1.0.1 符合性缺口清单
 
-- 按 A2A 规范 tag `v1.0.1`（`specification/a2a.proto` + `docs/specification.md`）逐条核对现有实现（`920c7f52d9`）：11 个 RPC 方法名、TaskState 枚举、卡片必填字段、错误体格式、SSE 帧序均符合；但存在 7 处 MUST 级偏离——推送配置方法该回 `-32003` 却回 `-32004`、`GetExtendedAgentCard` 未声明能力却返回卡片、终态任务再发消息/订阅/取消三种行为不符（应分别回 `-32004`、`-32004`、`-32002`）、客户端不发且服务端忽略 `A2A-Version` 头、不拒绝 `contextId`/`taskId` 不匹配的消息。
+- 按 A2A 规范 tag `v1.0.1`（`specification/a2a.proto` + `docs/specification.md`）逐条核对当时 fork master 的实现：11 个 RPC 方法名、TaskState 枚举、卡片必填字段、错误体格式、SSE 帧序均符合；但存在 7 处 MUST 级偏离——推送配置方法该回 `-32003` 却回 `-32004`、`GetExtendedAgentCard` 未声明能力却返回卡片、终态任务再发消息/订阅/取消三种行为不符（应分别回 `-32004`、`-32004`、`-32002`）、客户端不发且服务端忽略 `A2A-Version` 头、不拒绝 `contextId`/`taskId` 不匹配的消息。
 - 另有 4 处细节（`ListTasks` 未按状态时间降序、`includeArtifacts: false` 时给了空数组而非省略字段、`pageToken` 是偏移而非游标、`historyLength: 0` 未省略 `history`）与 6 项未实现能力（gRPC/HTTP+JSON 绑定、webhook 投递、扩展机制、卡片 JWS 签名、媒体类型校验、客户端推送方法）。
 - 结论与逐条修法、复现命令写入 [A2A v1.0.1 符合性缺口清单（待修）](queries/a2a-v1.0.1-conformance-gaps.md)，**全部留待下个会话修复**；上一轮"已实现"仅指方法面与工程接线已落地。
 

@@ -11,9 +11,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DocumentPreviewProps } from '../document/contract.ts'
 import { parsePptx } from '../office/pptx.ts'
-import { OfficeBody } from '../office/OfficeBody.tsx'
+import { OfficeEditor } from '../office/OfficeEditor.tsx'
 import type {} from './locales.ts'
-import css from '../office/OfficeBody.module.css'
+import css from '../office/OfficeEditor.module.css'
 
 /** Standard document props plus the PowerPoint renderer's dictionary. */
 export type PptxBodyProps = DocumentPreviewProps & PropsLocale<'sidebarPptx'>
@@ -58,7 +58,7 @@ export function PptxBody({ content, t, saveBytes, saving, saveFailure }: PptxBod
   if (view.kind === 'failed') return <p className={css.error} role="alert">{t('failed')}</p>
 
   return (
-    <OfficeBody
+    <OfficeEditor
       blocks={drafts.map((lines, index) => ({ heading: t('slide', { index: index + 1 }), texts: lines }))}
       editing={editing}
       onEditing={setEditing}

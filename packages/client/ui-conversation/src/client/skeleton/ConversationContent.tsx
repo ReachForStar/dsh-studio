@@ -1,33 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { Slider } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
-import type { ConversationSlotProps, InputZone } from '../contract/slots.ts'
+import type { ConversationContentProps, ConversationViewsProps, InputZone } from '../contract/slots.ts'
 import { HeroShell, WorkspaceChip, workspaceLabel } from './EmptyHero.tsx'
-import type { WidthAxis } from './ConversationMainPanel.tsx'
 import css from './ConversationRoot.module.css'
 
-type ConversationContentProps = Omit<ConversationSlotProps, 'useSession' | 'useConversation'> & {
-  session: SessionSnapshot | undefined
-  phase: 'settling' | 'hero' | 'active'
-  hero: boolean
-  widthAxis: WidthAxis | undefined
-  onContentWidthChange: (width: number) => void
+function ConversationSessionView({ renderSlot }: ConversationViewsProps) {
+  return renderSlot('conversation.session', {})
+}
+
+function NoConversationWidthControls() {
+  return null
 }
 
 /**
- * Render the existing Conversation body, Composer, and content-width slider.
- * @param props - original Conversation seats plus MainPanel-derived phase and width axis.
- * @returns the unchanged Conversation body subtree.
+ * Render the shared Conversation body and its occurrence-selected local Components.
+ * @param props - Factory input, standard Session sources, and Conversation seats.
+ * @returns the Conversation view, Composer, and optional width controls.
  */
-export function ConversationContent({
-  sessionId, session, phase, hero, useSessions, useSessionPendingInteraction,
-  useWorkspaces, useInput, useComposerBlock, renderSlot, renderSlotChain,
-  selectWorkspace, t, widthAxis, onContentWidthChange,
-}: ConversationContentProps) {
-  const pendingInteraction = useSessionPendingInteraction(snapshot =>
-    sessionId === undefined ? undefined : snapshot.get(sessionId))
+export function ConversationContent(props: ConversationContentProps) {
+  const {
+    sessionId, phase, hero, useSession, useSessions, useSessionStatus,
+    useWorkspaces, useInput, useComposerBlock, renderSlot, renderSlotChain,
+    selectWorkspace, t, useFactorySlot,
+  } = props
+  const session = useSession(snapshot => snapshot)
+  const Views = useFactorySlot('views', ConversationSessionView)
+  const WidthControls = useFactorySlot('widthControls', NoConversationWidthControls)
+  const [body, setBody] = useState<HTMLDivElement | null>(null)
+  const pendingInteraction = useSessionStatus(snapshot =>
+    sessionId === undefined ? undefined : snapshot.get(sessionId)?.pendingInteraction)
   const inputState = useInput(s => s)
   const cwd = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.cwd)
   const workspaces = useWorkspaces(s => s)
@@ -178,26 +180,17 @@ export function ConversationContent({
   )
 
   return (
-    <div className={css.body}>
-      {/* Content width is a bounded value, so it is chosen rather than dragged:
-          the strip spans the column it sizes and only exists while a
-          transcript does. */}
-      {phase === 'active' && widthAxis !== undefined && (
-        <div className={css.widthSlider} data-conversation-width-slider="">
-          <Slider
-            min={widthAxis.min}
-            max={widthAxis.max}
-            value={widthAxis.value}
-            label={t('width.slider')}
-            valueText={t('width.sliderValue', { width: String(Math.round(widthAxis.value)) })}
-            onChange={onContentWidthChange}
-          />
-        </div>
-      )}
+    <div
+      ref={setBody}
+      className={clsx(css.body, props.variant === 'embedded' && css.embeddedBody)}
+      data-conversation-content=""
+      data-content-phase={phase}
+    >
       <div className={css.scrollBody} data-conversation-scroll="">
-        {sessionId === undefined ? null : renderSlot('conversation.session', {})}
+        {sessionId === undefined ? null : <Views />}
         {composerSeat}
       </div>
+      <WidthControls container={body} phase={phase} />
     </div>
   )
 }

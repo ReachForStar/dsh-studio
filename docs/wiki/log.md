@@ -155,3 +155,11 @@
 - Browser Use / Computer Use / Auto review 成为 `OPTIONAL_BUNDLES` 可选 bundle（`apps/cli` 依赖 + `dsh.bundle.patch`），Web 侧边栏 **Plugins** 页 Official 组一键开关；用户专属配置不进 bundle。
 - 决策页：[实验能力可视化开关](decisions/2026-09-visual-experimental-toggle.md)；[web-lab 试验页](queries/web-lab-profile-and-experimental-plugins.md) 已更新指引。
 - 验证：临时 profile `--dump-config` 确认三 bundle 解析与行插入、无激活告警；plugin-manager / app-boot / ui-plugin-manager / browser-use / computer-use 相关 402 条测试全绿。
+
+## [2026-09-19] fix | ui-polish web boot 失败（共享 runtime chunk）
+
+- 现象：`dsh web` 报 `@reachforstar/dsh-client-ui-polish import failed`，会话视图丢失 Git/画布/SSH 标签。
+- 根因：Excalidraw 依赖树触发 CJS 构建提升共享 `client.rolldown-runtime.js`，各 chunk prologue 同步 `require("./client.rolldown-runtime.js")`，而 client 模块表的同步 require 只认平台种子词与已注册条目，包内相对 chunk 名无词条。
+- 解法：host 端 `syncChunkClosure` 把 entry 的传递同步 chunk 闭包内联进每个携带该 entry 的 combo（entry 之前注册）；client 端 `makeRequire` 增加相对 chunk 解析（按包级 owner 定位 `chunkId`）。`prologueRequires` 上移到 `dsh-client-modules` 共用。
+- 验证：modules 134 单测通过；重建后浏览器无错，画布 tab Excalidraw 渲染、懒 chunk 全 200。
+- 沉淀：[CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md)。

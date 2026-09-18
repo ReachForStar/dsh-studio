@@ -3,7 +3,7 @@ title: 文档面板的编辑与保存（workspaceFiles.write）
 type: entity
 tags: [客户端, 文件面板, 写接口, 版本守卫]
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-18
 sources: []
 status: active
 ---
@@ -36,6 +36,7 @@ status: active
 
 - **客户端 Remote 类型来自构建产物**：`@deepseek-ai/dsh-api-workspace-files/remote` 指向 `lib/typert.remote-client.d.ts`，由 Typert 生成器在**根构建**（`pnpm run build:lib:host` / 根 `tsdown --env.DSH_BUILD_FACE host`）时产出。新增 `@Remote` 方法后若不重建，客户端会报 `Property 'write' is missing`——**单包 `pnpm --filter <pkg> run bundle` 不会重生成**。
 - **测试目录不在包 tsconfig 内**：`tsc -b packages/<pkg>/tsconfig.json` 不检查 `tests/`，漏掉的类型错误只会在推送前的 `tsc -b tsconfig.client.json`（或 CI）暴露。
+- **`fflate` 的默认导出条件是 Node 版**（2026-09-18 修）：`fflate` 的 exports 先列 `node`，动态客户端 bundle 因此解析到 `esm/index.mjs`，其顶层 `createRequire("module")` 被内联成 factory 序言里的 `require("module")`，而模块表没有该词条。表现是**整包 import failed**：client Loader 把导入异常写进浏览器端无人渲染的 logger，页面只报 `web boot: 1 entry did not activate` + `import failed`，看不到真实原因（用初始化脚本包裹 `__ModuleLoader__.create` 的 `import` 才抓到原始错误）。修法是 `office/zip.ts` 改从 `fflate/browser` 导入——该子路径没有 node 分支。同类先例：`ui-polish` 的 crypto shim。
 
 ## 二进制写入（writeBytes）
 
@@ -55,6 +56,10 @@ office 文档是 zip，因此写入链路是独立的一条：
 - `office/pptx.ts`：按编号顺序解析 `ppt/slides/slideN.xml`，每张幻灯片一组文本叶子。
 - `src/client/{docx,pptx}/`：注册为 `bytes-complete` 内置渲染器；编辑为**文本级**，版式/表格/图片/新增形状不在范围。
 - 视频渲染器（`src/client/video/`）：`<video controls preload="metadata" playsinline>`，mp4/m4v/webm/ogv/mov。
+
+### 构建期序言守卫（2026-09-18）
+
+动态客户端 bundle 的 factory 序言在 materialization 时执行，而模块表没有任何 builtin 词条。`packages/client/tsdown.client.ts` 新增 `dsh-client-prologue-builtins`：扫描产物序言（第一个 `//#region` 之前），发现 Node builtin 即构建失败，报错给出「改用浏览器子路径」与「在 `clientPlugins` 里 alias」两条修法；纯函数 `prologueRequires()` 供测试直接断言，用例在 `scripts/client-bundle-purity.spec.ts`。规则同步写入 `packages/client/AGENTS.md` 的依赖声明第 7 条。此前该类错误没有任何门禁，只能等浏览器启动才发现。
 
 ## 已知待办
 

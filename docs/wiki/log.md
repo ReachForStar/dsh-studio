@@ -95,3 +95,10 @@
 - `remote/ssh/tests/stub-service.ts` 两个会话 stub 的重复 `onExit`/`exit`/`close` 抽为共享基类 `StubSession`，消除 `sonarjs(no-identical-functions)`。
 - 盘点结论：fork 自研包在 `doc-sync`（A2A 子系统页与类型分类、tool-a2a 目录登记、client/persistence catalog 过期、web-app 内联 `apiKey`）、`lint`（tool-excalidraw、pi-agent-loop 弃用 API）、`constraints`（a2a repository、pi 版本）、依赖分类与 per-file 100% 覆盖率上均有欠账；fork CI 不跑这些门禁。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)。
 - 本批验证：`test:docs` 20/20、`typecheck` 通过、WSL 25 文件 446 测试通过、Windows 68 文件 757 测试通过；两新包覆盖率未达 per-file 100%（73.8%/62.9% 与 80.8%/65.4%）。
+
+## [2026-09-18] fix | 修复文档预览插件在浏览器加载失败，并补构建期序言守卫
+
+- 现象：`pnpm dsh web` 启动后浏览器报 `Failed to load plugins @deepseek-ai/dsh-client-ui-sidebar-documentpreview` / `web boot: 1 entry did not activate`；真实错误被客户端 Loader 写进无人渲染的 logger，需包裹 `__ModuleLoader__.create` 的 `import` 才能看到：`require("module") missed the module table`。
+- 根因：office 批（Word/PowerPoint 预览与文本级编辑）为 docx/pptx 引入 `fflate`，而 `fflate` 的 exports 先列 `node` 条件，动态客户端 bundle 解析到 `esm/index.mjs`，其顶层 `createRequire("module")` 被内联进 factory 序言 → 模块表无该词条 → 整个插件 import 失败。
+- 修复：`office/zip.ts` 改从 `fflate/browser` 导入；`packages/client/tsdown.client.ts` 新增 `dsh-client-prologue-builtins`（产物序言出现 Node builtin `require` 即构建失败，报错给出浏览器子路径 / `clientPlugins` alias 两条修法），纯函数 `prologueRequires()` 配 3 条用例；规则写入 `packages/client/AGENTS.md` 第 7 条。
+- 验证：`pnpm run build:lib:client` 全量客户端面构建通过（守卫对全部 bundle 无假阳性）；浏览器重载无 console 错误、插件激活；`scripts/client-bundle-purity.spec.ts` + `ui-sidebar-documentpreview` + `client/web` 共 49 文件 400 测试通过。

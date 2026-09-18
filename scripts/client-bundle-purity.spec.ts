@@ -8,7 +8,7 @@ import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build, type TsdownBundle, type UserConfig } from 'tsdown'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
-import { clientBundle, requestedExternals, staticLinked } from '../packages/client/tsdown.client.ts'
+import { clientBundle, prologueRequires, requestedExternals, staticLinked } from '../packages/client/tsdown.client.ts'
 
 type ResolveId = (source: string) => null | { id: string; external: boolean }
 
@@ -21,6 +21,11 @@ interface CssModulePlugin {
 interface SourceMapPlugin {
   name: string
   load?: (id: string) => Promise<unknown>
+}
+
+interface PrologueGuardPlugin {
+  name: string
+  generateBundle: (options: unknown, bundle: Record<string, unknown>) => void
 }
 
 interface InputIsolationPlugin {
@@ -87,6 +92,47 @@ function sourceMapPlugin(): SourceMapPlugin {
   if (plugin?.load === undefined) throw new Error('tsc sourcemap plugin missing from client config')
   return plugin
 }
+
+function prologueGuardPlugin(): PrologueGuardPlugin {
+  const plugins = (clientConfigs()[0] as { plugins: PrologueGuardPlugin[] }).plugins
+  const plugin = plugins.find(candidate => candidate.name === 'dsh-client-prologue-builtins')
+  if (plugin?.generateBundle === undefined) throw new Error('prologue guard missing from client config')
+  return plugin
+}
+
+/** One emitted chunk as the guard's generateBundle reads it. */
+function emittedChunk(code: string): Record<string, unknown> {
+  return { 'client.js': { type: 'chunk', code } }
+}
+
+describe('client bundle prologue builtin guard', () => {
+  const guard = prologueGuardPlugin()
+
+  it('reads the interop prologue, not requires inside bundled regions', () => {
+    const code = [
+      '\tlet module$1 = require("module");',
+      '\t//#region lib/x.js',
+      '\tconst load = () => require("url");',
+      '\tconst worker = require$1("worker_threads");',
+    ].join('\n')
+    expect(prologueRequires(code)).toEqual(['module'])
+  })
+
+  it('accepts a prologue whose specifiers are all module-table rows', () => {
+    const code = '\tlet react = require("react");\n\tlet store = require("@deepseek-ai/dsh-client-store");\n\t//#region a\n'
+    expect(() => { guard.generateBundle({}, emittedChunk(code)) }).not.toThrow()
+  })
+
+  it('accepts a prologue requiring a bundled third-party implementation', () => {
+    const code = '\tlet zip = require("fflate/browser");\n\t//#region a\n'
+    expect(() => { guard.generateBundle({}, emittedChunk(code)) }).not.toThrow()
+  })
+
+  it('rejects a prologue requiring a Node builtin', () => {
+    const code = '\tlet module$1 = require("module");\n\t//#region a\n'
+    expect(() => { guard.generateBundle({}, emittedChunk(code)) }).toThrow(/prologue requires the Node builtin module/)
+  })
+})
 
 describe('client bundle purity gate', () => {
   const resolveId = purityResolveId()

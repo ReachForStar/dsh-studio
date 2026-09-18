@@ -458,6 +458,49 @@ function clientExternals(id: string): ReadonlySet<string> {
   return externals
 }
 
+/**
+ * Specifiers one emitted client factory requires in its prologue. The prologue
+ * is the interop block emitted ahead of the first bundled region; those calls
+ * run at materialization, so every specifier there must be a module-table row
+ * the browser can answer.
+ * @param code - one emitted client chunk.
+ * @returns the required specifiers, in emission order.
+ */
+export function prologueRequires(code: string): string[] {
+  const firstRegion = code.indexOf('//#region')
+  const prologue = firstRegion === -1 ? code : code.slice(0, firstRegion)
+  return [...prologue.matchAll(/^[\t ]*(?:var|let|const) [A-Za-z_$][\w$]* = require\("([^"]+)"\);\r?$/gmu)]
+    .map(match => match[1] as string)
+}
+
+/**
+ * Fail a client build whose factory prologue requires a Node builtin. The
+ * prologue runs at materialization, where the browser module table has builtin
+ * rows for no specifier, so such a bundle loads but never activates: the
+ * loader logs the import error into a client logger nothing renders, and the
+ * page only reports "import failed".
+ * @param id - package name, named in the diagnostic.
+ * @returns the plugin enforcing the prologue invariant.
+ */
+function prologueBuiltinGuard(id: string): TsdownPlugin {
+  return {
+    name: 'dsh-client-prologue-builtins',
+    generateBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type !== 'chunk') continue
+        const builtins = prologueRequires(output.code).filter(specifier => isBuiltin(specifier))
+        if (builtins.length === 0) continue
+        throw new Error(
+          `client bundle ${id}: the emitted prologue requires the Node builtin ${builtins.join(', ')}, `
+          + "which a browser module table cannot answer. A dependency resolved to its Node entry is the usual cause: "
+          + "import that dependency's browser subpath, or alias the specifier in this package's clientPlugins "
+          + '(packages/client/ui-polish/tsdown.config.ts is the crypto-shim case).',
+        )
+      }
+    },
+  }
+}
+
 /** Escape a package name for literal use inside a RegExp source. */
 function escapeSpecifier(name: string): string {
   return name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -545,7 +588,7 @@ function clientConfig(id: string, entry: string, clientPlugins: UserConfig['plug
           + '(type-only imports are erased and never reach this gate)',
         )
       },
-    }, ...extraPlugins, tscSourceMapPlugin(), isolation.plugin, {
+    }, ...extraPlugins, prologueBuiltinGuard(id), tscSourceMapPlugin(), isolation.plugin, {
       name: 'dsh-css-modules-inline',
       resolveId(source: string, importer: string | undefined) {
         if (!source.endsWith('.module.css')) return null

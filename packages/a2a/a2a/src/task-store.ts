@@ -71,8 +71,8 @@ export class TaskStore {
    */
   list(
     filter: { contextId?: string; status?: TaskState } = {},
-    pageSize = 50,
-    includeArtifacts = false,
+    pageSize: number = 50,
+    includeArtifacts: boolean = false,
   ): A2ATask[] {
     return this.selected(filter)
       .slice(0, Math.min(Math.max(pageSize, 1), 100))
@@ -88,7 +88,10 @@ export class TaskStore {
     return this.selected(filter).length
   }
 
-  /** Every stored task, insertion order. */
+  /**
+   * Every stored task, insertion order.
+   * @returns every stored task, in insertion order.
+   */
   all(): A2ATask[] {
     return [...this.tasks.values()]
   }

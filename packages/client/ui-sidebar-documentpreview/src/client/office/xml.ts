@@ -24,7 +24,11 @@ export function parseXml(xml: string, what: string): XMLDocument {
   return doc
 }
 
-/** Serialize a parsed part back to XML source. */
+/**
+ * Serialize a parsed part back to XML source.
+ * @param doc - the parsed XML document to serialize.
+ * @returns the serialized XML source.
+ */
 export function serializeXml(doc: XMLDocument): string {
   return new XMLSerializer().serializeToString(doc)
 }
@@ -49,7 +53,12 @@ export function elementsNamed(root: Document | Element, localName: string): Elem
   return found
 }
 
-/** Concatenate the text of every descendant leaf named `localName`. */
+/**
+ * Concatenate the text of every descendant leaf named `localName`.
+ * @param element - the container to search.
+ * @param localName - the leaf element name without its prefix.
+ * @returns the concatenated leaf text.
+ */
 export function textOf(element: Element, localName: string): string {
   return elementsNamed(element, localName).map(node => node.textContent).join('')
 }

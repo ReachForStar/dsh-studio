@@ -106,6 +106,7 @@ interface TabReads {
  * @param read - the bound `workspaceFiles.read` call.
  * @param readAll - ordinary complete-byte Remote read.
  * @param write - ordinary complete-text Remote write.
+ * @param writeBytes - ordinary complete-byte Remote write.
  * @returns the Slot `inject` factory: bound actions in, face out. The slot's session id is unused because the address carries its own.
  */
 export function textFace(

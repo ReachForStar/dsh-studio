@@ -95,7 +95,7 @@ export class A2AHostService extends Service {
   readonly card: AgentCard
 
   /** The task table this endpoint serves. */
-  readonly store = new TaskStore()
+  readonly store: TaskStore = new TaskStore()
 
   /**
    * Resolves once the listener is bound, and rejects when it cannot bind.

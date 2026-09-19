@@ -40,13 +40,23 @@
 # session projection. Specialist dispatch goes to the configured A2A peers
 # (host `a2a` row owns their endpoints); a deployment without those peers gets
 # an actionable error at dispatch, not a silent skip.
+#
+# The row publishes `ctx.xingchen`, so it must sit behind an entry-local realm:
+# a preset service registered into the root isolate would be process-global
+# (`mountPreset` rejects that) and would answer for every preset.
 - id: xingchen
-  name: '@reachforstar/dsh-xingchen'
+  name: cordis:group
+  group: true
+  isolate:
+    xingchen: true
   config:
-    peers:
-      tianquan: claude-code
-      yaoguang: pi
-      tianliang: opencode
+    - id: xingchen-router
+      name: '@reachforstar/dsh-xingchen'
+      config:
+        peers:
+          tianquan: claude-code
+          yaoguang: pi
+          tianliang: opencode
 
 # ── shell ───────────────────────────────────────────────────────────────────
 

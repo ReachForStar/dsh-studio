@@ -14,6 +14,7 @@ import type { A2APeerReply } from '@reachforstar/dsh-a2a'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
 import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
 import * as xingchen from '../src/index.ts'
+import type { XingchenConfig } from '../src/index.ts'
 import * as xingchenClear from '../src/clear.ts'
 import { routeXingchen } from '../src/route.ts'
 
@@ -73,16 +74,35 @@ function stubAgent(ctx: Context, id: string): { agent: Agent; session: Session }
   return { agent, session }
 }
 
+interface SubagentStub {
+  readonly start: ReturnType<typeof vi.fn>
+}
+
+/** A `ctx.subagents` stub whose spawned seat answers with fixed text. */
+function subagentStub(text = '本机专家回答'): SubagentStub {
+  return {
+    start: vi.fn(() => Promise.resolve({
+      result: Promise.resolve({ stopReason: 'completed', output: [{ type: 'text', text }] }),
+      dispose: () => Promise.resolve(),
+    })),
+  }
+}
+
 interface Harness {
   readonly ctx: Context
   readonly agent: Agent
   readonly session: Session
   readonly a2a: A2AStub
+  readonly subagents: SubagentStub
   readonly plugin: Awaited<ReturnType<Context['plugin']>>
 }
 
-/** Mount the routing stack with a stubbed A2A seam. */
-async function harness(stub: A2AStub = a2aStub()): Promise<Harness> {
+/**
+ * Mount the routing stack with stubbed seams.
+ * @param stub - A2A seam stub used by `a2a`-mode seats.
+ * @param mode - seat runtime for every role; `local` (the default) needs no peer.
+ */
+async function harness(stub: A2AStub = a2aStub(), mode: 'local' | 'a2a' = 'a2a'): Promise<Harness> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
@@ -91,11 +111,16 @@ async function harness(stub: A2AStub = a2aStub()): Promise<Harness> {
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(AgentRegistry)
   ctx.provide('a2a', stub as never)
-  const plugin = await ctx.plugin(xingchen)
+  const subagents = subagentStub()
+  ctx.provide('subagents', subagents as never)
+  const config: XingchenConfig = mode === 'a2a'
+    ? { seats: { tianquan: { mode: 'a2a' }, yaoguang: { mode: 'a2a' }, tianliang: { mode: 'a2a' } } }
+    : {}
+  const plugin = await ctx.plugin(xingchen, config)
   disposers.push(async () => { await plugin.dispose() })
   const { agent, session } = stubAgent(ctx, `xingchen-${Math.random()}`)
   await ctx.agents.register(agent)
-  return { ctx, agent, session, a2a: stub, plugin }
+  return { ctx, agent, session, a2a: stub, subagents, plugin }
 }
 
 let toolCounter = 0
@@ -247,6 +272,64 @@ describe('/review /bug /planning 人面命令', () => {
     await test.ctx.commands.execute(test.agent, '/review 天权一轮', [], signal)
     const second = sentCall(test.a2a, 1)
     expect(second.contextId).toBeUndefined()
+  })
+})
+
+describe('本机专家席（默认）', () => {
+  it('命令派发走 ctx.subagents，并带上角色章程', async () => {
+    const test = await harness(a2aStub(), 'local')
+    const execution = await test.ctx.commands.execute(test.agent, '/review 评估这个 diff', [], signal)
+    expect(execution?.result).toEqual({ kind: 'success', text: '天权 已处理：\n\n本机专家回答' })
+    expect(test.a2a.send).not.toHaveBeenCalled()
+    expect(test.subagents.start).toHaveBeenCalledTimes(1)
+    const [provider, request] = test.subagents.start.mock.calls[0] as [string, {
+      prompt: { type: string; text: string }[]
+      parent: Agent
+    }]
+    expect(provider).toBe('spawn')
+    expect(request.parent).toBe(test.agent)
+    expect(request.prompt[0]?.text).toContain('你是天权')
+    expect(request.prompt[0]?.text).toContain('评估这个 diff')
+  })
+
+  it('工具委派返回本机席位的回答', async () => {
+    const test = await harness(a2aStub(), 'local')
+    const result = await runTool(test.ctx, test.agent, { role: 'yaoguang', task: '复现崩溃' }) as ToolOutcome
+    expect(result.isError).toBe(false)
+    expect(textOf(result)).toBe('[瑶光] 本机专家回答')
+    expect(test.a2a.send).not.toHaveBeenCalled()
+    expect(test.subagents.start).toHaveBeenCalledTimes(1)
+  })
+
+  it('seats.<role>.model 解析成子代理模型路由；格式不对则拒绝装配', async () => {
+    /** A bare context with the stubs the routing service injects. */
+    const bare = async (): Promise<{ ctx: Context; subagents: SubagentStub }> => {
+      const ctx = new Context()
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(SessionProjectionRegistry)
+      await ctx.plugin(CommandRuntime)
+      await ctx.plugin(SystemPrompt)
+      await ctx.plugin(ToolRuntime)
+      await ctx.plugin(AgentRegistry)
+      ctx.provide('a2a', a2aStub() as never)
+      const subagents = subagentStub()
+      ctx.provide('subagents', subagents as never)
+      return { ctx, subagents }
+    }
+    const { ctx, subagents } = await bare()
+    const plugin = await ctx.plugin(xingchen, { seats: { tianliang: { model: 'amax/qwen-3.8-27B' } } })
+    disposers.push(async () => { await plugin.dispose() })
+    const { agent } = stubAgent(ctx, `xingchen-seat-${Math.random()}`)
+    await ctx.agents.register(agent)
+    await ctx.commands.execute(agent, '/planning 排期', [], signal)
+    const request = subagents.start.mock.calls[0]?.[1] as { agentOptions?: { provider: string; model: string } }
+    expect(request.agentOptions).toEqual({ provider: 'amax', model: 'qwen-3.8-27B' })
+    // A malformed model route fails activation instead of silently running the
+    // parent's route. A fresh context is required: Cordis reuses the activation
+    // of a plugin already mounted on this one.
+    const invalid = await bare()
+    await invalid.ctx.plugin(xingchen, { seats: { tianquan: { model: 'no-slash' } } })
+    expect(invalid.ctx.get('xingchen') === undefined).toBe(true)
   })
 })
 

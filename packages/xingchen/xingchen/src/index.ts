@@ -22,10 +22,12 @@ import z from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
 import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-system-prompt'
+import { settleRun } from '@deepseek-ai/dsh-subagent'
+import type {} from '@deepseek-ai/dsh-subagent'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { A2APeerReply } from '@reachforstar/dsh-a2a'
 import { XINGCHEN_COMMAND_ROLES, XINGCHEN_ROLE_NAMES, XINGCHEN_ROLE_SUMMARIES, roleOfCommand, type XingchenCommandName } from './route.ts'
@@ -54,10 +56,12 @@ export const ROUTE_TOOL = 'xingchen_route'
 
 /** Deployment config: which A2A peer each specialist seat addresses. */
 export interface XingchenConfig {
-  /** A2A peer name per specialist role; must exist on the `a2a` row's `peers`. */
+  /** A2A peer name per specialist role; used by seats running in `a2a` mode. */
   peers?: XingchenPeerNames
   /** Override a specialist role's default charter (prompt-isolation text). */
   charters?: XingchenCharters
+  /** How each specialist seat runs; every seat defaults to a local spawned agent. */
+  seats?: XingchenSeats
 }
 
 /** A2A peer name per specialist role. */
@@ -80,12 +84,38 @@ export interface XingchenCharters {
   readonly tianliang?: string
 }
 
+/** One specialist seat's runtime choice. */
+export interface XingchenSeatConfig {
+  /**
+   * `local` runs the seat in this process as a delegated child agent (needs
+   * no peer endpoint); `a2a` sends it to the configured peer. Default `local`.
+   */
+  readonly mode?: 'local' | 'a2a'
+  /** `ctx.subagents` provider used in `local` mode; default `spawn`. */
+  readonly provider?: string
+  /** Child model route for `local` mode, as `provider/model`; default inherits the parent. */
+  readonly model?: string
+}
+
+/** Specialist seat configuration by role. */
+export interface XingchenSeats {
+  /** 天权席位运行方式 */
+  readonly tianquan?: XingchenSeatConfig
+  /** 瑶光席位运行方式 */
+  readonly yaoguang?: XingchenSeatConfig
+  /** 天梁席位运行方式 */
+  readonly tianliang?: XingchenSeatConfig
+}
+
 /** Default peer name per specialist role, overridable in config. */
 const DEFAULT_PEERS: Readonly<Record<XingchenSpecialistId, string>> = {
   tianquan: 'claude-code',
   yaoguang: 'pi',
   tianliang: 'opencode',
 }
+
+/** Default `ctx.subagents` provider for a seat running locally. */
+const DEFAULT_SEAT_PROVIDER = 'spawn'
 
 /** Default charter per specialist role, overridable in config. */
 const DEFAULT_CHARTERS: Readonly<Record<XingchenSpecialistId, string>> = {
@@ -105,6 +135,11 @@ export const Config: z<XingchenConfig> = z.object({
     tianquan: z.string(),
     yaoguang: z.string(),
     tianliang: z.string(),
+  }),
+  seats: z.object({
+    tianquan: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string() }),
+    yaoguang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string() }),
+    tianliang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string() }),
   }),
 })
 
@@ -194,7 +229,7 @@ export const xingchenProjectionDefinition = {
 const ROUTING_SECTION = [
   '## 星域协作',
   '本会话有四个星域角色：启明（本代理，通用全栈开发）、天权（架构评估与代码审查）、瑶光（疑难 Bug 复现与根因）、天梁（版本规划与分波交付）。',
-  '- 用户请求明确属于专家角色（架构权衡、疑难 bug 根因、迭代规划与分波交付）时，调用 xingchen_route 委派。task 必须自包含：专家在自己的环境工作，看不到本工作区，需要把相关文件内容、diff 与上下文写进 task。',
+  '- 用户请求明确属于专家角色（架构权衡、疑难 bug 根因、迭代规划与分波交付）时，调用 xingchen_route 委派。task 必须自包含：远端专家在自己的环境工作，看不到本工作区，需要把相关文件内容、diff 与上下文写进 task。',
   '- 专家回答原样转述给用户，不改动、不摘要。',
   '- 复杂任务可拆成多阶段跨角色接力（例如先瑶光复现定位、再天权称量修复方案、最后天梁排交付波次）。',
   '- 简单请求由启明直接处理；不为委派而委派。',
@@ -209,27 +244,46 @@ const ROUTING_SECTION = [
  * `xingchen` projection registration.
  */
 export class XingchenService extends Service {
-  static inject = ['a2a', 'sessionProjections', 'tools', 'systemPrompt']
+  static inject = ['a2a', 'sessionProjections', 'subagents', 'tools', 'systemPrompt']
 
   /** Peer conversation continuations, keyed by `${sessionId}:${role}`; process-local. */
   private readonly continuations = new Map<string, string>()
 
-  /** Peer and charter resolved per specialist role. */
-  private readonly bindings: Readonly<Record<XingchenSpecialistId, { readonly peer: string; readonly charter: string }>>
+  /** Seat runtime choice and charter resolved per specialist role. */
+  private readonly seats: Readonly<Record<XingchenSpecialistId, {
+    readonly mode: 'local' | 'a2a'
+    readonly peer: string
+    readonly provider: string
+    readonly model: AgentOptions | undefined
+    readonly charter: string
+  }>>
 
   /**
    * @param ctx - the owning host context.
-   * @param config - peer and charter bindings per specialist role.
+   * @param config - seat, peer, and charter bindings per specialist role.
    */
   constructor(ctx: Context, config: XingchenConfig = {}) {
     super(ctx, 'xingchen')
     const peers = config.peers ?? {}
     const charters = config.charters ?? {}
-    this.bindings = {
-      tianquan: { peer: peers.tianquan ?? DEFAULT_PEERS.tianquan, charter: charters.tianquan ?? DEFAULT_CHARTERS.tianquan },
-      yaoguang: { peer: peers.yaoguang ?? DEFAULT_PEERS.yaoguang, charter: charters.yaoguang ?? DEFAULT_CHARTERS.yaoguang },
-      tianliang: { peer: peers.tianliang ?? DEFAULT_PEERS.tianliang, charter: charters.tianliang ?? DEFAULT_CHARTERS.tianliang },
+    const seats = config.seats ?? {}
+    /** One seat's resolved runtime choice. */
+    const seat = (role: XingchenSpecialistId) => {
+      const configured = seats[role] ?? {}
+      const model = configured.model
+      const slash = model?.indexOf('/') ?? -1
+      if (model !== undefined && slash <= 0) {
+        throw new Error(`xingchen: seats.${role}.model must be "provider/model", got ${JSON.stringify(model)}`)
+      }
+      return {
+        mode: configured.mode ?? 'local',
+        peer: peers[role] ?? DEFAULT_PEERS[role],
+        provider: configured.provider ?? DEFAULT_SEAT_PROVIDER,
+        model: model === undefined ? undefined : { provider: model.slice(0, slash), model: model.slice(slash + 1) },
+        charter: charters[role] ?? DEFAULT_CHARTERS[role],
+      }
     }
+    this.seats = { tianquan: seat('tianquan'), yaoguang: seat('yaoguang'), tianliang: seat('tianliang') }
 
     ctx.sessionProjections.register(xingchenProjectionDefinition)
 
@@ -244,9 +298,9 @@ export class XingchenService extends Service {
       description:
         'Delegate a self-contained task to a Xingchen specialist role: tianquan (architecture evaluation and code '
         + 'review), yaoguang (bug reproduction and root-cause attribution), tianliang (delivery planning and '
-        + 'wave-based task breakdown). The specialist runs in its own environment and cannot see this workspace — '
-        + 'include the file contents, diffs, and context it needs in `task`. Use it only when the task clearly '
-        + 'belongs to a specialist role; handle general coding yourself. This call waits for the specialist to '
+        + 'wave-based task breakdown). The specialist runs as its own agent session; a remote seat cannot see this '
+        + 'workspace, so include the file contents, diffs, and context it needs in `task`. Use it only when the task '
+        + 'clearly belongs to a specialist role; handle general coding yourself. This call waits for the specialist to '
         + 'finish, which can take minutes — delegate one complete unit of work, not many small round trips.',
       parameters: {
         role: {
@@ -286,13 +340,13 @@ export class XingchenService extends Service {
       }),
       execute: async (args, exec) => {
         const agent: Agent | undefined = exec.agent
-        if (agent === undefined) throw new Error(`${ROUTE_TOOL} requires a calling agent (no session to continue the peer conversation on)`)
+        if (agent === undefined) throw new Error(`${ROUTE_TOOL} requires a calling agent (no session to delegate from)`)
         const role = args.role
         const task = args.task
         if (task.trim().length === 0) {
           throw new Error(`${ROUTE_TOOL} requires a non-empty self-contained task`)
         }
-        const reply = await this.dispatch(role, task, String(agent.session.id), exec.signal)
+        const reply = await this.dispatch(role, task, agent, exec.signal)
         return {
           role,
           text: reply.text,
@@ -316,31 +370,55 @@ export class XingchenService extends Service {
   }
 
   /**
-   * Dispatch one task to a specialist role through its A2A peer, prefixing
-   * the role charter and continuing the per-session peer conversation.
+   * Dispatch one task to a specialist seat, prefixing the role charter.
+   *
+   * A `local` seat runs in this process as a delegated child agent and needs no
+   * endpoint; an `a2a` seat sends the same text to its configured peer and
+   * continues that peer conversation per session.
    * @param role - the specialist role.
    * @param task - the self-contained task text.
-   * @param sessionKey - the session id owning the conversation continuity.
+   * @param parent - the agent delegating the task.
    * @param signal - cancellation owned by the caller.
-   * @returns the peer's answer and its continuation addressing.
+   * @returns the seat's answer text and the state it ended in, when reported.
    */
   async dispatch(
     role: XingchenSpecialistId,
     task: string,
-    sessionKey: string,
+    parent: Agent,
     signal?: AbortSignal,
-  ): Promise<A2APeerReply> {
-    const binding = this.bindings[role]
-    const key = `${sessionKey}:${role}`
+  ): Promise<{ readonly text: string; readonly state?: string }> {
+    const seat = this.seats[role]
+    const text = `${seat.charter}\n\n---\n\n${task}`
+    if (seat.mode === 'a2a') return await this.dispatchToPeer(role, seat.peer, text, parent, signal)
+    const run = await this.ctx.subagents.start(seat.provider, {
+      prompt: [{ type: 'text', text }],
+      parent,
+      signal: signal ?? new AbortController().signal,
+      ...(seat.model === undefined ? {} : { agentOptions: seat.model }),
+    })
+    const outcome = await settleRun(run)
+    if (outcome.status === 'completed') return { text: outcome.output ?? '', state: outcome.status }
+    return { text: outcome.detail ?? `${XINGCHEN_ROLE_NAMES[role]} 席位未完成（${outcome.status}）`, state: outcome.status }
+  }
+
+  /** Send one task to a peer seat and remember its conversation continuation. */
+  private async dispatchToPeer(
+    role: XingchenSpecialistId,
+    peer: string,
+    text: string,
+    parent: Agent,
+    signal?: AbortSignal,
+  ): Promise<{ readonly text: string; readonly state?: string }> {
+    const key = `${String(parent.session.id)}:${role}`
     const contextId = this.continuations.get(key)
-    const reply = await this.ctx.a2a.send({
-      peer: binding.peer,
-      text: `${binding.charter}\n\n---\n\n${task}`,
+    const reply: A2APeerReply = await this.ctx.a2a.send({
+      peer,
+      text,
       ...(contextId === undefined ? {} : { contextId }),
       ...(signal === undefined ? {} : { signal }),
     })
     if (reply.contextId !== undefined) this.continuations.set(key, reply.contextId)
-    return reply
+    return { text: reply.text, ...reply.state === undefined ? {} : { state: reply.state } }
   }
 
   /** Address one specialist through a slash command: no model turn. */
@@ -349,13 +427,13 @@ export class XingchenService extends Service {
     if (task === '') {
       return { kind: 'error', text: `用法：/${XINGCHEN_COMMAND_ROLES[role]} <任务描述>（${XINGCHEN_ROLE_SUMMARIES[role]}）` }
     }
-    let reply: A2APeerReply
+    let reply: { readonly text: string; readonly state?: string }
     try {
-      reply = await this.dispatch(role, task, String(invocation.agent.session.id), invocation.signal)
+      reply = await this.dispatch(role, task, invocation.agent, invocation.signal)
     } catch (error: unknown) {
-      // A peer that cannot answer is the command's outcome, not a crashed
-      // handler: report the peer's own message so the missing endpoint is
-      // actionable.
+      // A seat that cannot answer is the command's outcome, not a crashed
+      // handler: report the seat's own message so the missing endpoint or
+      // provider is actionable.
       return {
         kind: 'error',
         text: `${XINGCHEN_ROLE_NAMES[role]} 委派失败：${error instanceof Error ? error.message : String(error)}`,

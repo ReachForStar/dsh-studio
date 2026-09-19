@@ -41,11 +41,6 @@
   config:
     - id: xingchen-router
       name: '@reachforstar/dsh-xingchen'
-      config:
-        peers:
-          tianquan: claude-code
-          yaoguang: pi
-          tianliang: opencode
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'

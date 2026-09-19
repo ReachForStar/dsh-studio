@@ -4065,10 +4065,12 @@ Source: [`packages/remote/subprocess-sftp/src/index.ts:32`](../packages/remote/s
 ```ts config-catalog
 /** Deployment config: which A2A peer each specialist seat addresses. */
 export interface XingchenConfig {
-  /** A2A peer name per specialist role; must exist on the `a2a` row's `peers`. */
+  /** A2A peer name per specialist role; used by seats running in `a2a` mode. */
   peers?: XingchenPeerNames
   /** Override a specialist role's default charter (prompt-isolation text). */
   charters?: XingchenCharters
+  /** How each specialist seat runs; every seat defaults to a local spawned agent. */
+  seats?: XingchenSeats
 }
 
 /** A2A peer name per specialist role. */
@@ -4090,9 +4092,32 @@ export interface XingchenCharters {
   /** 替换天梁默认章程的文本 */
   readonly tianliang?: string
 }
+
+/** Specialist seat configuration by role. */
+export interface XingchenSeats {
+  /** 天权席位运行方式 */
+  readonly tianquan?: XingchenSeatConfig
+  /** 瑶光席位运行方式 */
+  readonly yaoguang?: XingchenSeatConfig
+  /** 天梁席位运行方式 */
+  readonly tianliang?: XingchenSeatConfig
+}
+
+/** One specialist seat's runtime choice. */
+export interface XingchenSeatConfig {
+  /**
+   * `local` runs the seat in this process as a delegated child agent (needs
+   * no peer endpoint); `a2a` sends it to the configured peer. Default `local`.
+   */
+  readonly mode?: 'local' | 'a2a'
+  /** `ctx.subagents` provider used in `local` mode; default `spawn`. */
+  readonly provider?: string
+  /** Child model route for `local` mode, as `provider/model`; default inherits the parent. */
+  readonly model?: string
+}
 ```
 
-Source: [`packages/xingchen/xingchen/src/index.ts:56`](../packages/xingchen/xingchen/src/index.ts)
+Source: [`packages/xingchen/xingchen/src/index.ts:58`](../packages/xingchen/xingchen/src/index.ts)
 
 ## Loadable plugins with no config
 

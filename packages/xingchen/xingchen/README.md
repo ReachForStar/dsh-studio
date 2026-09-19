@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-xingchen` gives one session four star-domain roles. 启明 is the harness's own coding agent and the default router; 天权 (architecture evaluation and code review), 瑶光 (bug reproduction and root-cause attribution), and 天梁 (delivery planning) are A2A peers the deployment configures. The router delegates through the `xingchen_route` tool, a person addresses a specialist with `/review`, `/bug`, or `/planning`, and every dispatch is prefixed with that role's charter, so the seat rather than the backend defines the role. The `xingchen` session projection supplies the session list's role and stop-reason labels.
+`dsh-xingchen` gives one session four star-domain roles. 启明 is the harness's own coding agent and the default router; 天权 (architecture evaluation and code review), 瑶光 (bug reproduction and root-cause attribution), and 天梁 (delivery planning) are specialist seats that run in this process as delegated child agents, or on an A2A peer when the deployment configures one. The router delegates through the `xingchen_route` tool, a person addresses a specialist with `/review`, `/bug`, or `/planning`, and every dispatch is prefixed with that role's charter, so the seat defines the role. The `xingchen` session projection supplies the session list's role and stop-reason labels.
 
 ## Table of Contents
 
@@ -29,27 +29,23 @@ Mount it in an agent preset; mounting it in a host composition instead would reg
 
 ### When to choose it
 
-Choose it when work should reach a different agent with a different discipline — an architecture review, a bug that needs a reproduction before a diagnosis, a delivery plan. Choose [dsh-tool-a2a](../../a2a/tool-a2a/README.md) instead when the model itself should pick among peers by name; this package owns the four-role partition, the charters, and the session labels, and it uses that tools' seam underneath.
+Choose it when work should reach a different agent with a different discipline — an architecture review, a bug that needs a reproduction before a diagnosis, a delivery plan. Every seat runs locally by default, so it works with no extra deployment; set a seat's `mode` to `a2a` when that role should run on another agent deployment instead. Choose [dsh-tool-a2a](../../a2a/tool-a2a/README.md) instead when the model itself should pick among peers by name; this package owns the four-role partition, the charters, and the session labels, and it uses that package's seam for `a2a` seats.
 
 ### Minimal configuration
 
+No configuration is required: each seat spawns a child agent through `ctx.subagents` (`spawn`) with its charter prefixed.
+
 ```yaml
 - name: '@reachforstar/dsh-xingchen'
-  config:
-    peers:
-      tianquan: claude-code
-      yaoguang: pi
-      tianliang: opencode
 ```
 
 | Field | Default | Meaning |
 |---|---|---|
-| `peers.tianquan` | `claude-code` | A2A peer serving 天权 |
-| `peers.yaoguang` | `pi` | A2A peer serving 瑶光 |
-| `peers.tianliang` | `opencode` | A2A peer serving 天梁 |
+| `seats.<role>.mode` | `local` | `local` delegates to a child agent in this process; `a2a` sends the task to the configured peer |
+| `seats.<role>.provider` | `spawn` | `ctx.subagents` provider used by a `local` seat |
+| `seats.<role>.model` | parent's route | Child model route for a `local` seat, as `provider/model` |
+| `peers.<role>` | `claude-code` / `pi` / `opencode` | A2A peer used by an `a2a` seat; must exist on the `a2a` row's `peers` |
 | `charters.<role>` | package charter | Replace one role's charter text |
-
-Each peer name must exist on the `a2a` row's `peers` map. The generated [configuration catalog](../../../docs/config-catalog.md#reachforstardsh-xingchen) carries every field.
 
 ## Understand the implementation
 
@@ -70,7 +66,7 @@ The module exports `name`, `Config`, the service, and `apply`, with **no default
 
 ### Dispatch and continuity
 
-A dispatch sends the role's charter, a separator, and the task as one A2A message. The reply's `contextId` is remembered per `session id + role`, so a second dispatch to the same role continues the peer's conversation while another role starts its own. Continuations are process-local: the peer's history survives a restart, this map does not.
+A dispatch sends the role's charter, a separator, and the task as one message. A `local` seat starts a child agent through `ctx.subagents` and returns its final message; the child is its own session, so a review or a reproduction appears in the session list like any other delegation. An `a2a` seat sends the same text to its peer and remembers the reply's `contextId` per `session id + role`, so a second dispatch to the same role continues the peer's conversation while another role starts its own. Peer continuations are process-local: the peer's history survives a restart, this map does not.
 
 ### Session projection
 
@@ -104,8 +100,8 @@ The prompt section text and the tool schema are fixed per deployment, so neither
 
 ## Known Limitations and Deferred Work
 
-- **Specialists are external peers.** The package routes to A2A endpoints; there is no in-process specialist preset, so a deployment without configured peers cannot use 天权/瑶光/天梁 at all and each dispatch fails with the peer error.
-- **Continuation is process-local.** The `session id + role` to `contextId` map lives in memory, so a restart starts a fresh peer conversation even though the peer may still hold the old one.
+- **Specialist seats default to local; `a2a` needs configured peers.** A `local` seat runs a child agent in this process, so it needs the `subagents` registry and a registered provider. A deployment using `mode: a2a` without configured peers cannot reach 天权/瑶光/天梁, and each dispatch fails with the peer error.
+- **Continuation is process-local.** The `session id + role` to `contextId` map for `a2a` seats lives in memory, so a restart starts a fresh peer conversation even though the peer may still hold the old one. A local seat needs no such map: each dispatch is one child session.
 - **One dispatch at a time per call.** `xingchen_route` returns only when the specialist finishes; a long review blocks the calling turn, and there is no streaming of partial specialist output.
 - **The heuristic is advisory.** `routeXingchen` classifies without a model, but only the routing agent's tool call and the slash commands actually dispatch; no client or host path consumes the classifier yet.
 - **No defect-family history.** The 季节回归 (seasonal regression) linkage the 瑶光 charter asks the specialist to keep is the specialist's own record; this package stores no cross-session bug family.

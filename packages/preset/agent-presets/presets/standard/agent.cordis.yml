@@ -52,11 +52,6 @@
   config:
     - id: xingchen-router
       name: '@reachforstar/dsh-xingchen'
-      config:
-        peers:
-          tianquan: claude-code
-          yaoguang: pi
-          tianliang: opencode
 
 # ── shell ───────────────────────────────────────────────────────────────────
 

@@ -45,7 +45,7 @@ fork 自研的四角色协作系统，位于 `packages/xingchen/xingchen`（包�
 
 ## 接线位置
 
-- 预设：`packages/preset/agent-presets/presets/standard/agent.cordis.yml`（默认组合加入星域行与 `/clear`）与 `presets/xingchen-qiming/`（同组合、启明人设）。
+- 预设：`packages/preset/agent-presets/presets/standard/agent.cordis.yml`（默认组合加入星域行与 `/clear`）与 `presets/xingchen-qiming/`（同组合、启明人设）。星域行包在 `cordis:group` + `isolate: { xingchen: true }` 里：该行提供 `ctx.xingchen`，发布到根 isolate 会被 `mountPreset` 判为进程级服务泄漏而拒给会话用（详见[排查页](../queries/xingchen-review-fixes.md#预设激活失败服务未在-isolate-域内网页冒烟才发现)）。
 - 解析清单：`apps/cli/package.json`、`packages/bundle/web-app/package.json`（预设挂载在 web-app bundle，插件按该清单解析）。
 - 类型项目：`tsconfig.host.json` 引用；`tsconfig.base.json` 手写 `@reachforstar/dsh-xingchen` 别名（生成器只覆盖 `@deepseek-ai/dsh-` 前缀）。
 - 文档图：`scripts/gen-cordis-catalog.ts` 的 `SERVICE_PAGE`/`LINK_MAP` 与 `scripts/gen-doc-graphs.ts` 的 `SERVICE_ROLES`（fork 包不在扫描范围内，用仓库路径 `xingchen/xingchen` 作 owner 标签）。
@@ -57,6 +57,7 @@ fork 自研的四角色协作系统，位于 `packages/xingchen/xingchen`（包�
 
 ## 待确认
 
+- 本机网页冒烟已验证：选星域预设后会话的系统提示词含启明人设与「## 星域协作」段落，请求头工具表 49 个工具含 `xingchen_route`。
 - `branch`（分支）与 `working`（执行中）两项会话元数据尚未进入投影：前者不是日志事件（需在读侧从工作区取），后者与既有会话运行状态重复，尚无消费方。
 - `#会话` 引用与前端「星域路由切换」未实现；会话列表目前也没有消费 `xingchen` 投影的界面。
 - 第二、三阶段（`$git`/`$run`/`$log` 技能、缺陷归族与跨会话知识库）未开始。

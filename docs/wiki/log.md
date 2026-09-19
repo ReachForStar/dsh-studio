@@ -221,3 +221,11 @@
 - 新包接线：`tsconfig.host.json`/`tsconfig.base.json` 别名、`apps/cli` 与 `web-app` 解析清单、`SERVICE_PAGE`/`LINK_MAP`/`SERVICE_ROLES`、包与分组 README、`docs/subsystems/xingchen.md` 子系统页（双语），并重跑 config-catalog / capability-seams / persistence-catalog / cordis api-catalog / tool-catalog 生成物。
 - 验证：xingchen 24 条单测、agent-presets 全量 214 条通过；`tsc -b tsconfig.host.json` 与定向 lint 干净；doc-sync 由 11 项失败收敛到 3 项（均为他批遗留：persistence 变更确认、ui-polish 导出分类、`a2a-host` 内联凭据）。
 - 沉淀：[星域协作实体页](entities/xingchen-multi-agent.md)、[专家席经 A2A 决策页](decisions/2026-09-19-xingchen-external-specialist-seats.md)、[缺陷与新包接线排查页](queries/xingchen-review-fixes.md)；[门禁红项页](queries/fork-gate-debt.md) 同步复检结果。
+
+## [2026-09-19] fix | 星域预设未激活（服务未在 isolate 域）
+
+- 网页冒烟（`pnpm dsh web --port 3099` + 浏览器）发现：选「启明 · 星域路由」时 `mountPreset` 报 `row(s) published process-global service(s) [xingchen]`，预设无法激活；单测、typecheck、doc-sync 与 `verify-cordis-config` 全绿却都没拦住。
+- 根因：预设行的插件把 `ctx.xingchen` 发布到根 isolate（进程级）；`leakedServices` 以 `rootIsolate[name] === key` 判定泄漏并拒绝挂载。
+- 修法：两处预设把星域行包进 `cordis:group` + `isolate: { xingchen: true }`（与同文件的 planMode/workflowEngine 同型）。
+- 验证：重启 Web 服务（roster 启动时扫描）后预设可切换；会话日志 `agent-preset/selected` 为 `xingchen-qiming`，系统提示词含启明人设与「## 星域协作」段落，请求头工具表 49 个工具含 `xingchen_route`。
+- 沉淀：[排查页](queries/xingchen-review-fixes.md) 增加「预设激活失败」一节与复发预防，[实体页](entities/xingchen-multi-agent.md) 的接线与待确认同步。

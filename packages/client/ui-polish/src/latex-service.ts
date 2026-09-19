@@ -61,7 +61,8 @@ const MAX_MIRROR_BYTES = 512 * 1024 * 1024
 const MAX_MIRROR_FILE_BYTES = 64 * 1024 * 1024
 /** Extensions mirrored into the temp compile directory. */
 const COPY_EXTS = new Set(['tex', 'bib', 'bst', 'sty', 'cls', 'png', 'jpg', 'jpeg', 'gif', 'tif', 'tiff', 'pdf', 'mp4', 'ttf', 'otf', 'otc', 'ttc', 'eps', 'fig', 'dat', 'csv', 'xml', 'json', 'txt', 'md'])
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'out', 'target', 'coverage', '__pycache__', '.svn', '.hg', '.git'])
+/** Directories never walked: build output, environments, caches, version control. */
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'out', 'target', 'coverage', '__pycache__', 'site-packages', '.venv', 'venv', '.idea', '.vscode', '.cache', '.mypy_cache', '.pytest_cache', '.ipynb_checkpoints', '.svn', '.hg', '.git'])
 /** In-place artifacts removed by /latex/clean. */
 const CLEAN_EXTS = new Set(['aux', 'log', 'out', 'toc', 'bbl', 'blg', 'fls', 'fdb_latexmk', 'run.xml', 'synctex.gz', 'idx', 'ind'])
 const FONT_EXTS = new Set(['ttf', 'otf', 'otc', 'ttc'])
@@ -397,19 +398,22 @@ async function isDirectoryEntry(src: string, entry: Dirent): Promise<boolean> {
 
 /**
  * Explain the files a failed compile could not find: whether the project holds
- * them at all, or the compile mirror skipped them.
+ * them at all, whether the workspace holds them elsewhere, or the compile
+ * mirror skipped them.
  * @param log - the extracted log excerpt.
  * @param skipped - project-relative files the mirror did not copy.
  * @param projectDir - absolute project directory.
+ * @param elsewhere - workspace-relative locations found for missing names.
  * @returns a diagnostic block, or an empty string when nothing is missing.
  */
-export function explainMissingReferences(log: string, skipped: readonly string[], projectDir: string): string {
-  const names = new Set<string>()
-  for (const match of log.matchAll(/(?:File `([^']+)' not found|Unable to load picture or PDF file '([^']+)')/g)) {
-    const name = match[1] ?? match[2]
-    if (name !== undefined && name.length > 0) names.add(normalizeSlashes(name))
-  }
-  if (names.size === 0) return ''
+export function explainMissingReferences(
+  log: string,
+  skipped: readonly string[],
+  projectDir: string,
+  elsewhere?: ReadonlyMap<string, string>,
+): string {
+  const names = missingReferences(log)
+  if (names.length === 0) return ''
   const lines: string[] = []
   for (const name of names) {
     if (skipped.includes(name)) {
@@ -419,11 +423,150 @@ export function explainMissingReferences(log: string, skipped: readonly string[]
     const located = locateProjectFile(projectDir, name)
     if (located !== undefined) {
       lines.push(`latex panel: ${name} is in the project at ${located}; the document resolves it from somewhere else`)
-    } else {
-      lines.push(`latex panel: ${name} is not in the project directory — generate it first (figures produced by scripts or external tools are not built by this panel)`)
+      continue
     }
+    const found = elsewhere?.get(name)
+    if (found !== undefined) {
+      lines.push(`latex panel: ${name} is outside the project; the workspace holds it at ${found}`)
+      continue
+    }
+    lines.push(`latex panel: ${name} is not in the project directory — generate it first (figures produced by scripts or external tools are not built by this panel)`)
   }
   return `\n\n${lines.join('\n')}`
+}
+
+/**
+ * Collect the file names a compile log reports as missing.
+ * @param log - the extracted log excerpt.
+ * @returns the normalized names, in log order and without duplicates.
+ */
+export function missingReferences(log: string): string[] {
+  const names = new Set<string>()
+  for (const match of log.matchAll(/(?:File `([^']+)' not found|Unable to load picture or PDF file '([^']+)')/g)) {
+    const name = match[1] ?? match[2]
+    if (name !== undefined && name.length > 0) names.add(normalizeSlashes(name))
+  }
+  return [...names]
+}
+
+/** Bounded search limits: a workspace may hold far more than one paper needs. */
+const WORKSPACE_SCAN_MAX_DIRS = 4000
+const WORKSPACE_SCAN_MAX_DEPTH = 8
+
+/**
+ * Find a file by exact name anywhere in the workspace (bounded breadth-first).
+ * @param root - absolute workspace directory.
+ * @param name - file name to match.
+ * @returns the absolute path of the first match, or undefined.
+ */
+async function findInWorkspace(root: string, name: string): Promise<string | undefined> {
+  const queue: { dir: string; depth: number }[] = [{ dir: root, depth: 0 }]
+  let visited = 0
+  while (queue.length > 0 && visited < WORKSPACE_SCAN_MAX_DIRS) {
+    const item = queue.shift() as { dir: string; depth: number }
+    visited += 1
+    let entries
+    try {
+      entries = await readdir(item.dir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (item.depth < WORKSPACE_SCAN_MAX_DEPTH && !SKIP_DIRS.has(entry.name)) {
+          queue.push({ dir: join(item.dir, entry.name), depth: item.depth + 1 })
+        }
+        continue
+      }
+      if (entry.name === name) return join(item.dir, entry.name)
+    }
+  }
+  return undefined
+}
+
+/** Graphic files one mirrored .tex source references. */
+const GRAPHICS_REFERENCE = /\\includegraphics\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g
+/** `\graphicspath{{a/}{b/}}`-style search paths declared by the sources. */
+const GRAPHICS_PATH = /\\graphicspath\s*\{((?:\s*\{[^}]*\}\s*)*)\}/g
+
+/** The graphics one mirrored project references, plus its search paths. */
+interface GraphicsIndex {
+  /** Referenced file names, deduplicated. */
+  readonly references: string[]
+  /** Directories the sources search for those names, as written. */
+  readonly searchPaths: string[]
+}
+
+/**
+ * Collect the graphics the mirrored sources reference, with their search paths.
+ * @param mirror - the compile mirror root.
+ * @returns the referenced names and the declared `\graphicspath` directories.
+ */
+async function collectGraphicsReferences(mirror: string): Promise<GraphicsIndex> {
+  const names = new Set<string>()
+  const paths = new Set<string>()
+  const queue: string[] = [mirror]
+  while (queue.length > 0) {
+    const dir = queue.shift() as string
+    let entries
+    try {
+      entries = await readdir(dir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRS.has(entry.name)) queue.push(full)
+        continue
+      }
+      if (!entry.name.toLowerCase().endsWith('.tex')) continue
+      const source = await readFile(full, 'utf8').catch(() => '')
+      for (const match of source.matchAll(GRAPHICS_REFERENCE)) {
+        const referenced = match[1]?.trim()
+        if (referenced !== undefined && referenced.length > 0) names.add(referenced)
+      }
+      for (const declaration of source.matchAll(GRAPHICS_PATH)) {
+        for (const path of (declaration[1] ?? '').matchAll(/\{([^}]*)\}/g)) {
+          const declared = path[1]?.trim()
+          if (declared !== undefined && declared.length > 0) paths.add(declared)
+        }
+      }
+    }
+  }
+  return { references: [...names], searchPaths: [...paths] }
+}
+
+/**
+ * Supply graphics the sources reference but the project does not hold, when the
+ * workspace does. Paper sources and experiment output usually live in separate
+ * directory trees, so a paper that compiles from its own checkout often
+ * references figures produced elsewhere in the same workspace.
+ * @param mirror - the compile mirror root.
+ * @param mainDir - mirror-relative directory of the main file.
+ * @param workspaceRoot - absolute workspace directory to search.
+ * @returns the names that were copied into the mirror.
+ */
+async function supplyWorkspaceGraphics(
+  mirror: string,
+  mainDir: string,
+  workspaceRoot: string,
+): Promise<string[]> {
+  const graphics = await collectGraphicsReferences(mirror)
+  const supplied: string[] = []
+  for (const reference of graphics.references) {
+    // A reference resolves through the main directory and through every
+    // declared `\graphicspath`; only a name the mirror has nowhere is missing.
+    const candidates = [reference, ...graphics.searchPaths.map(path => join(path, reference))]
+    if (candidates.some(candidate => existsSync(join(mirror, mainDir, candidate)))) continue
+    const found = await findInWorkspace(workspaceRoot, basename(reference))
+    if (found === undefined) continue
+    const dest = join(mirror, mainDir, reference)
+    await mkdir(dirname(dest), { recursive: true })
+    await writeFile(dest, await readFile(found))
+    supplied.push(reference)
+  }
+  return supplied
 }
 
 /** Locate a referenced file by relative path or basename inside the project. */
@@ -468,16 +611,19 @@ export function extractLogExcerpt(log: string): string {
 
 /**
  * Compile one main file: mirror → xelatex → (bibtex when a .bib is referenced)
- * → two more xelatex passes. The temp dir is always deleted; on success the
- * PDF is cached for `/latex/pdf`.
+ * → two more xelatex passes. Graphics the project does not hold are supplied
+ * from the workspace when it holds them. The temp dir is always deleted; on
+ * success the PDF is cached for `/latex/pdf`.
  * @param projectDir - absolute project directory.
  * @param main - project-relative main .tex path.
- * @returns ok plus the PDF size, or the log excerpt on failure.
+ * @param workspaceRoot - absolute workspace directory searched for referenced graphics.
+ * @returns ok plus the PDF size and any supplied graphics, or the log excerpt on failure.
  */
 export async function compileProject(
   projectDir: string,
   main: string,
-): Promise<{ ok: true; size: number } | { ok: false; log: string }> {
+  workspaceRoot?: string,
+): Promise<{ ok: true; size: number; supplied: readonly string[] } | { ok: false; log: string }> {
   const key = cacheKey(projectDir, main)
   if (compiling.has(key)) {
     throw new Error('latex panel: a compile for this project is already running')
@@ -491,16 +637,25 @@ export async function compileProject(
     const mainBase = basename(mainRel).replace(/\.tex$/, '')
     const mainDir = dirname(mainRel)
     const auxPath = join(tmp, mainDir, `${mainBase}.aux`)
+    const supplied = workspaceRoot === undefined || workspaceRoot.length === 0
+      ? []
+      : await supplyWorkspaceGraphics(tmp, mainDir, workspaceRoot)
     /** Report a failed pass with the log excerpt and a missing-reference diagnosis. */
-    const fail = (log: string): { ok: false; log: string } => ({
-      ok: false,
-      log: `${log}${explainMissingReferences(log, skipped, projectDir)}`,
-    })
+    const fail = async (log: string): Promise<{ ok: false; log: string }> => {
+      const elsewhere = new Map<string, string>()
+      if (workspaceRoot !== undefined && workspaceRoot.length > 0) {
+        for (const name of missingReferences(log)) {
+          const found = await findInWorkspace(workspaceRoot, basename(name))
+          if (found !== undefined) elsewhere.set(name, normalizeSlashes(relative(workspaceRoot, found)))
+        }
+      }
+      return { ok: false, log: `${log}${explainMissingReferences(log, skipped, projectDir, elsewhere)}` }
+    }
     // First pass: detect whether a bibliography is present.
     const first = await runCommand(engine, ['-interaction=nonstopmode', '-halt-on-error', mainRel], tmp, 180_000)
     if (first.code !== 0) {
       const log = await readFile(join(tmp, mainDir, `${mainBase}.log`), 'utf8').catch(() => '')
-      return fail(extractLogExcerpt(log || first.stdout))
+      return await fail(extractLogExcerpt(log || first.stdout))
     }
     let useBibtex = false
     try {
@@ -513,14 +668,14 @@ export async function compileProject(
       const bibtex = await runCommand('bibtex', [mainBase], tmp, 60_000)
       if (bibtex.code !== 0) {
         const log = await readFile(join(tmp, mainDir, `${mainBase}.blg`), 'utf8').catch(() => '')
-        return fail(extractLogExcerpt(log || bibtex.stdout))
+        return await fail(extractLogExcerpt(log || bibtex.stdout))
       }
     }
     for (let pass = 0; pass < 2; pass += 1) {
       const next = await runCommand(engine, ['-interaction=nonstopmode', '-halt-on-error', mainRel], tmp, 180_000)
       if (next.code !== 0) {
         const log = await readFile(join(tmp, mainDir, `${mainBase}.log`), 'utf8').catch(() => '')
-        return fail(extractLogExcerpt(log || next.stdout))
+        return await fail(extractLogExcerpt(log || next.stdout))
       }
     }
     const pdfPath = join(tmp, mainDir, `${mainBase}.pdf`)
@@ -539,7 +694,7 @@ export async function compileProject(
       }
       if (oldest !== undefined) pdfCache.delete(oldest)
     }
-    return { ok: true, size: bytes.length }
+    return { ok: true, size: bytes.length, supplied }
   } finally {
     compiling.delete(key)
     await rm(tmp, { recursive: true, force: true }).catch(() => {
@@ -681,7 +836,7 @@ export async function handleLatexRequest(
       const projectDir = resolveProjectDir(workspace, bodyOptionalString(body, 'dir') ?? '.')
       const main = bodyString(body, 'main')
       if (!main.toLowerCase().endsWith('.tex')) throw new Error('latex panel: main must be a .tex file')
-      json(res, 200, await compileProject(projectDir, main))
+      json(res, 200, await compileProject(projectDir, main, workspace))
       return
     }
 

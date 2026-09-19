@@ -146,7 +146,7 @@
 
 ## [2026-09-18] feat | 第二轮合并上游（882 提交）并适配 fork 功能
 
-- 按 [合并决策](decisions/2026-09-upstream-sync.md) 同一策略完成 upstream/master（ddefc45f，882 提交）全量合并：51 个冲突文件按来源取舍，merge commit f810df99。
+- 按 [合并决策](decisions/2026-09-upstream-sync.md) 同一策略完成 upstream/master（882 提交）全量合并：51 个冲突文件按来源取舍，合并提交已落地。
 - 跨包 API 适配：`SubprocessTerminalHandle` 新增 `inspectActivity`（sftp provider 用 /proc 前台探针实现）、`textFace` 四参、`DocumentBodyOwner` 携带 save 字段（OfficeBody 透传）；tsdown 客户端插件正则覆盖 ESM 默认导入的 `__toESM` 互操作形态（fork Excalidraw 依赖树的 pica 动态块）。
 - 修复与门禁：fflate 恢复 `^0.8.2`（0.8.3 修 jsdom 跨 realm 判定，office 测试 4 文件转绿）、上游已删 `tool-present` 的构建残留清理、`gen-tool-catalog` 补 a2a 工具名、设置节清单补 `ssh`、圆角门禁补 `corner-shape: round`；typecheck / build / test:docs 20 门禁全绿，全量单测失败均归因为负载/环境（逐项隔离复跑 + 上游一致性判定，见 [Windows 门禁踩坑](queries/windows-merge-gates.md) 新增条目）。
 
@@ -163,3 +163,24 @@
 - 解法：host 端 `syncChunkClosure` 把 entry 的传递同步 chunk 闭包内联进每个携带该 entry 的 combo（entry 之前注册）；client 端 `makeRequire` 增加相对 chunk 解析（按包级 owner 定位 `chunkId`）。`prologueRequires` 上移到 `dsh-client-modules` 共用。
 - 验证：modules 134 单测通过；重建后浏览器无错，画布 tab Excalidraw 渲染、懒 chunk 全 200。
 - 沉淀：[CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md)。
+
+## [2026-09-19] feat | Git 面板重设计 + LaTeX 面板
+
+- Git 面板按 `dsh-git-panel` 重写：多仓库卡片（BFS 发现嵌套仓库与 worktree）、逐文件 diff 抽屉、图片并排对比与全屏、提交规则编辑器与生成模型弹窗、生成三态按钮（NDJSON 流 + 取消）、历史提交图、合并状态条与完成/中止合并；host 补齐 `/git/repos|status|log|branches|show|blob|models|rules|stage|unstage|discard|clean|diff|commit|undo-commit|push|pull|switch|stash|merge-abort|merge-complete|reset|rules-save|rules-reset|generate|generate-cancel`。
+- 新增 LaTeX 面板：会话视图 `latex` 标签页 + `/latex` 前缀路由（项目发现、文件树、读写、xelatex+bibtex 临时镜像编译、PDF 预览、clean、字体与 tlmgr、AI 写作、模型目录）。
+- 抽出共享 LLM 路由 `src/llm-route.ts`（Git 生成与 LaTeX 写作共用），AI 写作弹窗新增模型选择。
+- 验证：`tsc -b`、oxlint 全绿，ui-polish 114 单测通过（新增合并冲突、resolver 子树、空文件、模型目录 4 条）；重建产物重启后浏览器逐项验证 Git 多仓库/图片 diff/规则/生成三态/合并完成，LaTeX 读取/保存后自动编译/新建空文件/字体/AI 写作（qwen-3.8-27B）。
+- 沉淀：[LaTeX 面板](entities/latex-panel.md)、[Git/LaTeX 面板重写的缺陷与修复](queries/ui-polish-git-latex-defects.md)、[fork Web 面板](entities/fork-web-panels.md) 重写、[门禁红项清单](queries/fork-gate-debt.md) 更新。
+
+## [2026-09-19] fix | ui-polish 门禁红项：i18n、文档、依赖分类
+
+- `verify-client-ui-i18n` 清偿：状态字母、diff 抽屉版本标记、比例选项、LaTeX 保存快捷键与 TeX 包显示名全部走 locale 字典。
+- `test:docs` 20 门禁全绿：修 wiki 硬换行（`verify-md-wrap`）、`log.md` 裸 commit hash（`verify-repository-references`）、JSDoc 里的“来源”用词（`verify-concrete-terms`）；README 双语同步 LaTeX 与新版 `/git` 路由并重录配对。
+- 仍待人工评审：`verify-package-dependencies` 要求把 `dsh-llm#BlockAssembler`/`createUserMessage`、`dsh-home-paths#dshHomePath`、`tool-excalidraw` 两个导出登记进分类表（仓库规则禁止代理自行添加例外）。
+
+## [2026-09-19] fix | 会话宽度滑块恢复 + LaTeX 镜像缺图
+
+- 宽度控件：第二轮合并把手柄版覆盖回来，`Slider` 实现丢失；本次按 Agent Note 重建为滚动区上方的顶部滑条（`data-conversation-width-slider`），删除 `.widthHandle` 系列 CSS，`hero` 与窄列（≤640+176）不渲染；文案改由 `ConversationContent` 经 input props 注入（工厂本地组件没有 locale 注入）。
+- LaTeX 镜像：不再跳过 `fonts/`，边界改为 2000 文件 / 512 MiB 总量 / 64 MiB 单文件并跟随目录符号链接；编译失败时从日志抽出缺失引用并判断“项目里没有 / 被镜像跳过 / 解析到别处”，直接给出结论行。
+- 验证：ui-conversation 429、ui-polish 118 单测通过（新增滑块步进往返、窄列无控件、缺失引用诊断 4 例）；浏览器实测列宽 1400 时拖动 640→760 生效、含 `figures/`+`fonts/` 图片的项目编译出 PDF、缺图项目日志末尾给出诊断。
+- 沉淀：[会话内容宽度轴](concepts/conversation-width-axis.md) 与 [LaTeX 面板](entities/latex-panel.md) 更新。

@@ -3,7 +3,7 @@ title: fork 自研包的门禁红项清单
 type: query
 tags: [gates, doc-sync, lint, coverage, constraints, fork, 待办]
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-09-19
 sources: []
 status: active
 ---
@@ -28,8 +28,8 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `pnpm run lint` | `tool-excalidraw`：src 的 `no-base-to-string`/`no-unnecessary-type-assertion`，tests 的 `no-unsafe-*`（excalidraw 场景 API 是 `any`） | excalidraw 批 | 给场景元素补类型（或 `unknown` + 收窄），测试用类型化 fixture |
 | `pnpm run lint` | `pi-agent-loop/src/agent.ts` 调已弃用的 `snapshotEvents`；`tests/translator.spec.ts` 多余类型断言 | pi 后端批 | 迁到同步读取的替代 API；删掉多余断言 |
 | `pnpm run constraints` | `dsh-a2a{,-host}`、`dsh-tool-a2a` 的 `repository` 应为 `git+https://github.com/deepseek-ai/deepseek-harness.git` + 对应 `directory`；`dsh-pi-agent-loop` 版本须与根 `0.1.6-alpha.1` 一致 | A2A / pi 批 | 直接改 manifest |
-| `verify-package-dependencies` | `workspace-files` 引 `FsVersion`、`ui-polish` 引 `tool-excalidraw#sanitizeScene`/`SCENE_RELATIVE`、`home-paths#dshHomePath` 未分类 | office / excalidraw 批 | 在 `scripts/package-dependency-policy.ts` 的分类表登记为 safe 或 peer-required |
-| `verify-client-ui-i18n` | 7 处硬编码 UI 文案：`ui-polish` 的 `CompactionRow`（`80%（默认）`）、`GitPanel.statusLabel`（untracked/modified/added/deleted/renamed/changed） | ui-polish 批 | 走 locale 字典（原第 8 处 `MutationDiffPanel.fileGlyph` 的 `'J'` 字形随文件面板移除消失） |
+| `verify-package-dependencies` | `workspace-files` 引 `FsVersion`、`ui-polish` 引 `tool-excalidraw#sanitizeScene`/`SCENE_RELATIVE`、`home-paths#dshHomePath`、`dsh-llm#BlockAssembler`/`createUserMessage`（Git 生成与 LaTeX 写作新增）未分类 | office / excalidraw / ui-polish 批 | 在 `scripts/package-dependency-policy.ts` 的 `SAFE_HOST_DEPENDENCY_EXPORTS` 或 `PEER_REQUIRED_HOST_EXPORTS` 登记。**该表禁止自动化代理自行新增例外**，每条都需人工评审并在 PR 描述里单独标注 |
+| ~~`verify-client-ui-i18n`~~ **已清偿（2026-09-19 ui-polish 批）** | 硬编码 UI 文案：`ui-polish` 的 `CompactionRow`（`80%（默认）`）、`GitPanel` 状态字母（`U`）与 diff 抽屉版本标记、`LatexPanel` 的 `Ctrl+S` 与 TeX 包名 | ui-polish 批 | — |
 | `test:coverage` per-file 100% | 实测：`a2a/src/{index,client,server,task-store}.ts` 82–98%、`a2a-host/src/{index,executor}.ts` 82–96%、`tool-a2a/src/index.ts` 83%、`remote/fs-sftp/src/index.ts` 73.8% 语句 / 62.9% 分支、`remote/subprocess-sftp/src/index.ts` 80.8% / 65.4% | 各 fork 批 | 逐文件补分支与错误路径测试（远端 shell 探测失败、abort、符号链接、并发创建等） |
 
 ## 本批（2026-09-18 远端工作区）已修掉的红项
@@ -41,6 +41,8 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - `verify-config-catalog` 的 `a2a-host` 部分（2026-09-18 A2A 文档批清偿）：`Config.card` 的五个字段补 JSDoc；余下 `pi-agent-loop` 的 ~16 处仍欠。
 - `verify-client-catalog`（2026-09-18 文件面板去重时清偿）：`slot-catalog.ts` 从 office 批起就过期（缺 `DocxBody`/`PptxBody` 等渲染器、多出已删除的 `MutationDiffPanel`），已跑 `pnpm run gen-client-catalog` 提交生成物。
 - **客户端 bundle 无 Node builtin 门禁**（已补）：动态 bundle 的 factory 序言里出现 Node builtin 时，构建与服务都通过，直到浏览器启动才变成「entry did not activate / import failed」。2026-09-18 在 `packages/client/tsdown.client.ts` 加 `dsh-client-prologue-builtins`（序言 require 到 Node builtin 即构建失败）；`fflate` 默认解析到 Node 版是首个实例。
+- **`verify-client-ui-i18n`**（2026-09-19 ui-polish 批清偿）：`CompactionRow` 的比例选项、Git 面板的状态字母与 diff 抽屉版本标记、LaTeX 面板的保存快捷键提示与 TeX 包显示名全部走 locale 字典。
+- **wiki 自身撞上的文档门禁**（2026-09-19）：`verify-md-wrap`（硬换行段落改为一行一段）、`verify-repository-references`（`log.md` 里的裸 commit hash 改为文字描述）、`verify-concrete-terms`（JSDoc 里的“来源”用词改为具体表述）。
 
 ## 上游包被 fork 打补丁的地方（合并上游时需一并带过去）
 

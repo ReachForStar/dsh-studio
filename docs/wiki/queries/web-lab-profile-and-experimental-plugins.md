@@ -10,10 +10,7 @@ status: active
 
 # 实验能力试验 profile（web-lab）与上游实验插件启用情况
 
-> **2026-09-18 更新**：上游合并带来了插件管理栈，三个实验能力已改为**可选 bundle**（`OPTIONAL_BUNDLES`），
-> Web 侧边栏 **Plugins** 页 Official 组可一键开关，不再需要手工插 patch 行；
-> 用户专属配置（模型/路径）仍留在各自 profile。详见决策页
-> [实验能力可视化开关](../decisions/2026-09-visual-experimental-toggle.md)。下文保留 web-lab 试验过程与端到端验证记录。
+> **2026-09-18 更新**：上游合并带来了插件管理栈，三个实验能力已改为**可选 bundle**（`OPTIONAL_BUNDLES`），Web 侧边栏 **Plugins** 页 Official 组可一键开关，不再需要手工插 patch 行；用户专属配置（模型/路径）仍留在各自 profile。详见决策页 [实验能力可视化开关](../decisions/2026-09-visual-experimental-toggle.md)。下文保留 web-lab 试验过程与端到端验证记录。
 
 ## 问题
 

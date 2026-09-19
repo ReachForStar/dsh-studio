@@ -213,3 +213,11 @@
 - LaTeX 编辑器加行号栏（`editorBox` = 行号 `<pre>` + `textarea wrap="off"`，滚动同步），行号与代码行一一对应。
 - 验证：ui-polish 127 条单测通过（新增流式、停止、provider 限定路由三例）；浏览器实测多轮生成、停止、应用、行号栏，以及选中 `amax/deepseek-flash` 后真实走 amax（生成成功且 `localStorage` 存组合键）。
 - 沉淀：[LaTeX 面板](entities/latex-panel.md) 增加编辑器与写作助手两节。
+
+## [2026-09-19] feat | 星辰多智能体协作（星域路由包）
+
+- 新增 `@reachforstar/dsh-xingchen`：`xingchen_route` 委派工具、`/review` `/bug` `/planning` 命令、路由提示词段落、`xingchen` 会话投影（最近角色/派发次数/终止原因），以及独立入口 `./clear`；启明为原生路由（`xingchen-qiming` 预设人设），天权/瑶光/天梁为 A2A 专家席（章程随派发附加）。
+- 修复上一轮未提交实现的九处缺陷：投影命令映射方向反、路由平局语义与单测不符、缺 `name` 导出、命令派发未落定对等端错误、presenter 死分支、schemastery API 用错、工具角色重复校验、缺失依赖声明、测试索引访问与 lint 三项。
+- 新包接线：`tsconfig.host.json`/`tsconfig.base.json` 别名、`apps/cli` 与 `web-app` 解析清单、`SERVICE_PAGE`/`LINK_MAP`/`SERVICE_ROLES`、包与分组 README、`docs/subsystems/xingchen.md` 子系统页（双语），并重跑 config-catalog / capability-seams / persistence-catalog / cordis api-catalog / tool-catalog 生成物。
+- 验证：xingchen 24 条单测、agent-presets 全量 214 条通过；`tsc -b tsconfig.host.json` 与定向 lint 干净；doc-sync 由 11 项失败收敛到 3 项（均为他批遗留：persistence 变更确认、ui-polish 导出分类、`a2a-host` 内联凭据）。
+- 沉淀：[星域协作实体页](entities/xingchen-multi-agent.md)、[专家席经 A2A 决策页](decisions/2026-09-19-xingchen-external-specialist-seats.md)、[缺陷与新包接线排查页](queries/xingchen-review-fixes.md)；[门禁红项页](queries/fork-gate-debt.md) 同步复检结果。

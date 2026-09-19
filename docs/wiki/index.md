@@ -18,6 +18,7 @@ updated: 2026-09-19
 - [fork Web 面板（ui-polish 的 Git/LaTeX/SSH/画布标签页）](entities/fork-web-panels.md) — 面板职责、`/git/*` 路由表（多仓库卡片、规则与生成模型、合并状态）、`ctx.fs` 接缝之外的守卫与编辑边界，以及文件面板去重。
 - [LaTeX 面板（/latex 路由与 Overleaf 式编辑流程）](entities/latex-panel.md) — 项目发现/文件树/路径基准、xelatex+bibtex 临时镜像编译链路（含文件数/字节/单文件边界与缺失引用诊断）、字体与 tlmgr 安装、AI 写作的模型路由与安全边界。
 - [工作区文件删除（ctx.fs.remove → workspaceFiles.delete → 右侧栏文件树）](entities/workspace-file-deletion.md) — 四层删除链的各层要点、父目录围栏与 `FS_NOT_EMPTY`，以及 `workspaceFiles/remove` 与客户端命名空间服务撞名导致整包启动失败、改方法名后必须重建两侧产物的踩坑。
+- [星域多智能体协作（dsh-xingchen）](entities/xingchen-multi-agent.md) — 四角色划分（启明原生路由 + 天权/瑶光/天梁 A2A 专家席）、派发三路径、会话投影与接线位置。
 
 ## 概念 concepts
 
@@ -33,6 +34,7 @@ updated: 2026-09-19
 - [合并上游 upstream/master（2026-09）](decisions/2026-09-upstream-sync.md) — 全量合并的来源取舍、`ctx.ssh` 让位、会话 v3 `backend` 字段、CI 与生成物处理。
 - [实验能力可视化开关：沿用上游 OPTIONAL_BUNDLES 模式](decisions/2026-09-visual-experimental-toggle.md) — Browser Use / Computer Use / Auto review 成为可选 bundle，Web 插件页一键开关；用户专属配置不进 bundle。
 - [跨包运行时导出的重复安装分类（2026-09-19）](decisions/2026-09-19-runtime-export-classification.md) — 六条导出登记 safe 的逐条依据、分类与依赖分区的连带关系，以及四个客户端包 peerDependencies 收敛到 cordis 后的发布布局变化。
+- [星域专家席经 A2A 抵达（2026-09-19）](decisions/2026-09-19-xingchen-external-specialist-seats.md) — 三个备选方案（本地预设+子代理、进程内专家会话、A2A 席位）的取舍与后果。
 
 ## 查询沉淀 queries
 
@@ -45,3 +47,4 @@ updated: 2026-09-19
 - [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率五类红项的现象、归属与修复方向（fork CI 不跑这些门禁）。
 - [CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md) — ui-polish 内嵌 Excalidraw 后 CJS 构建提升共享 `client.rolldown-runtime.js`，prologue 同步 require 模块表答不了；combo 携带同步闭包 + 相对 chunk 解析的修法与验证。
 - [Git/LaTeX 面板重写的缺陷与修复（2026-09-19）](queries/ui-polish-git-latex-defects.md) — 六个缺陷：加载中误报合并、嵌套仓库合并状态读错仓库、多仓库 cwd 回落、LaTeX 读写路径基准、空文件写入被拒、AI 写作默认 provider 空结果。
+- [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。

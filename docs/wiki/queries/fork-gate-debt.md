@@ -23,12 +23,13 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | ~~`verify-tool-catalog`~~ **已清偿（2026-09-18 A2A 文档批）** | `tool-a2a` 未登记进 `TOOL_PACKAGES` | A2A 批 | — |
 | `verify-config-catalog` | `pi-agent-loop` 约 16 处配置字段缺 JSDoc 散文（`a2a-host` 的 5 处已清偿） | pi 后端批 | 给每个 `Config` 字段补一句用途说明 |
 | `verify-client-catalog` | ~~`slot-catalog.ts` 过期~~ **已清偿（2026-09-18 文件面板去重批）** | office 批 | — |
-| `verify-persistence-catalog`、`verify-persistence-changes` | `docs/persistence-{catalog,schema}` 过期 | 会话 v3 `backend` 字段批 | `pnpm run gen-persistence-catalog` 后提交生成物（diff 可能覆盖多份双语文档） |
+| ~~`verify-persistence-catalog`~~ **已清偿（2026-09-19 星域批）**；`verify-persistence-changes` 仍红 | `docs/persistence-{catalog,schema}` 过期（跑生成器即绿）；`SessionHeader.backend` / `JsonlHeaderLine.backend` 新增可选字段未确认 | 会话 v3 `backend` 字段批 | 生成物已重跑；确认记录需按 [persistence 变更流程](../../../docs/cookbook/reviewing-persistence-type-changes.md) 写入并处理版本决定 |
 | `verify-config-source-ownership` | `packages/bundle/web-app/cordis.patch.yml:289` 内联 `apiKey: !!js process.env.DSH_A2A_API_KEY` | A2A 批 | 让 `dsh-a2a-host` 接受 `apiKeyEnv` 并经 `ctx.credentials`/环境快照解析，patch 只写变量名（与 `llm-*` 的 `apiKeyEnv` 同型） |
 | `pnpm run lint` | `tool-excalidraw`：src 的 `no-base-to-string`/`no-unnecessary-type-assertion`，tests 的 `no-unsafe-*`（excalidraw 场景 API 是 `any`） | excalidraw 批 | 给场景元素补类型（或 `unknown` + 收窄），测试用类型化 fixture |
 | `pnpm run lint` | `pi-agent-loop/src/agent.ts` 调已弃用的 `snapshotEvents`；`tests/translator.spec.ts` 多余类型断言 | pi 后端批 | 迁到同步读取的替代 API；删掉多余断言 |
 | `pnpm run constraints` | `dsh-a2a{,-host}`、`dsh-tool-a2a` 的 `repository` 应为 `git+https://github.com/deepseek-ai/deepseek-harness.git` + 对应 `directory`；`dsh-pi-agent-loop` 版本须与根 `0.1.6-alpha.1` 一致 | A2A / pi 批 | 直接改 manifest |
 | ~~`verify-package-dependencies`~~ **已清偿（2026-09-19）** | `workspace-files` 引 `FsVersion`、`ui-polish` 引 `tool-excalidraw#sanitizeScene`/`SCENE_RELATIVE`、`home-paths#dshHomePath`、`dsh-llm#BlockAssembler`/`createUserMessage` 未分类；另有四个客户端包的非 cordis `peerDependencies` 分区不符 | office / excalidraw / ui-polish 批 | — |
+| `verify-package-dependencies`（新红项，2026-09-19 复检） | `ui-polish/src/latex-service.ts` 引 `@deepseek-ai/dsh-llm#createAssistantMessage` 未分类 | LaTeX 写作批 | 分类表写明「新增条目默认禁止、自动化代理不得添加」，需人工评审后登记 |
 | ~~`verify-client-ui-i18n`~~ **已清偿（2026-09-19 ui-polish 批）** | 硬编码 UI 文案：`ui-polish` 的 `CompactionRow`（`80%（默认）`）、`GitPanel` 状态字母（`U`）与 diff 抽屉版本标记、`LatexPanel` 的 `Ctrl+S` 与 TeX 包名 | ui-polish 批 | — |
 | `test:coverage` per-file 100% | 实测：`a2a/src/{index,client,server,task-store}.ts` 82–98%、`a2a-host/src/{index,executor}.ts` 82–96%、`tool-a2a/src/index.ts` 83%、`remote/fs-sftp/src/index.ts` 73.8% 语句 / 62.9% 分支、`remote/subprocess-sftp/src/index.ts` 80.8% / 65.4% | 各 fork 批 | 逐文件补分支与错误路径测试（远端 shell 探测失败、abort、符号链接、并发创建等） |
 
@@ -52,6 +53,6 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 
 ## 复发预防
 
-- fork 改了上游扫描范围内的包（`packages/*/*`）后，本地一次跑齐：`pnpm run test:docs` → `pnpm run typecheck` → `pnpm run lint` → `pnpm run constraints` → `pnpm run verify-package-dependencies`；新增包另跑 `pnpm run doc-sync`（生成物门禁）。
+- fork 改了上游扫描范围内的包（`packages/*/*`）后，本地一次跑齐：`pnpm run test:docs` → `pnpm run typecheck` → `pnpm run lint` → `pnpm run constraints` → `pnpm run verify-package-dependencies`；新增包另跑 `pnpm run doc-sync`（生成物门禁），接线清单见 [星域包新包接线](xingchen-review-fixes.md#新-fork-包的门禁接线清单)。
 - 新增 fork 包时同步四件套：子系统页 + `LINK_MAP` 类型分类、组 README（链子系统页）、`TOOL_PACKAGES`（若是工具包）、按 `node bin/normalize-crlf.mjs` 之外的生成器重跑（catalog 类）。
 - fork 的 CI 不跑这些门禁，别把「CI 绿了」当成门禁通过。

@@ -29,7 +29,7 @@ status: active
 | `verify-doc-budgets` 报 `docs/architecture.md` 超 2400 词 | fork 新增的 SSH/SFTP 路由表行把上游文件推过上限 | 行内压缩该行与 4 处冗余表述（不提高上限） |
 | client bundle 构建报 `dynamic chunk "./client.pica.js" has no generated import expression`（`dsh-client-async-chunk-require`） | fork 的 Excalidraw 依赖树（ui-polish）含 ESM 依赖 pica，rolldown 对其输出 `__toESM(require("...").default, 1)` 互操作形态，插件正则只认裸 `require` 形态 | 扩展 `packages/client/tsdown.client.ts` 插件正则覆盖 `__toESM` 形态（上游树无此形态，行为不变）；两种形态都收敛为 `require.async(specifier)` |
 | office 测试（jsdom 环境）zip 往返失败：解压键变成 `a.xml/0/` 之类、产物 4 倍大 | fflate 0.8.2 的 `fltn` 用 `val instanceof u8` 判定字节数组；jsdom 环境的 `TextEncoder` 输出属于另一个 realm，`instanceof` 失败，字节数组被当嵌套目录递归 | 合并时别把 fflate 固定死版本：保持 `^0.8.2`，pnpm 解析到 0.8.3（`fltn` 改用跨 realm 安全的 `ArrayBuffer.isView`） |
-| `transform-corpus` 报 `UNEXPECTED BASELINE FAILURE packages/fs/tool-present/lib/index.js: Cannot find module '../package.json'` | 上游删除了 `tool-present` 包，合并正确暂存了删除，但**未跟踪的构建产物 `lib/` 残留**；基线语料扫描到孤儿 lib 去 import | `pnpm run clean`（会清「已删除包的残留产物」）后重新构建 |
+| `transform-corpus` 报 `UNEXPECTED BASELINE FAILURE`（上游已删除 `tool-present` 包） | 合并正确暂存了删除，但**未跟踪的构建产物 `lib/` 残留**；基线语料扫描到孤儿 `lib` 去 import | `pnpm run clean`（会清「已删除包的残留产物」）后重新构建 |
 | `verify-repository-references` 报 wiki 页/日志里的 commit 哈希 | 上游新增门禁：文档只允许 release tag 或受维护的仓库链接，禁止 commit 哈希 | 改写为描述性表述（如「当时 fork master 的实现」）；新 wiki 页不要写 commit 哈希 |
 
 ## 本机失败分类（已逐项归因）

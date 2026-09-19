@@ -51,6 +51,7 @@ To move one seat to a peer or give it its own model:
 | `seats.<role>.mode` | `local` | `local` delegates to a child agent in this process; `a2a` sends the task to the peer |
 | `seats.<role>.provider` | `spawn` | `ctx.subagents` provider used by a `local` seat |
 | `seats.<role>.model` | parent's route | Child model route for a `local` seat, as `provider/model` |
+| `seats.<role>.timeoutMs` | `300000` | How long a `local` seat may run before its dispatch fails and releases the child |
 | `peers.<role>` | `claude-code` / `pi` / `opencode` | A2A peer used by an `a2a` seat |
 | `charters.<role>` | package charter | Replace one role's charter text |
 

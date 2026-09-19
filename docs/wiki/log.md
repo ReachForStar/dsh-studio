@@ -229,3 +229,10 @@
 - 修法：两处预设把星域行包进 `cordis:group` + `isolate: { xingchen: true }`（与同文件的 planMode/workflowEngine 同型）。
 - 验证：重启 Web 服务（roster 启动时扫描）后预设可切换；会话日志 `agent-preset/selected` 为 `xingchen-qiming`，系统提示词含启明人设与「## 星域协作」段落，请求头工具表 49 个工具含 `xingchen_route`。
 - 沉淀：[排查页](queries/xingchen-review-fixes.md) 增加「预设激活失败」一节与复发预防，[实体页](entities/xingchen-multi-agent.md) 的接线与待确认同步。
+
+## [2026-09-19] fix | 清偿三类门禁红项（依赖分类 / 清单 / 符号链接）
+
+- `verify-package-dependencies`：把 `@deepseek-ai/dsh-llm#createAssistantMessage` 与已登记的 `createUserMessage` 同类登记为 safe（纯构造器、无跨实例身份）；分类表要求人工评审，提交正文已标注待所有者确认。
+- `constraints`：`@reachforstar/dsh-a2a{,-host,-tool-a2a}` 的 `repository` 改为上游仓库 + 各自 directory（与 tool-ssh/ui-polish 同型），`pi-agent-loop` 版本对齐根版本 `0.1.6-alpha.2`。
+- `verify-cordis-config`：本机 `core.symlinks=false` 把 15 个 git 符号链接检出为普通文件，`apps/cli/tests/profiles/acp/cordis.yml` 因此被读成「非数组根」；`git config core.symlinks true` 后逐条核对指针内容再重新检出，201 个配置文件全通过。
+- 未清偿：`verify-persistence-changes` 需要会话格式 v3→v4 后继（已核实发布标签 dsh-v0.1.5-alpha.1 的写者没有 `backend` 字段），属 pi 后端批且改变持久化格式，待所有者决定。

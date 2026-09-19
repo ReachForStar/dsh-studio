@@ -27,9 +27,9 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `verify-config-source-ownership` | `packages/bundle/web-app/cordis.patch.yml:289` 内联 `apiKey: !!js process.env.DSH_A2A_API_KEY` | A2A 批 | 让 `dsh-a2a-host` 接受 `apiKeyEnv` 并经 `ctx.credentials`/环境快照解析，patch 只写变量名（与 `llm-*` 的 `apiKeyEnv` 同型） |
 | `pnpm run lint` | `tool-excalidraw`：src 的 `no-base-to-string`/`no-unnecessary-type-assertion`，tests 的 `no-unsafe-*`（excalidraw 场景 API 是 `any`） | excalidraw 批 | 给场景元素补类型（或 `unknown` + 收窄），测试用类型化 fixture |
 | `pnpm run lint` | `pi-agent-loop/src/agent.ts` 调已弃用的 `snapshotEvents`；`tests/translator.spec.ts` 多余类型断言 | pi 后端批 | 迁到同步读取的替代 API；删掉多余断言 |
-| `pnpm run constraints` | `dsh-a2a{,-host}`、`dsh-tool-a2a` 的 `repository` 应为 `git+https://github.com/deepseek-ai/deepseek-harness.git` + 对应 `directory`；`dsh-pi-agent-loop` 版本须与根 `0.1.6-alpha.1` 一致 | A2A / pi 批 | 直接改 manifest |
+| ~~`pnpm run constraints`~~ **已清偿（2026-09-19 第二批）** | `dsh-a2a{,-host}`、`dsh-tool-a2a` 的 `repository` 为 fork 仓库；`dsh-pi-agent-loop` 版本与根版本不一致 | A2A / pi 批 | 三个包改为 deepseek-ai 仓库 + 各自 directory（与 tool-ssh/ui-polish 等同型）；pi-agent-loop 版本对齐根版本 |
 | ~~`verify-package-dependencies`~~ **已清偿（2026-09-19）** | `workspace-files` 引 `FsVersion`、`ui-polish` 引 `tool-excalidraw#sanitizeScene`/`SCENE_RELATIVE`、`home-paths#dshHomePath`、`dsh-llm#BlockAssembler`/`createUserMessage` 未分类；另有四个客户端包的非 cordis `peerDependencies` 分区不符 | office / excalidraw / ui-polish 批 | — |
-| `verify-package-dependencies`（新红项，2026-09-19 复检） | `ui-polish/src/latex-service.ts` 引 `@deepseek-ai/dsh-llm#createAssistantMessage` 未分类 | LaTeX 写作批 | 分类表写明「新增条目默认禁止、自动化代理不得添加」，需人工评审后登记 |
+| `verify-package-dependencies`（新红项，2026-09-19 复检）~~已清偿（2026-09-19 第二批）~~ | `ui-polish/src/latex-service.ts` 引 `@deepseek-ai/dsh-llm#createAssistantMessage` 未分类 | LaTeX 写作批 | 与已登记的 `createUserMessage` 同类（纯构造器，无跨实例身份），已登记进 `SAFE_HOST_DEPENDENCY_EXPORTS`；分类表要求人工评审，提交正文已标注待所有者确认 |
 | ~~`verify-client-ui-i18n`~~ **已清偿（2026-09-19 ui-polish 批）** | 硬编码 UI 文案：`ui-polish` 的 `CompactionRow`（`80%（默认）`）、`GitPanel` 状态字母（`U`）与 diff 抽屉版本标记、`LatexPanel` 的 `Ctrl+S` 与 TeX 包名 | ui-polish 批 | — |
 | `test:coverage` per-file 100% | 实测：`a2a/src/{index,client,server,task-store}.ts` 82–98%、`a2a-host/src/{index,executor}.ts` 82–96%、`tool-a2a/src/index.ts` 83%、`remote/fs-sftp/src/index.ts` 73.8% 语句 / 62.9% 分支、`remote/subprocess-sftp/src/index.ts` 80.8% / 65.4% | 各 fork 批 | 逐文件补分支与错误路径测试（远端 shell 探测失败、abort、符号链接、并发创建等） |
 
@@ -45,6 +45,8 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - **`verify-package-dependencies`**（2026-09-19 清偿）：六个运行时导出登记进 `SAFE_HOST_DEPENDENCY_EXPORTS`（`dsh-home-paths#dshHomePath`、`dsh-llm#BlockAssembler`/`createUserMessage`、`tool-excalidraw#SCENE_RELATIVE`/`sanitizeScene`、`dsh-fs#FsVersion`），并用 `--fix` 重整 `ui-polish`/`ui-ssh`/`ui-sidebar-documentpreview`/`workspace-files` 的依赖分区（peerDependencies 只留 cordis）；模块图文档与锁文件同步。全仓 67 包通过。
 - **`verify-client-ui-i18n`**（2026-09-19 ui-polish 批清偿）：`CompactionRow` 的比例选项、Git 面板的状态字母与 diff 抽屉版本标记、LaTeX 面板的保存快捷键提示与 TeX 包显示名全部走 locale 字典。
 - **wiki 自身撞上的文档门禁**（2026-09-19）：`verify-md-wrap`（硬换行段落改为一行一段）、`verify-repository-references`（`log.md` 里的裸 commit hash 改为文字描述）、`verify-concrete-terms`（JSDoc 里的“来源”用词改为具体表述）。
+
+- **`verify-cordis-config` 与 Windows 符号链接（2026-09-19 第二批清偿）**：本机 `core.symlinks=false` 时，仓库里 15 个 git 符号链接（含 `CLAUDE.md`、`apps/cli/tests/profiles/acp/cordis.yml`）被检出为内容等于链接目标路径的普通文件；`cordisConfigFiles()` 扫到那个 .yml 时读到一行路径文本，报「root must be a Loader entry array」。修法：`git config core.symlinks true`，然后对每个 mode 120000 的条目「先核对普通文件内容 == `git cat-file blob` 的目标，再 `rm` + `git checkout -- <path>`」恢复（脚本见 [星域新包排查页](xingchen-review-fixes.md#本机符号链接恢复)）；恢复后工作区无 diff（内容相同），但文件类型与索引一致。
 
 ## 上游包被 fork 打补丁的地方（合并上游时需一并带过去）
 

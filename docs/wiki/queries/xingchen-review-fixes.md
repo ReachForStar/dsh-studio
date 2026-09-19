@@ -72,13 +72,27 @@ must sit behind an `isolate` realm or move to the host composition (presets/xing
 
 **避免复发**：新增预设行时，只要它 `provide` 了服务（查包内 `declare module '@deepseek-ai/cordis'` 的 Context 合并）就套 isolate 域；改完预设文件别忘了重启 Web 服务（roster 在启动时扫描根目录）。
 
+## 本机符号链接恢复
+
+本机检出时 `core.symlinks=false`，仓库里 15 个 git 符号链接（`CLAUDE.md`、`packages/CLAUDE.md`、`apps/cli/tests/profiles/acp/cordis.yml`、几个快照夹具）变成内容等于「链接目标路径」的普通文件。`verify-cordis-config` 扫到那个 .yml 会报 `root must be a Loader entry array`（读到的是路径文本）。
+
+恢复步骤（需开发者模式或管理员权限，先验证能否建符号链接）：
+
+```sh
+git config core.symlinks true
+# 逐个：内容 == 索引里的链接目标时才删文件重新检出，避免误删真实内容
+for p in $(git ls-files -s | awk '$1 == 120000 { print $4 }'); do
+  [ "$(cat "$p")" = "$(git cat-file blob "$(git ls-files -s -- "$p" | awk '{ print $2 }')")" ] && rm -f "$p" && git checkout -- "$p"
+done
+```
+
+恢复后工作区无 diff（内容本就相同），但文件类型与索引一致，扫描类门禁看得到真实目标。
+
 ## 仍未清偿（归属其他批次）
 
-- `verify-persistence-changes`：`SessionHeader.backend` / `JsonlHeaderLine.backend` 新增可选字段未确认，需按 [persistence 变更流程](../../../docs/cookbook/reviewing-persistence-type-changes.md) 记录并处理版本决定，属 pi 后端批。
-- `verify-package-dependencies`：`ui-polish` 引 `@deepseek-ai/dsh-llm#createAssistantMessage` 未分类；分类表要求人工评审，不自动登记。
-- `constraints`：`@reachforstar/dsh-a2a*` 三个包的 `repository` 仍指 fork 仓库；`pi-agent-loop` 版本与根版本不一致。
-- `verify-config-source-ownership`：`packages/bundle/web-app/cordis.patch.yml` 里 `a2a-host` 的 `apiKey` 仍内联环境变量。
-- `verify-cordis-config`：本机 `core.symlinks=false`，`apps/cli/tests/profiles/acp/cordis.yml` 以普通文件检出，读成非数组根——Windows 环境问题，非代码问题。
+- `verify-persistence-changes`（仍需版本决定）：`SessionHeader.backend` / `JsonlHeaderLine.backend` 新增可选字段未确认。已核实：发布标签 `dsh-v0.1.5-alpha.1`（`latestReleasedVersion: 3` 的发布证据）的 `types.ts` 没有该字段，而当前写者仍是 `SESSION_FORMAT_VERSION = 3`，即字段改动落在已发布的 v3 头部上。按固定兼容规则（表头变更 → `version-bump`），确认只能走 [新增 Session 格式版本](../../../docs/cookbook/adding-a-session-format-version.md)：新建 v3→v4 相邻迁移包、目标编解码器与校验器、更新当前版本消费者、生成快照后继与目录。属于 pi 后端批，且改变持久化格式，未实施。
+- `verify-package-dependencies` / `constraints` / `verify-cordis-config` 三路已在本批清偿（依赖分类登记、清单对齐、符号链接恢复），明细见[门禁红项页](fork-gate-debt.md)。
+- `verify-config-source-ownership`（未清偿）：`packages/bundle/web-app/cordis.patch.yml` 里 `a2a-host` 的 `apiKey` 仍内联环境变量；按该门禁要求应由适配器经 `ctx.credentials` 与环境快照解析，属 A2A 批。
 
 ## 复发预防
 

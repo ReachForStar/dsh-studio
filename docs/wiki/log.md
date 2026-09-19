@@ -198,3 +198,10 @@
 - 修法：编译前扫描镜像内全部 `.tex` 的 `\includegraphics` 与 `\graphicspath`，对镜像内无处可寻的引用，在工作区内按文件名做有界广度优先搜索（≤4000 目录、深度 ≤8）并复制进镜像；补齐清单随结果返回，面板提示数量。缺失诊断新增“项目外但工作区内”的实际位置；目录遍历跳过 `.venv`/`site-packages` 等环境与缓存目录。
 - 验证：本机论文项目实测编译成功（PDF 3.39 MB、9 页），补齐清单从误报的 11 张收敛为真实的 6 张；ui-polish 121 条单测通过（新增工作区补齐与 graphicspath 不重复补齐两例）。
 - 沉淀：[LaTeX 面板](entities/latex-panel.md) 更新（补齐流程与四类诊断）。
+
+## [2026-09-19] fix | bibtex 运行目录与失败日志提取
+
+- 两个假定被修正：bibtex 现在与 xelatex 一样经 `findEngine` 解析（PATH → `C:/texlive/<年>/bin/windows`），并在**镜像内主文件目录**运行（此前在镜像根，子目录主文件必然报 `I found no \bibdata`）。
+- 失败日志改用 `extractBibtexExcerpt`：按 `Warning--`/`error message`/`Repeated entry`/`---line N of file` 等诊断行取上下文，不再返回 `.blg` 尾部的函数调用直方图。
+- 验证：本机论文项目编译仍成功（PDF 3.39 MB，补齐 6 张项目外图片）；ui-polish 124 条单测通过（新增 bibtex 摘取两例与子目录 bibtex 编译一例）。
+- 沉淀：[LaTeX 面板](entities/latex-panel.md) 的编译链路与踩坑更新。

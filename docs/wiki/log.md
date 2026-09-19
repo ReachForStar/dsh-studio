@@ -205,3 +205,11 @@
 - 失败日志改用 `extractBibtexExcerpt`：按 `Warning--`/`error message`/`Repeated entry`/`---line N of file` 等诊断行取上下文，不再返回 `.blg` 尾部的函数调用直方图。
 - 验证：本机论文项目编译仍成功（PDF 3.39 MB，补齐 6 张项目外图片）；ui-polish 124 条单测通过（新增 bibtex 摘取两例与子目录 bibtex 编译一例）。
 - 沉淀：[LaTeX 面板](entities/latex-panel.md) 的编译链路与踩坑更新。
+
+## [2026-09-19] feat | LaTeX 写作流式对话 + 同名模型区分 + 编辑器行号
+
+- `/latex/ai` 改为 NDJSON 流式（`t:text`/`done`/`stop`/`err`），新增 `/latex/ai-cancel`；AI 弹窗变成多轮对话（保留上下文继续改）、带停止与「应用到编辑器」按钮；请求未发出文本前会自动换下一个 provider（`llmRouteCandidates` + `aiWrite` 回退），Git 面板的生成同规则。
+- 模型选择改存 `provider/model` 组合键（`llmRouteKey`）：官方网关与 amax 都有 `deepseek-flash`，此前选 amax 会被解析成官方那一个；host 先按整串精确匹配再回退到裸 id/显示名。
+- LaTeX 编辑器加行号栏（`editorBox` = 行号 `<pre>` + `textarea wrap="off"`，滚动同步），行号与代码行一一对应。
+- 验证：ui-polish 127 条单测通过（新增流式、停止、provider 限定路由三例）；浏览器实测多轮生成、停止、应用、行号栏，以及选中 `amax/deepseek-flash` 后真实走 amax（生成成功且 `localStorage` 存组合键）。
+- 沉淀：[LaTeX 面板](entities/latex-panel.md) 增加编辑器与写作助手两节。

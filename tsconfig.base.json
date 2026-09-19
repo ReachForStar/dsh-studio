@@ -319,6 +319,10 @@
       "@reachforstar/dsh-host-ssh-remotes/types": ["./packages/host/ssh-remotes/lib/types/types.d.ts"],
       "@reachforstar/dsh-host-ssh-remotes/remote": ["./packages/host/ssh-remotes/lib/typert.remote-client.d.ts"],
       "@reachforstar/dsh-host-ssh-remotes/invariant": ["./packages/host/ssh-remotes/src/invariant.ts"],
+      "@reachforstar/dsh-xingchen": ["./packages/xingchen/xingchen/src/index.ts"],
+      "@reachforstar/dsh-xingchen/clear": ["./packages/xingchen/xingchen/src/clear.ts"],
+      "@reachforstar/dsh-xingchen/types": ["./packages/xingchen/xingchen/src/types.ts"],
+      "@reachforstar/dsh-xingchen/client": ["./packages/xingchen/xingchen/src/client.ts"],
       // session-log-export lives under session-query/, so the generated aliases map only its
       // bare name; the browser half needs this explicit subpath for source-mode dynamic imports.
       "@deepseek-ai/dsh-session-log-export/client": ["./packages/session-query/session-log-export/src/client"],

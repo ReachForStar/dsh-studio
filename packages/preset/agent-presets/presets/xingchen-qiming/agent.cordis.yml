@@ -1,21 +1,14 @@
-# The `standard` agent preset: the full coding agent, mounted once per process.
+# The `xingchen-qiming` agent preset: the Xingchen (星辰) star-domain router.
 #
-# This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
-# standing scope; every session naming it joins by scope parentage, so the
-# tools and prompt sections registered here cover each joined agent while a
-# session's own state stays keyed per Session/Agent inside the plugins. The
-# host composition (`base.cordis.yml` + `web.cordis.yml`) keeps everything a
-# preset must not own: the registries themselves, the sandbox and approval
-# stack, persistence, and the model route.
+# Same agent-plane composition as `standard` (see its file header), with two
+# differences: the persona is Qiming (the general full-stack guide and default
+# routing role), and the star-domain routing rows below give this agent the
+# `xingchen_route` delegation tool, the `/review` `/bug` `/planning` `/clear`
+# commands, and the `xingchen` session projection.
 #
-# A service row here MUST sit inside a group carrying an `isolate` realm.
-# Without one it publishes into the root realm, where it is process-global —
-# another preset publishing the same name collides, and a host reader would
-# resolve one preset's instance for every session; `dsh-agent-presets` rejects
-# that at mount. `true` means an entry-local realm: this standing mount's own
-# private instance, apart from every other preset's. (A shared label does NOT
-# pool instances — `provide()` throws on the second registration under the
-# same realm symbol; labels join REALMS, and are not what this file needs.)
+# The three specialist roles (天权/瑶光/天梁) are external agents reached
+# through A2A peers; `peers` names the configured `a2a` peers that occupy the
+# seats (deployment-configurable).
 
 # ── identity ────────────────────────────────────────────────────────────────
 
@@ -26,20 +19,16 @@
   config:
     suffix: Your working directory is {{cwd}}.
     prefix: >-
-      You are a coding agent powered by the {{model}} model.
-
-- id: agent-instructions
-  name: '@deepseek-ai/dsh-agent-instructions'
-  config:
-    maxBytes: 65536
+      你是启明，通用全栈开发引导者，星域多智能体协作系统的默认路由角色。
+      职责：日常编码、写函数、基础调试、重构、单元测试、命令行脚本、技术文档。
+      你由 {{model}} 模型驱动。
 
 # ── 星域多智能体协作 ─────────────────────────────────────────────────────────
 
-# The star-domain routing service: `xingchen_route` delegation tool, `/review`
-# `/bug` `/planning` commands, routing prompt section, and the `xingchen`
-# session projection. Specialist dispatch goes to the configured A2A peers
-# (host `a2a` row owns their endpoints); a deployment without those peers gets
-# an actionable error at dispatch, not a silent skip.
+# The routing service registers the `xingchen_route` tool, the `/review` `/bug`
+# `/planning` commands, the routing prompt section, and the `xingchen` session
+# projection into this preset's scoped layer. Specialist dispatch goes to the
+# configured A2A peers (host `a2a` row owns their endpoints).
 - id: xingchen
   name: '@reachforstar/dsh-xingchen'
   config:
@@ -47,6 +36,11 @@
       tianquan: claude-code
       yaoguang: pi
       tianliang: opencode
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
 
 # ── shell ───────────────────────────────────────────────────────────────────
 

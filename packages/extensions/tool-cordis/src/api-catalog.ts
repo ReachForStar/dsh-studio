@@ -3556,6 +3556,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
     ],
   },
+  {
+    key: 'xingchen',
+    summary: '`ctx.xingchen`: the star-domain routing service.',
+    description: '`ctx.xingchen`: the star-domain routing service.\n\nOwns the role bindings (peer + charter), the dispatch with per-session peer-conversation continuity, the `xingchen_route` tool, the `/review` `/bug` `/planning` commands, the routing prompt section, and the `xingchen` projection registration.',
+    methods: [
+      {
+        signature: 'async dispatch( role: XingchenSpecialistId, task: string, sessionKey: string, signal?: AbortSignal, ): Promise<A2APeerReply>',
+        description: 'Dispatch one task to a specialist role through its A2A peer, prefixing the role charter and continuing the per-session peer conversation.',
+        parameters: [{ name: 'role', description: 'the specialist role.' }, { name: 'task', description: 'the self-contained task text.' }, { name: 'sessionKey', description: 'the session id owning the conversation continuity.' }, { name: 'signal', description: 'cancellation owned by the caller.' }],
+        returns: 'the peer\'s answer and its continuation addressing.',
+      },
+    ],
+  },
 ]
 
 /** Every harness event, sorted by name. */
@@ -7567,6 +7580,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WorkspaceView',
     declaration: 'export interface WorkspaceView {\n    readonly workspaceId: WorkspaceId;\n    readonly path: string;\n    readonly title: string;\n    readonly sessionIds: readonly SessionId[];\n    readonly createdAt: string;\n    readonly updatedAt: string;\n}',
+  },
+  {
+    name: 'XingchenSpecialistId',
+    declaration: 'export type XingchenSpecialistId = \'tianquan\' | \'yaoguang\' | \'tianliang\';',
   },
 ]
 

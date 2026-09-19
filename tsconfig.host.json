@@ -203,6 +203,7 @@
     { "path": "./packages/a2a/a2a" },
     { "path": "./packages/a2a/a2a-host" },
     { "path": "./packages/a2a/tool-a2a" },
+    { "path": "./packages/xingchen/xingchen" },
     { "path": "./packages/attachment/attachment-local" },
     { "path": "./packages/client/file-upload/tsconfig.host.json" },
     { "path": "./packages/llm/llm" },

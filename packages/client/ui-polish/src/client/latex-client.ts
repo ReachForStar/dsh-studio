@@ -21,6 +21,8 @@ export interface LatexCompileResult {
   ok: boolean
   size?: number
   log?: string
+  /** Names the compile copied into its mirror from elsewhere in the workspace. */
+  supplied?: readonly string[]
 }
 
 /** `/latex/fonts` list result. */

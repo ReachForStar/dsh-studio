@@ -132,7 +132,8 @@ export function LatexPanel({ useSession, useWorkspaces, t }: LatexPanelProps) {
       if (result.ok) {
         setCompileOk(true)
         setPdfTick(v => v + 1)
-        flash(t('latex.compiled'))
+        const supplied = result.supplied?.length ?? 0
+        flash(supplied > 0 ? t('latex.suppliedGraphics', { n: supplied }) : t('latex.compiled'))
       } else {
         setCompileLog(result.log ?? '—')
       }

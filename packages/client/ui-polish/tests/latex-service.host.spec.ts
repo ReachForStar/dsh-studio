@@ -99,6 +99,12 @@ Hello world. 你好，世界。
 \end{document}
 `
 
+/** A valid 1x1 PNG, for figure references that must resolve to a real file. */
+const PNG_1PX = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+)
+
 describe('project discovery and file access', () => {
   it('finds directories containing .tex files, excluding node_modules', async () => {
     await makeProject('paper', 'main.tex', MAIN_TEX)
@@ -265,6 +271,13 @@ describe('missing-reference diagnostics', () => {
     expect(explainMissingReferences(log, ['big.pdf'], dir)).toContain('was not mirrored')
   })
 
+  it('points at a workspace copy of a missing file', async () => {
+    const dir = await makeProject('elsewhere', 'main.tex', MAIN_TEX)
+    const log = "! Unable to load picture or PDF file 'fig-x.png'."
+    const elsewhere = new Map([['fig-x.png', 'experiments/results/fig-x.png']])
+    expect(explainMissingReferences(log, [], dir, elsewhere)).toContain('experiments/results/fig-x.png')
+  })
+
   it('says nothing when the log names no missing file', async () => {
     const dir = await makeProject('noappendix', 'main.tex', MAIN_TEX)
     expect(explainMissingReferences('! Undefined control sequence.', [], dir)).toBe('')
@@ -300,6 +313,45 @@ describe('compilation', () => {
     await handleLatexRequest(resolve, ctxStub, requestDouble(`/latex/pdf?cwd=${encodeURIComponent(dir)}&dir=.&main=main.tex`, 'GET') as never, pdf.res as never)
     expect(pdf.status).toBe(200)
     expect(pdf.raw.startsWith('%PDF')).toBe(true)
+  }, 180_000)
+
+  it('supplies graphics the project lacks from elsewhere in the workspace', async () => {
+    if (xelatexPath === null) {
+      console.log('skip: no xelatex available on this machine')
+      return
+    }
+    const project = await makeProject('paper', 'main.tex', String.raw`\documentclass{article}
+\usepackage{graphicx}
+\begin{document}
+\includegraphics[width=0.3\textwidth]{ablation_heatmap.png}
+\end{document}
+`)
+    // The figure lives in a sibling experiment tree, not in the paper.
+    const results = join(workspace, 'experiments', 'results')
+    await mkdir(results, { recursive: true })
+    await writeFile(join(results, 'ablation_heatmap.png'), PNG_1PX)
+    const result = await compileProject(project, 'main.tex', workspace)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.supplied).toContain('ablation_heatmap.png')
+  }, 180_000)
+
+  it('resolves a graphicspath reference without supplying it from the workspace', async () => {
+    if (xelatexPath === null) {
+      console.log('skip: no xelatex available on this machine')
+      return
+    }
+    const project = await makeProject('graphicspath', 'main.tex', String.raw`\documentclass{article}
+\usepackage{graphicx}
+\graphicspath{{figs/}}
+\begin{document}
+\includegraphics[width=0.3\textwidth]{fig-local.png}
+\end{document}
+`)
+    await mkdir(join(project, 'figs'), { recursive: true })
+    await writeFile(join(project, 'figs', 'fig-local.png'), PNG_1PX)
+    const result = await compileProject(project, 'main.tex', workspace)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.supplied).toEqual([])
   }, 180_000)
 
   it('reports the log excerpt on a failed compile', async () => {

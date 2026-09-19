@@ -42,6 +42,36 @@ status: active
 7. **生成物**：`gen-config-catalog`、`gen-cordis-catalog`、`gen-doc-graphs`、`gen-persistence-catalog`、`gen-tool-catalog` 任一漂移都红；中文侧目录（`config-catalog.zh.md`、`capability-seams.zh.md`）不生成，要手工补同位置条目。
 8. **预设名单**：新增随包预设要更新 `packages/preset/agent-presets/tests/shipped-root.spec.ts` 的 id 列表与各用例的 id 循环。
 
+## 预设激活失败：服务未在 isolate 域内（网页冒烟才发现）
+
+**现象**：单测、typecheck、doc-sync、`verify-cordis-config` 全绿，但 Web 里选「启明 · 星域路由」时弹错并留在原预设：
+
+```
+无法切换到「启明 · 星域路由」：row(s) published process-global service(s) [xingchen]; a preset service
+must sit behind an `isolate` realm or move to the host composition (presets/xingchen-qiming/agent.cordis.yml)
+```
+
+**根因**：预设行的插件 `apply` 里 `ctx.plugin(XingchenService)` 把 `ctx.xingchen` 发布到了根 isolate，而根 isolate 是进程级的；`mountPreset` 事后用 `leakedServices(ctx, fiber)` 拒绘（`rootIsolate[name] === key` 即判泄漏），因为一个预设的服务不能同时服务所有预设。
+
+**修法**：把该行包进 `cordis:group` + `isolate: { xingchen: true }`，与同文件里的 `planMode: true`、`workflowEngine: true` 同型：
+
+```yaml
+- id: xingchen
+  name: cordis:group
+  group: true
+  isolate:
+    xingchen: true
+  config:
+    - id: xingchen-router
+      name: '@reachforstar/dsh-xingchen'
+      config:
+        peers: { tianquan: claude-code, yaoguang: pi, tianliang: opencode }
+```
+
+**为何现有门禁没拦住**：`verify-cordis-config` 只查行 id 是否同处两个平面与插件能否解析，不查“哪一行提供了哪个服务”；`shipped-root.spec.ts` 只读 YAML，不挂载组合；单测直接 `ctx.plugin(xingchen)`，根本不经过预设挂载。判据是「提供了 `ctx.<key>` 的预设行，必须能看到 `isolate: { <key>: true }` 祖先」。
+
+**避免复发**：新增预设行时，只要它 `provide` 了服务（查包内 `declare module '@deepseek-ai/cordis'` 的 Context 合并）就套 isolate 域；改完预设文件别忘了重启 Web 服务（roster 在启动时扫描根目录）。
+
 ## 仍未清偿（归属其他批次）
 
 - `verify-persistence-changes`：`SessionHeader.backend` / `JsonlHeaderLine.backend` 新增可选字段未确认，需按 [persistence 变更流程](../../../docs/cookbook/reviewing-persistence-type-changes.md) 记录并处理版本决定，属 pi 后端批。

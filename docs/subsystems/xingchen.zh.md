@@ -24,6 +24,10 @@ Source: [`packages/xingchen/xingchen/src/index.ts`](../../packages/xingchen/xing
 
 每次派发与每次轮次终止都会追加到 `xingchen` 会话投影：最近派发的角色、派发次数、最近一轮的终止原因（`completed`、带原因的 `aborted`、`blocked`、`error`、`max-tokens` 或 `interrupted`）。该视图未建模的轮次终止类型统一折为通用 `error` 标签，完整原因留在 `turn/end` 事件中。投影是对会话日志的折叠，随会话一起重建，不需要自己的存储。
 
+## 内置技能
+
+`./skills` 入口把三个技能注册进会话目录：`git`（历史、blame、定位引入缺陷的提交）、`run`（跑复现或聚焦测试并给出真实结果）、`log`（把日志或堆栈解析成能指明失败的证据）。前两个是瑶光在归因前需要的证据基础；三者对模型与人都可调用，因此可以从输入框调用 `$git`、`$run`、`$log`。
+
 ## 配置
 
 ```yaml

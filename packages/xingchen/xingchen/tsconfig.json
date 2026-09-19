@@ -36,6 +36,9 @@
       "path": "../../session/session-projection"
     },
     {
+      "path": "../../skill/skill"
+    },
+    {
       "path": "../../compaction/compaction"
     },
     {

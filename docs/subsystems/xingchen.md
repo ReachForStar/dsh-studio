@@ -24,6 +24,10 @@ Three paths reach a specialist; all three are logged, and all three feed the pro
 
 Every dispatch and every turn end appends to the `xingchen` session projection: the last dispatched role, the dispatch count, and how the latest turn ended (`completed`, `aborted` with its cause, `blocked`, `error`, `max-tokens`, or `interrupted`). A turn-end kind this view does not model folds to the generic `error` label, and the full reason stays in the `turn/end` event. The projection is a fold over the session log, so it rebuilds with the session and never needs its own storage.
 
+## Bundled skills
+
+The `./skills` entry registers three skills into the session's catalog: `git` (history, blame, and the commit that introduced a defect), `run` (a reproduction or a focused test with its real result), and `log` (a log or stack trace parsed into the evidence that names a failure). The first two are the grounding 瑶光 needs before attributing a cause; all three are model- and user-invocable, so a person can call `$git`, `$run`, or `$log` from the composer.
+
 ## Configuration
 
 ```yaml

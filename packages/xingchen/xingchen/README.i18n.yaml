@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/xingchen/xingchen/README.md
-README.md: ce2a3b7a4b67b945bde5ce7d49ef7b79527e4297
-README.zh.md: cfcb9661cc765c9058d8ac2189c7df1f3d66077d
+README.md: 592b371acc9777e3be77954686191bed538d5061
+README.zh.md: 4f1e37e012ed14041cd6c34e6d48bb5a809aca01

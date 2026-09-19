@@ -52,6 +52,8 @@ To move one seat to a peer or give it its own model:
 | `seats.<role>.provider` | `spawn` | `ctx.subagents` provider used by a `local` seat |
 | `seats.<role>.model` | parent's route | Child model route for a `local` seat, as `provider/model` |
 | `seats.<role>.timeoutMs` | `300000` | How long a `local` seat may run before its dispatch fails and releases the child |
+| `seats.<role>.skill` | per role | Skill an `a2a` seat works under: `code-review` for 天权, `analysis` for 瑶光 and 天梁 |
+| `seats.<role>.channel` | `direct` | Channel an `a2a` seat dispatches on: `direct` waits for the answer, `bus` publishes the task and waits for its terminal event |
 | `peers.<role>` | `claude-code` / `pi` / `opencode` | A2A peer used by an `a2a` seat |
 | `charters.<role>` | package charter | Replace one role's charter text |
 

@@ -41,7 +41,7 @@ No configuration of its own; peers belong to [`dsh-a2a`](../a2a/README.md).
 
 ### What each call does
 
-`a2a_peers` returns every configured peer with its name, endpoint, and the display name from its published card; a peer whose card cannot be read is reported with that error beside it rather than failing the listing. `a2a_send` takes a peer name, a text message, and optional `contextId` and `taskId` to continue earlier work; it answers with the peer's reply text plus the identifiers a follow-up needs. A peer that fails is reported as a failed tool result naming the reason, so the model can correct the call instead of losing the turn.
+`a2a_peers` returns every configured peer with its name, endpoint, the display name from its published card, and the skills that peer accepts; a peer whose card cannot be read is reported with that error beside it rather than failing the listing. `a2a_send` takes a peer name, a text message, and optional `skill`, `workspace`, `mode`, `wait`, `contextId`, and `taskId`; it answers with the peer's reply text plus the identifiers a follow-up needs. On a peer that is one of an a2a-bridge deployment's agents, the call is dispatched with the chosen skill and channel, and `skill` defaults to the first skill that agent advertises. A peer that fails is reported as a failed tool result naming the reason, so the model can correct the call instead of losing the turn.
 
 ## Understand the implementation
 
@@ -71,7 +71,7 @@ The tools read peers through the `a2a` service; nothing in a tool call can add o
 
 #### What the model sees
 
-Two tool definitions, each with its own description and JSON schema: `a2a_peers` takes no arguments, and `a2a_send` takes `peer`, `message`, and optional `contextId` / `taskId`. Both descriptions state what the call does and what the result means; the peer list itself reaches the model as tool output, not as prompt text.
+Two tool definitions, each with its own description and JSON schema: `a2a_peers` takes no arguments, and `a2a_send` takes `peer`, `message`, and optional `skill`, `workspace`, `mode`, `wait`, `contextId`, and `taskId`. Both descriptions state what the call does and what the result means; the peer list itself reaches the model as tool output, not as prompt text.
 
 #### Token effect
 
@@ -86,6 +86,7 @@ The definitions are static for the life of the composition, so they stay in the 
 - **Text only.** Requests carry text parts and replies are read as text; files and structured parts are neither sent nor rendered.
 - **No streaming to the model.** `a2a_send` waits for the peer's turn to finish, so a long remote turn reaches the model as one result rather than as increments.
 - **One message per call.** Continuation is explicit through `contextId` / `taskId`; there is no conversation object the model can keep open.
+- **A bus task returns before its answer.** `mode: "bus"` publishes the task to the deployment's topic and returns as soon as it is claimed, so the reply text is only what the event stream delivered before the call returned; `wait: true` waits for the terminal event instead.
 - **No peer registration from a call.** A peer must be configured before the model can address it, and an unconfigured name fails the call.
 
 ### Dev Note

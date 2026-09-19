@@ -45,6 +45,8 @@ kind: "package-reference"
 | `seats.<role>.provider` | `spawn` | `local` 席位使用的 `ctx.subagents` 提供方 |
 | `seats.<role>.model` | 继承父代理 | `local` 席位的子代理模型路由，写作 `provider/model` |
 | `seats.<role>.timeoutMs` | `300000` | `local` 席位的等待上限；超时即释放子运行并报错，不无限等待 |
+| `seats.<role>.skill` | 按角色 | `a2a` 席位工作的 skill：天权 `code-review`，瑶光与天梁 `analysis` |
+| `seats.<role>.channel` | `direct` | `a2a` 席位的通道：`direct` 等答案，`bus` 投任务并等终态事件 |
 | `peers.<role>` | `claude-code` / `pi` / `opencode` | `a2a` 席位使用的对等端，须存在于 `a2a` 行的 `peers` |
 | `charters.<role>` | 包内章程 | 替换某个角色的章程文本 |
 
@@ -106,6 +108,7 @@ kind: "package-reference"
 ## 已知限制与延期工作
 
 - **专家席位默认本机，`a2a` 需要已配置的对等端。** `local` 席位在本进程内起子代理，因此需要 `subagents` 注册表与已注册的提供方。使用 `mode: a2a` 而没有配置对等端的部署用不了天权/瑶光/天梁，每次派发都以对等端错误失败。
+- **`a2a` 席位没有自己的超时。** `seats.<role>.timeoutMs` 约束的是 `local` 席位；对等端席位由它派发到的网关收尾，对端一直不答就一直是等待。
 - **续接是进程内的。** `a2a` 席位的 `会话 id + 角色` 到 `contextId` 映射放在内存里，重启后即便对等端还持有旧会话，也会开始新的对等端会话。`local` 席位不需要这张映射：每次派发就是一个子会话。
 - **一次调用只派发一个任务。** `xingchen_route` 只在专家结束时返回；很长的评审会阻塞调用轮次，专家输出也不会分段流回。
 - **启发式仅供参考。** `routeXingchen` 不用模型即可分类，但真正派发的只有路由代理的工具调用与斜杠命令，目前还没有客户端或宿主路径消费该分类器。

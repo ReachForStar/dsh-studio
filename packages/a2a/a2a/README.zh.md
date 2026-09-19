@@ -50,7 +50,18 @@ kind: "package-reference"
 | `peers.<name>.cardPath` | `/.well-known/agent-card.json` | 读取 agent card 的路径 |
 | `peers.<name>.timeoutMs` | 无 | 单次调用预算，含流的空闲间隔 |
 
-`a2a` 服务暴露 `list()`、`resolve(ref)`、`send(request)`、`card(ref)`、`inspect(signal)`。未命中配置的引用会被当作端点 URL，运维因此能刻意调用未配置的 agent。
+`a2a` 服务暴露 `list()`、`resolve(ref)`、`send(request)`、`card(ref)`、`inspect(signal)`、`skills(agent)`、`dispatch(request)`。未命中配置的引用会被当作端点 URL，运维因此能刻意调用未配置的 agent。
+
+### 桥部署
+
+派发到 [a2a-bridge](https://github.com/ReachForStar/a2a-bridge) 网关的部署读取该桥自己的 `config.json`，而不在这里重述它的 agent。文件给出三个 agent 的端口、各自接受的 skill 与 Kafka topics；本部署只声明文件位置与自己在总线上自称的名字。
+
+| 字段 | 默认 | 含义 |
+|---|---|---|
+| `bridge.configPath` | `A2A_CONFIG` | 桥的 `config.json` 路径 |
+| `bridge.agent` | `dsh` | 本部署在总线上投递任务时使用的名字 |
+
+`dispatch(request)` 用 `agent` 与 `skill` 在两条通道上寻址一个桥 agent。`mode: 'direct'` 把答案流式收回，到终态返回；`mode: 'bus'` 把任务投到桥的任务 topic，任务被领取即返回，带 `wait` 时等到终态事件。总线任务的生命超过本进程，因此它的文本是调用返回前事件流送达的部分。环境变量 `A2A_CONFIG`、`A2A_API_KEY`、`A2A_BUS_BOOTSTRAP`、`A2A_PI_MODEL`、`A2A_OC_MODEL` 的含义与桥一致。
 
 <a id="understand-the-implementation"></a>
 ## 理解实现
@@ -63,7 +74,9 @@ kind: "package-reference"
 | [`src/server.ts`](src/server.ts) | 请求处理器与监听、SSE 流式、鉴权、错误码 |
 | [`src/client.ts`](src/client.ts) | `A2AClient`：取卡片、发送、流式、查询、取消、订阅 |
 | [`src/task-store.ts`](src/task-store.ts) | 有上限的内存任务表，淘汰最旧的终态任务 |
-| [`src/index.ts`](src/index.ts) | `A2AService`、对等端注册表、`Config` 模式 |
+| [`src/bus.ts`](src/bus.ts) | Kafka 任务与事件通道：幂等、重投、死信、消费者自恢复 |
+| [`src/bridge-config.ts`](src/bridge-config.ts) | 读取 [a2a-bridge](https://github.com/ReachForStar/a2a-bridge) 部署自己的 `config.json` |
+| [`src/index.ts`](src/index.ts) | `A2AService`、对等端注册表、`dispatch()`、`Config` 模式 |
 
 ### 导出形状
 

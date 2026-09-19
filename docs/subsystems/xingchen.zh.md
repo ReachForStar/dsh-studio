@@ -50,6 +50,8 @@ Source: [`packages/xingchen/xingchen/src/index.ts`](../../packages/xingchen/xing
 | `seats.<role>.provider` | `spawn` | `local` 席位使用的 `ctx.subagents` 提供方 |
 | `seats.<role>.model` | 继承父代理 | `local` 席位的子代理模型路由，写作 `provider/model` |
 | `seats.<role>.timeoutMs` | `300000` | `local` 席位的等待上限；超时即释放子运行并报错，不无限等待 |
+| `seats.<role>.skill` | 按角色 | `a2a` 席位工作的 skill：天权 `code-review`，瑶光与天梁 `analysis` |
+| `seats.<role>.channel` | `direct` | `a2a` 席位的通道：`direct` 等答案，`bus` 投任务并等终态事件 |
 | `peers.<role>` | `claude-code` / `pi` / `opencode` | `a2a` 席位使用的对等端 |
 | `charters.<role>` | 包内章程 | 替换某个角色的章程文本 |
 

@@ -10,7 +10,7 @@ import { Session, SessionId, SessionStore } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
-import type { A2APeerReply } from '@reachforstar/dsh-a2a'
+import type { A2ABridgeConfig, A2APeerReply } from '@reachforstar/dsh-a2a'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
 import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
 import * as xingchen from '../src/index.ts'
@@ -29,6 +29,9 @@ interface A2AStub {
   readonly inspect: ReturnType<typeof vi.fn>
   readonly list: ReturnType<typeof vi.fn>
   readonly send: ReturnType<typeof vi.fn>
+  readonly skills: ReturnType<typeof vi.fn>
+  readonly bridgeConfig?: A2ABridgeConfig
+  readonly dispatch: ReturnType<typeof vi.fn>
 }
 
 /** Arguments of one recorded `a2a.send` call. */
@@ -45,13 +48,32 @@ function sentCall(stub: A2AStub, index: number): SentCall {
   return call
 }
 
-function a2aStub(reply: Partial<A2APeerReply> = {}, peers: readonly string[] = []): A2AStub {
+function a2aStub(reply: Partial<A2APeerReply> = {}, peers: readonly string[] = [], bridge?: A2ABridgeConfig): A2AStub {
   return {
     inspect: vi.fn(() => Promise.resolve([])),
     list: vi.fn(() => [...peers]),
     send: vi.fn(() => Promise.resolve({ text: '专家回答', ...reply })),
+    skills: vi.fn((agent: string) => (bridge?.skills as Record<string, string[]> | undefined)?.[agent] ?? []),
+    ...bridge === undefined ? {} : { bridgeConfig: bridge },
+    dispatch: vi.fn(() => Promise.resolve({ text: '桥回答', agent: 'claude-code', skill: 'code-review', mode: 'direct' })),
   }
 }
+
+/** 一份桥配置：三个 agent 的端口与各自的 skill。 */
+const BRIDGE = {
+  apiKey: '',
+  agents: {
+    pi: { port: 9310, defaultWorkspace: '' },
+    'claude-code': { port: 9320, defaultWorkspace: '' },
+    opencode: { port: 9330, defaultWorkspace: '' },
+  },
+  skills: { pi: ['code-dev', 'analysis'], 'claude-code': ['code-review', 'coding'], opencode: ['analysis'] },
+  bus: { bootstrapServers: ['127.0.0.1:9092'], taskTopic: 'a2a.task', eventTopic: 'a2a.event', dlqTopic: 'a2a.dlq', partitions: 6, maxAttempts: 3 },
+  piModel: '',
+  opencodeModel: '',
+  idleMs: 1_800_000,
+  taskTimeoutMs: 600_000,
+} as unknown as A2ABridgeConfig
 
 /** One live idle agent with a store-created session, as command handlers expect. */
 function stubAgent(ctx: Context, id: string): { agent: Agent; session: Session } {
@@ -105,7 +127,7 @@ interface Harness {
  * @param mode - `a2a` pins every seat to its peer; `auto` (the default) lets a
  *   configured peer decide, which stays local on a deployment without peers.
  */
-async function harness(stub: A2AStub = a2aStub(), mode: 'auto' | 'a2a' = 'a2a'): Promise<Harness> {
+async function harness(stub: A2AStub = a2aStub(), mode: 'auto' | 'a2a' = 'a2a', extra: XingchenConfig = {}): Promise<Harness> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
@@ -117,8 +139,8 @@ async function harness(stub: A2AStub = a2aStub(), mode: 'auto' | 'a2a' = 'a2a'):
   const subagents = subagentStub()
   ctx.provide('subagents', subagents as never)
   const config: XingchenConfig = mode === 'a2a'
-    ? { seats: { tianquan: { mode: 'a2a' }, yaoguang: { mode: 'a2a' }, tianliang: { mode: 'a2a' } } }
-    : {}
+    ? { ...extra, seats: { tianquan: { mode: 'a2a' }, yaoguang: { mode: 'a2a' }, tianliang: { mode: 'a2a' }, ...extra.seats } }
+    : extra
   const plugin = await ctx.plugin(xingchen, config)
   disposers.push(async () => { await plugin.dispose() })
   const { agent, session } = stubAgent(ctx, `xingchen-${Math.random()}`)
@@ -529,5 +551,59 @@ describe('@reachforstar/dsh-xingchen/clear', () => {
       kind: 'error',
       text: '上下文清理失败（busy）；该轮尝试已记录在会话日志中。',
     })
+  })
+})
+
+describe('席位走 a2a-bridge 方案', () => {
+  it('桥 agent 走 dispatch，带上角色 skill 与通道，并续接对端会话', async () => {
+    const stub = a2aStub({}, ['claude-code'], BRIDGE)
+    stub.dispatch.mockResolvedValue({ text: '天权结论', contextId: 'bridge-ctx', state: 'TASK_STATE_COMPLETED', agent: 'claude-code', skill: 'coding', mode: 'bus' })
+    const test = await harness(stub, 'a2a', {
+      peers: { tianquan: 'claude-code' },
+      seats: { tianquan: { mode: 'a2a', skill: 'coding', channel: 'bus' } },
+    })
+    await test.ctx.commands.execute(test.agent, '/review 审查一下', [], signal)
+    expect(stub.dispatch).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      agent: 'claude-code',
+      skill: 'coding',
+      mode: 'bus',
+      wait: true,
+    }))
+    expect(stub.send).not.toHaveBeenCalled()
+    await test.ctx.commands.execute(test.agent, '/review 再审一次', [], signal)
+    expect(stub.dispatch.mock.calls[1]?.[0]).toMatchObject({ contextId: 'bridge-ctx' })
+  })
+
+  it('未配置 skill 时按角色取默认值：天权审查、瑶光与天梁调研分析', async () => {
+    const stub = a2aStub({}, ['pi', 'claude-code', 'opencode'], BRIDGE)
+    const test = await harness(stub, 'a2a', {
+      peers: { tianquan: 'claude-code', yaoguang: 'pi', tianliang: 'opencode' },
+    })
+    for (const name of ['review', 'bug', 'planning']) {
+      await test.ctx.commands.execute(test.agent, `/${name} 做点事`, [], signal)
+    }
+    expect(stub.dispatch.mock.calls.map(call => (call[0] as { skill: string }).skill))
+      .toEqual(['code-review', 'analysis', 'analysis'])
+    expect(stub.dispatch.mock.calls.map(call => (call[0] as { mode: string }).mode))
+      .toEqual(['direct', 'direct', 'direct'])
+  })
+
+  it('对等端不在桥里时退回通用发送，并把 skill 放进元数据', async () => {
+    const stub = a2aStub({ text: '通用回答' }, ['custom'], BRIDGE)
+    const test = await harness(stub, 'a2a', { peers: { tianquan: 'custom' } })
+    await test.ctx.commands.execute(test.agent, '/review 看看', [], signal)
+    expect(stub.dispatch).not.toHaveBeenCalled()
+    expect(sentCall(stub, 0)).toMatchObject({ peer: 'custom' })
+    expect(stub.send.mock.calls[0]?.[0]).toMatchObject({ metadata: { skill: 'code-review' } })
+  })
+
+  it('席位以失败态结束时命令落定为错误结果', async () => {
+    const stub = a2aStub({ text: 'fetch failed', state: 'TASK_STATE_FAILED' })
+    const test = await harness(stub)
+    const execution = await test.ctx.commands.execute(test.agent, '/bug 重现一下', [], signal)
+    const result = execution?.result as { kind: string; text: string }
+    expect(result.kind).toBe('error')
+    expect(result.text).toContain('TASK_STATE_FAILED')
+    expect(result.text).toContain('fetch failed')
   })
 })

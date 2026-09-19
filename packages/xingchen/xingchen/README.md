@@ -45,6 +45,8 @@ No configuration is required: each seat spawns a child agent through `ctx.subage
 | `seats.<role>.provider` | `spawn` | `ctx.subagents` provider used by a `local` seat |
 | `seats.<role>.model` | parent's route | Child model route for a `local` seat, as `provider/model` |
 | `seats.<role>.timeoutMs` | `300000` | How long a `local` seat may run before its dispatch fails and releases the child |
+| `seats.<role>.skill` | per role | Skill an `a2a` seat works under: `code-review` for 天权, `analysis` for 瑶光 and 天梁 |
+| `seats.<role>.channel` | `direct` | Channel an `a2a` seat dispatches on: `direct` waits for the answer, `bus` publishes the task and waits for its terminal event |
 | `peers.<role>` | `claude-code` / `pi` / `opencode` | A2A peer used by an `a2a` seat; must exist on the `a2a` row's `peers` |
 | `charters.<role>` | package charter | Replace one role's charter text |
 
@@ -102,6 +104,7 @@ The prompt section text and the tool schema are fixed per deployment, so neither
 ## Known Limitations and Deferred Work
 
 - **Specialist seats default to local; `a2a` needs configured peers.** A `local` seat runs a child agent in this process, so it needs the `subagents` registry and a registered provider. A deployment using `mode: a2a` without configured peers cannot reach 天权/瑶光/天梁, and each dispatch fails with the peer error.
+- **An `a2a` seat has no timeout of its own.** `seats.<role>.timeoutMs` bounds a `local` seat's run; a peer seat is bounded by the gateway it dispatches to, so a peer that never answers leaves the dispatch waiting.
 - **Continuation is process-local.** The `session id + role` to `contextId` map for `a2a` seats lives in memory, so a restart starts a fresh peer conversation even though the peer may still hold the old one. A local seat needs no such map: each dispatch is one child session.
 - **One dispatch at a time per call.** `xingchen_route` returns only when the specialist finishes; a long review blocks the calling turn, and there is no streaming of partial specialist output.
 - **The heuristic is advisory.** `routeXingchen` classifies without a model, but only the routing agent's tool call and the slash commands actually dispatch; no client or host path consumes the classifier yet.

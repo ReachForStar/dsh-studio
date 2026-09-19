@@ -98,6 +98,17 @@ export interface XingchenSeatConfig {
   /** Child model route for `local` mode, as `provider/model`; default inherits the parent. */
   readonly model?: string
   /**
+   * Skill an `a2a` seat works under, from the peer's advertised set. Defaults
+   * per role: review for 天权, analysis for 瑶光 and 天梁.
+   */
+  readonly skill?: string
+  /**
+   * Channel an `a2a` seat dispatches on: `direct` waits for the answer, `bus`
+   * publishes the task and returns once the peer claims it. Defaults to
+   * `direct`.
+   */
+  readonly channel?: 'direct' | 'bus'
+  /**
    * How long a `local` seat may run before its dispatch gives up, in
    * milliseconds; default 300000. On expiry the child run is disposed and the
    * dispatch fails with the elapsed limit instead of waiting forever.
@@ -125,8 +136,15 @@ const DEFAULT_PEERS: Readonly<Record<XingchenSpecialistId, string>> = {
 /** Default `ctx.subagents` provider for a seat running locally. */
 const DEFAULT_SEAT_PROVIDER = 'spawn'
 
-/** Default wait before a local seat's dispatch gives up, in milliseconds. */
+/** Default wait before a seat's dispatch gives up, in milliseconds. */
 const DEFAULT_SEAT_TIMEOUT_MS = 300_000
+
+/** Default skill per specialist role, matching what each role's backend advertises. */
+const DEFAULT_SKILLS: Readonly<Record<XingchenSpecialistId, string>> = {
+  tianquan: 'code-review',
+  yaoguang: 'analysis',
+  tianliang: 'analysis',
+}
 
 /** Default charter per specialist role, overridable in config. */
 const DEFAULT_CHARTERS: Readonly<Record<XingchenSpecialistId, string>> = {
@@ -148,9 +166,9 @@ export const Config: z<XingchenConfig> = z.object({
     tianliang: z.string(),
   }),
   seats: z.object({
-    tianquan: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), timeoutMs: z.number().min(1) }),
-    yaoguang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), timeoutMs: z.number().min(1) }),
-    tianliang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), timeoutMs: z.number().min(1) }),
+    tianquan: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), skill: z.string(), channel: z.union(['direct', 'bus']), timeoutMs: z.number().min(1) }),
+    yaoguang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), skill: z.string(), channel: z.union(['direct', 'bus']), timeoutMs: z.number().min(1) }),
+    tianliang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), skill: z.string(), channel: z.union(['direct', 'bus']), timeoutMs: z.number().min(1) }),
   }),
 })
 
@@ -246,6 +264,14 @@ const ROUTING_SECTION = [
   '- 简单请求由启明直接处理；不为委派而委派。',
 ].join('\n')
 
+/** Task states that mean the seat did not answer. */
+const UNFINISHED_STATES = new Set([
+  'TASK_STATE_FAILED',
+  'TASK_STATE_CANCELED',
+  'TASK_STATE_REJECTED',
+  'TASK_STATE_AUTH_REQUIRED',
+])
+
 /**
  * `ctx.xingchen`: the star-domain routing service.
  *
@@ -266,6 +292,8 @@ export class XingchenService extends Service {
     readonly peer: string
     readonly provider: string
     readonly model: AgentOptions | undefined
+    readonly skill: string
+    readonly channel: 'direct' | 'bus'
     readonly timeoutMs: number
     readonly charter: string
   }>>
@@ -292,11 +320,14 @@ export class XingchenService extends Service {
         throw new Error(`xingchen: seats.${role}.model must be "provider/model", got ${JSON.stringify(model)}`)
       }
       const peer = peers[role] ?? DEFAULT_PEERS[role]
+      const skill = configuredSeat.skill ?? DEFAULT_SKILLS[role]
       return {
         mode: configuredSeat.mode ?? (configured.has(peer) ? 'a2a' : 'local'),
         peer,
         provider: configuredSeat.provider ?? DEFAULT_SEAT_PROVIDER,
         model: model === undefined ? undefined : { provider: model.slice(0, slash), model: model.slice(slash + 1) },
+        skill,
+        channel: configuredSeat.channel ?? 'direct',
         timeoutMs: configuredSeat.timeoutMs ?? DEFAULT_SEAT_TIMEOUT_MS,
         charter: charters[role] ?? DEFAULT_CHARTERS[role],
       }
@@ -407,7 +438,9 @@ export class XingchenService extends Service {
   ): Promise<{ readonly text: string; readonly state?: string }> {
     const seat = this.seats[role]
     const text = `${seat.charter}\n\n---\n\n${task}`
-    if (seat.mode === 'a2a') return await this.dispatchToPeer(role, seat.peer, text, parent, signal)
+    if (seat.mode === 'a2a') {
+      return await this.dispatchToPeer(role, seat.peer, seat.skill, seat.channel, text, parent, signal)
+    }
     const run = await this.ctx.subagents.start(seat.provider, {
       prompt: [{ type: 'text', text }],
       parent,
@@ -432,19 +465,43 @@ export class XingchenService extends Service {
     return { text: outcome.detail ?? `${XINGCHEN_ROLE_NAMES[role]} 席位未完成（${outcome.status}）`, state: outcome.status }
   }
 
-  /** Send one task to a peer seat and remember its conversation continuation. */
+  /**
+   * Send one task to a peer seat and remember its conversation continuation.
+   *
+   * The task carries the seat's skill as message metadata, which is how a
+   * bridge gateway selects the instructions and tools the peer runs with.
+   */
   private async dispatchToPeer(
     role: XingchenSpecialistId,
     peer: string,
+    skill: string,
+    channel: 'direct' | 'bus',
     text: string,
     parent: Agent,
     signal?: AbortSignal,
   ): Promise<{ readonly text: string; readonly state?: string }> {
     const key = `${String(parent.session.id)}:${role}`
     const contextId = this.continuations.get(key)
+    const bridge = this.ctx.a2a.bridgeConfig
+    if (bridge !== undefined && peer in bridge.agents) {
+      const reply = await this.ctx.a2a.dispatch({
+        agent: peer,
+        skill,
+        text,
+        mode: channel,
+        // A seat answers the caller, so a bus dispatch must wait for the
+        // terminal event; without the wait the seat would report nothing.
+        ...(channel === 'bus' ? { wait: true } : {}),
+        ...(contextId === undefined ? {} : { contextId }),
+        ...(signal === undefined ? {} : { signal }),
+      })
+      if (reply.contextId !== undefined) this.continuations.set(key, reply.contextId)
+      return { text: reply.text, ...reply.state === undefined ? {} : { state: reply.state } }
+    }
     const reply: A2APeerReply = await this.ctx.a2a.send({
       peer,
       text,
+      metadata: { skill },
       ...(contextId === undefined ? {} : { contextId }),
       ...(signal === undefined ? {} : { signal }),
     })
@@ -468,6 +525,14 @@ export class XingchenService extends Service {
       return {
         kind: 'error',
         text: `${XINGCHEN_ROLE_NAMES[role]} 委派失败：${error instanceof Error ? error.message : String(error)}`,
+      }
+    }
+    // A seat that ran but did not finish is not an answer: a failure state
+    // must not read as a result to whoever asked for the delegation.
+    if (reply.state !== undefined && UNFINISHED_STATES.has(reply.state)) {
+      return {
+        kind: 'error',
+        text: `${XINGCHEN_ROLE_NAMES[role]} 未完成（${reply.state}）：\n\n${reply.text}`,
       }
     }
     return { kind: 'success', text: `${XINGCHEN_ROLE_NAMES[role]} 已处理：\n\n${reply.text}` }

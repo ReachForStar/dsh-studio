@@ -268,3 +268,92 @@ describe('A2AClient 流式调用', () => {
     })()).rejects.toThrow(/SubscribeToTask failed with HTTP 500: boom/)
   })
 })
+
+describe('A2AClient 推送配置与参数', () => {
+  it('发送时带上内联推送配置，流式同样携带', async () => {
+    const bodies: Record<string, unknown>[] = []
+    const url = await rawServer((req, res) => {
+      let raw = ''
+      req.on('data', (chunk) => { raw += String(chunk) })
+      req.on('end', () => {
+        bodies.push(JSON.parse(raw) as Record<string, unknown>)
+        res.writeHead(200, { 'Content-Type': req.headers.accept === 'text/event-stream' ? 'text/event-stream' : 'application/json' })
+        if (req.headers.accept === 'text/event-stream') {
+          res.end(`data: ${JSON.stringify({ statusUpdate: { taskId: 't', contextId: 'c', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
+        } else {
+          res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: { task: TASK } }))
+        }
+      })
+    })
+    const client = new A2AClient({ url })
+    const configuration = { taskPushNotificationConfig: { url: 'http://hook/', token: 'tok' } }
+    await client.sendMessage({ text: 'hi', metadata: { skill: 'code-review' } }, undefined, configuration)
+    const config = (bodies[0]?.params as { configuration: unknown }).configuration
+    expect(config).toEqual(configuration)
+    expect((bodies[0]?.params as { message: { metadata: unknown } }).message.metadata).toEqual({ skill: 'code-review' })
+    const frames: A2AStreamEvent[] = []
+    for await (const event of client.sendMessageStream({ text: 'hi' }, undefined, configuration)) frames.push(event)
+    expect(frames).toHaveLength(1)
+    expect((bodies[1]?.params as { configuration: unknown }).configuration).toEqual(configuration)
+    // 未给配置时参数里不出现 configuration 字段
+    await client.sendMessage({ text: 'hi' })
+    expect(bodies[2]?.params).not.toHaveProperty('configuration')
+  })
+
+  it('推送配置的四个方法按协议方法名与参数发出', async () => {
+    const calls: { method: string; params: unknown }[] = []
+    const url = await rawServer((req, res) => {
+      let raw = ''
+      req.on('data', (chunk) => { raw += String(chunk) })
+      req.on('end', () => {
+        const body = JSON.parse(raw) as { method: string; params: unknown }
+        calls.push({ method: body.method, params: body.params })
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        if (body.method === 'DeleteTaskPushNotificationConfig') {
+          res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: { ok: true } }))
+          return
+        }
+        if (body.method === 'ListTaskPushNotificationConfigs') {
+          res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: { configs: [], nextPageToken: '' } }))
+          return
+        }
+        res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: { url: 'http://hook/', id: 'cfg1' } }))
+      })
+    })
+    const client = new A2AClient({ url })
+    const created = await client.createTaskPushNotificationConfig({ taskId: 't', url: 'http://hook/' })
+    const fetched = await client.getTaskPushNotificationConfig({ taskId: 't', id: 'cfg1' })
+    const page = await client.listTaskPushNotificationConfigs({ taskId: 't', pageSize: 5 })
+    const removed = await client.deleteTaskPushNotificationConfig({ taskId: 't', id: 'cfg1' })
+    expect(created).toEqual({ url: 'http://hook/', id: 'cfg1' })
+    expect(fetched).toEqual({ url: 'http://hook/', id: 'cfg1' })
+    expect(page).toEqual({ configs: [], nextPageToken: '' })
+    expect(removed).toBeUndefined()
+    expect(calls.map(call => call.method)).toEqual([
+      'CreateTaskPushNotificationConfig',
+      'GetTaskPushNotificationConfig',
+      'ListTaskPushNotificationConfigs',
+      'DeleteTaskPushNotificationConfig',
+    ])
+    expect(calls[2]?.params).toEqual({ taskId: 't', pageSize: 5 })
+  })
+
+  it('接受 data: 不带空格的 SSE 帧', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      res.write(`event: message\ndata:${JSON.stringify({ statusUpdate: { taskId: 't', contextId: 'c', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
+      res.end()
+    })
+    const frames: A2AStreamEvent[] = []
+    for await (const event of new A2AClient({ url }).sendMessageStream({ text: 'hi' })) frames.push(event)
+    expect(frames).toHaveLength(1)
+  })
+})
+
+const TASK = {
+  id: 't',
+  contextId: 'c',
+  status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' },
+  artifacts: [],
+  history: [],
+}

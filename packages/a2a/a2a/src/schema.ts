@@ -137,6 +137,52 @@ export type A2AStreamEvent =
   | { statusUpdate: TaskStatusUpdateEvent }
   | { artifactUpdate: TaskArtifactUpdateEvent }
 
+/** How a peer's webhook authenticates the notifications it receives. */
+export interface PushNotificationAuthenticationInfo {
+  /** HTTP authentication scheme, such as `Bearer`. */
+  scheme: string
+  /** Credentials the scheme carries. */
+  credentials?: string
+}
+
+/**
+ * One webhook a peer posts a task's events to.
+ *
+ * A configuration is registered either against an existing task or inline with
+ * the message that creates one, which is how a caller learns about a task that
+ * outlives its own process.
+ */
+export interface TaskPushNotificationConfig {
+  /** Tenant the configuration belongs to, for multi-tenant peers. */
+  tenant?: string
+  /** Configuration identity; the peer assigns one when the caller leaves it out. */
+  id?: string
+  /** Task the configuration reports on, filled by the peer for inline registrations. */
+  taskId?: string
+  /** Webhook the peer posts to. */
+  url: string
+  /** Token the peer echoes so the receiver can recognize its own registration. */
+  token?: string
+  /** Authentication the peer presents to the webhook. */
+  authentication?: PushNotificationAuthenticationInfo
+}
+
+/** One page of a task's webhook configurations. */
+export interface TaskPushNotificationConfigPage {
+  /** Configurations on this page. */
+  configs: TaskPushNotificationConfig[]
+  /** Token that reads the next page; empty at the end. */
+  nextPageToken: string
+}
+
+/** Per-message execution options the protocol lets a caller attach. */
+export interface SendConfiguration {
+  /** Webhook to register for the task this message creates or continues. */
+  taskPushNotificationConfig?: TaskPushNotificationConfig
+  /** Whether the peer should answer with the submitted task rather than wait for the terminal one. */
+  returnImmediately?: boolean
+}
+
 /** One capability an agent advertises in its card. */
 export interface AgentSkill {
   /** Skill identity, used as the message's `metadata.skill`. */
@@ -220,6 +266,72 @@ export interface AgentCard {
   skills: AgentSkill[]
   /** Agent icon URL. */
   iconUrl?: string
+}
+
+/**
+ * One task delivered over the bus, as `a2a.task` carries it.
+ *
+ * The bus is the second channel beside direct RPC: a caller publishes the task
+ * and returns, and the agent named by `to` claims it from its consumer group.
+ */
+export interface BusTask {
+  /** Wire tag that names this message kind and its version. */
+  schema: 'a2a.task/1'
+  /** Task identity, also the partition key that keeps one task ordered. */
+  taskId: string
+  /** Conversation the task belongs to, shared by every task that continues it. */
+  contextId: string
+  /** Agent that published the task. */
+  from: string
+  /** Agent the task is addressed to; every other consumer skips it. */
+  to: string
+  /** Skill the receiving agent selects its instructions and tools from. */
+  skill: string
+  /** Task payload. */
+  input: {
+    /** Task text. */
+    text: string
+    /** Working directory the agent runs in, when the caller names one. */
+    workspace?: string
+  }
+  /** Caller-defined task metadata. */
+  metadata?: Record<string, unknown>
+  /** Publication time, in epoch milliseconds. */
+  ts: number
+  /** Delivery attempt, starting at 1 and raised by each requeue. */
+  attempt: number
+}
+
+/**
+ * One progress event published over the bus, as `a2a.event` carries it.
+ *
+ * Events are keyed by conversation, so a reader that joins late can replay the
+ * whole exchange; a dropped event is tolerable because the task keeps its own
+ * terminal state in the A2A task table.
+ */
+export interface BusEvent {
+  /** Wire tag that names this message kind and its version. */
+  schema: 'a2a.event/1'
+  /** Task the event reports on. */
+  taskId: string
+  /** Conversation the task belongs to. */
+  contextId: string
+  /** Agent that produced the event, which is the task's addressee. */
+  from: string
+  /** What the event reports. */
+  type: 'status-update' | 'artifact-update' | 'terminal'
+  /** Task state, on status and terminal events. */
+  state?: TaskState
+  /** Text this event adds, on artifact events. */
+  text?: string
+  /** Artifact the text belongs to. */
+  artifact?: string
+  /** Whether the event closes the task's output. */
+  final?: boolean
+  /** Failure text, on failed terminal events. */
+  error?: string
+  /** Publication time, in epoch milliseconds. */
+  ts: number
 }
 
 /**

@@ -258,3 +258,13 @@
 - 根因：`dsh` 源码启动（`node --import tsx/esm apps/cli/src/bin.ts`）下，宿主行经 profile 目录做 Node 解析 → 包 `exports` → **lib**；预设行在仓库内经 tsconfig 别名 → **src**。同一包两份实例 → 符号键不匹配 → 首次工具调用即崩。构建产物入口（`node apps/cli/lib/bin.js`）只有一份，验证无此问题。
 - 修法（本次提交）：改用构建平面，并补齐构建平面缺的解析清单：`apps/cli` 声明 `dsh-pi-agent-loop` 与两个 experimental provider（源码平面此前靠 tsconfig 别名掩盖，构建平面直接 `failed to import`）；星域包加 `tsdown.config.ts` 构建 `./clear`、`./skills`、`./client` 三个入口（根构建只出 index/invariant/startup）。
 - 验证：构建平面启动后无条目激活失败；预设会话（标准模式）连做多次工具调用均 `tool/result` + `turn/end completed`；`/review` 经 a2a-bridge 的 claude-code 网关返回天权答复。
+
+## [2026-09-20] feat | harness 侧 A2A 改用 a2a-bridge 方案（双通道 + skill + 总线）
+
+- 新增 `packages/a2a/a2a/src/bus.ts`：按 bridge 规范实现 Kafka 总线（`a2a.task`/`a2a.event`/`a2a.dlq`，taskId 幂等、失败重投 `attempt+1`、超 `maxAttempts` 或每任务超时进死信、消费者崩溃自恢复、等消费组 Stable 再返回），Kafka 客户端可注入以便单测驱动真实投递规则。
+- 新增 `src/bridge-config.ts`：读 bridge 的 `config/config.json`（`A2A_CONFIG` 与 `A2A_*` 环境变量同义），派生三个 agent 的端点与各自 skill；空 `bridge` 段等于不派发。
+- `A2AService` 增 `dispatch()`：`direct` 走 JSON-RPC 流式（收集工件文本，终态状态取流内最后一次 statusUpdate，任务被清理时回退流内快照），`bus` 投任务并可 `wait` 终态事件（订阅先于投递，避免新消费组丢首帧）。
+- `client.ts` 补推送配置四方法、内联 `configuration`、接受 `data:` 无空格的 SSE 帧。
+- `tool-a2a`：`a2a_send` 增 `skill`/`workspace`/`mode`/`wait`（桥 agent 缺 skill 时取该 agent 第一个 skill，没有则报错），`a2a_peers` 列出每个对等端的 skill。
+- 星域席位：`seats.<role>.skill`（天权 `code-review`、瑶光与天梁 `analysis`）与 `channel`（`bus` 自动 `wait`）；失败态回复不再当作成功结果。
+- 实测（本机三网关 + Kafka）：直连 `/review` 返回天权答复；总线派发到 opencode 收到终态事件（该次内容失败来自 opencode 后端，bridge CLI 同题亦失败）；发现并记录 bridge 侧总线任务在任务表不可见（其 CLI 同样查不到）。

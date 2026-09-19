@@ -50,7 +50,18 @@ Peers are optional; an empty mapping serves the server half alone.
 | `peers.<name>.cardPath` | `/.well-known/agent-card.json` | Path the agent card is read from |
 | `peers.<name>.timeoutMs` | unset | Per-call budget, including a stream's idle intervals |
 
-The `a2a` service exposes `list()`, `resolve(ref)`, `send(request)`, `card(ref)`, and `inspect(signal)`. A reference that names no configured peer is treated as an endpoint URL, so an operator can call an unconfigured agent deliberately.
+The `a2a` service exposes `list()`, `resolve(ref)`, `send(request)`, `card(ref)`, `inspect(signal)`, `skills(agent)`, and `dispatch(request)`. A reference that names no configured peer is treated as an endpoint URL, so an operator can call an unconfigured agent deliberately.
+
+### Bridge deployment
+
+A deployment that dispatches into an [a2a-bridge](https://github.com/ReachForStar/a2a-bridge) gateway reads that bridge's `config.json` instead of restating its agents here. The file supplies the three agent ports, the skills each agent accepts, and the Kafka topics; this deployment only names the file and the name it publishes tasks under.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `bridge.configPath` | `A2A_CONFIG` | Path of the bridge's `config.json` |
+| `bridge.agent` | `dsh` | Name this deployment publishes tasks under |
+
+`dispatch(request)` addresses one bridge agent by `agent` and `skill` on either channel. `mode: 'direct'` streams the answer back and returns at the terminal status; `mode: 'bus'` publishes the task to the bridge's task topic and returns as soon as it is claimed, or at the terminal event when `wait` is set. A bus task outlives this process, so its text is whatever the event stream delivered before the call returned. The environment variables `A2A_CONFIG`, `A2A_API_KEY`, `A2A_BUS_BOOTSTRAP`, `A2A_PI_MODEL`, and `A2A_OC_MODEL` mean what they mean to the bridge.
 
 ## Understand the implementation
 
@@ -62,7 +73,9 @@ The `a2a` service exposes `list()`, `resolve(ref)`, `send(request)`, `card(ref)`
 | [`src/server.ts`](src/server.ts) | Request handler and listener, SSE streaming, auth, error codes |
 | [`src/client.ts`](src/client.ts) | `A2AClient`: card, send, stream, query, cancel, subscribe |
 | [`src/task-store.ts`](src/task-store.ts) | Bounded in-memory task store with terminal-task eviction |
-| [`src/index.ts`](src/index.ts) | `A2AService`, the peer registry, and the `Config` schema |
+| [`src/bus.ts`](src/bus.ts) | Kafka task and event channels: idempotency, requeue, dead letters, consumer recovery |
+| [`src/bridge-config.ts`](src/bridge-config.ts) | Reads an [a2a-bridge](https://github.com/ReachForStar/a2a-bridge) deployment's own `config.json` |
+| [`src/index.ts`](src/index.ts) | `A2AService`, the peer registry, `dispatch()`, and the `Config` schema |
 
 ### Export shape
 

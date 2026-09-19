@@ -12,7 +12,7 @@ updated: 2026-09-19
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。
 - [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全量会话）、数据源与两条计价路径。
-- [A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）](entities/a2a-stack.md) — 自研 A2A：协议层、宿主端点与对等端工具；零依赖、`contextId` 即会话 id、Loader default 导出踩坑。
+- [A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）](entities/a2a-stack.md) — 自研 A2A：协议层、宿主端点、对等端工具与 Kafka 总线；零依赖、`contextId` 即会话 id、Loader default 导出踩坑、按 a2a-bridge 方案对接的两通道与 skill 契约。
 - [文档面板的编辑与保存（workspaceFiles.write）](entities/document-panel-editing.md) — 写接口的守卫与包含性、pane 级编辑器、Typert 产物需根构建重生成，以及 office 预览的 fflate 浏览器入口踩坑与构建期 builtin 守卫。
 - [远端工作区 provider（fs-sftp / subprocess-sftp）](entities/remote-workspace-providers.md) — 基于 `ctx.sshSftp` 的远端 fs/subprocess：路径标识、版本与原子发布、终端 pid 发现，以及 Web 工作区不可用的踩坑。
 - [fork Web 面板（ui-polish 的 Git/LaTeX/SSH/画布标签页）](entities/fork-web-panels.md) — 面板职责、`/git/*` 路由表（多仓库卡片、规则与生成模型、合并状态）、`ctx.fs` 接缝之外的守卫与编辑边界，以及文件面板去重。
@@ -35,6 +35,7 @@ updated: 2026-09-19
 - [实验能力可视化开关：沿用上游 OPTIONAL_BUNDLES 模式](decisions/2026-09-visual-experimental-toggle.md) — Browser Use / Computer Use / Auto review 成为可选 bundle，Web 插件页一键开关；用户专属配置不进 bundle。
 - [跨包运行时导出的重复安装分类（2026-09-19）](decisions/2026-09-19-runtime-export-classification.md) — 六条导出登记 safe 的逐条依据、分类与依赖分区的连带关系，以及四个客户端包 peerDependencies 收敛到 cordis 后的发布布局变化。
 - [星域专家席经 A2A 抵达（2026-09-19）](decisions/2026-09-19-xingchen-external-specialist-seats.md) — 三个备选方案（本地预设+子代理、进程内专家会话、A2A 席位）的取舍与后果。
+- [A2A 对接改用 a2a-bridge 方案（2026-09-20）](decisions/2026-09-20-a2a-bridge-scheme.md) — 双通道（直连 + Kafka 总线）、skill 契约、配置单一来源，以及不依赖跨仓本地包的理由。
 
 ## 查询沉淀 queries
 
@@ -48,3 +49,4 @@ updated: 2026-09-19
 - [CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md) — ui-polish 内嵌 Excalidraw 后 CJS 构建提升共享 `client.rolldown-runtime.js`，prologue 同步 require 模块表答不了；combo 携带同步闭包 + 相对 chunk 解析的修法与验证。
 - [Git/LaTeX 面板重写的缺陷与修复（2026-09-19）](queries/ui-polish-git-latex-defects.md) — 六个缺陷：加载中误报合并、嵌套仓库合并状态读错仓库、多仓库 cwd 回落、LaTeX 读写路径基准、空文件写入被拒、AI 写作默认 provider 空结果。
 - [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。
+- [总线任务在 A2A 面查不到（a2a-bridge 实测）](queries/a2a-bus-task-visibility.md) — bridge 自身 CLI 经总线派发的任务同样不在任务表里，harness 侧靠事件流收尾故不受影响。

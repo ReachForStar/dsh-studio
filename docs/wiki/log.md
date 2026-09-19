@@ -250,3 +250,11 @@
 - 本机 profile `~/.dsh/profiles/web/cordis.patch.yml` 指向 `D:/file/a2a-bridge` 三个网关（claude-code:9320 / pi:9310 / opencode:9330），并把本部署自己的 `a2a-host` 挪到 9311（bridge 占着 9310）。
 - 实测互通：直接对网关发 A2A `SendMessage`，claude-code 网关返回 `TASK_STATE_COMPLETED`（artifact 文本正确）；opencode 网关返回 `TASK_STATE_FAILED`，原因是其后端 `opencode serve` 报 500；pi 网关 150s 内无响应。
 - 仍阻塞：Pi 预设会话里 dsh 工具调用崩（`reading 'prepare'`），与本项无关。
+
+## [2026-09-20] fix | 工具调用崩溃根因：源码启动混用 lib/src 两个模块平面
+
+- 现象：预设会话里第一次工具调用就 `turn/end` 失败，`Cannot read properties of undefined (reading 'prepare')`（code UNKNOWN），连会话看似“卡死”。
+- 定位过程：给 agent-loop 的失败分支临时打印堆栈 → 崩溃点是 `tool-calls.ts` 的 `ctx.tools[TOOL_RUNTIME_SCHEDULER].prepare(...)`；再打印符号表发现 `ctx.tools` 是 `ToolRuntime` 且自带 `Symbol(@deepseek-ai/dsh-tools.scheduler)`，但与 agent-loop 手里的 **不是同一个 Symbol**；把两处模块 URL 打出来即见 `packages/core/tools/lib/index.js` 与 `packages/core/tools/src/index.ts` 各加载一次。
+- 根因：`dsh` 源码启动（`node --import tsx/esm apps/cli/src/bin.ts`）下，宿主行经 profile 目录做 Node 解析 → 包 `exports` → **lib**；预设行在仓库内经 tsconfig 别名 → **src**。同一包两份实例 → 符号键不匹配 → 首次工具调用即崩。构建产物入口（`node apps/cli/lib/bin.js`）只有一份，验证无此问题。
+- 修法（本次提交）：改用构建平面，并补齐构建平面缺的解析清单：`apps/cli` 声明 `dsh-pi-agent-loop` 与两个 experimental provider（源码平面此前靠 tsconfig 别名掩盖，构建平面直接 `failed to import`）；星域包加 `tsdown.config.ts` 构建 `./clear`、`./skills`、`./client` 三个入口（根构建只出 index/invariant/startup）。
+- 验证：构建平面启动后无条目激活失败；预设会话（标准模式）连做多次工具调用均 `tool/result` + `turn/end completed`；`/review` 经 a2a-bridge 的 claude-code 网关返回天权答复。

@@ -1616,9 +1616,9 @@ function ModelModal({ models, current, onPick, onClose, t }: ModelModalProps) {
               key={`${model.provider}/${model.model}`}
               className={css.menuItem}
               title={`${model.provider} / ${model.model}`}
-              onClick={() => { onPick(model.model); onClose() }}
+              onClick={() => { onPick(`${model.provider}/${model.model}`); onClose() }}
             >
-              {model.name || model.model} ({model.provider}){current === model.model ? ' ✓' : ''}
+              {model.name || model.model} ({model.provider}){current === `${model.provider}/${model.model}` ? ' ✓' : ''}
             </button>
           ))}
         </div>

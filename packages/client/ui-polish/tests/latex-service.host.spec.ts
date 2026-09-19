@@ -62,6 +62,10 @@ function responseDouble() {
     get status(): number { return statusCode },
     get raw(): string { return body },
     get json(): Record<string, unknown> { return JSON.parse(body) as Record<string, unknown> },
+    /** NDJSON lines, for the streaming routes. */
+    get lines(): Record<string, unknown>[] {
+      return body.split('\n').filter(line => line.length > 0).map(line => JSON.parse(line) as Record<string, unknown>)
+    },
   }
 }
 
@@ -212,13 +216,42 @@ describe('project discovery and file access', () => {
     expect((list.json as { fonts: string[] }).fonts).toContain('SimHei.ttf')
   })
 
-  it('fails the AI route fast without an LLM provider', async () => {
+  it('streams an error event when no LLM provider is available', async () => {
     const dir = await makeProject('ai', 'main.tex', MAIN_TEX)
     const resolve = workspaceCwdResolver([dir], dir)
     const double = responseDouble()
-    await handleLatexRequest(resolve, ctxStub, requestDouble('/latex/ai', 'POST', { cwd: dir, path: 'main.tex', selection: 'x', instruction: 'fix' }) as never, double.res as never)
-    expect(double.status).toBe(500)
-    expect(String(double.json.error)).toContain('no LLM provider')
+    await handleLatexRequest(resolve, ctxStub, requestDouble('/latex/ai', 'POST', {
+      cwd: dir, path: 'main.tex', selection: 'x', instruction: 'fix', token: 'write-1',
+    }) as never, double.res as never)
+    expect(double.status).toBe(200)
+    const failure = double.lines.find(line => line['t'] === 'err')
+    expect(String(failure?.['e'])).toContain('no LLM provider')
+  })
+
+  it('streams the writing output as NDJSON and reports the final text', async () => {
+    const dir = await makeProject('ai-stream', 'main.tex', MAIN_TEX)
+    const streamingCtx = {
+      llm: {
+        listProviders: () => [{ id: 'stub' }],
+        listModels: async () => [{ id: 'stub-model', name: 'Stub Model' }],
+        stream: () => ({
+          async *[Symbol.asyncIterator]() {
+            yield { type: 'text-delta', index: 0, text: '\\section{致谢}' }
+            yield { type: 'text-delta', index: 0, text: '\n感谢导师。' }
+            yield { type: 'finish', reason: { kind: 'stop' } }
+          },
+        }),
+      },
+    } as never
+    const resolve = workspaceCwdResolver([dir], dir)
+    const double = responseDouble()
+    await handleLatexRequest(resolve, streamingCtx, requestDouble('/latex/ai', 'POST', {
+      cwd: dir, path: 'main.tex', instruction: '写致谢', token: 'write-2', history: [],
+    }) as never, double.res as never)
+    expect(double.status).toBe(200)
+    expect(double.lines.filter(line => line['t'] === 'text').map(line => line['x']))
+      .toEqual(['\\section{致谢}', '\n感谢导师。'])
+    expect(double.lines.find(line => line['t'] === 'done')?.['m']).toBe('\\section{致谢}\n感谢导师。')
   })
 
   it('lists the writing-assistant model catalog', async () => {
@@ -240,6 +273,75 @@ describe('project discovery and file access', () => {
     expect((double.json as { models: unknown[] }).models).toEqual([
       { provider: 'stub', model: 'stub-model', name: 'Stub Model' },
     ])
+  })
+
+  it('routes a provider-qualified model hint to that provider', async () => {
+    const dir = await makeProject('ai-route', 'main.tex', MAIN_TEX)
+    const calls: string[] = []
+    const twoProviderCtx = {
+      llm: {
+        listProviders: () => [{ id: 'official' }, { id: 'mirror' }],
+        listModels: async () => [{ id: 'deepseek-flash', name: 'DeepSeek-Flash' }],
+        stream: (options: { provider: string }) => {
+          calls.push(options.provider)
+          return {
+            async *[Symbol.asyncIterator]() {
+              yield { type: 'text-delta', index: 0, text: 'ok' }
+              yield { type: 'finish', reason: { kind: 'stop' } }
+            },
+          }
+        },
+      },
+    } as never
+    const resolve = workspaceCwdResolver([dir], dir)
+    const qualified = responseDouble()
+    await handleLatexRequest(resolve, twoProviderCtx, requestDouble('/latex/ai', 'POST', {
+      cwd: dir, path: 'main.tex', instruction: '写', token: 'route-1', model: 'mirror/deepseek-flash',
+    }) as never, qualified.res as never)
+    // A bare id keeps taking the first provider that offers it.
+    const bare = responseDouble()
+    await handleLatexRequest(resolve, twoProviderCtx, requestDouble('/latex/ai', 'POST', {
+      cwd: dir, path: 'main.tex', instruction: '写', token: 'route-2', model: 'deepseek-flash',
+    }) as never, bare.res as never)
+    expect(calls).toEqual(['mirror', 'official'])
+  })
+
+  it('stops a running writing request through the cancel route', async () => {
+    const dir = await makeProject('ai-cancel', 'main.tex', MAIN_TEX)
+    const slowCtx = {
+      llm: {
+        listProviders: () => [{ id: 'stub' }],
+        listModels: async () => [{ id: 'stub-model', name: 'Stub Model' }],
+        stream: (options: { signal?: AbortSignal }) => ({
+          async *[Symbol.asyncIterator]() {
+            yield { type: 'text-delta', index: 0, text: '部分' }
+            await new Promise<void>((resolveWait) => {
+              const check = setInterval(() => {
+                if (options.signal?.aborted === true) { clearInterval(check); resolveWait() }
+              }, 5)
+            })
+            yield { type: 'finish', reason: { kind: 'stop' } }
+          },
+        }),
+      },
+    } as never
+    const resolve = workspaceCwdResolver([dir], dir)
+    const double = responseDouble()
+    const pending = handleLatexRequest(resolve, slowCtx, requestDouble('/latex/ai', 'POST', {
+      cwd: dir, path: 'main.tex', instruction: '写', token: 'write-cancel',
+    }) as never, double.res as never)
+    // Wait for the first delta instead of a fixed delay: the walk reaches the
+    // stream only after reading the file.
+    await new Promise<void>((resolveWait) => {
+      const check = setInterval(() => {
+        if (double.raw.includes('"t":"text"')) { clearInterval(check); resolveWait() }
+      }, 5)
+    })
+    const cancel = responseDouble()
+    await handleLatexRequest(resolve, slowCtx, requestDouble('/latex/ai-cancel', 'POST', { token: 'write-cancel' }) as never, cancel.res as never)
+    expect(cancel.status).toBe(200)
+    await pending
+    expect(double.lines.some(line => line['t'] === 'stop')).toBe(true)
   })
 
   it('404s the pdf route before the first compile', async () => {

@@ -184,6 +184,31 @@
   tab-size: 2;
 }
 
+/* Line-number gutter: a scroll-synced column beside the editor. It shares the
+   editor's monospace metrics and line height so every number sits on its line,
+   and it is hidden from assistive technology because the numbers are already
+   the editor's own line addresses. */
+.editorBox {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.gutter {
+  flex: none;
+  margin: 0;
+  padding: 10px 8px 10px 12px;
+  border-right: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-l2, rgba(127, 127, 127, 0.06));
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--dsw-font-code, monospace);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: right;
+  overflow: hidden;
+  user-select: none;
+}
+
 .error {
   flex: none;
   margin: 6px 10px 0;
@@ -354,6 +379,39 @@
   color: var(--dsw-alias-label-primary);
   font-size: 13px;
   line-height: 20px;
+}
+
+/* Conversation log: user turns read as instructions, assistant turns as the
+   LaTeX being written, monospaced so indentation of the code survives. */
+.aiLog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+}
+
+.aiTurnUser {
+  align-self: flex-end;
+  max-width: 80%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-l2, rgba(127, 127, 127, 0.12));
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+}
+
+.aiTurnAssistant {
+  align-self: stretch;
+  font-family: var(--dsw-font-mono, monospace);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .aiSelectionTag {

@@ -26,8 +26,10 @@
  *  - `POST /latex/fonts {cwd, dir, op}` → op=list (project fonts + package status),
  *                                    op=install (TTF/OTF into <project>/fonts/),
  *                                    op=install-package (tlmgr install <name>).
- *  - `POST /latex/ai {cwd, dir, path, selection?, instruction, model?}` → LLM writing
- *                                    assistant over the file (or a selection).
+ *  - `POST /latex/ai {cwd, dir, path, selection?, instruction, model?, history?, token}` →
+ *                                    streamed (NDJSON) LLM writing assistant over the file,
+ *                                    the selection, and the session's earlier turns.
+ *  - `POST /latex/ai-cancel {token}` → abort a running writing request.
  *  - `GET  /latex/models` → the provider/model catalog the writing assistant can route to.
  *
  * The target directory is chosen per request from `cwd`, resolved against the
@@ -48,8 +50,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { GitCwdResolver } from './git-service.ts'
 import { normalizeSlashes } from './git-service.ts'
 import type { Context } from '@deepseek-ai/cordis'
-import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { listLlmModels, resolveLlmRoute } from './llm-route.ts'
+import { BlockAssembler, createAssistantMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { listLlmModels, llmRouteCandidates, type LlmRoute } from './llm-route.ts'
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024
 const MAX_PDF_BYTES = 20 * 1024 * 1024
@@ -233,6 +235,29 @@ function bodyText(body: Record<string, unknown>, field: string): string {
     throw new Error(`latex panel: body field "${field}" must be a string`)
   }
   return value
+}
+
+/**
+ * The conversation history of one writing request.
+ * @param body - the parsed JSON body.
+ * @returns the validated turns, empty when the field is absent.
+ */
+function bodyHistory(body: Record<string, unknown>): AiWriteTurn[] {
+  const value = body['history']
+  if (value === undefined) return []
+  if (!Array.isArray(value)) throw new Error('latex panel: body field "history" must be an array')
+  return value.map((entry) => {
+    if (typeof entry !== 'object' || entry === null) {
+      throw new Error('latex panel: history entries must be objects')
+    }
+    const turn = entry as Record<string, unknown>
+    const role = turn['role']
+    const text = turn['text']
+    if ((role !== 'user' && role !== 'assistant') || typeof text !== 'string') {
+      throw new Error('latex panel: history entries need a role and a text')
+    }
+    return { role, text }
+  })
 }
 
 /** Validate a project-relative path and resolve it against the project directory. */
@@ -780,37 +805,165 @@ async function probePackage(engine: string, file: string): Promise<boolean> {
  * @param instruction - the user's writing instruction.
  * @returns the model's LaTeX output.
  */
+/** One earlier turn of the writing conversation the client keeps. */
+export interface AiWriteTurn {
+  readonly role: 'user' | 'assistant'
+  readonly text: string
+}
+
+/** One writing request from the LaTeX panel. */
+export interface AiWriteRequest {
+  /** File content the instruction applies to (already truncated by the route). */
+  readonly fileContent: string
+  /** Editor selection to rewrite, when the user selected text. */
+  readonly selection: string | undefined
+  /** Earlier turns of this writing session, oldest first. */
+  readonly history: readonly AiWriteTurn[]
+  /** The instruction for this turn. */
+  readonly instruction: string
+}
+
+/** In-flight writing generations, keyed by the client-provided token. */
+const activeWritings = new Map<string, AbortController>()
+
+/**
+ * Prompts of the writing assistant. They are sent to the model and never
+ * rendered, so they live here rather than in the client locale dictionaries.
+ */
+const AI_WRITE_PROMPT = {
+  system: 'You are a LaTeX writing assistant. Given LaTeX source and an instruction, return the revised or newly written LaTeX code only — no explanations, no code fences.',
+  source: 'LaTeX source',
+  selection: 'LaTeX selection',
+  instruction: 'Instruction',
+}
+
+/**
+ * Build the message list of one writing turn: the first turn carries the file
+ * or selection context, later turns carry the conversation, and the final turn
+ * carries the instruction being answered.
+ * @param request - the writing request.
+ * @param route - the provider/model pair the turn will stream with.
+ * @returns the messages to stream with.
+ */
+function writeMessages(
+  request: AiWriteRequest,
+  route: LlmRoute,
+): (ReturnType<typeof createUserMessage> | ReturnType<typeof createAssistantMessage>)[] {
+  const source = { kind: 'plugin', plugin: 'dsh-client-ui-polish' } as const
+  const context = request.selection !== undefined
+    ? `${AI_WRITE_PROMPT.selection}:\n${request.selection}`
+    : `${AI_WRITE_PROMPT.source}:\n${request.fileContent}`
+  const [first, ...rest] = request.history
+  if (first === undefined) {
+    return [createUserMessage({
+      content: [{ type: 'text', text: `${context}\n\n${AI_WRITE_PROMPT.instruction}:\n${request.instruction}` }],
+      source,
+    })]
+  }
+  const messages: (ReturnType<typeof createUserMessage> | ReturnType<typeof createAssistantMessage>)[] = [createUserMessage({
+    content: [{ type: 'text', text: `${context}\n\n${AI_WRITE_PROMPT.instruction}:\n${first.text}` }],
+    source,
+  })]
+  for (const turn of rest) {
+    messages.push(turn.role === 'assistant'
+      ? createAssistantMessage({
+        content: [{ type: 'text', text: turn.text }],
+        source: { provider: route.provider, model: route.model },
+      })
+      : createUserMessage({ content: [{ type: 'text', text: turn.text }], source }))
+  }
+  messages.push(createUserMessage({
+    content: [{ type: 'text', text: request.instruction }],
+    source,
+  }))
+  return messages
+}
+
+/**
+ * Whether an optional abort signal fired. The read goes through a helper
+ * because TypeScript narrows `signal.aborted` to its constructor-time literal.
+ * @param signal - the signal to inspect, when the request carries one.
+ * @returns true once the request was aborted.
+ */
+function isAborted(signal: AbortSignal | undefined): boolean {
+  return signal !== undefined && signal.aborted
+}
+
+/**
+ * Stream one writing turn, trying each candidate route until one produces text.
+ * A provider can hold a model catalog while its credentials are missing, which
+ * fails on the first attempt without producing text; the next candidate is the
+ * route a person would have picked anyway. Once text has reached the client a
+ * failure stops the walk, because the client cannot withdraw what it printed.
+ * @param ctx - the Host context providing the llm service.
+ * @param model - the model id or display name the client picked, when it picked one.
+ * @param request - the writing request (context, conversation, instruction).
+ * @param onText - called with each text delta as it arrives.
+ * @param signal - aborts the request when the client cancels it.
+ * @returns the model's LaTeX output.
+ */
 export async function aiWrite(
   ctx: Context,
   model: string | undefined,
-  fileContent: string,
-  selection: string | undefined,
-  instruction: string,
+  request: AiWriteRequest,
+  onText: (delta: string) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
-  const route = await resolveLlmRoute(ctx, model)
+  const candidates = await llmRouteCandidates(ctx, model)
+  const failures: string[] = []
+  for (const route of candidates) {
+    // Held in an object so the callback's write is visible to the catch:
+    // TypeScript narrows a local `let` to its initializer across the await.
+    const state = { emitted: false }
+    try {
+      return await runAiWrite(ctx, route, request, (delta) => {
+        state.emitted = true
+        onText(delta)
+      }, signal)
+    } catch (error) {
+      if (state.emitted || isAborted(signal)) throw error
+      failures.push(`${route.provider}/${route.model}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  throw new Error(`latex panel: no model produced a result — ${failures.join('; ')}`)
+}
+
+/**
+ * Stream one writing pass through one resolved route.
+ * @param ctx - the Host context providing the llm service.
+ * @param route - provider/model pair to stream with.
+ * @param request - the writing request (context, conversation, instruction).
+ * @param onText - called with each text delta as it arrives.
+ * @param signal - aborts the stream when the client cancels it.
+ * @returns the model's LaTeX output.
+ * @throws {Error} when the model returns no text.
+ */
+async function runAiWrite(
+  ctx: Context,
+  route: LlmRoute,
+  request: AiWriteRequest,
+  onText: (delta: string) => void,
+  signal?: AbortSignal,
+): Promise<string> {
   const stream = ctx.llm.stream({
     provider: route.provider,
     model: route.model,
-    system: 'You are a LaTeX writing assistant. Given LaTeX source and an instruction, return the revised or newly written LaTeX code only — no explanations, no code fences.',
-    messages: [createUserMessage({
-      content: [{
-        type: 'text',
-        text: selection !== undefined
-          ? `LaTeX selection:\n${selection}\n\nInstruction:\n${instruction}`
-          : `LaTeX source:\n${fileContent}\n\nInstruction:\n${instruction}`,
-      }],
-      source: { kind: 'plugin', plugin: 'dsh-client-ui-polish' },
-    })],
+    system: AI_WRITE_PROMPT.system,
+    messages: writeMessages(request, route),
     temperature: 0.2,
+    ...(signal !== undefined ? { signal } : {}),
   })
   const assembler = new BlockAssembler()
-  for await (const chunk of stream) assembler.push(chunk)
+  for await (const chunk of stream) {
+    assembler.push(chunk)
+    if (chunk.type === 'text-delta') onText(chunk.text)
+  }
   const text = assembler.blocks()
     .filter(block => block.type === 'text')
     .map(block => (block as { text: string }).text)
     .join('')
     .trim()
-  if (text.length === 0) throw new Error('latex panel: the model returned an empty result')
+  if (text.length === 0) throw new Error('the model returned no text (missing credentials or an empty response)')
   return text
 }
 
@@ -1002,12 +1155,44 @@ export async function handleLatexRequest(
       if (!abs.startsWith(resolve(projectDir) + sep)) {
         throw new Error('latex panel: path escapes the project')
       }
-      const fileContent = await readFile(abs, 'utf8').catch(() => '')
-      const instruction = bodyString(body, 'instruction')
-      const selection = bodyOptionalString(body, 'selection')
+      const request: AiWriteRequest = {
+        fileContent: (await readFile(abs, 'utf8').catch(() => '')).slice(0, 60_000),
+        selection: bodyOptionalString(body, 'selection'),
+        history: bodyHistory(body),
+        instruction: bodyString(body, 'instruction'),
+      }
       const model = bodyOptionalString(body, 'model')
-      const text = await aiWrite(ctx, model, fileContent.slice(0, 60_000), selection, instruction)
-      json(res, 200, { text })
+      const token = bodyString(body, 'token')
+      const controller = new AbortController()
+      activeWritings.set(token, controller)
+      // NDJSON stream: the client renders text as the model produces it and can
+      // keep the partial answer when the request is stopped.
+      res.writeHead(200, {
+        'content-type': 'application/x-ndjson; charset=utf-8',
+        'cache-control': 'no-store',
+      })
+      const send = (payload: unknown): void => {
+        if (!res.writableEnded) res.write(`${JSON.stringify(payload)}\n`)
+      }
+      try {
+        const text = await aiWrite(ctx, model, request, (delta) => { send({ t: 'text', x: delta }) }, controller.signal)
+        if (controller.signal.aborted) send({ t: 'stop' })
+        else send({ t: 'done', m: text })
+      } catch (error) {
+        if (controller.signal.aborted) send({ t: 'stop' })
+        else send({ t: 'err', e: error instanceof Error ? error.message : String(error) })
+      } finally {
+        activeWritings.delete(token)
+        if (!res.writableEnded) res.end()
+      }
+      return
+    }
+
+    if (method === 'POST' && path === '/latex/ai-cancel') {
+      const body = await readJson(req)
+      const controller = activeWritings.get(bodyString(body, 'token'))
+      if (controller !== undefined) controller.abort()
+      json(res, 200, { ok: true })
       return
     }
 

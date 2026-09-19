@@ -179,6 +179,8 @@ export const zh = {
   'latex.aiPlaceholder': '指令，例如：把摘要改得更简洁；补充参考文献引用…',
   'latex.aiRun': '生成',
   'latex.aiRunning': '生成中…',
+  'latex.aiStop': '停止',
+  'latex.aiApply': '应用到编辑器',
   'latex.cancel': '取消',
   'latex.close': '关闭',
   // Background image row.
@@ -407,6 +409,8 @@ export const en = {
   'latex.aiPlaceholder': 'Instruction, e.g. make the abstract more concise; add reference citations…',
   'latex.aiRun': 'Generate',
   'latex.aiRunning': 'Generating…',
+  'latex.aiStop': 'Stop',
+  'latex.aiApply': 'Apply to editor',
   'latex.cancel': 'Cancel',
   'latex.close': 'Close',
   'background.title': 'Background image',

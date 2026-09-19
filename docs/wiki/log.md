@@ -236,3 +236,10 @@
 - `constraints`：`@reachforstar/dsh-a2a{,-host,-tool-a2a}` 的 `repository` 改为上游仓库 + 各自 directory（与 tool-ssh/ui-polish 同型），`pi-agent-loop` 版本对齐根版本 `0.1.6-alpha.2`。
 - `verify-cordis-config`：本机 `core.symlinks=false` 把 15 个 git 符号链接检出为普通文件，`apps/cli/tests/profiles/acp/cordis.yml` 因此被读成「非数组根」；`git config core.symlinks true` 后逐条核对指针内容再重新检出，201 个配置文件全通过。
 - 未清偿：`verify-persistence-changes` 需要会话格式 v3→v4 后继（已核实发布标签 dsh-v0.1.5-alpha.1 的写者没有 `backend` 字段），属 pi 后端批且改变持久化格式，待所有者决定。
+
+## [2026-09-19] feat | 输入框 # 会话引用 + 星域内置技能
+
+- `#会话`：`TriggerChar` 与检测核心加入 `#`（与 `@` 同属 plain/claimed 两层都存活、无 URL 变体），ui-conversation 的 lexicon 与装饰同步；ui-reference 新增 `session-reference` 来源，只列会话并插入规范提及 `@[label](dsh-session:…)`。客户端 815 条单测通过。
+- `$git`/`$run`/`$log`：星域包新增 `./skills` 入口，从包内 `skills/<name>/SKILL.md` 注册三个 bundled 技能（provider `dsh-xingchen`，模型与人均可调用）；`standard` 与 `xingchen-qiming` 预设各加一行 provider 行。
+- 现场故障归档（[排查页](queries/xingchen-review-fixes.md#挂载失败会让会话降级随后工具调用崩溃2026-09-19-现场)）：旧进程的包解析快照里没有新包 → `standard` 预设挂载失败 → 会话降级 → 首次工具调用在 `ctx.tools[TOOL_RUNTIME_SCHEDULER]` 上崩（`reading 'prepare'`）。重启实例后 dsh 与 Pi 两条工具路径均验证成功。
+- 未采纳的元数据：`branch`（非日志事件，需读工作区 git 状态）与 `working`（与既有运行状态重复）未加进投影，理由记在[实体页](entities/xingchen-multi-agent.md)待确认节。

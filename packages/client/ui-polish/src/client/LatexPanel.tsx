@@ -6,7 +6,7 @@
 // into <project>/fonts/ and TeX packages through tlmgr; the AI button refines
 // the file (or a selection) through the LLM service.
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 // Type-only: pulls the session/workspace slot hooks (useSession/useWorkspaces).
@@ -56,7 +56,16 @@ export function LatexPanel({ useSession, useWorkspaces, t }: LatexPanelProps) {
   const [aiSelection, setAiSelection] = useState<string | undefined>(undefined)
 
   const editorRef = useRef<HTMLTextAreaElement | null>(null)
+  const gutterRef = useRef<HTMLPreElement | null>(null)
   const noticeTimer = useRef<number | undefined>(undefined)
+
+  // One entry per logical line: the editor does not wrap, so the gutter stays
+  // aligned with the text beside it.
+  const lineCount = content.length === 0 ? 1 : content.split('\n').length
+  const lineNumbers = useMemo(
+    () => Array.from({ length: lineCount }, (_, index) => String(index + 1)).join('\n'),
+    [lineCount],
+  )
 
   const flash = useCallback((text: string) => {
     setNotice(text)
@@ -308,32 +317,42 @@ export function LatexPanel({ useSession, useWorkspaces, t }: LatexPanelProps) {
                     {t('latex.save')}
                   </button>
                 </div>
-                <textarea
-                  ref={editorRef}
-                  className={css.editor}
-                  value={content}
-                  spellCheck={false}
-                  onChange={(e) => { setContent(e.target.value); setDirty(true) }}
-                  onKeyDown={(e) => {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                      e.preventDefault()
-                      void save()
-                    }
-                  }}
-                  onKeyUp={(e) => {
-                    // Tab inserts two spaces instead of moving focus.
-                    if (e.key === 'Tab') {
-                      e.preventDefault()
-                      const el = e.currentTarget
-                      const start = el.selectionStart
-                      const end = el.selectionEnd
-                      setContent(content.slice(0, start) + '  ' + content.slice(end))
-                      requestAnimationFrame(() => {
-                        el.selectionStart = el.selectionEnd = start + 2
-                      })
-                    }
-                  }}
-                />
+                <div className={css.editorBox}>
+                  <pre ref={gutterRef} className={css.gutter} aria-hidden="true">{lineNumbers}</pre>
+                  <textarea
+                    ref={editorRef}
+                    className={css.editor}
+                    value={content}
+                    spellCheck={false}
+                    // No wrapping: a logical line is one visual line, which is what
+                    // keeps the gutter numbers beside their lines.
+                    wrap="off"
+                    onScroll={(e) => {
+                      const gutter = gutterRef.current
+                      if (gutter !== null) gutter.scrollTop = e.currentTarget.scrollTop
+                    }}
+                    onChange={(e) => { setContent(e.target.value); setDirty(true) }}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault()
+                        void save()
+                      }
+                    }}
+                    onKeyUp={(e) => {
+                      // Tab inserts two spaces instead of moving focus.
+                      if (e.key === 'Tab') {
+                        e.preventDefault()
+                        const el = e.currentTarget
+                        const start = el.selectionStart
+                        const end = el.selectionEnd
+                        setContent(content.slice(0, start) + '  ' + content.slice(end))
+                        requestAnimationFrame(() => {
+                          el.selectionStart = el.selectionEnd = start + 2
+                        })
+                      }
+                    }}
+                  />
+                </div>
               </>
             )}
           {fileError !== null && <div className={css.error}>{fileError}</div>}
@@ -521,14 +540,23 @@ interface AiModalProps {
 }
 
 /** The AI writing assistant over the current file (or its selection). */
+/** One rendered turn of the writing conversation. */
+interface AiTurn {
+  readonly role: 'user' | 'assistant'
+  readonly text: string
+}
+
 function AiModal({ cwd, dir, path, selection, onResult, onClose, t }: AiModalProps) {
   const [instruction, setInstruction] = useState('')
+  const [turns, setTurns] = useState<readonly AiTurn[]>([])
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [models, setModels] = useState<readonly LatexModel[]>([])
   const [model, setModel] = useState<string>(() => {
     try { return window.localStorage.getItem('dsh-latex-ai-model') ?? '' } catch { return '' }
   })
+  const tokenRef = useRef('')
+  const logRef = useRef<HTMLDivElement | null>(null)
 
   // The catalog is fetched when the modal opens (topology, not file state).
   useEffect(() => {
@@ -538,6 +566,12 @@ function AiModal({ cwd, dir, path, selection, onResult, onClose, t }: AiModalPro
       .catch(() => { if (live) setModels([]) })
     return () => { live = false }
   }, [])
+
+  // Keep the newest text in view while deltas arrive.
+  useEffect(() => {
+    const log = logRef.current
+    if (log !== null) log.scrollTop = log.scrollHeight
+  }, [turns])
 
   const pickModel = (next: string): void => {
     setModel(next)
@@ -549,19 +583,46 @@ function AiModal({ cwd, dir, path, selection, onResult, onClose, t }: AiModalPro
     }
   }
 
+  const replaceLast = (text: string): void => {
+    setTurns(current => current.map((turn, index) => (
+      index === current.length - 1 ? { role: 'assistant', text } : turn
+    )))
+  }
+
+  /** Send one turn; the log keeps both sides so a follow-up can refine the answer. */
   const run = async (): Promise<void> => {
-    if (instruction.trim().length === 0 || running) return
+    const text = instruction.trim()
+    if (text.length === 0 || running) return
     setRunning(true)
     setError(null)
+    setInstruction('')
+    const history = turns
+    const token = `${String(Date.now())}-${Math.random().toString(36).slice(2)}`
+    tokenRef.current = token
+    setTurns([...history, { role: 'user', text }, { role: 'assistant', text: '' }])
     try {
-      const { text } = await latexApi.ai(cwd, dir, path, selection, instruction.trim(), model === '' ? undefined : model)
-      onResult(text)
+      const result = await latexApi.ai(cwd, dir, path, selection, text, history, token, (delta) => {
+        setTurns(current => current.map((turn, index) => (
+          index === current.length - 1 ? { role: 'assistant', text: turn.text + delta } : turn
+        )))
+      }, model === '' ? undefined : model)
+      replaceLast(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+      setTurns((current) => {
+        const last = current[current.length - 1]
+        // A turn that failed before producing text leaves no placeholder behind.
+        return last !== undefined && last.role === 'assistant' && last.text.length === 0
+          ? current.slice(0, -1)
+          : current
+      })
     } finally {
       setRunning(false)
     }
   }
+
+  const stop = (): void => { void latexApi.aiCancel(tokenRef.current) }
+  const latest = [...turns].reverse().find(turn => turn.role === 'assistant' && turn.text.length > 0)?.text
 
   return (
     <div className={css.modalBackdrop} onClick={onClose}>
@@ -578,24 +639,54 @@ function AiModal({ cwd, dir, path, selection, onResult, onClose, t }: AiModalPro
         >
           <option value="">{t('latex.aiModelDefault')}</option>
           {models.map(option => (
-            <option key={`${option.provider}/${option.model}`} value={option.model}>
+            <option key={`${option.provider}/${option.model}`} value={`${option.provider}/${option.model}`}>
               {`${option.name} (${option.provider})`}
             </option>
           ))}
         </select>
+        {turns.length > 0 && (
+          <div ref={logRef} className={css.aiLog} data-ai-log="">
+            {turns.map((turn, index) => (
+              <div
+                key={index}
+                className={turn.role === 'user' ? css.aiTurnUser : css.aiTurnAssistant}
+                data-ai-turn={turn.role}
+              >
+                {turn.text.length > 0 ? turn.text : t('latex.aiRunning')}
+              </div>
+            ))}
+          </div>
+        )}
+        {error !== null && <div className={css.error}>{error}</div>}
         <textarea
           className={css.aiInput}
           value={instruction}
           placeholder={t('latex.aiPlaceholder')}
-          rows={4}
+          rows={3}
           onChange={(e) => { setInstruction(e.target.value) }}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+              e.preventDefault()
+              void run()
+            }
+          }}
         />
-        {error !== null && <div className={css.error}>{error}</div>}
         <div className={css.modalActions}>
-          <button className={css.btn} onClick={onClose}>{t('latex.cancel')}</button>
-          <button className={css.btn} disabled={running || instruction.trim().length === 0} onClick={() => void run()}>
-            {running ? t('latex.aiRunning') : t('latex.aiRun')}
+          <button className={css.btn} onClick={onClose}>{t('latex.close')}</button>
+          <button
+            className={css.btn}
+            disabled={latest === undefined}
+            onClick={() => { if (latest !== undefined) onResult(latest) }}
+          >
+            {t('latex.aiApply')}
           </button>
+          {running
+            ? <button className={css.btn} onClick={stop}>{t('latex.aiStop')}</button>
+            : (
+              <button className={css.btn} disabled={instruction.trim().length === 0} onClick={() => void run()}>
+                {t('latex.aiRun')}
+              </button>
+            )}
         </div>
       </div>
     </div>

@@ -38,6 +38,12 @@ export interface LatexModel {
   name: string
 }
 
+/** One earlier turn of a writing conversation. */
+export interface LatexAiTurn {
+  role: 'user' | 'assistant'
+  text: string
+}
+
 /**
  * Query-encode the workspace into a `/latex` URL.
  * @param path - route path.
@@ -72,6 +78,79 @@ export async function latexCall<T>(path: string, cwd: string, body?: Record<stri
   return payload as unknown as T
 }
 
+/**
+ * Stream one writing turn from `/latex/ai` (NDJSON): deltas arrive through
+ * `onText` as the model produces them, the promise resolves with the full
+ * output, and it rejects on an error event or a transport failure.
+ * @param cwd - workspace directory.
+ * @param dir - project directory relative to the workspace.
+ * @param path - project-relative file path.
+ * @param selection - the editor selection to rewrite, when the user selected text.
+ * @param instruction - the instruction for this turn.
+ * @param history - earlier turns of this writing session, oldest first.
+ * @param token - client token for the cancel route.
+ * @param onText - called with each text delta as it arrives.
+ * @param model - optional model hint.
+ * @returns the model's LaTeX output.
+ * @throws {Error} when the stream reports an error or closes without a result.
+ */
+export async function aiStream(
+  cwd: string,
+  dir: string,
+  path: string,
+  selection: string | undefined,
+  instruction: string,
+  history: readonly LatexAiTurn[],
+  token: string,
+  onText: (delta: string) => void,
+  model?: string,
+): Promise<string> {
+  const response = await fetch('/latex/ai', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      cwd,
+      dir,
+      path,
+      token,
+      instruction,
+      history: [...history],
+      ...(selection !== undefined ? { selection } : {}),
+      ...(model !== undefined ? { model } : {}),
+    }),
+  })
+  if (!response.ok || response.body === null) {
+    const payload = await response.json().catch(() => ({})) as Record<string, unknown>
+    throw new Error(typeof payload.error === 'string' ? payload.error : `latex panel: HTTP ${response.status}`)
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let collected = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    let newline: number
+    while ((newline = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, newline)
+      buffer = buffer.slice(newline + 1)
+      if (line.length === 0) continue
+      const event = JSON.parse(line) as { t: string; x?: string; m?: string; e?: string }
+      if (event.t === 'text' && typeof event.x === 'string') {
+        collected += event.x
+        onText(event.x)
+      } else if (event.t === 'done') {
+        return event.m ?? collected
+      } else if (event.t === 'stop') {
+        return collected
+      } else if (event.t === 'err') {
+        throw new Error(event.e ?? 'latex panel: writing failed')
+      }
+    }
+  }
+  throw new Error('latex panel: the writing stream closed without a result')
+}
 /**
  * Call a GET `/latex` route that carries no workspace (the model catalog).
  * @param path - route path.
@@ -112,13 +191,7 @@ export const latexApi = {
     latexCall('/latex/fonts', cwd, { dir, op: 'install', name, data }),
   fontInstallPackage: (cwd: string, dir: string, name: string): Promise<{ ok: boolean; log: string }> =>
     latexCall('/latex/fonts', cwd, { dir, op: 'install-package', name }),
-  ai: (
-    cwd: string,
-    dir: string,
-    path: string,
-    selection: string | undefined,
-    instruction: string,
-    model?: string,
-  ): Promise<{ text: string }> =>
-    latexCall('/latex/ai', cwd, { dir, path, ...(selection !== undefined ? { selection } : {}), instruction, ...(model !== undefined ? { model } : {}) }),
+  ai: aiStream,
+  /** Abort a running writing request. */
+  aiCancel: (token: string): Promise<{ ok: boolean }> => latexCall('/latex/ai-cancel', '', { token }),
 }

@@ -31,6 +31,7 @@ fork 自研的四角色协作系统，位于 `packages/xingchen/xingchen`（包�
 | `src/route.ts` | 角色名/简介、命令↔角色映射、`roleOfCommand`（日志边界校验）、`routeXingchen` 启发式 |
 | `src/charters.ts` | 三位专家的章程文本 |
 | `src/clear.ts` | 独立入口 `./clear`，挂在预设压缩分组内（复用该域的 `ctx.compaction`） |
+| `src/skills.ts` | 独立入口 `./skills`：从包内 `skills/<name>/SKILL.md` 注册 `git`/`run`/`log` 三个内置技能（provider `dsh-xingchen`，rank 取 `BUNDLED_SKILL_RANK`） |
 | `src/types.ts` | 领域类型与 `SessionProjectionMap` 声明合并 |
 
 ## 派发三条路径
@@ -39,13 +40,17 @@ fork 自研的四角色协作系统，位于 `packages/xingchen/xingchen`（包�
 - `/review`、`/bug`、`/planning` 命令：人直接指定专家，不经过模型轮次（`dispatchCommand` 把对等端错误落定为命令错误结果，不抛出）。
 - `routeXingchen` 启发式：行首斜杠命令直接决定；否则需两个以上不同关键词命中且得分严格最高者胜出，平局与单信号留给启明。
 
+## 内置技能
+
+`./skills` 入口把三个技能注册进会话技能目录（`source: bundled`，模型与人均可调用）：`git`（历史/blame/定位引入缺陷的提交，只用只读命令）、`run`（最小复现与聚焦测试，一次改完再跑、收集全部失败项）、`log`（日志与堆栈解析，取最内层应用帧与触发行）。`$` 触发下的 `$git`、`$run`、`$log` 即来自这个目录；技能配置只有 `assetRoot`（打包安装时指向外部资源目录），且因为它不是包主入口，`gen-config-catalog` 不会收录（生成器只扫 `src/index.ts`）。
+
 ## 会话投影
 
 `xingchen` 投影折叠 `command/run`（`roleOfCommand` 查表）、`tool/call`（`xingchen_route`）与 `turn/end`，产出 `{ lastRole, dispatchCount, lastTurnReason }`；未建模的 `turn/end` 类型折为通用 `error`。投影是日志折叠，随会话重建，不单独落盘。
 
 ## 接线位置
 
-- 预设：`packages/preset/agent-presets/presets/standard/agent.cordis.yml`（默认组合加入星域行与 `/clear`）与 `presets/xingchen-qiming/`（同组合、启明人设）。星域行包在 `cordis:group` + `isolate: { xingchen: true }` 里：该行提供 `ctx.xingchen`，发布到根 isolate 会被 `mountPreset` 判为进程级服务泄漏而拒给会话用（详见[排查页](../queries/xingchen-review-fixes.md#预设激活失败服务未在-isolate-域内网页冒烟才发现)）。
+- 预设：`packages/preset/agent-presets/presets/standard/agent.cordis.yml`（默认组合加入星域行、`skill-xingchen` 行与 `/clear`）与 `presets/xingchen-qiming/`（同组合、启明人设）。星域行包在 `cordis:group` + `isolate: { xingchen: true }` 里：该行提供 `ctx.xingchen`，发布到根 isolate 会被 `mountPreset` 判为进程级服务泄漏而拒给会话用（详见[排查页](../queries/xingchen-review-fixes.md#预设激活失败服务未在-isolate-域内网页冒烟才发现)）。
 - 解析清单：`apps/cli/package.json`、`packages/bundle/web-app/package.json`（预设挂载在 web-app bundle，插件按该清单解析）。
 - 类型项目：`tsconfig.host.json` 引用；`tsconfig.base.json` 手写 `@reachforstar/dsh-xingchen` 别名（生成器只覆盖 `@deepseek-ai/dsh-` 前缀）。
 - 文档图：`scripts/gen-cordis-catalog.ts` 的 `SERVICE_PAGE`/`LINK_MAP` 与 `scripts/gen-doc-graphs.ts` 的 `SERVICE_ROLES`（fork 包不在扫描范围内，用仓库路径 `xingchen/xingchen` 作 owner 标签）。
@@ -58,6 +63,7 @@ fork 自研的四角色协作系统，位于 `packages/xingchen/xingchen`（包�
 ## 待确认
 
 - 本机网页冒烟已验证：选星域预设后会话的系统提示词含启明人设与「## 星域协作」段落，请求头工具表 49 个工具含 `xingchen_route`。
-- `branch`（分支）与 `working`（执行中）两项会话元数据尚未进入投影：前者不是日志事件（需在读侧从工作区取），后者与既有会话运行状态重复，尚无消费方。
+- 【已完成】`#会话` 引用：`ui-input-trigger` 的 `TriggerChar` 与检测核心加上 `#`（与 `@` 同为两个保护层级都存活，无 URL 变体），`ui-conversation` 的 lexicon/装饰联合类型同步，`ui-reference` 新增名为 `session-reference` 的 `#` 来源（只列会话，插入即规范提及 `@[label](dsh-session:…)`）。
+- `branch`（分支）与 `working`（执行中）：前者不是会话事件（只在读侧从工作区 git 状态取），后者与既有会话运行状态重复（会话列表已自行显示「进行中」），两者都没有加进投影。
 - `#会话` 引用与前端「星域路由切换」未实现；会话列表目前也没有消费 `xingchen` 投影的界面。
 - 第二、三阶段（`$git`/`$run`/`$log` 技能、缺陷归族与跨会话知识库）未开始。

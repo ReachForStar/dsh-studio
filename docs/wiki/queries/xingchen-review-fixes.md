@@ -88,6 +88,18 @@ done
 
 恢复后工作区无 diff（内容本就相同），但文件类型与索引一致，扫描类门禁看得到真实目标。
 
+## 挂载失败会让会话降级，随后工具调用崩溃（2026-09-19 现场）
+
+**现象**：用户浏览器里报两层错：先是 `agent-presets: preset "standard" failed to mount: 2 rows name plugins that cannot be resolved: row "xingchen-router": @reachforstar/dsh-xingchen …`，接着同一会话的一轮运行以 `Cannot read properties of undefined (reading 'prepare')`（code `UNKNOWN`）落定，界面显示「本轮运行失败」。
+
+**现场证据**：失败会话的 `turn/end` 为 `{kind:"error",error:{message:"Cannot read properties of undefined (reading 'prepare')",code:"UNKNOWN"}}`，前一条事件是 `tool/call`（`excalidraw_read`）而无 `tool/result`，即崩溃在工具派发阶段。
+
+**根因**：该 Web 实例启动于 20:25，早于 21:27 把 `@reachforstar/dsh-xingchen` 写进解析清单与 `pnpm install`；进程启动时建立的包解析快照里没有这个包，于是 `standard` 预设（已新增引用它的行）挂载失败。会话以不一致的组合继续跑，工具派发路径拿到的 `ctx.tools` 不是真的 `ToolRuntime`，`ctx.tools[TOOL_RUNTIME_SCHEDULER]` 为 `undefined`，首次工具调用即崩。
+
+**修法**：重启实例（rebuild 包解析快照）。验证：重启后 `standard` 预设的新会话里 `bash` 与 `read` 工具调用均成功（`tool/result`），Pi 后端会话里的 `read` 也成功；`xingchen-qiming` 预设的系统提示词含启明人设与「## 星域协作」段落。
+
+**经验**：给随包发布的预设新增插件行后，**已运行的实例必须重启**（模块回退目录与包解析快照在启动时建立）；预设挂载失败会降级会话而不是停住它，所以后续的工具崩溃会把真正的原因掩盖成一句无关的 `prepare` 报错——遇到这类「先挂载失败、再工具崩」的组合，先看启动时间与解析清单，不要先查工具代码。
+
 ## 仍未清偿（归属其他批次）
 
 - `verify-persistence-changes`（仍需版本决定）：`SessionHeader.backend` / `JsonlHeaderLine.backend` 新增可选字段未确认。已核实：发布标签 `dsh-v0.1.5-alpha.1`（`latestReleasedVersion: 3` 的发布证据）的 `types.ts` 没有该字段，而当前写者仍是 `SESSION_FORMAT_VERSION = 3`，即字段改动落在已发布的 v3 头部上。按固定兼容规则（表头变更 → `version-bump`），确认只能走 [新增 Session 格式版本](../../../docs/cookbook/adding-a-session-format-version.md)：新建 v3→v4 相邻迁移包、目标编解码器与校验器、更新当前版本消费者、生成快照后继与目录。属于 pi 后端批，且改变持久化格式，未实施。

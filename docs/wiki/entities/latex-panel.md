@@ -37,7 +37,8 @@ status: active
 | `/latex/pdf` | GET `?cwd&dir&main` | 缓存的 PDF 字节 |
 | `/latex/clean` | POST `{cwd, dir}` | 删除项目内构建产物（`*.aux`/`*.log`/…） |
 | `/latex/fonts` | POST `{cwd, dir, op}` | `op=list` 项目字体与包状态；`op=install` 写入 `fonts/`；`op=install-package` 走 `tlmgr install` |
-| `/latex/ai` | POST `{cwd, dir, path, selection?, instruction, model?}` | LLM 写作助手 |
+| `/latex/ai` | POST `{cwd, dir, path, selection?, instruction, model?, history?, token}` | LLM 写作助手，NDJSON 流式（`t:text` 增量 / `t:done` 全文 / `t:stop` 中止 / `t:err` 错误） |
+| `/latex/ai-cancel` | POST `{token}` | 中止正在进行的写作请求 |
 | `/latex/models` | GET | 写作助手可路由的 provider/model 目录 |
 
 `dir` 是**工作区相对**的项目目录（`.` 为工作区根），`path` 是**项目目录相对**路径——两者基准不同，客户端按此传参（`latex-client.ts` 的 `read`/`write` 都带 `dir`）。
@@ -64,6 +65,10 @@ status: active
 
 失败日志仍会带上 `explainMissingReferences` 的结论，现在分四种：项目里不存在（提示先生成）、项目内存在但镜像漏了（提示命中上限）、**项目外但工作区内有**（给出工作区相对路径）、其它情况按原样展示。`missingReferences` 与 `explainMissingReferences` 均已导出供测试。
 
+## 编辑器
+
+`.tex` 编辑是 `editorBox` 里的两列：左侧行号栏（`<pre>`，`aria-hidden`）与右侧 `<textarea wrap="off">`，textarea 的 `scroll` 事件把 `scrollTop` 同步给行号栏。不折行是刻意的：一行源码对应一行视觉行，行号才不会与代码错位（代价是长行水平滚动）。行号由 `content.split('\n').length` 得出，用 `useMemo` 缓存。
+
 ## 安全边界
 
 - `resolveProjectDir` / `resolveProjectPath` 拒绝 `..`、前导斜杠、反斜杠，并要求解析结果落在基准目录内。
@@ -73,7 +78,12 @@ status: active
 
 ## LLM 写作助手
 
-`/latex/ai` 取整份文件（截断 60000 字符）或选区，经 `src/llm-route.ts` 解析 provider/model 后流式生成，返回纯 LaTeX 文本。客户端 AI 弹窗提供模型下拉（`/latex/models`），选择保存在 `localStorage` 的 `dsh-latex-ai-model`；不选则“默认模型”=第一个提供模型的 provider。**默认 provider 没有可用凭证时会静默返回空结果**（服务端报 `the model returned an empty result`），因此模型选择是必要的绕过入口。
+`/latex/ai` 取整份文件（截断 60000 字符）或选区，经 `src/llm-route.ts` 解析 provider/model 后**流式**生成（NDJSON：`t:text` 增量、`t:done` 全文、`t:stop` 中止、`t:err` 错误），`/latex/ai-cancel` 按 token 中止。客户端的 AI 弹窗是**多轮对话**：用户指令与模型输出都留在日志里，后续指令携带全部历史（host 组装成真实的 user/assistant 消息序列，首轮带文件或选区上下文），点“应用到编辑器”才写回（有选区时替换选区，否则替换整份文件）。
+
+模型路由的两个要点：
+
+- **候选与回退**：`llmRouteCandidates` 在客户端未指定模型时返回**所有** provider 的模型；`aiWrite` 依次尝试，**只要还没发出过文本**就换下一个。一个 provider 可以拥有模型目录而无凭证（首个尝试会立即失败而不产出任何文本），回退使默认路径不会卡在它上面。已发出的文本无法收回，因此发出后失败不再重试；Git 面板的 `/git/generate` 采用同一规则。
+- **同名模型用 provider 限定**：官方网关与 amax 都提供 `deepseek-flash`，因此选择值、`localStorage` 键（`dsh-latex-ai-model`）与请求的 `model` 字段都存 `provider/model`（`llmRouteKey`）；host 先按整串精确匹配，再回退到裸 model id 或显示名（兼容旧值）。Git 面板的生成模型选择同型。
 
 ## 踩坑
 

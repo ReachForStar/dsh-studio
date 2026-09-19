@@ -4,7 +4,7 @@
     {
       "key": "SessionHeader",
       "kind": "header",
-      "digest": "2a8b114637e66faab5fae1c6e2fba65320db6224c80f5f36c5bf32f937154d03",
+      "digest": "8437839e5765b99078a718d8835c732e5ecb84ecfb11653b6f93d5d2a1187d06",
       "schema": {
         "root": 0,
         "nodes": [
@@ -17,8 +17,13 @@
                 "optional": true
               },
               {
-                "name": "createdAt",
+                "name": "backend",
                 "type": 2,
+                "optional": true
+              },
+              {
+                "name": "createdAt",
+                "type": 5,
                 "optional": false
               },
               {
@@ -28,7 +33,7 @@
               },
               {
                 "name": "delegationDepth",
-                "type": 2,
+                "type": 5,
                 "optional": true
               },
               {
@@ -38,12 +43,12 @@
               },
               {
                 "name": "isSeeded",
-                "type": 3,
+                "type": 6,
                 "optional": false
               },
               {
                 "name": "origin",
-                "type": 4,
+                "type": 7,
                 "optional": true
               },
               {
@@ -53,7 +58,7 @@
               },
               {
                 "name": "version",
-                "type": 5,
+                "type": 8,
                 "optional": false
               }
             ],
@@ -62,6 +67,21 @@
           {
             "kind": "primitive",
             "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              3,
+              4
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "dsh"
+          },
+          {
+            "kind": "literal",
+            "value": "pi"
           },
           {
             "kind": "primitive",
@@ -85,7 +105,7 @@
     {
       "key": "JsonlHeaderLine",
       "kind": "header",
-      "digest": "18ee62b8900a4c3d046700f05d7a4d49d6cab2a660a020c87481d1603dd8bd4f",
+      "digest": "304e47d57244dcff41c96e5e1dd31f21f818a799a7ff5354017944975e1bec54",
       "schema": {
         "root": 0,
         "nodes": [
@@ -98,8 +118,13 @@
                 "optional": true
               },
               {
-                "name": "createdAt",
+                "name": "backend",
                 "type": 2,
+                "optional": true
+              },
+              {
+                "name": "createdAt",
+                "type": 5,
                 "optional": false
               },
               {
@@ -109,7 +134,7 @@
               },
               {
                 "name": "delegationDepth",
-                "type": 2,
+                "type": 5,
                 "optional": false
               },
               {
@@ -119,12 +144,12 @@
               },
               {
                 "name": "isSeeded",
-                "type": 3,
+                "type": 6,
                 "optional": false
               },
               {
                 "name": "origin",
-                "type": 4,
+                "type": 7,
                 "optional": true
               },
               {
@@ -134,12 +159,12 @@
               },
               {
                 "name": "type",
-                "type": 5,
+                "type": 8,
                 "optional": false
               },
               {
                 "name": "version",
-                "type": 2,
+                "type": 5,
                 "optional": false
               }
             ],
@@ -148,6 +173,21 @@
           {
             "kind": "primitive",
             "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              3,
+              4
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "dsh"
+          },
+          {
+            "kind": "literal",
+            "value": "pi"
           },
           {
             "kind": "primitive",
@@ -13851,7 +13891,7 @@
         "event:turn/end.data.reason[2]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:205"
+        "packages/core/session/src/types.ts:221"
       ]
     },
     {
@@ -14777,7 +14817,7 @@
         "event:turn/end.data.reason[1]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:203"
+        "packages/core/session/src/types.ts:219"
       ]
     },
     {
@@ -16205,7 +16245,7 @@
         "event:assistant/attempt.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:335"
+        "packages/core/session/src/types.ts:351"
       ]
     },
     {
@@ -18084,7 +18124,7 @@
         "event:session/end-seed.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:405"
+        "packages/core/session/src/types.ts:421"
       ]
     },
     {
@@ -18132,96 +18172,6 @@
       ],
       "sources": [
         "packages/schedule/schedule/src/types.ts:79"
-      ]
-    },
-    {
-      "digest": "18ee62b8900a4c3d046700f05d7a4d49d6cab2a660a020c87481d1603dd8bd4f",
-      "schema": {
-        "root": 0,
-        "nodes": [
-          {
-            "kind": "object",
-            "properties": [
-              {
-                "name": "agentPreset",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "createdAt",
-                "type": 2,
-                "optional": false
-              },
-              {
-                "name": "cwd",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "delegationDepth",
-                "type": 2,
-                "optional": false
-              },
-              {
-                "name": "id",
-                "type": 1,
-                "optional": false
-              },
-              {
-                "name": "isSeeded",
-                "type": 3,
-                "optional": false
-              },
-              {
-                "name": "origin",
-                "type": 4,
-                "optional": true
-              },
-              {
-                "name": "parentSession",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "type",
-                "type": 5,
-                "optional": false
-              },
-              {
-                "name": "version",
-                "type": 2,
-                "optional": false
-              }
-            ],
-            "indices": []
-          },
-          {
-            "kind": "primitive",
-            "type": "string"
-          },
-          {
-            "kind": "primitive",
-            "type": "number"
-          },
-          {
-            "kind": "primitive",
-            "type": "boolean"
-          },
-          {
-            "kind": "literal",
-            "value": "subagent"
-          },
-          {
-            "kind": "literal",
-            "value": "session"
-          }
-        ]
-      },
-      "names": [
-        "packages/session/session-persistence-jsonl/src/format.ts#HeaderLine"
-      ],
-      "sources": [
-        "packages/session/session-persistence-jsonl/src/format.ts:82"
       ]
     },
     {
@@ -19365,7 +19315,7 @@
         "packages/core/session/src/types.ts#TurnEndCancelCause"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:195"
+        "packages/core/session/src/types.ts:211"
       ]
     },
     {
@@ -19921,7 +19871,7 @@
         "event:system/message.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:310"
+        "packages/core/session/src/types.ts:326"
       ]
     },
     {
@@ -23407,91 +23357,6 @@
       "sources": []
     },
     {
-      "digest": "2a8b114637e66faab5fae1c6e2fba65320db6224c80f5f36c5bf32f937154d03",
-      "schema": {
-        "root": 0,
-        "nodes": [
-          {
-            "kind": "object",
-            "properties": [
-              {
-                "name": "agentPreset",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "createdAt",
-                "type": 2,
-                "optional": false
-              },
-              {
-                "name": "cwd",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "delegationDepth",
-                "type": 2,
-                "optional": true
-              },
-              {
-                "name": "id",
-                "type": 1,
-                "optional": false
-              },
-              {
-                "name": "isSeeded",
-                "type": 3,
-                "optional": false
-              },
-              {
-                "name": "origin",
-                "type": 4,
-                "optional": true
-              },
-              {
-                "name": "parentSession",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "version",
-                "type": 5,
-                "optional": false
-              }
-            ],
-            "indices": []
-          },
-          {
-            "kind": "primitive",
-            "type": "string"
-          },
-          {
-            "kind": "primitive",
-            "type": "number"
-          },
-          {
-            "kind": "primitive",
-            "type": "boolean"
-          },
-          {
-            "kind": "literal",
-            "value": "subagent"
-          },
-          {
-            "kind": "literal",
-            "value": 3
-          }
-        ]
-      },
-      "names": [
-        "packages/core/session/src/types.ts#SessionHeader"
-      ],
-      "sources": [
-        "packages/core/session/src/types.ts:93"
-      ]
-    },
-    {
       "digest": "2ab12a0e345658f9342816d773fe610f049982bcad82631f43b9205abe43e5ee",
       "schema": {
         "root": 0,
@@ -23952,7 +23817,7 @@
         "event:request/header.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:370"
+        "packages/core/session/src/types.ts:386"
       ]
     },
     {
@@ -25700,6 +25565,116 @@
       ]
     },
     {
+      "digest": "304e47d57244dcff41c96e5e1dd31f21f818a799a7ff5354017944975e1bec54",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agentPreset",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "backend",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "createdAt",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "cwd",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "delegationDepth",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "id",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "isSeeded",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "origin",
+                "type": 7,
+                "optional": true
+              },
+              {
+                "name": "parentSession",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "type",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              3,
+              4
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "dsh"
+          },
+          {
+            "kind": "literal",
+            "value": "pi"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "literal",
+            "value": "subagent"
+          },
+          {
+            "kind": "literal",
+            "value": "session"
+          }
+        ]
+      },
+      "names": [
+        "packages/session/session-persistence-jsonl/src/format.ts#HeaderLine"
+      ],
+      "sources": [
+        "packages/session/session-persistence-jsonl/src/format.ts:83"
+      ]
+    },
+    {
       "digest": "30d5a537b296685770b1241c4b4bbde19d5a31ff81aa23df73fab5e90b8fc65f",
       "schema": {
         "root": 0,
@@ -27082,7 +27057,7 @@
         "packages/core/session/src/types.ts#SurfaceOp"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:439"
+        "packages/core/session/src/types.ts:455"
       ]
     },
     {
@@ -27610,7 +27585,7 @@
         "event:tool/result.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:355"
+        "packages/core/session/src/types.ts:371"
       ]
     },
     {
@@ -31293,7 +31268,7 @@
         "event:turn/end.data.reason[1].reason[3]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:192"
+        "packages/core/session/src/types.ts:208"
       ]
     },
     {
@@ -34141,7 +34116,7 @@
         "packages/core/session/src/types.ts#RequestHeaderReason"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:261"
+        "packages/core/session/src/types.ts:277"
       ]
     },
     {
@@ -34184,7 +34159,7 @@
         "event:turn/end.data.reason[5]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:220"
+        "packages/core/session/src/types.ts:236"
       ]
     },
     {
@@ -38189,7 +38164,7 @@
         "event:turn/end.data.reason[1].reason[1]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:190"
+        "packages/core/session/src/types.ts:206"
       ]
     },
     {
@@ -38241,7 +38216,7 @@
         "event:turn/end.data.reason[1].reason[2]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:191"
+        "packages/core/session/src/types.ts:207"
       ]
     },
     {
@@ -40058,8 +40033,36 @@
         "event:assistant/message.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:321"
+        "packages/core/session/src/types.ts:337"
       ]
+    },
+    {
+      "digest": "784bb3534ccb6cf5dc011294dbc2bf18ae6c36d9f7c9d3da37691f7cb4ff80fd",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "union",
+            "types": [
+              1,
+              2
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "dsh"
+          },
+          {
+            "kind": "literal",
+            "value": "pi"
+          }
+        ]
+      },
+      "names": [
+        "JsonlHeaderLine.backend",
+        "SessionHeader.backend"
+      ],
+      "sources": []
     },
     {
       "digest": "79650cfa10aa3c52440328d85e8a25f0ffadc8d7efd784e3c0819d8bb74a1985",
@@ -40136,7 +40139,7 @@
         "event:turn/end.data.reason[3]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:211"
+        "packages/core/session/src/types.ts:227"
       ]
     },
     {
@@ -41103,6 +41106,111 @@
       ],
       "sources": [
         "packages/context/agent-instructions/src/render.ts:47"
+      ]
+    },
+    {
+      "digest": "8437839e5765b99078a718d8835c732e5ecb84ecfb11653b6f93d5d2a1187d06",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agentPreset",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "backend",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "createdAt",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "cwd",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "delegationDepth",
+                "type": 5,
+                "optional": true
+              },
+              {
+                "name": "id",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "isSeeded",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "origin",
+                "type": 7,
+                "optional": true
+              },
+              {
+                "name": "parentSession",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "version",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              3,
+              4
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "dsh"
+          },
+          {
+            "kind": "literal",
+            "value": "pi"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "literal",
+            "value": "subagent"
+          },
+          {
+            "kind": "literal",
+            "value": 3
+          }
+        ]
+      },
+      "names": [
+        "packages/core/session/src/types.ts#SessionHeader"
+      ],
+      "sources": [
+        "packages/core/session/src/types.ts:103"
       ]
     },
     {
@@ -47164,7 +47272,7 @@
         "packages/core/session/src/types.ts#TurnEndReason"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:224"
+        "packages/core/session/src/types.ts:240"
       ]
     },
     {
@@ -48550,7 +48658,7 @@
         "event:tool/result.data.error"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:363",
+        "packages/core/session/src/types.ts:379",
         "packages/core/tools/src/types.ts:24"
       ]
     },
@@ -48936,7 +49044,7 @@
         "event:turn/end.data.reason[4]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:213",
+        "packages/core/session/src/types.ts:229",
         "packages/llm/llm/src/types.ts:146"
       ]
     },
@@ -49079,7 +49187,7 @@
         "packages/interaction/commands/src/types.ts#CommandSource"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:189",
+        "packages/core/session/src/types.ts:205",
         "packages/interaction/commands/src/types.ts:75",
         "packages/interaction/commands/src/types.ts:79",
         "packages/llm/llm/src/message.ts:103",
@@ -49531,7 +49639,7 @@
         "packages/core/session/src/types.ts#RequestContext"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:242"
+        "packages/core/session/src/types.ts:258"
       ]
     },
     {
@@ -50744,7 +50852,7 @@
         "event:turn/end.data.reason[0]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:201"
+        "packages/core/session/src/types.ts:217"
       ]
     },
     {
@@ -52188,7 +52296,7 @@
         "SessionEventEnvelope[6].surfaceOp[1]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:441"
+        "packages/core/session/src/types.ts:457"
       ]
     },
     {
@@ -52786,7 +52894,7 @@
         "packages/core/session/src/types.ts#EpochHeader"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:232"
+        "packages/core/session/src/types.ts:248"
       ]
     },
     {
@@ -55808,7 +55916,7 @@
         "event:turn/end.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:285"
+        "packages/core/session/src/types.ts:301"
       ]
     },
     {
@@ -58704,7 +58812,7 @@
         "event:tool/call.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:341"
+        "packages/core/session/src/types.ts:357"
       ]
     },
     {
@@ -59086,6 +59194,20 @@
           {
             "kind": "literal",
             "value": "tool-result"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "e55a7f0685b2c019afa2339018e476b5c1b347a013754b38929ea0f54d8426f0",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "pi"
           }
         ]
       },
@@ -59518,7 +59640,7 @@
         "event:turn/end.data.reason[1].reason[4]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:195"
+        "packages/core/session/src/types.ts:211"
       ]
     },
     {
@@ -59675,8 +59797,8 @@
         "event:step/start.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:287",
-        "packages/core/session/src/types.ts:289"
+        "packages/core/session/src/types.ts:303",
+        "packages/core/session/src/types.ts:305"
       ]
     },
     {
@@ -60697,7 +60819,7 @@
         "event:workspace/changes.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:276",
+        "packages/core/session/src/types.ts:292",
         "packages/deliverables/workspace-changes/src/types.ts:106"
       ]
     },
@@ -60799,6 +60921,20 @@
           {
             "kind": "literal",
             "value": "agent-instructions"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "fbee7e6083fe80774283e395bb81e4f27de147eb3468209d55de66fdd750b51b",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "dsh"
           }
         ]
       },

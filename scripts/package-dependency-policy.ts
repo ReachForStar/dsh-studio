@@ -47,10 +47,13 @@ const DUPLICATE_SAFE_PACKAGES: readonly string[] = [
 const SAFE_HOST_DEPENDENCY_EXPORTS = {
   '@deepseek-ai/dsh-credentials': ['credentialKey'],
   '@deepseek-ai/dsh-deque': ['Deque'],
-  '@deepseek-ai/dsh-llm': ['callConfigEquals'],
+  '@deepseek-ai/dsh-fs': ['FsVersion'],
+  '@deepseek-ai/dsh-home-paths': ['dshHomePath'],
+  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createUserMessage'],
   '@deepseek-ai/dsh-session-format': ['sessionFormatLogFilename'],
   '@deepseek-ai/dsh-timeout': ['MAX_TIMER_DELAY_MS'],
   '@deepseek-ai/schemastery': ['default'],
+  '@reachforstar/dsh-tool-excalidraw': ['SCENE_RELATIVE', 'sanitizeScene'],
 } as const satisfies HostDependencyExports
 
 /** Runtime exports that require every consumer to resolve the provider's shared peer instance. */

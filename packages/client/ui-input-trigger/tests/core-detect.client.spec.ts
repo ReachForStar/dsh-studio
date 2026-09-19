@@ -2,7 +2,8 @@
 // URL rule pinned here: '/' is dead when its predecessor is
 // another '/' (second slash of '//') or a ':' itself preceded by a
 // non-whitespace char (scheme separator) — this is the concrete rule chosen
-// to honor "no trigger inside URLs".
+// to honor "no trigger inside URLs". '#' carries no carve-out: it is a
+// session reference and never part of a URL scheme.
 import { describe, expect, it } from 'vitest'
 import { detectTrigger } from '../src/core/detect.ts'
 import type { TriggerGuard } from '../src/types.ts'
@@ -58,6 +59,16 @@ describe('detectTrigger word boundaries', () => {
   it('finds the nearest trigger left of the caret', () => {
     expect(atEnd('/goal @wor')).toMatchObject({ trigger: '@', query: 'wor' })
   })
+
+  it('triggers on # at the same boundaries as the other reference chars', () => {
+    expect(atEnd('#sess')).toMatchObject({ trigger: '#', query: 'sess', position: 'leading' })
+    expect(atEnd('see (#sess')).toMatchObject({ trigger: '#', query: 'sess' })
+    expect(atEnd('line1\n#sess')).toMatchObject({ trigger: '#', query: 'sess', position: 'inline' })
+    // Left of a word character, and inside a URL-ish token, it is prose.
+    expect(atEnd('tag#sess')).toBeNull()
+    expect(atEnd('a#b')).toBeNull()
+    expect(atEnd('#sess done')).toBeNull()
+  })
 })
 
 describe('detectTrigger position', () => {
@@ -73,10 +84,11 @@ describe('detectTrigger position', () => {
 })
 
 describe('detectTrigger guard tiers', () => {
-  it('claimed suppresses "/" everywhere but keeps "@"', () => {
+  it('claimed suppresses "/" everywhere but keeps "@" and "#"', () => {
     expect(atEnd('/co', claimed)).toBeNull()
     expect(atEnd('args /path', claimed)).toBeNull()
     expect(atEnd('/goal @wor', claimed)).toMatchObject({ trigger: '@', query: 'wor' })
+    expect(atEnd('/goal #sess', claimed)).toMatchObject({ trigger: '#', query: 'sess' })
   })
 
   it('a suppressed "/" is scanned through like an ordinary char', () => {
@@ -87,6 +99,7 @@ describe('detectTrigger guard tiers', () => {
   it('frozen suppresses both triggers', () => {
     expect(atEnd('/co', frozen)).toBeNull()
     expect(atEnd('@wo', frozen)).toBeNull()
+    expect(atEnd('#sess', frozen)).toBeNull()
   })
 })
 

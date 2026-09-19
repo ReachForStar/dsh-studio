@@ -9,7 +9,7 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type {
-  CandidateRequest, ClientSessionContext, InputTriggerCandidate, InputTriggerSource,
+  CandidateRequest, ClientSessionContext, InputTriggerCandidate, InputTriggerSource, TriggerChar,
 } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { FileReferenceCandidate } from '@deepseek-ai/dsh-file-reference/types'
 import type { SessionReferenceMentionCandidate } from '@deepseek-ai/dsh-session-reference/types'
@@ -80,14 +80,19 @@ async function bench(
     parentId?: SessionId
     projectionValues?: { title?: string | null }
   }> = {},
-): Promise<{ ctx: Context; fiber: ReturnType<Context['plugin']>; source: InputTriggerSource }> {
+): Promise<{
+  ctx: Context
+  fiber: ReturnType<Context['plugin']>
+  source: InputTriggerSource
+  sessionSource: InputTriggerSource
+}> {
   const ctx = new Context()
   ctx.provide('sidebarRight', { openResource: vi.fn() })
-  let source: InputTriggerSource | undefined
+  const sources = new Map<TriggerChar, InputTriggerSource>()
   ctx.provide('inputTriggers', {
     registerSource(candidate: InputTriggerSource) {
-      source = candidate
-      return () => { source = undefined }
+      sources.set(candidate.trigger, candidate)
+      return () => { sources.delete(candidate.trigger) }
     },
   })
   class RemoteService extends Service {
@@ -104,8 +109,12 @@ async function bench(
   ctx.provide('sessions', { list: { getSnapshot: () => ({ byId: listed }) } })
   const fiber = ctx.plugin({ inject: [...inject], apply })
   await fiber.await()
-  if (source === undefined) throw new Error('reference source was not registered')
-  return { ctx, fiber, source }
+  const source = sources.get('@')
+  const sessionSource = sources.get('#')
+  if (source === undefined || sessionSource === undefined) {
+    throw new Error('reference sources were not registered')
+  }
+  return { ctx, fiber, source, sessionSource }
 }
 
 describe('apply', () => {
@@ -115,13 +124,13 @@ describe('apply', () => {
       'remote.sessionReferenceResolver', 'sidebarRight',
     ])
     const { fiber } = await bench()
-    let registered: InputTriggerSource | undefined
+    const registered = new Map<TriggerChar, InputTriggerSource>()
     const ctx = new Context()
     ctx.provide('sidebarRight', { openResource: vi.fn() })
     ctx.provide('inputTriggers', {
       registerSource(source: InputTriggerSource) {
-        registered = source
-        return () => { registered = undefined }
+        registered.set(source.trigger, source)
+        return () => { registered.delete(source.trigger) }
       },
     })
     class RemoteService extends Service {
@@ -138,9 +147,14 @@ describe('apply', () => {
     ctx.provide('sessions', { list: { getSnapshot: () => ({ byId: {} }) } })
     const ownFiber = ctx.plugin({ inject: [...inject], apply })
     await ownFiber.await()
-    expect(registered).toMatchObject({ trigger: '@', name: 'reference', showGroupTitle: false })
+    expect([...registered.values()].map(entry => [entry.trigger, entry.name])).toEqual([
+      ['@', 'reference'],
+      ['#', 'session-reference'],
+    ])
+    expect(registered.get('@')).toMatchObject({ trigger: '@', name: 'reference', showGroupTitle: false })
+    expect(registered.get('#')).toMatchObject({ trigger: '#', name: 'session-reference', showGroupTitle: false })
     await ownFiber.dispose()
-    expect(registered).toBeUndefined()
+    expect(registered.size).toBe(0)
     await fiber.dispose()
   })
 
@@ -565,6 +579,29 @@ describe('pick and codec', () => {
   it('ignores candidates that do not carry a source-owned value', async () => {
     const { source } = await bench()
     expect(pick(source, { name: 'foreign candidate' })).toBeUndefined()
+  })
+
+  it('the # source lists sessions alone and inserts them as session chips', async () => {
+    const { sessionSource } = await bench()
+    expect(sessionSource.trigger).toBe('#')
+    const candidates = await sessionSource.candidates(session, request(''))
+    // The file domain never contributes a row here, and the session row keeps
+    // the same label and value the combined `@` menu produced.
+    expect(candidates.map(item => item.name)).toEqual(['Research'])
+    expect(candidates[0]?.icon).toBe('session')
+    expect(sessionSource.onPick({
+      candidate: candidates[0]!, session, position: 'inline', via: 'enter', action: 'pick', span: {
+        start: 0, end: 0, draftRev: 0,
+      },
+    })).toEqual({
+      insert: {
+        source: 'session-reference',
+        ref: '@[Research](dsh-session:InNvdXJjZSI)',
+        label: 'Research',
+        appearance: 'session',
+        clipboardText: '@[Research](dsh-session:InNvdXJjZSI)',
+      },
+    })
   })
 })
 

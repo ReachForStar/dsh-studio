@@ -243,3 +243,10 @@
 - `$git`/`$run`/`$log`：星域包新增 `./skills` 入口，从包内 `skills/<name>/SKILL.md` 注册三个 bundled 技能（provider `dsh-xingchen`，模型与人均可调用）；`standard` 与 `xingchen-qiming` 预设各加一行 provider 行。
 - 现场故障归档（[排查页](queries/xingchen-review-fixes.md#挂载失败会让会话降级随后工具调用崩溃2026-09-19-现场)）：旧进程的包解析快照里没有新包 → `standard` 预设挂载失败 → 会话降级 → 首次工具调用在 `ctx.tools[TOOL_RUNTIME_SCHEDULER]` 上崩（`reading 'prepare'`）。重启实例后 dsh 与 Pi 两条工具路径均验证成功。
 - 未采纳的元数据：`branch`（非日志事件，需读工作区 git 状态）与 `working`（与既有运行状态重复）未加进投影，理由记在[实体页](entities/xingchen-multi-agent.md)待确认节。
+
+## [2026-09-20] feat | 专家席接入 a2a-bridge
+
+- 席位选择改为自适应：`seats.<role>.mode` 未显式配置时，「`a2a` 行配了这个角色的对等端」即走远端，否则本机跑子代理——部署只在一处写端点。
+- 本机 profile `~/.dsh/profiles/web/cordis.patch.yml` 指向 `D:/file/a2a-bridge` 三个网关（claude-code:9320 / pi:9310 / opencode:9330），并把本部署自己的 `a2a-host` 挪到 9311（bridge 占着 9310）。
+- 实测互通：直接对网关发 A2A `SendMessage`，claude-code 网关返回 `TASK_STATE_COMPLETED`（artifact 文本正确）；opencode 网关返回 `TASK_STATE_FAILED`，原因是其后端 `opencode serve` 报 500；pi 网关 150s 内无响应。
+- 仍阻塞：Pi 预设会话里 dsh 工具调用崩（`reading 'prepare'`），与本项无关。

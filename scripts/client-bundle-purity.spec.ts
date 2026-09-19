@@ -8,7 +8,8 @@ import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build, type TsdownBundle, type UserConfig } from 'tsdown'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
-import { clientBundle, prologueRequires, requestedExternals, staticLinked } from '../packages/client/tsdown.client.ts'
+import { clientBundle, requestedExternals, staticLinked } from '../packages/client/tsdown.client.ts'
+import { prologueRequires } from '../packages/client/modules/src/client/manifest.ts'
 
 type ResolveId = (source: string) => null | { id: string; external: boolean }
 

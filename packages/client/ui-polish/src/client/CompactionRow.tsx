@@ -11,14 +11,7 @@ import type { createCompactionRowStore } from './settings-store.ts'
 import css from './BackgroundRow.module.css'
 
 /** Options offered: ratio × 100 as the select value; empty = harness default. */
-const RATIO_OPTIONS: readonly { value: string; label: string }[] = [
-  { value: '', label: '80%（默认）' },
-  { value: '50', label: '50%' },
-  { value: '60', label: '60%' },
-  { value: '70', label: '70%' },
-  { value: '75', label: '75%' },
-  { value: '80', label: '80%' },
-]
+const RATIO_OPTIONS: readonly string[] = ['', '50', '60', '70', '75', '80']
 
 /** Injected business face: persist a ratio change. */
 export interface CompactionRowInjected {
@@ -55,7 +48,9 @@ export function CompactionRow({ t, setRatio, useStore }: CompactionRowProps) {
           aria-label={t('compaction.title')}
         >
           {RATIO_OPTIONS.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option} value={option}>
+              {option === '' ? t('compaction.defaultOption') : `${option}%`}
+            </option>
           ))}
         </select>
         {saved && <span className={css.saved}>{t('compaction.saved')}</span>}

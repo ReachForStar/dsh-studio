@@ -10,9 +10,12 @@
     "src/background-settings.ts",
     "src/compaction-control.ts",
     "src/excalidraw-service.ts",
+    "src/git-llm.ts",
     "src/git-service.ts",
     "src/index.ts",
-    "src/invariant.ts"
+    "src/invariant.ts",
+    "src/latex-service.ts",
+    "src/llm-route.ts"
   ],
   "references": [
     {

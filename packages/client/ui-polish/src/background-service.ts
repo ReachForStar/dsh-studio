@@ -49,7 +49,7 @@ function readBody(req: IncomingMessage, cap: number): Promise<Buffer> {
       }
       chunks.push(chunk)
     })
-    req.on('end', () =>{  resolve(Buffer.concat(chunks)) })
+    req.on('end', () => { resolve(Buffer.concat(chunks)) })
     req.on('error', reject)
   })
 }

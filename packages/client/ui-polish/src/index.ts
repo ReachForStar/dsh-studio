@@ -1,4 +1,4 @@
-/** Host registration for the ui-polish background-image preference and git panel. */
+/** Host registration for the ui-polish background-image preference and the git/latex panels. */
 
 import type { Context } from '@deepseek-ai/cordis'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
@@ -13,6 +13,8 @@ import { BACKGROUND_IMAGE_FILE, handleBackgroundRequest } from './background-ser
 import { installCompactionControl } from './compaction-control.ts'
 import { handleExcalidrawRequest } from './excalidraw-service.ts'
 import { handleGitRequest, type GitCwdResolver, workspaceCwdResolver } from './git-service.ts'
+import { createCommitMessageBridge } from './git-llm.ts'
+import { handleLatexRequest } from './latex-service.ts'
 
 export {
   BACKGROUND_IMAGE_FIELD, BACKGROUND_SETTINGS_NAMESPACE, MAX_BACKGROUND_IMAGE_BYTES,
@@ -20,7 +22,11 @@ export {
 } from './background-settings.ts'
 export { handleBackgroundRequest, BACKGROUND_IMAGE_FILE } from './background-service.ts'
 export { handleExcalidrawRequest } from './excalidraw-service.ts'
-export { handleGitRequest, workspaceCwdResolver, type GitCwdResolver, type GitLogResult, type GitStatusEntry, type GitStatusResult } from './git-service.ts'
+export {
+  handleGitRequest, workspaceCwdResolver, type CommitMessageBridge,
+  type GitBranchesResult, type GitCwdResolver, type GitCommit, type GitFile, type GitStatusResult,
+} from './git-service.ts'
+export { handleLatexRequest } from './latex-service.ts'
 
 const NAMESPACE = BACKGROUND_SETTINGS_NAMESPACE
 
@@ -43,7 +49,7 @@ export function apply(ctx: Context): void {
     const scope = settingsCtx.settings.register(NAMESPACE, PolishSettingsSchema)
     installCompactionControl(settingsCtx, scope)
   })
-  ctx.inject(['webServer'], (serverCtx) => {
+  ctx.inject(['webServer', 'llm'], (serverCtx) => {
     const webServer = serverCtx.webServer
     // Resolve per request so a workspace switch is followed without a restart.
     const resolveWorkspaceCwd = (): GitCwdResolver => {
@@ -53,11 +59,18 @@ export function apply(ctx: Context): void {
         : workspaceRegistry.list().map(workspace => workspace.path)
       return workspaceCwdResolver(known, FALLBACK_CWD)
     }
+    const commitMessageBridge = createCommitMessageBridge(serverCtx)
     serverCtx.effect(() => webServer.register({
       kind: 'prefix',
       path: '/git',
-      handler: (req, res) => handleGitRequest(resolveWorkspaceCwd(), req, res),
+      handler: (req, res) => handleGitRequest(resolveWorkspaceCwd(), req, res, commitMessageBridge),
     }), 'ui-polish: git panel route')
+    // LaTeX: projects, files, compilation (local TeX), PDF preview, fonts, AI writing.
+    serverCtx.effect(() => webServer.register({
+      kind: 'prefix',
+      path: '/latex',
+      handler: (req, res) => handleLatexRequest(resolveWorkspaceCwd(), serverCtx, req, res),
+    }), 'ui-polish: latex panel route')
     // Background image: persisted as a file, served at /bg/current.
     serverCtx.effect(() => webServer.register({
       kind: 'prefix',

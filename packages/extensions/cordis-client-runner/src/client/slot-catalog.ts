@@ -1537,6 +1537,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-chat ChatView id \'chat\'',
       '@reachforstar/dsh-client-ui-polish GitPanel id \'git\'',
       '@reachforstar/dsh-client-ui-polish ExcalidrawPanel id \'excalidraw\'',
+      '@reachforstar/dsh-client-ui-polish LatexPanel id \'latex\'',
       '@reachforstar/dsh-client-ui-polish SshPanel id \'ssh\'',
       'client-ui-trajectory TrajectoryView id \'trajectory\'',
     ],

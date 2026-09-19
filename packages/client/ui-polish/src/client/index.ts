@@ -6,8 +6,8 @@
  *  - a session stats float with an estimated cost (a composer.dock entry that
  *    pins itself to the viewport's top-right via position:fixed),
  *  - automatic-compaction threshold and model rate-card settings rows,
- *  - Git, Excalidraw, and SSH/SFTP conversation.view tabs, talking to the
- *    node half's /git and /scene routes and the ssh Remote surface.
+ *  - Git, LaTeX, Excalidraw, and SSH/SFTP conversation.view tabs, talking to
+ *    the node half's /git, /latex, and /scene routes and the ssh Remote surface.
  */
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
@@ -34,6 +34,7 @@ import { PricingRuntime } from './pricing-store.ts'
 import { SEED_RATE_CARD } from './cost.ts'
 import { StatsFloat } from './StatsFloat.tsx'
 import { GitPanel } from './GitPanel.tsx'
+import { LatexPanel } from './LatexPanel.tsx'
 import { ExcalidrawPanel } from './ExcalidrawPanel.tsx'
 import { SshPanel, type SshPanelInjected, type SshPanelRpcResult } from './SshPanel.tsx'
 import { en, zh, type PolishKey } from './locales.ts'
@@ -278,6 +279,15 @@ export function apply(ctx: ClientContext): void {
       locale: NS,
       label: () => t('excalidraw.title'),
     }, ExcalidrawPanel)
+    // LaTeX editor: Overleaf-style project/edit/compile/PDF-preview over the
+    // local TeX distribution (xelatex, bibtex, fonts, AI writing).
+    yield ctx.slots.register({
+      name: 'conversation.view',
+      id: 'latex',
+      order: 27,
+      locale: NS,
+      label: () => t('latex.tab'),
+    }, LatexPanel)
     // SSH/SFTP: interactive PTY terminal + streaming file manager.
     yield ctx.slots.register({
       name: 'conversation.view',

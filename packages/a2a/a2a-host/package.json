@@ -1,13 +1,13 @@
 {
   "name": "@reachforstar/dsh-a2a-host",
-  "description": "A2A host: publish this deployment\u2019s sessions to remote A2A agents over JSON-RPC and Server-Sent Events",
+  "description": "A2A host: publish this deployment’s sessions to remote A2A agents over JSON-RPC and Server-Sent Events",
   "version": "0.1.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ReachForStar/dsh-studio.git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
     "directory": "packages/a2a/a2a-host"
   },
   "type": "module",

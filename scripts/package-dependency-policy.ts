@@ -49,7 +49,7 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
   '@deepseek-ai/dsh-deque': ['Deque'],
   '@deepseek-ai/dsh-fs': ['FsVersion'],
   '@deepseek-ai/dsh-home-paths': ['dshHomePath'],
-  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createUserMessage'],
+  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createAssistantMessage', 'createUserMessage'],
   '@deepseek-ai/dsh-session-format': ['sessionFormatLogFilename'],
   '@deepseek-ai/dsh-timeout': ['MAX_TIMER_DELAY_MS'],
   '@deepseek-ai/schemastery': ['default'],

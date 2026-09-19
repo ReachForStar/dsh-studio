@@ -184,3 +184,10 @@
 - LaTeX 镜像：不再跳过 `fonts/`，边界改为 2000 文件 / 512 MiB 总量 / 64 MiB 单文件并跟随目录符号链接；编译失败时从日志抽出缺失引用并判断“项目里没有 / 被镜像跳过 / 解析到别处”，直接给出结论行。
 - 验证：ui-conversation 429、ui-polish 118 单测通过（新增滑块步进往返、窄列无控件、缺失引用诊断 4 例）；浏览器实测列宽 1400 时拖动 640→760 生效、含 `figures/`+`fonts/` 图片的项目编译出 PDF、缺图项目日志末尾给出诊断。
 - 沉淀：[会话内容宽度轴](concepts/conversation-width-axis.md) 与 [LaTeX 面板](entities/latex-panel.md) 更新。
+
+## [2026-09-19] fix | 清偿依赖策略门禁（运行时导出分类 + 依赖分区）
+
+- 六条导出登记 `SAFE_HOST_DEPENDENCY_EXPORTS`：`dsh-home-paths#dshHomePath`、`dsh-llm#BlockAssembler`/`createUserMessage`、`tool-excalidraw#SCENE_RELATIVE`/`sanitizeScene`、`dsh-fs#FsVersion`——逐条核对为纯函数、品牌构造或自建自用的类/常量，无跨包 `instanceof`/Symbol/版本一致性判断。
+- `verify-package-dependencies --fix` 重整 `ui-polish`、`ui-ssh`、`ui-sidebar-documentpreview`、`workspace-files` 的依赖分区：非 cordis 的 peerDependencies 清空，宿主运行时边进 dependencies，浏览器构建输入进 devDependencies；模块图文档与锁文件同步。
+- 验证：门禁 67 包全通过；受影响四个包 761 条单测通过；三个包重建成功；`lib/index.js` 仍把 `dsh-llm` 当外部导入（未内联），浏览器启动无 import failed。
+- 沉淀：[跨包运行时导出的重复安装分类](decisions/2026-09-19-runtime-export-classification.md)、[门禁红项清单](queries/fork-gate-debt.md) 更新。

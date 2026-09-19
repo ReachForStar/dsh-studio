@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/xingchen.md
-xingchen.md: 717cd934cfcb7ac1c46df2a2bea7383b9b9a05ba
-xingchen.zh.md: db5a728e846a2eada064dc5e3cfb8b97cf392487
+xingchen.md: a55f6fe4d693ff7ef1f18d06b42bcf362bc2de43
+xingchen.zh.md: 616e707d169f9df6bc4fcbcbefd96099c4991e15

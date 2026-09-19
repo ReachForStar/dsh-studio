@@ -2,13 +2,13 @@
 
 English | [中文](xingchen.zh.md)
 
-Xingchen gives one session four star-domain roles. 启明 (Qiming) is the native coding agent — the harness's own agent, whose preset persona carries the routing discipline. 天权 (Tianquan), 瑶光 (Yaoguang), and 天梁 (Tianliang) are specialist seats reached as [A2A](a2a.md) peers: architecture evaluation and code review, bug reproduction and root-cause attribution, and delivery planning. The package adds the delegation tool, the three slash commands, a routing prompt section, and the `xingchen` session projection the session list reads for its role and stop-reason labels.
+Xingchen gives one session four star-domain roles. 启明 (Qiming) is the native coding agent — the harness's own agent, whose preset persona carries the routing discipline. 天权 (Tianquan), 瑶光 (Yaoguang), and 天梁 (Tianliang) are specialist seats:  architecture evaluation and code review, bug reproduction and root-cause attribution, and delivery planning. A seat runs in this process as a delegated child agent by default, or on an [A2A](a2a.md) peer the deployment configures. The package adds the delegation tool, the three slash commands, a routing prompt section, and the `xingchen` session projection the session list reads for its role and stop-reason labels.
 
 Source: [`packages/xingchen/xingchen/src/index.ts`](../../packages/xingchen/xingchen/src/index.ts)
 
 ## Roles and prompt isolation
 
-A specialist is an external agent (a Pi, Claude Code, or OpenCode deployment) whose endpoint the deployment configures; the seat, not the backend, defines the role. Every dispatch is prefixed with that role's charter, so the peer works under the role's persona and discipline whatever occupies the seat. Qiming's charter is the `xingchen-qiming` agent preset's persona, where it replaces the deployment default for that preset only.
+A specialist is a seat, not a backend. By default the seat runs locally: the dispatch starts a child agent through `ctx.subagents` with that role's charter prefixed, so the child works under the role's persona and discipline. A seat configured with `mode: a2a` sends the same text to an external agent (a Pi, Claude Code, or OpenCode deployment) whose endpoint the deployment configures; the seat, not the backend, still defines the role. Qiming's charter is the `xingchen-qiming` agent preset's persona, where it replaces the deployment default for that preset only.
 
 The charters are package text (`charters.ts`), overridable per role through `charters`, so a deployment can retune a role's prompt without forking the package.
 
@@ -30,23 +30,31 @@ The `./skills` entry registers three skills into the session's catalog: `git` (h
 
 ## Configuration
 
+No configuration is required: every seat spawns a child agent through `ctx.subagents`.
+
+```yaml
+- name: '@reachforstar/dsh-xingchen'
+```
+
+To move one seat to a peer or give it its own model:
+
 ```yaml
 - name: '@reachforstar/dsh-xingchen'
   config:
-    peers:
-      tianquan: claude-code
-      yaoguang: pi
-      tianliang: opencode
+    seats:
+      yaoguang:
+        model: amax/qwen-3.8-27B
 ```
 
 | Field | Default | Meaning |
 |---|---|---|
-| `peers.tianquan` | `claude-code` | A2A peer serving 天权 |
-| `peers.yaoguang` | `pi` | A2A peer serving 瑶光 |
-| `peers.tianliang` | `opencode` | A2A peer serving 天梁 |
+| `seats.<role>.mode` | `local` | `local` delegates to a child agent in this process; `a2a` sends the task to the peer |
+| `seats.<role>.provider` | `spawn` | `ctx.subagents` provider used by a `local` seat |
+| `seats.<role>.model` | parent's route | Child model route for a `local` seat, as `provider/model` |
+| `peers.<role>` | `claude-code` / `pi` / `opencode` | A2A peer used by an `a2a` seat |
 | `charters.<role>` | package charter | Replace one role's charter text |
 
-Peer names must exist on the `a2a` row's `peers` map; a name with no configured endpoint fails the dispatch with the peer's own error rather than silently doing nothing.
+A peer name must exist on the `a2a` row's `peers` map; a name with no configured endpoint fails the dispatch with the peer's own error rather than silently doing nothing.
 
 ## Related
 

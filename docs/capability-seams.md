@@ -35,6 +35,9 @@ flowchart LR
   pkg_tool_a2a["tool-a2a"]
   pkg_a2a_host["a2a-host"]
   svc_a2aHost["ctx.a2aHost<br/>Advertised A2A endpoint"]
+  pkg_xingchen_xingchen["xingchen/xingchen"]
+  svc_xingchen["ctx.xingchen<br/>Star-domain role routing"]
+  pkg_preset_agent_presets["preset/agent-presets"]
   pkg_office_to_pdf["office-to-pdf"]
   svc_officeToPdf["ctx.officeToPdf<br/>Office to PDF conversion"]
   pkg_client_ui_sidebar_documentpreview["client-ui-sidebar-documentpreview"]
@@ -407,6 +410,7 @@ flowchart LR
   pkg_workflow_ptc --> svc_workflowEngine
   pkg_workspace --> svc_workspaceRegistry
   pkg_workspace_changes --> svc_workspaceChanges
+  pkg_xingchen_xingchen --> svc_xingchen
   svc_a2a --> pkg_tool_a2a
   svc_agentDefaultModel --> pkg_api_session_controller
   svc_agentDefaultModel --> pkg_headless
@@ -552,6 +556,7 @@ flowchart LR
   svc_workflowEngine --> pkg_tool_workflow
   svc_workspaceRegistry --> pkg_api_session_controller
   svc_workspaceRegistry --> pkg_api_workspace_controller
+  svc_xingchen --> pkg_preset_agent_presets
   svc_fs -. event gate .-> pkg_fs_observation_policy
 ```
 
@@ -566,6 +571,7 @@ flowchart LR
 | `ctx.computerUse` | `seam` | [`computer-use`](../packages/computer-use/computer-use) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | - | One provider-owned name per service instance. Each provider also owns its model tools; the service has no common action API, runtime selection, or Session workflow lock. |
 | `ctx.a2a` | `core` | `a2a` | - | `tool-a2a` | - | Owns the A2A v1.0.1 wire, the in-memory task store, and the configured peer registry; a peer is addressed by name, so the model never invents an endpoint. |
 | `ctx.a2aHost` | `core` | `a2a-host` | - | - | - | Binds the separate listener peers discover, serves the agent card, and drives the harness session a peer names through its executor. |
+| `ctx.xingchen` | `core` | `xingchen/xingchen` | - | `preset/agent-presets` | - | Owns the four-role partition and the A2A dispatch behind it: the delegation tool, the /review /bug /planning commands, the routing prompt section, and the role/stop-reason session projection. |
 | `ctx.officeToPdf` | `core` | [`office-to-pdf`](../packages/document/office-to-pdf) | - | [`client-ui-sidebar-documentpreview`](../packages/client/ui-sidebar-documentpreview) | - | Authorized Office bytes are converted on the Host using the declared native target engine, or Node WASM when no native target is declared. |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | The host commits accepted images before session events; provider adapters resolve authorized durable references into provider-native content. |
 | `ctx.fileUploads` | `core` | [`client-file-upload`](../packages/client/file-upload) | - | [`api-session-controller`](../packages/api/session-controller) | - | Owns streaming intake, durable storage, and staged receipt lifetime; the Session controller binds receipts to accepted submissions. |

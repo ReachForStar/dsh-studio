@@ -174,6 +174,16 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Binds the separate listener peers discover, serves the agent card, and drives the harness session a peer names through its executor.',
   },
   {
+    // Like `sshSftp` above, the declaring package sits outside the scanned
+    // `@deepseek-ai/dsh-` scope, so its repository path names the owner node.
+    key: 'xingchen',
+    pkg: 'xingchen/xingchen',
+    title: 'Star-domain role routing',
+    mode: 'core',
+    consumers: ['preset/agent-presets'],
+    note: 'Owns the four-role partition and the A2A dispatch behind it: the delegation tool, the /review /bug /planning commands, the routing prompt section, and the role/stop-reason session projection.',
+  },
+  {
     key: 'officeToPdf', pkg: 'office-to-pdf', title: 'Office to PDF conversion',
     mode: 'core', consumers: ['client-ui-sidebar-documentpreview'],
     note: 'Authorized Office bytes are converted on the Host using the declared native target engine, or Node WASM when no native target is declared.',

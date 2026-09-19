@@ -4058,7 +4058,43 @@ export interface Config {
 }
 ```
 
-来源： [`packages/remote/subprocess-sftp/src/index.ts:31`](../packages/remote/subprocess-sftp/src/index.ts)
+来源： [`packages/remote/subprocess-sftp/src/index.ts:32`](../packages/remote/subprocess-sftp/src/index.ts)
+
+<a id="reachforstardsh-xingchen"></a>
+
+## `@reachforstar/dsh-xingchen`
+
+```ts config-catalog
+/** Deployment config: which A2A peer each specialist seat addresses. */
+export interface XingchenConfig {
+  /** A2A peer name per specialist role; must exist on the `a2a` row's `peers`. */
+  peers?: XingchenPeerNames
+  /** Override a specialist role's default charter (prompt-isolation text). */
+  charters?: XingchenCharters
+}
+
+/** A2A peer name per specialist role. */
+export interface XingchenPeerNames {
+  /** Peer serving 天权（架构评估与代码审查） */
+  readonly tianquan?: string
+  /** Peer serving 瑶光（疑难 Bug 复现与根因） */
+  readonly yaoguang?: string
+  /** Peer serving 天梁（版本规划与分波交付） */
+  readonly tianliang?: string
+}
+
+/** Charter override per specialist role. */
+export interface XingchenCharters {
+  /** 替换天权默认章程的文本 */
+  readonly tianquan?: string
+  /** 替换瑶光默认章程的文本 */
+  readonly yaoguang?: string
+  /** 替换天梁默认章程的文本 */
+  readonly tianliang?: string
+}
+```
+
+来源： [`packages/xingchen/xingchen/src/index.ts:56`](../packages/xingchen/xingchen/src/index.ts)
 
 ## 无配置的可加载插件
 

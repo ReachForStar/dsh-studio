@@ -35,6 +35,7 @@
 | [shell.md](shell.zh.md) | shell 执行器 seam：`ShellExecRequest`/`Spec`、`ShellRunResult`、后台 `ShellProcess` 句柄 |
 | [ssh-sftp.md](ssh-sftp.zh.md) | SSH/SFTP seam：`SshConnectionDefinition` 注册表、`SshExecRequest`/`Spec`/`Result`、主机密钥校验、`SshError` 分类 |
 | [a2a.md](a2a.zh.md) | agent-to-agent 协议：A2A v1.0.1（JSON-RPC 2.0 + SSE 流式）、已配置的 peer 注册表（`ctx.a2a`）与对外宣告端点（`ctx.a2aHost`） |
+| [xingchen.md](xingchen.zh.md) | 星域角色：启明作为原生路由器、三个 A2A 专家席位与它们的章程、委派工具与命令，以及 `xingchen` 角色/终止原因会话投影 |
 | [subprocess.md](subprocess.zh.md) | 子进程 seam：完全显式的 `SubprocessSpawnSpec`、基于偏移的输出读取器、不含分类的 `SubprocessOutcome`，以及受管 `DSH_*` 环境词汇 |
 | [ssh.md](ssh.zh.md) | POSIX SSH 连接与远程文件系统、子进程和沙箱提供方 |
 | [terminal.md](terminal.zh.md) | 持久化终端 ID、后端/会话约定、发送就绪状态、有界读取与 owner 可见快照 |

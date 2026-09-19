@@ -89,7 +89,7 @@ describe('the shipped preset root', () => {
     const ctx = await roster({ includeUserRoot: false })
 
     const listed = await ctx.agentPresets.list()
-    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'pi', 'ptc', 'standard'])
+    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'pi', 'ptc', 'standard', 'xingchen-qiming'])
     expect(listed.every(preset => preset.trust === 'system')).toBe(true)
     // Not `broken === undefined`: health asks whether each row's package is
     // installed above the base, and the shipped rows name packages the
@@ -129,7 +129,7 @@ describe('the shipped preset root', () => {
   })
 
   it('enables web_fetch in each tool-bearing Web app preset', async () => {
-    for (const id of ['cordis', 'ptc', 'standard']) {
+    for (const id of ['cordis', 'ptc', 'standard', 'xingchen-qiming']) {
       const entries = await shippedEntries(id)
       const toolWeb: unknown = entries.find((entry: unknown) =>
         typeof entry === 'object' && entry !== null && 'id' in entry && entry.id === 'tool-web')
@@ -146,7 +146,7 @@ describe('the shipped preset root', () => {
     expect(findEntry(ptc, 'tool-workflow')?.disabled).toBe(true)
     expect(findEntry(ptc, 'workflow-ptc')?.disabled).toBe(true)
 
-    for (const id of ['standard', 'cordis']) {
+    for (const id of ['standard', 'cordis', 'xingchen-qiming']) {
       const entries = await shippedEntries(id)
       expect(findEntry(entries, 'tool-workflow')?.disabled, id).not.toBe(true)
       expect(findEntry(entries, 'workflow-ptc')?.disabled, id).not.toBe(true)
@@ -154,7 +154,7 @@ describe('the shipped preset root', () => {
   })
 
   it('disables the ralph tool in every shipped preset that carries it', async () => {
-    for (const id of ['cordis', 'ptc', 'standard']) {
+    for (const id of ['cordis', 'ptc', 'standard', 'xingchen-qiming']) {
       expect(findEntry(await shippedEntries(id), 'tool-ralph')?.disabled, id).toBe(true)
     }
     expect(findEntry(await shippedEntries('minimal'), 'tool-ralph')).toBeUndefined()

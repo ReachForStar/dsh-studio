@@ -37,6 +37,9 @@ flowchart LR
   pkg_tool_a2a["tool-a2a"]
   pkg_a2a_host["a2a-host"]
   svc_a2aHost["ctx.a2aHost<br/>Advertised A2A endpoint"]
+  pkg_xingchen_xingchen["xingchen/xingchen"]
+  svc_xingchen["ctx.xingchen<br/>Star-domain role routing"]
+  pkg_preset_agent_presets["preset/agent-presets"]
   pkg_office_to_pdf["office-to-pdf"]
   svc_officeToPdf["ctx.officeToPdf<br/>Office to PDF conversion"]
   pkg_client_ui_sidebar_documentpreview["client-ui-sidebar-documentpreview"]
@@ -409,6 +412,7 @@ flowchart LR
   pkg_workflow_ptc --> svc_workflowEngine
   pkg_workspace --> svc_workspaceRegistry
   pkg_workspace_changes --> svc_workspaceChanges
+  pkg_xingchen_xingchen --> svc_xingchen
   svc_a2a --> pkg_tool_a2a
   svc_agentDefaultModel --> pkg_api_session_controller
   svc_agentDefaultModel --> pkg_headless
@@ -554,6 +558,7 @@ flowchart LR
   svc_workflowEngine --> pkg_tool_workflow
   svc_workspaceRegistry --> pkg_api_session_controller
   svc_workspaceRegistry --> pkg_api_workspace_controller
+  svc_xingchen --> pkg_preset_agent_presets
   svc_fs -. event gate .-> pkg_fs_observation_policy
 ```
 
@@ -568,6 +573,7 @@ flowchart LR
 | `ctx.computerUse` | `seam` | [`computer-use`](../packages/computer-use/computer-use) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | - | 每个服务实例只注册一个提供方自定的名称。各提供方也拥有自己的模型工具；服务不提供通用操作 API、运行时选择或 Session 流程锁。 |
 | `ctx.a2a` | `core` | `a2a` | - | `tool-a2a` | - | 拥有 A2A v1.0.1 协议、内存任务存储与已配置的 peer 注册表；peer 以名字寻址，模型永远不会自己发明一个端点。 |
 | `ctx.a2aHost` | `core` | `a2a-host` | - | - | - | 绑定 peer 用来发现它的独立监听端，提供 agent card，并通过执行器驱动 peer 指名的 harness 会话。 |
+| `ctx.xingchen` | `core` | `xingchen/xingchen` | - | `preset/agent-presets` | - | 拥有四角色划分及其背后的 A2A 派发：委派工具、/review /bug /planning 命令、路由提示词段落，以及角色/终止原因会话投影。 |
 | `ctx.officeToPdf` | `core` | [`office-to-pdf`](../packages/document/office-to-pdf) | - | [`client-ui-sidebar-documentpreview`](../packages/client/ui-sidebar-documentpreview) | - | 已授权的 Office 字节在宿主上使用已声明的原生目标引擎转换；未声明原生目标时使用 Node WASM。 |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | 宿主会在会话事件之前提交已接受的图片；提供方适配器将已授权的持久引用解析为提供方原生内容。 |
 | `ctx.fileUploads` | `core` | [`client-file-upload`](../packages/client/file-upload) | - | [`api-session-controller`](../packages/api/session-controller) | - | 负责流式接收、持久存储和暂存回执生命周期；Session Controller 将回执绑定到已接受的提交。 |

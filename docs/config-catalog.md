@@ -4114,6 +4114,12 @@ export interface XingchenSeatConfig {
   readonly provider?: string
   /** Child model route for `local` mode, as `provider/model`; default inherits the parent. */
   readonly model?: string
+  /**
+   * How long a `local` seat may run before its dispatch gives up, in
+   * milliseconds; default 300000. On expiry the child run is disposed and the
+   * dispatch fails with the elapsed limit instead of waiting forever.
+   */
+  readonly timeoutMs?: number
 }
 ```
 

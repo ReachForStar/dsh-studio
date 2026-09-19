@@ -301,6 +301,31 @@ describe('本机专家席（默认）', () => {
     expect(test.subagents.start).toHaveBeenCalledTimes(1)
   })
 
+  it('本机席位超时后释放子运行并以错误结果落定，不再无限等待', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(AgentRegistry)
+    ctx.provide('a2a', a2aStub() as never)
+    const stuck = {
+      result: new Promise(() => {}),
+      dispose: vi.fn(() => Promise.resolve()),
+    }
+    const slow = { start: vi.fn(() => Promise.resolve(stuck)) }
+    ctx.provide('subagents', slow as never)
+    const plugin = await ctx.plugin(xingchen, { seats: { tianquan: { timeoutMs: 5 } } })
+    disposers.push(async () => { await plugin.dispose() })
+    const { agent } = stubAgent(ctx, `xingchen-timeout-${Math.random()}`)
+    await ctx.agents.register(agent)
+    const execution = await ctx.commands.execute(agent, '/review 评估', [], signal)
+    expect(execution?.result.kind).toBe('error')
+    expect((execution?.result as { text: string }).text).toContain('未完成')
+    expect(stuck.dispose).toHaveBeenCalledTimes(1)
+  })
+
   it('seats.<role>.model 解析成子代理模型路由；格式不对则拒绝装配', async () => {
     /** A bare context with the stubs the routing service injects. */
     const bare = async (): Promise<{ ctx: Context; subagents: SubagentStub }> => {

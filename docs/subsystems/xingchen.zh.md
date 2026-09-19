@@ -49,6 +49,7 @@ Source: [`packages/xingchen/xingchen/src/index.ts`](../../packages/xingchen/xing
 | `seats.<role>.mode` | `local` | `local` 在本进程内委派子代理；`a2a` 把任务发给配置的对等端 |
 | `seats.<role>.provider` | `spawn` | `local` 席位使用的 `ctx.subagents` 提供方 |
 | `seats.<role>.model` | 继承父代理 | `local` 席位的子代理模型路由，写作 `provider/model` |
+| `seats.<role>.timeoutMs` | `300000` | `local` 席位的等待上限；超时即释放子运行并报错，不无限等待 |
 | `peers.<role>` | `claude-code` / `pi` / `opencode` | `a2a` 席位使用的对等端 |
 | `charters.<role>` | 包内章程 | 替换某个角色的章程文本 |
 

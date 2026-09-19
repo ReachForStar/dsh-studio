@@ -95,6 +95,12 @@ export interface XingchenSeatConfig {
   readonly provider?: string
   /** Child model route for `local` mode, as `provider/model`; default inherits the parent. */
   readonly model?: string
+  /**
+   * How long a `local` seat may run before its dispatch gives up, in
+   * milliseconds; default 300000. On expiry the child run is disposed and the
+   * dispatch fails with the elapsed limit instead of waiting forever.
+   */
+  readonly timeoutMs?: number
 }
 
 /** Specialist seat configuration by role. */
@@ -117,6 +123,9 @@ const DEFAULT_PEERS: Readonly<Record<XingchenSpecialistId, string>> = {
 /** Default `ctx.subagents` provider for a seat running locally. */
 const DEFAULT_SEAT_PROVIDER = 'spawn'
 
+/** Default wait before a local seat's dispatch gives up, in milliseconds. */
+const DEFAULT_SEAT_TIMEOUT_MS = 300_000
+
 /** Default charter per specialist role, overridable in config. */
 const DEFAULT_CHARTERS: Readonly<Record<XingchenSpecialistId, string>> = {
   tianquan: TIANQUAN_CHARTER,
@@ -137,9 +146,9 @@ export const Config: z<XingchenConfig> = z.object({
     tianliang: z.string(),
   }),
   seats: z.object({
-    tianquan: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string() }),
-    yaoguang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string() }),
-    tianliang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string() }),
+    tianquan: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), timeoutMs: z.number().min(1) }),
+    yaoguang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), timeoutMs: z.number().min(1) }),
+    tianliang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), timeoutMs: z.number().min(1) }),
   }),
 })
 
@@ -255,6 +264,7 @@ export class XingchenService extends Service {
     readonly peer: string
     readonly provider: string
     readonly model: AgentOptions | undefined
+    readonly timeoutMs: number
     readonly charter: string
   }>>
 
@@ -280,6 +290,7 @@ export class XingchenService extends Service {
         peer: peers[role] ?? DEFAULT_PEERS[role],
         provider: configured.provider ?? DEFAULT_SEAT_PROVIDER,
         model: model === undefined ? undefined : { provider: model.slice(0, slash), model: model.slice(slash + 1) },
+        timeoutMs: configured.timeoutMs ?? DEFAULT_SEAT_TIMEOUT_MS,
         charter: charters[role] ?? DEFAULT_CHARTERS[role],
       }
     }
@@ -396,7 +407,20 @@ export class XingchenService extends Service {
       signal: signal ?? new AbortController().signal,
       ...(seat.model === undefined ? {} : { agentOptions: seat.model }),
     })
-    const outcome = await settleRun(run)
+    // A local seat can stall — a composition whose child never drives a turn,
+    // for instance — and a dispatch that waits forever leaves the command with
+    // no result at all. Bound the wait, release the child, and fail visibly.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const expiry = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(() => { resolve('timeout') }, seat.timeoutMs)
+    })
+    const settled = await Promise.race([settleRun(run).then(outcome => ({ outcome })), expiry])
+    if (timer !== undefined) clearTimeout(timer)
+    if (settled === 'timeout') {
+      await run.dispose().catch(() => undefined)
+      throw new Error(`${XINGCHEN_ROLE_NAMES[role]} 席位超过 ${String(seat.timeoutMs)}ms 未完成，已释放子运行`)
+    }
+    const outcome = settled.outcome
     if (outcome.status === 'completed') return { text: outcome.output ?? '', state: outcome.status }
     return { text: outcome.detail ?? `${XINGCHEN_ROLE_NAMES[role]} 席位未完成（${outcome.status}）`, state: outcome.status }
   }

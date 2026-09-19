@@ -683,109 +683,59 @@ describe('ConversationRoot resident composer', () => {
     expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('')
   })
 
-  it('drag → persist → window clamp round-trip on a width handle', () => {
+  it('slider step → persist → window clamp round-trip', () => {
+    localStorage.clear()
     const b = mount(sessionSnapshotOf())
     const content = b.view.container.querySelector('[data-conversation-content]') as HTMLElement
     const root = content.parentElement as HTMLElement
     Object.defineProperty(content, 'offsetWidth', { value: 1600, configurable: true })
     act(() => { fireResize(content) })
-    const handle = b.view.container.querySelector('[data-width-handle="right"]') as HTMLElement
-    expect(handle).not.toBeNull()
-    // jsdom lacks pointer capture: emulate per-element so hasPointerCapture
-    // gates pass; the finally block restores the original descriptors so the
-    // stubs cannot leak into later tests.
-    const names = ['setPointerCapture', 'releasePointerCapture', 'hasPointerCapture'] as const
-    const originals = names.map(name =>
-      [name, Object.getOwnPropertyDescriptor(Element.prototype, name)] as const)
-    const captured = new Set<Element>()
-    Element.prototype.setPointerCapture = function () { captured.add(this) }
-    Element.prototype.releasePointerCapture = function () { captured.delete(this) }
-    Element.prototype.hasPointerCapture = function () { return captured.has(this) }
-    try {
-      // Base resolves from the adaptive clamp: min(1600*0.64, 920) = 920.
-      // Dragging the right handle outward by 25px widens by 2×25 = 50 → 970,
-      // inside both bounds (max = 1600 − 176 = 1424 keeps the handles on-column).
-      fireEvent.pointerDown(handle, { pointerId: 1, clientX: 800, clientY: 300 })
-      fireEvent.pointerUp(handle, { pointerId: 1, clientX: 825, clientY: 300 })
-      expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('970px')
-      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('970')
-      // Window shrinks: the displayed width re-clamps (900 − 176 = 724) but the
-      // preference stays.
-      Object.defineProperty(content, 'offsetWidth', { value: 900, configurable: true })
-      act(() => { fireResize(content) })
-      expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('724px')
-      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('970')
-      // A press without travel (a real double-click delivers two such
-      // press/release rounds) must not commit the clamped display value over
-      // the stored preference.
-      fireEvent.pointerDown(handle, { pointerId: 1, clientX: 800, clientY: 300 })
-      fireEvent.pointerUp(handle, { pointerId: 1, clientX: 800, clientY: 300 })
-      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('970')
-      expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('724px')
-      // No reset affordance on the handle: double-click leaves the preference alone.
-      fireEvent.doubleClick(handle)
-      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('970')
-    } finally {
-      for (const [name, descriptor] of originals) {
-        if (descriptor === undefined) Reflect.deleteProperty(Element.prototype, name)
-        else Object.defineProperty(Element.prototype, name, descriptor)
-      }
-    }
+    const slider = b.view.container.querySelector('input[type="range"]') as HTMLInputElement
+    expect(slider).not.toBeNull()
+    // Adaptive clamp: min(1600 * 0.64, 920) = 920; max = 1600 − 176 = 1424.
+    expect(slider.min).toBe('640')
+    expect(slider.max).toBe('1424')
+    expect(slider.value).toBe('920')
+    expect(slider.getAttribute('aria-label')).toBeTruthy()
+    fireEvent.change(slider, { target: { value: '1100' } })
+    expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('1100px')
+    expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('1100')
+    // Window shrinks: the displayed width re-clamps (900 − 176 = 724) but the
+    // stored preference stays, so widening the window restores it.
+    Object.defineProperty(content, 'offsetWidth', { value: 900, configurable: true })
+    act(() => { fireResize(content) })
+    expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('724px')
+    expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('1100')
+    expect((b.view.container.querySelector('input[type="range"]') as HTMLInputElement).value).toBe('724')
   })
 
-  it('forwards wheel scrolling from a width handle to the transcript', () => {
+  it('renders the width slider above the transcript', () => {
     const b = mount(sessionSnapshotOf())
-    const scrollport = b.view.container.querySelector('[data-conversation-scroll]') as HTMLElement
-    const handle = b.view.container.querySelector('[data-width-handle="right"]') as HTMLElement
-    const scrollBy = vi.fn()
-    Object.defineProperty(scrollport, 'clientHeight', { value: 480, configurable: true })
-    Object.defineProperty(scrollport, 'scrollBy', { value: scrollBy, configurable: true })
-    scrollport.style.lineHeight = '20px'
-
-    fireEvent.wheel(handle, { deltaY: 120, deltaMode: 0 })
-    expect(scrollBy).toHaveBeenLastCalledWith({ top: 120 })
-
-    fireEvent.wheel(handle, { deltaY: 3, deltaMode: 1 })
-    expect(scrollBy).toHaveBeenLastCalledWith({ top: 60 })
-    scrollport.style.lineHeight = 'normal'
-    fireEvent.wheel(handle, { deltaY: 3, deltaMode: 1 })
-    expect(scrollBy).toHaveBeenLastCalledWith({ top: 48 })
-    fireEvent.wheel(handle, { deltaY: -1, deltaMode: 2 })
-    expect(scrollBy).toHaveBeenLastCalledWith({ top: -480 })
-    const calls = scrollBy.mock.calls.length
-    fireEvent.wheel(handle, { deltaY: 0, deltaMode: 0 })
-    fireEvent.wheel(handle, { ctrlKey: true, deltaY: 120, deltaMode: 0 })
-    expect(scrollBy).toHaveBeenCalledTimes(calls)
-
-    scrollport.removeAttribute('data-conversation-scroll')
-    const nestedScrollport = document.createElement('div')
-    nestedScrollport.setAttribute('data-conversation-scroll', '')
-    const nestedScrollBy = vi.fn()
-    Object.defineProperty(nestedScrollport, 'scrollBy', { value: nestedScrollBy, configurable: true })
-    scrollport.append(nestedScrollport)
-    fireEvent.wheel(handle, { deltaY: 120, deltaMode: 0 })
-    expect(scrollBy).toHaveBeenCalledTimes(calls)
-    expect(nestedScrollBy).not.toHaveBeenCalled()
+    const content = b.view.container.querySelector('[data-conversation-content]') as HTMLElement
+    Object.defineProperty(content, 'offsetWidth', { value: 1200, configurable: true })
+    act(() => { fireResize(content) })
+    const slider = b.view.container.querySelector('input[type="range"]') as HTMLElement
+    const scroll = b.view.container.querySelector('[data-conversation-scroll]') as HTMLElement
+    const wrapper = b.view.container.querySelector('[data-conversation-width-slider]') as HTMLElement
+    expect(wrapper).not.toBeNull()
+    expect(wrapper.contains(slider)).toBe(true)
+    // The strip sits in the flow before the scrollport, so it never covers the
+    // transcript it sizes.
+    expect(wrapper.compareDocumentPosition(scroll) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('starts width dragging only from the primary pointer button', () => {
-    const b = mount(sessionSnapshotOf())
-    const handle = b.view.container.querySelector('[data-width-handle="right"]') as HTMLElement
-    const captured = new Set<number>()
-    Object.defineProperties(handle, {
-      setPointerCapture: { configurable: true, value: (pointerId: number) => { captured.add(pointerId) } },
-      releasePointerCapture: { configurable: true, value: (pointerId: number) => { captured.delete(pointerId) } },
-      hasPointerCapture: { configurable: true, value: (pointerId: number) => captured.has(pointerId) },
-    })
-    fireEvent.pointerDown(handle, { pointerId: 1, button: 1, clientX: 800, clientY: 300 })
-    expect(handle.hasAttribute('data-dragging')).toBe(false)
-    fireEvent.pointerDown(handle, { pointerId: 2, button: 0, clientX: 800, clientY: 300 })
-    expect(handle.hasAttribute('data-dragging')).toBe(true)
-    fireEvent.pointerCancel(handle, { pointerId: 2 })
-  })
-
-  it('hero phase renders no width handles (no transcript to size)', () => {
+  it('hero phase renders no width slider (no transcript to size)', () => {
     const b = mount(sessionSnapshotOf({ blank: true }))
-    expect(b.view.container.querySelector('[data-width-handle]')).toBeNull()
+    expect(b.view.container.querySelector('input[type="range"]')).toBeNull()
+  })
+
+  it('offers no slider on a column narrower than the range floor', () => {
+    const b = mount(sessionSnapshotOf())
+    const content = b.view.container.querySelector('[data-conversation-content]') as HTMLElement
+    // 450px of column cannot hold the 640px floor plus the edge budget, so the
+    // explored range is a single point.
+    Object.defineProperty(content, 'offsetWidth', { value: 450, configurable: true })
+    act(() => { fireResize(content) })
+    expect(b.view.container.querySelector('input[type="range"]')).toBeNull()
   })
 })

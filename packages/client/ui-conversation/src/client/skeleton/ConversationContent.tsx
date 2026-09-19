@@ -186,11 +186,16 @@ export function ConversationContent(props: ConversationContentProps) {
       data-conversation-content=""
       data-content-phase={phase}
     >
+      <WidthControls
+        container={body}
+        phase={phase}
+        widthLabel={t('width.slider')}
+        widthValueText={width => t('width.sliderValue', { width: String(Math.round(width)) })}
+      />
       <div className={css.scrollBody} data-conversation-scroll="">
         {sessionId === undefined ? null : <Views />}
         {composerSeat}
       </div>
-      <WidthControls container={body} phase={phase} />
     </div>
   )
 }

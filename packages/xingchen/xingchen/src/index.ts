@@ -88,7 +88,9 @@ export interface XingchenCharters {
 export interface XingchenSeatConfig {
   /**
    * `local` runs the seat in this process as a delegated child agent (needs
-   * no peer endpoint); `a2a` sends it to the configured peer. Default `local`.
+   * no peer endpoint); `a2a` sends it to the configured peer. Omitted: the
+   * seat is `a2a` when its peer name is configured on the `a2a` row, else
+   * `local`.
    */
   readonly mode?: 'local' | 'a2a'
   /** `ctx.subagents` provider used in `local` mode; default `spawn`. */
@@ -277,20 +279,25 @@ export class XingchenService extends Service {
     const peers = config.peers ?? {}
     const charters = config.charters ?? {}
     const seats = config.seats ?? {}
+    // A peer this deployment actually configured is the deployment saying
+    // where the seat lives, so the seat defaults to it; an unconfigured role
+    // stays local and needs no endpoint at all.
+    const configured = new Set(ctx.a2a.list())
     /** One seat's resolved runtime choice. */
     const seat = (role: XingchenSpecialistId) => {
-      const configured = seats[role] ?? {}
-      const model = configured.model
+      const configuredSeat = seats[role] ?? {}
+      const model = configuredSeat.model
       const slash = model?.indexOf('/') ?? -1
       if (model !== undefined && slash <= 0) {
         throw new Error(`xingchen: seats.${role}.model must be "provider/model", got ${JSON.stringify(model)}`)
       }
+      const peer = peers[role] ?? DEFAULT_PEERS[role]
       return {
-        mode: configured.mode ?? 'local',
-        peer: peers[role] ?? DEFAULT_PEERS[role],
-        provider: configured.provider ?? DEFAULT_SEAT_PROVIDER,
+        mode: configuredSeat.mode ?? (configured.has(peer) ? 'a2a' : 'local'),
+        peer,
+        provider: configuredSeat.provider ?? DEFAULT_SEAT_PROVIDER,
         model: model === undefined ? undefined : { provider: model.slice(0, slash), model: model.slice(slash + 1) },
-        timeoutMs: configured.timeoutMs ?? DEFAULT_SEAT_TIMEOUT_MS,
+        timeoutMs: configuredSeat.timeoutMs ?? DEFAULT_SEAT_TIMEOUT_MS,
         charter: charters[role] ?? DEFAULT_CHARTERS[role],
       }
     }

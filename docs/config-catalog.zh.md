@@ -4109,7 +4109,9 @@ export interface XingchenSeats {
 export interface XingchenSeatConfig {
   /**
    * `local` runs the seat in this process as a delegated child agent (needs
-   * no peer endpoint); `a2a` sends it to the configured peer. Default `local`.
+   * no peer endpoint); `a2a` sends it to the configured peer. Omitted: the
+   * seat is `a2a` when its peer name is configured on the `a2a` row, else
+   * `local`.
    */
   readonly mode?: 'local' | 'a2a'
   /** `ctx.subagents` provider used in `local` mode; default `spawn`. */

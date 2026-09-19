@@ -41,7 +41,7 @@ kind: "package-reference"
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
-| `seats.<role>.mode` | `local` | `local` 在本进程内委派子代理；`a2a` 把任务发给配置的对等端 |
+| `seats.<role>.mode` | 配了对等端则 `a2a`，否则 `local` | `local` 在本进程内委派子代理；`a2a` 把任务发给配置的对等端 |
 | `seats.<role>.provider` | `spawn` | `local` 席位使用的 `ctx.subagents` 提供方 |
 | `seats.<role>.model` | 继承父代理 | `local` 席位的子代理模型路由，写作 `provider/model` |
 | `seats.<role>.timeoutMs` | `300000` | `local` 席位的等待上限；超时即释放子运行并报错，不无限等待 |

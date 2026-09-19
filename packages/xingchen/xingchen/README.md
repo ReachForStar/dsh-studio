@@ -41,7 +41,7 @@ No configuration is required: each seat spawns a child agent through `ctx.subage
 
 | Field | Default | Meaning |
 |---|---|---|
-| `seats.<role>.mode` | `local` | `local` delegates to a child agent in this process; `a2a` sends the task to the configured peer |
+| `seats.<role>.mode` | peer configured ⇒ `a2a`, else `local` | `local` delegates to a child agent in this process; `a2a` sends the task to the configured peer |
 | `seats.<role>.provider` | `spawn` | `ctx.subagents` provider used by a `local` seat |
 | `seats.<role>.model` | parent's route | Child model route for a `local` seat, as `provider/model` |
 | `seats.<role>.timeoutMs` | `300000` | How long a `local` seat may run before its dispatch fails and releases the child |

@@ -27,6 +27,7 @@ afterEach(async () => {
 
 interface A2AStub {
   readonly inspect: ReturnType<typeof vi.fn>
+  readonly list: ReturnType<typeof vi.fn>
   readonly send: ReturnType<typeof vi.fn>
 }
 
@@ -44,9 +45,10 @@ function sentCall(stub: A2AStub, index: number): SentCall {
   return call
 }
 
-function a2aStub(reply: Partial<A2APeerReply> = {}): A2AStub {
+function a2aStub(reply: Partial<A2APeerReply> = {}, peers: readonly string[] = []): A2AStub {
   return {
     inspect: vi.fn(() => Promise.resolve([])),
+    list: vi.fn(() => [...peers]),
     send: vi.fn(() => Promise.resolve({ text: '专家回答', ...reply })),
   }
 }
@@ -100,9 +102,10 @@ interface Harness {
 /**
  * Mount the routing stack with stubbed seams.
  * @param stub - A2A seam stub used by `a2a`-mode seats.
- * @param mode - seat runtime for every role; `local` (the default) needs no peer.
+ * @param mode - `a2a` pins every seat to its peer; `auto` (the default) lets a
+ *   configured peer decide, which stays local on a deployment without peers.
  */
-async function harness(stub: A2AStub = a2aStub(), mode: 'local' | 'a2a' = 'a2a'): Promise<Harness> {
+async function harness(stub: A2AStub = a2aStub(), mode: 'auto' | 'a2a' = 'a2a'): Promise<Harness> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
@@ -277,7 +280,7 @@ describe('/review /bug /planning 人面命令', () => {
 
 describe('本机专家席（默认）', () => {
   it('命令派发走 ctx.subagents，并带上角色章程', async () => {
-    const test = await harness(a2aStub(), 'local')
+    const test = await harness(a2aStub(), 'auto')
     const execution = await test.ctx.commands.execute(test.agent, '/review 评估这个 diff', [], signal)
     expect(execution?.result).toEqual({ kind: 'success', text: '天权 已处理：\n\n本机专家回答' })
     expect(test.a2a.send).not.toHaveBeenCalled()
@@ -293,7 +296,7 @@ describe('本机专家席（默认）', () => {
   })
 
   it('工具委派返回本机席位的回答', async () => {
-    const test = await harness(a2aStub(), 'local')
+    const test = await harness(a2aStub(), 'auto')
     const result = await runTool(test.ctx, test.agent, { role: 'yaoguang', task: '复现崩溃' }) as ToolOutcome
     expect(result.isError).toBe(false)
     expect(textOf(result)).toBe('[瑶光] 本机专家回答')
@@ -324,6 +327,17 @@ describe('本机专家席（默认）', () => {
     expect(execution?.result.kind).toBe('error')
     expect((execution?.result as { text: string }).text).toContain('未完成')
     expect(stuck.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('对等端已配置时席位默认走 a2a，未配置时留在本机', async () => {
+    const bridged = await harness(a2aStub({}, ['claude-code', 'pi', 'opencode']), 'auto')
+    await bridged.ctx.commands.execute(bridged.agent, '/review 评估', [], signal)
+    expect(bridged.a2a.send).toHaveBeenCalledTimes(1)
+    expect(bridged.subagents.start).not.toHaveBeenCalled()
+    const plain = await harness(a2aStub(), 'auto')
+    await plain.ctx.commands.execute(plain.agent, '/review 评估', [], signal)
+    expect(plain.a2a.send).not.toHaveBeenCalled()
+    expect(plain.subagents.start).toHaveBeenCalledTimes(1)
   })
 
   it('seats.<role>.model 解析成子代理模型路由；格式不对则拒绝装配', async () => {

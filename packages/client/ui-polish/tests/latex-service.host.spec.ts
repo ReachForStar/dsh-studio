@@ -9,7 +9,8 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  compileProject, explainMissingReferences, extractLogExcerpt, findProjects, handleLatexRequest, listProjectFiles,
+  compileProject, explainMissingReferences, extractBibtexExcerpt, extractLogExcerpt, findProjects,
+  handleLatexRequest, listProjectFiles,
 } from '../src/latex-service.ts'
 import { workspaceCwdResolver } from '../src/git-service.ts'
 
@@ -284,6 +285,28 @@ describe('missing-reference diagnostics', () => {
   })
 })
 
+describe('bibtex excerpt', () => {
+  it('returns the diagnostic lines instead of the function histogram', () => {
+    const log = [
+      'This is BibTeX, Version 0.99e',
+      'The top-level auxiliary file: paper.aux',
+      'The style file: plain.bst',
+      "Warning--I didn't find a database entry for \"missing\"",
+      'You\'ve used 3 entries,',
+      'newline$ -- 15',
+      '(There were 2 error messages)',
+    ].join('\n')
+    const excerpt = extractBibtexExcerpt(log)
+    expect(excerpt).toContain("didn't find a database entry")
+    expect(excerpt).toContain('2 error messages')
+  })
+
+  it('falls back to the header when bibtex reports nothing', () => {
+    const log = ['This is BibTeX', 'The style file: plain.bst', 'newline$ -- 15'].join('\n')
+    expect(extractBibtexExcerpt(log)).toContain('The style file: plain.bst')
+  })
+})
+
 describe('log excerpt', () => {
   it('extracts the last error block from a TeX log', () => {
     const log = 'line one\nline two\n! Undefined control sequence.\nl .\\badcommand x\n'
@@ -352,6 +375,23 @@ describe('compilation', () => {
     const result = await compileProject(project, 'main.tex', workspace)
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.supplied).toEqual([])
+  }, 180_000)
+
+  it('compiles a bibliography whose main file sits in a subdirectory', async () => {
+    if (xelatexPath === null) {
+      console.log('skip: no xelatex available on this machine')
+      return
+    }
+    const dir = await makeProject('bib/paper', 'main.tex', String.raw`\documentclass{article}
+\begin{document}
+\cite{knuth}
+\bibliographystyle{plain}
+\bibliography{refs}
+\end{document}
+`)
+    await writeFile(join(dir, 'refs.bib'), '@book{knuth, author={Knuth}, title={TAOCP}, year={1968}, publisher={AW}}\n')
+    const result = await compileProject(dir, 'main.tex', workspace)
+    expect(result.ok).toBe(true)
   }, 180_000)
 
   it('reports the log excerpt on a failed compile', async () => {

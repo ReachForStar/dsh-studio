@@ -172,6 +172,15 @@ async function tlmgr(): Promise<string> {
   return tlmgrPath
 }
 
+/** The cached bibtex location (resolved once). */
+let bibtexPath: string | undefined
+async function bibtex(): Promise<string> {
+  if (bibtexPath === undefined) {
+    bibtexPath = await findEngine('bibtex')
+  }
+  return bibtexPath
+}
+
 // ---------------------------------------------------------------------------
 // request plumbing
 // ---------------------------------------------------------------------------
@@ -609,6 +618,38 @@ export function extractLogExcerpt(log: string): string {
   return lines.slice(-30).join('\n')
 }
 
+/** Lines that carry a bibtex diagnostic rather than a function-call count. */
+const BIBTEX_DIAGNOSTIC = new RegExp([
+  'Warning--',
+  'error message',
+  "I couldn't",
+  'I found no',
+  'Repeated entry',
+  'skipping whatever remains',
+  'Illegal',
+  '---line \\d+ of file',
+  'Aborted',
+].join('|'), 'i')
+
+/**
+ * Extract a readable excerpt from a bibtex log. The tail of a .blg is a
+ * built-in function-call histogram, so an error excerpt comes from the
+ * diagnostic lines and their context, or from the header naming the aux, style,
+ * and database files when bibtex reported nothing.
+ * @param log - the full .blg content.
+ * @returns at most 30 lines.
+ */
+export function extractBibtexExcerpt(log: string): string {
+  const lines = log.split('\n')
+  const wanted = new Set<number>()
+  for (const [index, line] of lines.entries()) {
+    if (!BIBTEX_DIAGNOSTIC.test(line)) continue
+    for (let i = Math.max(0, index - 1); i <= Math.min(lines.length - 1, index + 2); i += 1) wanted.add(i)
+  }
+  if (wanted.size === 0) return lines.slice(0, 20).join('\n')
+  return [...wanted].sort((left, right) => left - right).slice(0, 30).map(index => lines[index]).join('\n')
+}
+
 /**
  * Compile one main file: mirror → xelatex → (bibtex when a .bib is referenced)
  * → two more xelatex passes. Graphics the project does not hold are supplied
@@ -665,10 +706,13 @@ export async function compileProject(
       useBibtex = false
     }
     if (useBibtex) {
-      const bibtex = await runCommand('bibtex', [mainBase], tmp, 60_000)
-      if (bibtex.code !== 0) {
+      const tool = await bibtex()
+      // bibtex reads its aux file from the working directory: the mirror's main
+      // file directory, not the mirror root, or it reports "I found no \bibdata".
+      const bibtexRun = await runCommand(tool, [mainBase], join(tmp, mainDir), 60_000)
+      if (bibtexRun.code !== 0) {
         const log = await readFile(join(tmp, mainDir, `${mainBase}.blg`), 'utf8').catch(() => '')
-        return await fail(extractLogExcerpt(log || bibtex.stdout))
+        return await fail(extractBibtexExcerpt(log || bibtexRun.stdout))
       }
     }
     for (let pass = 0; pass < 2; pass += 1) {

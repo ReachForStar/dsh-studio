@@ -433,8 +433,12 @@ export interface ConversationContentInputProps {
 export interface ConversationWidthControlsInputProps {
   /** Mounted Conversation body measured and styled by the selected controls. */
   container: HTMLDivElement | null
-  /** Current body phase; handles render only for an active transcript. */
+  /** Current body phase; the slider renders only for an active transcript. */
   phase: ConversationContentInputProps['phase']
+  /** Localized accessible name for the width slider. */
+  widthLabel: string
+  /** Localized reading of one resolved content width in px. */
+  widthValueText: (width: number) => string
 }
 
 /** Full props of the reusable Conversation Factory definition. */

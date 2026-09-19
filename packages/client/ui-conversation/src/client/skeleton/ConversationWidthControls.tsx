@@ -1,16 +1,14 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useState } from 'react'
+import { Slider } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ConversationWidthControlsProps } from '../contract/slots.ts'
 import css from './ConversationRoot.module.css'
 
-/** localStorage key for the dragged transcript width preference (px). */
+/** localStorage key for the chosen transcript width preference (px). */
 const WIDTH_PREF_KEY = 'dsh.conversation.contentWidth'
-/** Floor for a dragged content width; matches the layout center-column minimum. */
+/** Floor for a chosen content width; matches the layout center-column minimum. */
 const CONTENT_MIN = 640
-/** Horizontal room reserved for both handles and their safe edge zones. */
+/** Horizontal room the column reserves for its own edges and gutter. */
 const CONTENT_EDGE_BUDGET = 176
-const WHEEL_DELTA_LINE = 1
-const WHEEL_DELTA_PAGE = 2
-const FALLBACK_WHEEL_LINE_PX = 16
 
 /** Read a valid persisted width preference, or null when absent or corrupt. */
 function readWidthPreference(): number | null {
@@ -20,158 +18,88 @@ function readWidthPreference(): number | null {
   return Number.isFinite(value) && value > 0 ? value : null
 }
 
+/** Highest content width one measured column can show. */
+function maxContentWidth(columnWidth: number): number {
+  return Math.max(CONTENT_MIN, columnWidth - CONTENT_EDGE_BUDGET)
+}
+
 /** Resolve the width displayed for one measured Conversation column. */
 function resolveContentWidth(columnWidth: number, preference: number | null): number {
-  const max = Math.max(CONTENT_MIN, columnWidth - CONTENT_EDGE_BUDGET)
-  if (preference !== null) return Math.min(Math.max(preference, CONTENT_MIN), max)
+  if (preference !== null) return Math.min(Math.max(preference, CONTENT_MIN), maxContentWidth(columnWidth))
   return Math.max(680, Math.min(columnWidth * 0.64, 920))
 }
 
-/** Convert a wheel event's vertical delta to scrollport pixels. */
-function wheelDeltaY(event: React.WheelEvent, scrollport: HTMLElement): number {
-  if (event.deltaMode === WHEEL_DELTA_LINE) {
-    const lineHeight = Number.parseFloat(getComputedStyle(scrollport).lineHeight)
-    return event.deltaY * (Number.isFinite(lineHeight) ? lineHeight : FALLBACK_WHEEL_LINE_PX)
-  }
-  if (event.deltaMode === WHEEL_DELTA_PAGE) return event.deltaY * scrollport.clientHeight
-  return event.deltaY
-}
-
-/** One pointer-captured transcript width handle. */
-function WidthHandle(props: {
-  side: 'left' | 'right'
-  onStart: () => number
-  onDrag: (width: number) => void
-  onCommit: (width: number) => void
-  onEnd: () => void
-}) {
-  const [dragging, setDragging] = useState(false)
-  const base = useRef(0)
-  const origin = useRef(0)
-  const latest = useRef(0)
-  const frame = useRef<number | null>(null)
-  const callbacks = useRef(props)
-  callbacks.current = props
-
-  const outwardWidth = () => {
-    const dx = latest.current - origin.current
-    const outward = callbacks.current.side === 'right' ? dx : -dx
-    return base.current + outward * 2
-  }
-  const cancelFrame = () => {
-    if (frame.current !== null) { cancelAnimationFrame(frame.current); frame.current = null }
-  }
-  const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    origin.current = event.clientX
-    latest.current = event.clientX
-    base.current = callbacks.current.onStart()
-    setDragging(true)
-  }, [])
-  const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const box = event.currentTarget.getBoundingClientRect()
-    event.currentTarget.style.setProperty('--dsh-width-handle-pointer-y', `${event.clientY - box.top}px`)
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
-    latest.current = event.clientX
-    frame.current ??= requestAnimationFrame(() => {
-      frame.current = null
-      callbacks.current.onDrag(outwardWidth())
-    })
-  }, [])
-  const onPointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
-    event.currentTarget.releasePointerCapture(event.pointerId)
-    cancelFrame()
-    latest.current = event.clientX
-    // A press-only gesture must not overwrite a wider preference with its window-clamped display value.
-    if (latest.current !== origin.current) callbacks.current.onCommit(outwardWidth())
-    setDragging(false)
-    callbacks.current.onEnd()
-  }, [])
-  const onPointerCancel = useCallback(() => {
-    // Cancellation abandons persistence and restores the saved width through onEnd.
-    cancelFrame()
-    setDragging(false)
-    callbacks.current.onEnd()
-  }, [])
-  const onWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    const body = event.currentTarget.parentElement
-    /* v8 ignore next -- a width handle renders only inside the Conversation body. */
-    if (body === null) return
-    const scrollport = body.querySelector<HTMLElement>(':scope > [data-conversation-scroll]')
-    /* v8 ignore next -- the Conversation body always contains its direct scroll element. */
-    if (scrollport === null) return
-    if (event.ctrlKey || event.deltaY === 0) return
-    scrollport.scrollBy({ top: wheelDeltaY(event, scrollport) })
-  }, [])
-
-  return (
-    <div
-      className={css.widthHandle}
-      data-side={props.side}
-      data-width-handle={props.side}
-      data-dragging={dragging || undefined}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
-      onLostPointerCapture={onPointerCancel}
-      onWheel={onWheel}
-    />
-  )
+/** The content-width range and value one rendered column offers. */
+interface WidthAxis {
+  readonly min: number
+  readonly max: number
+  readonly value: number
 }
 
 /**
- * Install the main Conversation width axis and render its drag handles.
- * @param props - Mounted Conversation body and current presentation phase.
- * @returns two active-phase width handles, or no controls outside the active phase.
+ * Install the Conversation width axis and render its slider above the
+ * scrollport. The strip sits in the flow rather than over the transcript, its
+ * own length is the width it sets, and every step publishes and stores the
+ * chosen width (a range input has no press-without-change state to protect the
+ * stored preference from). The written variables live on the Conversation
+ * root, so the choice sizes this panel only.
+ * @param props - Mounted Conversation body, its presentation phase, and the localized labels.
+ * @returns the width slider while a transcript is on screen, otherwise no control.
  */
-export function ConversationWidthControls({ container, phase }: ConversationWidthControlsProps) {
-  const publishWidths = useCallback((container: HTMLDivElement): void => {
-    const target = container.parentElement ?? container
-    const column = container.offsetWidth
-    target.style.setProperty('--dsh-conversation-column-width', `${column}px`)
-    const preference = readWidthPreference()
-    if (preference === null) target.style.removeProperty('--dsh-chat-user-width')
-    else target.style.setProperty('--dsh-chat-user-width', `${resolveContentWidth(column, preference)}px`)
+export function ConversationWidthControls({ container, phase, widthLabel, widthValueText }: ConversationWidthControlsProps) {
+  const [axis, setAxis] = useState<WidthAxis | undefined>(undefined)
+
+  const apply = useCallback((column: number, preference: number | null): void => {
+    const max = maxContentWidth(column)
+    const value = resolveContentWidth(column, preference)
+    // Identity is kept when nothing moved: the observer runs on every column
+    // resize, and a fresh object would re-render the slider for no change.
+    setAxis(current => current !== undefined && current.max === max && current.value === value
+      ? current
+      : { min: CONTENT_MIN, max, value })
   }, [])
 
   useLayoutEffect(() => {
     if (container === null) return
-    const observer = new ResizeObserver(() => { publishWidths(container) })
+    const target = container.parentElement ?? container
+    const publish = (): void => {
+      const column = container.offsetWidth
+      target.style.setProperty('--dsh-conversation-column-width', `${column}px`)
+      const preference = readWidthPreference()
+      if (preference === null) target.style.removeProperty('--dsh-chat-user-width')
+      else target.style.setProperty('--dsh-chat-user-width', `${resolveContentWidth(column, preference)}px`)
+      apply(column, preference)
+    }
+    const observer = new ResizeObserver(publish)
     observer.observe(container)
-    publishWidths(container)
+    publish()
     return () => { observer.disconnect() }
-  }, [container, publishWidths])
+  }, [container, apply])
 
-  const onStart = useCallback((): number => {
-    if (container === null) return 680
-    return resolveContentWidth(container.offsetWidth, readWidthPreference())
-  }, [container])
-  const onDrag = useCallback((width: number): void => {
+  const onChange = useCallback((width: number): void => {
     if (container === null) return
     const target = container.parentElement ?? container
-    target.style.setProperty('--dsh-chat-user-width', `${resolveContentWidth(container.offsetWidth, width)}px`)
-  }, [container])
-  const onCommit = useCallback((width: number): void => {
-    if (container === null) return
-    localStorage.setItem(WIDTH_PREF_KEY, `${resolveContentWidth(container.offsetWidth, width)}`)
-  }, [container])
-  const onEnd = useCallback((): void => {
-    if (container !== null) publishWidths(container)
-  }, [container, publishWidths])
+    const column = container.offsetWidth
+    const resolved = resolveContentWidth(column, width)
+    localStorage.setItem(WIDTH_PREF_KEY, `${resolved}`)
+    target.style.setProperty('--dsh-chat-user-width', `${resolved}px`)
+    apply(column, width)
+  }, [container, apply])
 
-  if (container === null || phase !== 'active') return null
-  return (['left', 'right'] as const).map(side => (
-    <WidthHandle
-      key={side}
-      side={side}
-      onStart={onStart}
-      onDrag={onDrag}
-      onCommit={onCommit}
-      onEnd={onEnd}
-    />
-  ))
+  if (container === null || phase !== 'active' || axis === undefined) return null
+  // A column narrower than the floor plus its edge budget offers no range;
+  // rendering a slider whose min equals its max would only show a fixed width.
+  if (axis.max <= axis.min) return null
+  return (
+    <div className={css.widthSlider} data-conversation-width-slider="">
+      <Slider
+        min={axis.min}
+        max={axis.max}
+        value={axis.value}
+        onChange={onChange}
+        label={widthLabel}
+        valueText={widthValueText(axis.value)}
+      />
+    </div>
+  )
 }

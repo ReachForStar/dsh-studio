@@ -46,7 +46,7 @@ status: active
 
 1. `mirrorProject`：把项目内可编译扩展名（`tex`/`bib`/`sty`/`cls`/图片/字体…）复制到 `mkdtemp` 临时目录；源项目保持干净。边界：最多 2000 个文件、总 512 MiB、单文件 64 MiB，跳过 `node_modules`/`dist`/`build`/`out`/`target`/`coverage`/版本控制目录；**目录符号链接按目录处理**（跟随链接）；被跳过的项目相对路径会被记录（见下条）。
 2. 首遍 xelatex（`-interaction=nonstopmode -halt-on-error`，超时 180s）；失败则读 `.log` 并 `extractLogExcerpt`（首个 `!` 行前后共约 28 行）。
-3. 若 `.aux` 含 `\bibdata{` 则跑 `bibtex`，失败读 `.blg`。
+3. 若 `.aux` 含 `\bibdata{` 则跑 `bibtex`（引擎同样经 `findEngine` 解析，工作目录是**镜像内主文件所在目录**），失败时用 `extractBibtexExcerpt` 摘取诊断行（`Warning--`/`error message`/`Repeated entry`/`---line N of file` 等）及其上下文，而不是 `.blg` 尾部的函数调用直方图。
 4. 再跑两遍 xelatex（交叉引用与目录）。
 5. 成功则把 PDF 存入模块级缓存（最多 10 项，按时间淘汰），临时目录始终删除。
 6. 同一项目+主文件同时只允许一次编译（`compiling` 集合互斥）。
@@ -80,6 +80,8 @@ status: active
 - **`read`/`write` 的路径基准**：早期实现只传 `path` 且按工作区根解析，而文件树给出的是项目相对路径，子目录项目一律 ENOENT。修复方式是让这两个路由也接收 `dir` 并按项目目录解析（与 `/latex/ai` 一致）。
 - **空文件写入被拒**：`bodyString` 要求非空，导致“新建文件”必然失败；新增 `bodyText` 允许空串。
 - **镜像跳过 `fonts/`**（2026-09-19 修）：`SKIP_DIRS` 曾包含 `fonts`，而 `COPY_EXTS` 又支持 `.ttf/.otf`——用 `\setCJKmainfont[Path=fonts/]` 的项目一编译就报找不到字体/图片。现在 `fonts/` 正常镜像。
+- **bibtex 的两个假定**（2026-09-19 修）：一是直接用 `bibtex` 名字而不经 `findEngine`，TeX Live 不在 PATH 的机器上会直接 ENOENT；二是在镜像根而非主文件目录运行，主文件在子目录的项目必然报 `I found no \bibdata`。两者均已修正。
+- **bibtex 失败日志只有直方图**（2026-09-19 修）：`.blg` 尾部是 built-in 函数调用计数（`change.case$ -- 0` 那一串），旧实现照搬尾部，看不到真正的错误行；现在按诊断行提取。
 - **项目外的图片**（2026-09-19 修）：来自实验室输出的图常在项目目录之外，镜像器看不到。现在编译前会按 `\includegraphics` 与 `\graphicspath` 在工作区内补齐（见上），本机实测论文项目从 11 张补齐收敛到真实的 6 张、PDF 3.39 MB 编译成功。
 - **镜像截断无提示**（2026-09-19 修）：旧实现的 300 文件上限在循环内直接 `return`，超出后剩余目录一个文件都不复制且无任何提示；单文件上限也只有 10 MiB。现已改为“文件数 + 总字节 + 单文件”三重边界，跳过项记录并在失败时输出。
 - **改了客户端源码必须重建产物**（见 [fork Web 面板](fork-web-panels.md)）。

@@ -61,7 +61,7 @@ interface BenchOptions {
   modelEntry?: React.ReactNode
   permissionEntry?: React.ReactNode
   /** Hot text-ref lexicon (injects a minimal slash stub exposing only lexicon()). */
-  lexicon?: ReadonlyMap<'/' | '@', readonly string[]>
+  lexicon?: ReadonlyMap<'/' | '@' | '#', readonly string[]>
   /** The `imageLimits` projection value (absent = no attachment service). */
   imageLimits?: {
     maxImageBytes: number
@@ -1469,7 +1469,7 @@ describe('decorations', () => {
   })
 
   it('a lexicon-matched plain token renders the text-ref node', () => {
-    const lexicon = new Map<'/' | '@', readonly string[]>([['/', ['fixture-demo']]])
+    const lexicon = new Map<'/' | '@' | '#', readonly string[]>([['/', ['fixture-demo']]])
     const { view, shell } = bench({ lexicon })
     act(() => { shell.setDraft('use /fixture-demo now') })
     const mark = view.container.querySelector('[data-composer-text-ref]')

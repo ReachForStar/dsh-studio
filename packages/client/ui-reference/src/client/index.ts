@@ -1,7 +1,8 @@
 /**
- * Unified Web `@` reference source. File and session discovery run through
- * the cancellable generated Remote namespaces in parallel with deterministic
- * ordering and labels.
+ * Unified Web reference sources: `@` offers files and sessions, `#` offers
+ * sessions alone. File and session discovery run through the cancellable
+ * generated Remote namespaces in parallel with deterministic ordering and
+ * labels.
  *
  * Rows carry only what distinguishes them: a file names its parent directory
  * (nothing at the workspace root), a directory listing names none because its
@@ -20,7 +21,7 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import { relativeTime } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
-  ClientSessionContext, InputTriggerCrumb, InputTriggerServiceContract, InputTriggerSource,
+  ClientSessionContext, InputTriggerCandidate, InputTriggerCrumb, InputTriggerServiceContract, InputTriggerSource,
 } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import { formatFileMention } from '@deepseek-ai/dsh-file-reference/grammar'
 import type { FileReferenceCandidate } from '@deepseek-ai/dsh-file-reference/types'
@@ -42,6 +43,47 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-reference: dictionaries')
   const t = ctx.locale.bind(NS)
   const sessions = ctx.get('sessions') as ISessions
+
+  /**
+   * Session rows for one query, shared by the `@` and `#` menus.
+   * @param session - the session the menu belongs to.
+   * @param req - live query and the caller's cancellation.
+   * @returns the rows in the order the menu ranks them.
+   */
+  const sessionRows = async (
+    session: ClientSessionContext,
+    { query, signal }: { readonly query: string; readonly signal: AbortSignal },
+  ): Promise<readonly InputTriggerCandidate[]> => {
+    const items = await ctx.remote.sessionReferenceResolver.candidates(session.sessionId, query, signal)
+      .then(result => result.ok ? result.value : [])
+    if (signal.aborted) return []
+    const now = Date.now()
+    const home = ctx.remote.$host.home
+    const listed = sessions.list.getSnapshot().byId
+    const rows = items.map((candidate) => {
+      const summary = listed[candidate.sessionId]
+      const child = summary?.origin === 'subagent' && summary.parentId === session.sessionId
+      return {
+        child,
+        row: sessionCandidate(
+          candidate,
+          candidate.displayTitle ?? candidate.label,
+          summary?.updatedAt ?? candidate.createdAt,
+          now,
+          home,
+          t(child ? 'section.subagents' : 'section.sessions'),
+          t,
+        ),
+      }
+    })
+    // A subagent of this session reads as a child row, so it ranks above the
+    // unrelated sessions the same query matched.
+    return [
+      ...rows.filter(item => item.child).map(item => item.row),
+      ...rows.filter(item => !item.child).map(item => item.row),
+    ]
+  }
+
   const source: InputTriggerSource = {
     trigger: '@',
     name: 'reference',
@@ -50,37 +92,16 @@ export function apply(ctx: ClientContext): void {
       const fileLookup = ctx.remote.fileReferences.list(session.sessionId, query, signal)
         .then(result => result.ok ? result.value : [])
       const sessionLookup = quoted === true
-        ? Promise.resolve([] as SessionReferenceMentionCandidate[])
-        : ctx.remote.sessionReferenceResolver.candidates(session.sessionId, query, signal)
-          .then(result => result.ok ? result.value : [])
+        ? Promise.resolve([] as readonly InputTriggerCandidate[])
+        : sessionRows(session, { query, signal })
       const [fileItems, sessionItems] = await Promise.all([fileLookup, sessionLookup])
       if (signal.aborted) return []
       // The header already names the directory being listed; rows repeat it only
       // when there is no header to carry it.
       const withLocation = crumbsFor(query, quoted === true, drilled, t) === undefined
-      const now = Date.now()
-      const home = ctx.remote.$host.home
-      const listed = sessions.list.getSnapshot().byId
-      const sessionRows = sessionItems.map((candidate) => {
-        const summary = listed[candidate.sessionId]
-        const child = summary?.origin === 'subagent' && summary.parentId === session.sessionId
-        return {
-          child,
-          row: sessionCandidate(
-            candidate,
-            candidate.displayTitle ?? candidate.label,
-            summary?.updatedAt ?? candidate.createdAt,
-            now,
-            home,
-            t(child ? 'section.subagents' : 'section.sessions'),
-            t,
-          ),
-        }
-      })
       return [
         ...fileItems.flatMap(candidate => fileCandidate(candidate, quoted === true, withLocation, t)),
-        ...sessionRows.filter(item => item.child).map(item => item.row),
-        ...sessionRows.filter(item => !item.child).map(item => item.row),
+        ...sessionItems,
       ]
     },
     header(_session: ClientSessionContext, req) {
@@ -131,8 +152,32 @@ export function apply(ctx: ClientContext): void {
       serialize: ref => Promise.resolve(ref),
     },
   }
+  const sessionSource: InputTriggerSource = {
+    trigger: '#',
+    name: 'session-reference',
+    showGroupTitle: false,
+    candidates: (session, { query, signal }) => sessionRows(session, { query, signal }),
+    onPick({ candidate }) {
+      const value = parseCandidate(candidate.value)
+      if (value?.kind !== 'session') return undefined
+      return {
+        insert: {
+          source: 'session-reference',
+          ref: value.mention,
+          label: value.label,
+          appearance: 'session',
+          clipboardText: value.mention,
+        },
+      }
+    },
+    codec: {
+      clipboardText: ref => ref,
+      serialize: ref => Promise.resolve(ref),
+    },
+  }
   const inputTriggers = ctx.get('inputTriggers') as InputTriggerServiceContract
   ctx.effect(() => inputTriggers.registerSource(source), 'ui-reference: @ source')
+  ctx.effect(() => inputTriggers.registerSource(sessionSource), 'ui-reference: # source')
 }
 
 type Translate = (key: ReferenceKey, params?: Record<string, unknown>) => string

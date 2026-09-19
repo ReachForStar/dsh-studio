@@ -1,27 +1,27 @@
 /**
  * Plain-text reference scan (the plain-text-reference decision;
  * see .agents/notes/archived/architecture/2026-07-25-web-input-machine-and-slash-pipeline.md):
- * a `/name` or `@name` token whose name is on the trigger's lexicon, and
- * syntax-recognizable `@dir/` folder tokens. Pure derivation — the editor's
- * text-ref entity transform consumes these ranges; editing the text out of
- * match shape simply drops the range next scan.
+ * a `/name`, `@name`, or `#name` token whose name is on the trigger's lexicon,
+ * and syntax-recognizable `@dir/` folder tokens. Pure derivation — the
+ * editor's text-ref entity transform consumes these ranges; editing the text
+ * out of match shape simply drops the range next scan.
  */
 
 /**
  * One plain-text reference range (the plain-text-reference decision;
  * see .agents/notes/archived/architecture/2026-07-25-web-input-machine-and-slash-pipeline.md):
- * a `/name` or `@name` token
+ * a `/name`, `@name`, or `#name` token
  * whose name is on the trigger's lexicon. Pure derivation — editing the text
  * out of match shape simply drops the range next scan.
  */
 export interface TextRefRange {
   readonly start: number
   readonly end: number
-  readonly trigger: '/' | '@'
+  readonly trigger: '/' | '@' | '#'
 }
 
 /** Token matcher: a trigger char at line start or after whitespace, then a word-ish name (never crosses \n). */
-const TEXT_REF_RE = /(^|\s)([/@])([\w-]+)/g
+const TEXT_REF_RE = /(^|\s)([/@#])([\w-]+)/g
 const FOLDER_REF_RE = /(^|\s)(@(?:"[^"\n]*\/|[^\s"]+\/))/g
 /**
  * What may follow a `/name` token: whitespace or the draft end, the boundary
@@ -41,7 +41,7 @@ const SLASH_TOKEN_END_RE = /^(?:\s|$)/
  * @returns matched ranges in draft order.
  */
 export function scanTextRefs(
-  draft: string, lexicon: ReadonlyMap<'/' | '@', readonly string[]>,
+  draft: string, lexicon: ReadonlyMap<'/' | '@' | '#', readonly string[]>,
 ): TextRefRange[] {
   if (draft === '') return []
   const out: TextRefRange[] = []
@@ -49,7 +49,7 @@ export function scanTextRefs(
     TEXT_REF_RE.lastIndex = 0
     let m: RegExpExecArray | null
     while ((m = TEXT_REF_RE.exec(draft)) !== null) {
-      const trigger = m[2] as '/' | '@'
+      const trigger = m[2] as '/' | '@' | '#'
       const name = m[3] ?? ''
       if (trigger === '/' && !SLASH_TOKEN_END_RE.test(draft.slice(m.index + m[0].length))) continue
       if (lexicon.get(trigger)?.includes(name)) {

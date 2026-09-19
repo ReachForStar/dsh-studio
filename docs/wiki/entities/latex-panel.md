@@ -53,9 +53,16 @@ status: active
 
 引擎解析：`findEngine` 先试 PATH 中的名字，再探测 `C:/texlive/<年>/bin/windows/<name>{.exe,.bat}`，结果缓存在模块级变量；找不到时明确报“未找到”。
 
-### 缺失引用的诊断
+### 缺失引用的补齐与诊断
 
-失败日志会带上 `explainMissingReferences` 的结论：从 log 中抽出 `File `x' not found` 与 `Unable to load picture or PDF file 'x'` 引用，逐个判断——该项目里根本不存在（提示“先生成图片”，模板编译不产出脚本生成之外的文件）、在项目里但被镜像边界跳过（提示“file-count or size limit reached”）、或存在但文档从别处解析（给出实际相对路径）。`fig-keypoints.pdf` 这类报错因此不再需要人工逐层翻目录。
+论文源码与实验图常分处不同目录树（本机实例：源码在 `E:/BDJ-Train/Paper/LaTeX`，图在 `E:/BDJ-Train/experiments/.../results`）。镜像只装项目内文件时编译会报 `File `x.png' not found`，因此编译前多一步 **`supplyWorkspaceGraphics`**：
+
+1. 扫描镜像内全部 `.tex`，提取 `\includegraphics` 的引用与 `\graphicspath` 声明的搜索目录；
+2. 对每个引用，按“主文件目录 + 每个 graphicspath”判定它是否已在镜像里；
+3. 镜像里无处可寻的引用，在工作区内按**文件名**做有界广度优先搜索（≤4000 目录、深度 ≤8、跳过环境与缓存目录），命中则复制到镜像中引用所写的路径；
+4. 补齐过的名字随编译结果返回，面板提示“已从工作区补充 N 个图片”。
+
+失败日志仍会带上 `explainMissingReferences` 的结论，现在分四种：项目里不存在（提示先生成）、项目内存在但镜像漏了（提示命中上限）、**项目外但工作区内有**（给出工作区相对路径）、其它情况按原样展示。`missingReferences` 与 `explainMissingReferences` 均已导出供测试。
 
 ## 安全边界
 
@@ -73,12 +80,13 @@ status: active
 - **`read`/`write` 的路径基准**：早期实现只传 `path` 且按工作区根解析，而文件树给出的是项目相对路径，子目录项目一律 ENOENT。修复方式是让这两个路由也接收 `dir` 并按项目目录解析（与 `/latex/ai` 一致）。
 - **空文件写入被拒**：`bodyString` 要求非空，导致“新建文件”必然失败；新增 `bodyText` 允许空串。
 - **镜像跳过 `fonts/`**（2026-09-19 修）：`SKIP_DIRS` 曾包含 `fonts`，而 `COPY_EXTS` 又支持 `.ttf/.otf`——用 `\setCJKmainfont[Path=fonts/]` 的项目一编译就报找不到字体/图片。现在 `fonts/` 正常镜像。
+- **项目外的图片**（2026-09-19 修）：来自实验室输出的图常在项目目录之外，镜像器看不到。现在编译前会按 `\includegraphics` 与 `\graphicspath` 在工作区内补齐（见上），本机实测论文项目从 11 张补齐收敛到真实的 6 张、PDF 3.39 MB 编译成功。
 - **镜像截断无提示**（2026-09-19 修）：旧实现的 300 文件上限在循环内直接 `return`，超出后剩余目录一个文件都不复制且无任何提示；单文件上限也只有 10 MiB。现已改为“文件数 + 总字节 + 单文件”三重边界，跳过项记录并在失败时输出。
 - **改了客户端源码必须重建产物**（见 [fork Web 面板](fork-web-panels.md)）。
 
 ## 验证
 
-- 单测：`tests/latex-service.host.spec.ts`（项目发现、文件树、读写与空文件、路径逃逸、clean、字体安装、模型目录、缺失引用诊断三例、AI 无 provider 快速失败、PDF 404、真实 xelatex 编译成功与失败两种）。
+- 单测：`tests/latex-service.host.spec.ts`（项目发现、文件树、读写与空文件、路径逃逸、clean、字体安装、模型目录、缺失引用诊断四例、工作区图片补齐、graphicspath 不重复补齐、AI 无 provider 快速失败、PDF 404、真实 xelatex 编译成功与失败两种）。
 - 手工（2026-09-19，Windows + TeX Live 2026）：项目下拉 → 打开 `main.tex` → 编辑保存触发自动编译 → `/latex/pdf` 返回 24840 字节 PDF；新建 `notes/section.tex`（0 字节）；AI 写作选 `qwen-3.8-27B` 生成中文致谢写入编辑器；含 `figures/*.png` 与 `fonts/*.png` 的项目编译成功（`/latex/pdf` 2819 字节）；引用不存在图片的项目在日志末尾给出 `fig-keypoints.pdf is not in the project directory` 诊断。
 
 ## 关联页面

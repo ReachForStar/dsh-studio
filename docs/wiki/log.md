@@ -191,3 +191,10 @@
 - `verify-package-dependencies --fix` 重整 `ui-polish`、`ui-ssh`、`ui-sidebar-documentpreview`、`workspace-files` 的依赖分区：非 cordis 的 peerDependencies 清空，宿主运行时边进 dependencies，浏览器构建输入进 devDependencies；模块图文档与锁文件同步。
 - 验证：门禁 67 包全通过；受影响四个包 761 条单测通过；三个包重建成功；`lib/index.js` 仍把 `dsh-llm` 当外部导入（未内联），浏览器启动无 import failed。
 - 沉淀：[跨包运行时导出的重复安装分类](decisions/2026-09-19-runtime-export-classification.md)、[门禁红项清单](queries/fork-gate-debt.md) 更新。
+
+## [2026-09-19] fix | LaTeX 编译补齐项目外的图片
+
+- 根因：论文源码与实验图分处不同目录树（本机 `E:/BDJ-Train/Paper/LaTeX` 与 `E:/BDJ-Train/experiments/.../results`），镜像只含项目内文件，`\includegraphics` 引用项目外的图即报 `not found`。
+- 修法：编译前扫描镜像内全部 `.tex` 的 `\includegraphics` 与 `\graphicspath`，对镜像内无处可寻的引用，在工作区内按文件名做有界广度优先搜索（≤4000 目录、深度 ≤8）并复制进镜像；补齐清单随结果返回，面板提示数量。缺失诊断新增“项目外但工作区内”的实际位置；目录遍历跳过 `.venv`/`site-packages` 等环境与缓存目录。
+- 验证：本机论文项目实测编译成功（PDF 3.39 MB、9 页），补齐清单从误报的 11 张收敛为真实的 6 张；ui-polish 121 条单测通过（新增工作区补齐与 graphicspath 不重复补齐两例）。
+- 沉淀：[LaTeX 面板](entities/latex-panel.md) 更新（补齐流程与四类诊断）。

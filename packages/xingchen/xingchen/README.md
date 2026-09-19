@@ -60,6 +60,7 @@ Each peer name must exist on the `a2a` row's `peers` map. The generated [configu
 | [`src/index.ts`](src/index.ts) | `XingchenService`: role bindings, dispatch with per-session peer continuity, the `xingchen_route` tool, the three commands, the routing prompt section, the projection registration |
 | [`src/route.ts`](src/route.ts) | Role names, summaries, the command-to-role maps, and the model-free `routeXingchen` classifier |
 | [`src/charters.ts`](src/charters.ts) | The three specialist charters (persona plus working discipline) |
+| [`src/skills.ts`](src/skills.ts) | The `./skills` entry: registers the bundled `git`, `run`, and `log` skills from the package's assets |
 | [`src/clear.ts`](src/clear.ts) | The `/clear` command, mounted inside a preset compaction group |
 | [`src/types.ts`](src/types.ts) | Pure domain types and the `SessionProjectionMap` merge |
 
@@ -74,6 +75,10 @@ A dispatch sends the role's charter, a separator, and the task as one A2A messag
 ### Session projection
 
 `xingchenProjectionDefinition` folds three event types into `{ lastRole, dispatchCount, lastTurnReason }`. A `command/run` naming a role command, or a `tool/call` naming `xingchen_route` with a recognized role, records the role and increments the count; `turn/end` records the cropped stop reason. Malformed logged arguments leave the state untouched instead of failing the fold, because a projection replays whatever the log holds.
+
+### Bundled skills
+
+The `./skills` entry registers three bundled skills into the session's catalog: `git` (read history, blame, and the commit that introduced a defect), `run` (execute a reproduction or a focused test and report the real result), and `log` (parse a log or stack trace into the evidence that names a failure). They are model- and user-invocable, so `$git`, `$run`, and `$log` work in the composer and the router agent can load them by name. Each skill ships as `skills/<name>/SKILL.md` and is served from this package's own assets; `assetRoot` points at another directory for a packaged install.
 
 ## Further Exploration
 
@@ -91,7 +96,7 @@ The `xingchen:routing` prompt section (ordered with the plan policy) names the f
 
 #### Token effect
 
-The prompt section adds a fixed block to every request of a session on this preset. A dispatch adds its own JSON arguments and the peer's full answer; the answer is not summarized, so a long specialist report costs its full length in the caller's context.
+The prompt section adds a fixed block to every request of a session on this preset. The skill catalog contributes its own reminder listing each bundled skill's description. A dispatch adds its own JSON arguments and the peer's full answer; the answer is not summarized, so a long specialist report costs its full length in the caller's context.
 
 #### KV Cache effect
 

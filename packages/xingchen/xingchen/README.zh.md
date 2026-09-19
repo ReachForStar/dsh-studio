@@ -61,6 +61,7 @@ kind: "package-reference"
 | [`src/index.ts`](src/index.ts) | `XingchenService`：角色绑定、带按会话对等端连续性的派发、`xingchen_route` 工具、三个命令、路由提示词段落、投影注册 |
 | [`src/route.ts`](src/route.ts) | 角色名称、简介、命令到角色的映射，以及不用模型的 `routeXingchen` 分类器 |
 | [`src/charters.ts`](src/charters.ts) | 三位专家的章程（人设与工作纪律） |
+| [`src/skills.ts`](src/skills.ts) | `./skills` 入口：从本包资源注册内置 `git`/`run`/`log` 技能 |
 | [`src/clear.ts`](src/clear.ts) | `/clear` 命令，挂在预设的压缩分组内 |
 | [`src/types.ts`](src/types.ts) | 纯领域类型与 `SessionProjectionMap` 合并 |
 
@@ -77,6 +78,10 @@ kind: "package-reference"
 `xingchenProjectionDefinition` 把三类事件折叠为 `{ lastRole, dispatchCount, lastTurnReason }`。指名角色命令的 `command/run`，或带可识别角色的 `xingchen_route` 的 `tool/call`，记录角色并递增计数；`turn/end` 记录裁剪后的终止原因。参数异常的日志条目保持状态不变而不是让折叠失败，因为投影要重放日志里存的任何内容。
 
 <a id="further-exploration"></a>
+### 内置技能
+
+`./skills` 入口把三个内置技能注册进会话的技能目录：`git`（读历史、blame、定位引入缺陷的提交）、`run`（跑复现或聚焦测试并报告真实结果）、`log`（把日志或堆栈解析成能指明失败的证据）。三者对模型与人都可调用，因此 `$git`、`$run`、`$log` 在输入框里可用，路由代理也能按名字加载。每个技能以 `skills/<name>/SKILL.md` 随本包资源发布；打包安装时可用 `assetRoot` 指向别的目录。
+
 ## 进一步探索
 
 - [星域子系统页](../../../docs/subsystems/xingchen.zh.md) —— 角色与投影说明旁的生成式 `ctx.xingchen` API。
@@ -94,7 +99,7 @@ kind: "package-reference"
 
 #### Token 影响
 
-该提示词段落给该预设上每个会话的每次请求都加上一段固定文本。一次派发加上自己的 JSON 参数与对等端的完整回答；回答不做摘要，因此很长的专家报告会以完整长度占用调用方上下文。
+该提示词段落给该预设上每个会话的每次请求都加上一段固定文本。技能目录另有一段提醒，逐条列出每个内置技能的描述。一次派发加上自己的 JSON 参数与对等端的完整回答；回答不做摘要，因此很长的专家报告会以完整长度占用调用方上下文。
 
 #### KV Cache effect
 

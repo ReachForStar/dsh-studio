@@ -321,6 +321,7 @@
       "@reachforstar/dsh-host-ssh-remotes/invariant": ["./packages/host/ssh-remotes/src/invariant.ts"],
       "@reachforstar/dsh-xingchen": ["./packages/xingchen/xingchen/src/index.ts"],
       "@reachforstar/dsh-xingchen/clear": ["./packages/xingchen/xingchen/src/clear.ts"],
+      "@reachforstar/dsh-xingchen/skills": ["./packages/xingchen/xingchen/src/skills.ts"],
       "@reachforstar/dsh-xingchen/types": ["./packages/xingchen/xingchen/src/types.ts"],
       "@reachforstar/dsh-xingchen/client": ["./packages/xingchen/xingchen/src/client.ts"],
       // session-log-export lives under session-query/, so the generated aliases map only its

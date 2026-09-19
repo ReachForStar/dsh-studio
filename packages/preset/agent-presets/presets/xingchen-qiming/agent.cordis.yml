@@ -116,6 +116,12 @@
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
 
+# Bundled star-domain skills (`$git` / `$run` / `$log`): a provider row like
+# `skill-filesystem`, so its registrations join this preset's layer of the host
+# registry and need no realm.
+- id: skill-xingchen
+  name: '@reachforstar/dsh-xingchen/skills'
+
 - id: tool-skill
   name: '@deepseek-ai/dsh-tool-skill'
 

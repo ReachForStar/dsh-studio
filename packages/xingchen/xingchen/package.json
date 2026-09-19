@@ -1,6 +1,6 @@
 {
   "name": "@reachforstar/dsh-xingchen",
-  "description": "Xingchen multi-agent collaboration: four star-domain roles over A2A peers, heuristic routing, delegation tool, and /review /bug /planning /clear commands",
+  "description": "Xingchen multi-agent collaboration: four star-domain roles over A2A peers, heuristic routing, delegation tool, /review /bug /planning /clear commands, and the bundled git/run/log skills",
   "version": "0.1.0",
   "publishConfig": {
     "access": "public"
@@ -22,6 +22,10 @@
       "types": "./lib/types/clear.d.ts",
       "default": "./lib/clear.js"
     },
+    "./skills": {
+      "types": "./lib/types/skills.d.ts",
+      "default": "./lib/skills.js"
+    },
     "./types": {
       "types": "./lib/types/types.d.ts",
       "default": "./lib/types/types.js"
@@ -36,11 +40,14 @@
   "files": [
     "lib/index.js",
     "lib/clear.js",
+    "lib/skills.js",
     "lib/types/**/*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "skills"
   ],
   "license": "MIT",
   "dependencies": {
+    "yaml": "^2.4.2",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
@@ -49,6 +56,7 @@
     "@deepseek-ai/dsh-commands": "workspace:^",
     "@deepseek-ai/dsh-compaction": "workspace:^",
     "@deepseek-ai/dsh-session-projection": "workspace:^",
+    "@deepseek-ai/dsh-skill": "workspace:^",
     "@deepseek-ai/dsh-system-prompt": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
@@ -58,13 +66,14 @@
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
     "@deepseek-ai/dsh-agent": "workspace:^",
+    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
     "@deepseek-ai/dsh-brand": "workspace:^",
     "@deepseek-ai/dsh-commands": "workspace:^",
     "@deepseek-ai/dsh-compaction": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
     "@deepseek-ai/dsh-session-projection": "workspace:^",
+    "@deepseek-ai/dsh-skill": "workspace:^",
     "@deepseek-ai/dsh-system-prompt": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",

@@ -1414,6 +1414,9 @@ importers:
       '@deepseek-ai/dsh-deque':
         specifier: workspace:^
         version: link:../../util/deque
+      '@deepseek-ai/dsh-fs':
+        specifier: workspace:^
+        version: link:../../fs/fs
       '@deepseek-ai/dsh-typert-protocol':
         specifier: workspace:^
         version: link:../../typert/protocol
@@ -1436,9 +1439,6 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:^
         version: link:../../client/ui-slots
-      '@deepseek-ai/dsh-fs':
-        specifier: workspace:^
-        version: link:../../fs/fs
       '@deepseek-ai/dsh-sandbox-policy':
         specifier: workspace:^
         version: link:../../sandbox/sandbox-policy
@@ -3886,18 +3886,18 @@ importers:
 
   packages/client/ui-polish:
     dependencies:
+      '@deepseek-ai/dsh-home-paths':
+        specifier: workspace:^
+        version: link:../../util/home-paths
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
-      '@excalidraw/excalidraw':
-        specifier: ^0.18.1
-        version: 0.18.1(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(immer@10.2.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@xterm/addon-fit':
-        specifier: ^0.11.0
-        version: 0.11.0
-      '@xterm/xterm':
-        specifier: ^6.0.0
-        version: 6.0.0
+      '@reachforstar/dsh-tool-excalidraw':
+        specifier: workspace:^
+        version: link:../../fs/tool-excalidraw
       js-yaml:
         specifier: ^4.2.0
         version: 4.3.1
@@ -3914,21 +3914,36 @@ importers:
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:^
         version: link:../../api/remotes
+      '@deepseek-ai/dsh-api-workspace-controller':
+        specifier: workspace:^
+        version: link:../../api/workspace-controller
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:^
         version: link:../connection
       '@deepseek-ai/dsh-client-locale':
         specifier: workspace:^
         version: link:../locale
+      '@deepseek-ai/dsh-client-store':
+        specifier: workspace:^
+        version: link:../store
       '@deepseek-ai/dsh-client-test-runtime':
         specifier: workspace:^
         version: link:../../test-support/client-runtime
+      '@deepseek-ai/dsh-client-ui-chat':
+        specifier: workspace:^
+        version: link:../ui-chat
       '@deepseek-ai/dsh-client-ui-conversation':
         specifier: workspace:^
         version: link:../ui-conversation
       '@deepseek-ai/dsh-client-ui-primitives':
         specifier: workspace:^
         version: link:../ui-primitives
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: workspace:^
+        version: link:../ui-renderer
+      '@deepseek-ai/dsh-client-ui-session':
+        specifier: workspace:^
+        version: link:../ui-session
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: workspace:^
         version: link:../ui-settings
@@ -3938,21 +3953,21 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:^
         version: link:../ui-slots
+      '@deepseek-ai/dsh-client-ui-workspace':
+        specifier: workspace:^
+        version: link:../ui-workspace
       '@deepseek-ai/dsh-compaction':
         specifier: workspace:^
         version: link:../../compaction/compaction
-      '@deepseek-ai/dsh-home-paths':
-        specifier: workspace:^
-        version: link:../../util/home-paths
       '@deepseek-ai/dsh-host-webserver':
         specifier: workspace:^
         version: link:../../host/webserver
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
-      '@deepseek-ai/dsh-llm':
+      '@deepseek-ai/dsh-session':
         specifier: workspace:^
-        version: link:../../llm/llm
+        version: link:../../core/session
       '@deepseek-ai/dsh-session-stats':
         specifier: workspace:^
         version: link:../../session/session-stats
@@ -3968,12 +3983,12 @@ importers:
       '@deepseek-ai/dsh-workspace':
         specifier: workspace:^
         version: link:../../workspace/workspace
+      '@excalidraw/excalidraw':
+        specifier: ^0.18.1
+        version: 0.18.1(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(immer@10.2.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@reachforstar/dsh-host-ssh-remotes':
         specifier: workspace:^
         version: link:../../host/ssh-remotes
-      '@reachforstar/dsh-tool-excalidraw':
-        specifier: workspace:^
-        version: link:../../fs/tool-excalidraw
       '@testing-library/react':
         specifier: ^16.1.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -3983,6 +3998,12 @@ importers:
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
+      '@xterm/addon-fit':
+        specifier: ^0.11.0
+        version: 0.11.0
+      '@xterm/xterm':
+        specifier: ^6.0.0
+        version: 6.0.0
       jsdom:
         specifier: ^26.0.0
         version: 26.1.0
@@ -4608,9 +4629,6 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
-      fflate:
-        specifier: ^0.8.2
-        version: 0.8.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -4681,6 +4699,9 @@ importers:
       clsx:
         specifier: ^2.0.0
         version: 2.1.1
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.3
       pdfjs-dist:
         specifier: 6.3.289
         version: 6.3.289
@@ -4984,12 +5005,18 @@ importers:
       '@deepseek-ai/dsh-client-locale':
         specifier: workspace:^
         version: link:../locale
+      '@deepseek-ai/dsh-client-store':
+        specifier: workspace:^
+        version: link:../store
       '@deepseek-ai/dsh-client-test-runtime':
         specifier: workspace:^
         version: link:../../test-support/client-runtime
       '@deepseek-ai/dsh-client-ui-primitives':
         specifier: workspace:^
         version: link:../ui-primitives
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: workspace:^
+        version: link:../ui-renderer
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: workspace:^
         version: link:../ui-settings
@@ -4999,6 +5026,9 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+      '@reachforstar/dsh-host-ssh-remotes':
+        specifier: workspace:^
+        version: link:../../host/ssh-remotes
       '@testing-library/react':
         specifier: ^16.1.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

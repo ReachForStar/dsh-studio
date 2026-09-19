@@ -39,6 +39,7 @@ flowchart TD
     pkg_agent_default_model["agent-default-model"]
     pkg_agent_loop["agent-loop"]
     pkg_agent_tool_presentation["agent-tool-presentation"]
+    pkg_pi_agent_loop["pi-agent-loop"]
     pkg_scope["scope"]
     pkg_session["session"]
     pkg_system_prompt["system-prompt"]
@@ -560,6 +561,10 @@ flowchart TD
   pkg_agent_default_model --> pkg_agent
   pkg_agent_default_model --> pkg_llm
   pkg_agent_default_model --> pkg_settings
+  pkg_pi_agent_loop --> pkg_agent
+  pkg_pi_agent_loop --> pkg_llm
+  pkg_pi_agent_loop --> pkg_scope
+  pkg_pi_agent_loop --> pkg_session
   pkg_goal --> pkg_agent
   pkg_goal --> pkg_brand
   pkg_goal --> pkg_invariants
@@ -1465,6 +1470,7 @@ flowchart TD
 | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | `llm` | [`attachment`](../packages/attachment/attachment), [`authorization`](../packages/credentials/authorization), [`credentials`](../packages/credentials/credentials), [`fs`](../packages/fs/fs), [`launch-environment`](../packages/util/launch-environment), [`llm`](../packages/llm/llm), [`settings`](../packages/settings/settings), [`timeout`](../packages/util/timeout) |
 | [`llm-retry`](../packages/llm/llm-retry) | `llm` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`timeout`](../packages/util/timeout) |
 | [`agent-default-model`](../packages/core/agent-default-model) | `core` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`settings`](../packages/settings/settings) |
+| [`pi-agent-loop`](../packages/core/pi-agent-loop) | `core` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session) |
 | [`goal`](../packages/goal/goal) | `goal` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`typert-protocol`](../packages/typert/protocol) |
 | [`fs-local`](../packages/fs/fs-local) | `fs` | [`fs`](../packages/fs/fs) |
 | [`fs-observation-policy`](../packages/fs/fs-observation-policy) | `fs` | [`fs`](../packages/fs/fs) |

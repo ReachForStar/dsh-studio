@@ -86,6 +86,15 @@ interface SessionEventMap {
     interrupted?: true
   }
   /**
+   * An assistant message another agent produced for this Session outside its own
+   * loop — a delegated subagent, an agent-team member, or a star-domain specialist
+   * seat reached over A2A. The producing agent ran no turn here, so the event
+   * carries no turn, step, or provider stream: `message.source` attributes the
+   * producer, and the installed loop never claims the message as its own output.
+   * The surface folds it like any other assistant message.
+   */
+  'assistant/peer-message': { message: PeerAssistantMessage }
+  /**
    * One model attempt that committed no surface message. The embedded stream
    * preserves a failed, retried, cancelled, or stream-error attempt that
    * reached settlement without fabricating model-visible history.
@@ -296,6 +305,7 @@ type SurfaceEventType =
   | 'system/message'
   | 'user/message'
   | 'assistant/message'
+  | 'assistant/peer-message'
   | 'tool/result'
 ```
 
@@ -331,7 +341,7 @@ type SurfaceOp =
  */
 type SurfaceIntent<T extends SurfaceEventType = SurfaceEventType> = {
   surfaceOp: SurfaceOp
-} & (T extends 'assistant/message' ? {
+} & (T extends 'assistant/message' | 'assistant/peer-message' ? {
   /** Assistant messages embed their provider stream instead of citing source events. */
   sourceEventSeqs?: never
 } : {

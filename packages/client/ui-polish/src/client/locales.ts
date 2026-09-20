@@ -3,6 +3,10 @@
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
   // Stats float groups (mirrors the conversation namespace's stats labels).
+  'flow.tab': '会话流',
+  'flow.canvas': '星域会话流：启明在工作区中央，人节点在前，各类活动环绕在侧',
+  'flow.empty': '本会话暂无活动',
+  'flow.summary': '会话流：{count} 个活动节点——{nodes}',
   'stats.counts': '{turns} 轮 · {steps} 步',
   'stats.llm': 'LLM {duration}',
   'stats.toolCall': '工具调用 {duration}',
@@ -235,6 +239,10 @@ export type PolishKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
+  'flow.tab': 'Flow',
+  'flow.canvas': 'Star-domain conversation flow: Qiming at the centre, the human node in front, activities on the ring',
+  'flow.empty': 'This session has no activity yet',
+  'flow.summary': 'Conversation flow: {count} activity nodes — {nodes}',
   'stats.counts': '{turns} turns · {steps} steps',
   'stats.llm': 'LLM {duration}',
   'stats.toolCall': 'Tool call {duration}',

@@ -47,6 +47,7 @@ fork 自研的 Agent2Agent 支持，位于 `packages/a2a/`，三个包都是 `@r
 - **两通道**：`mode: direct` 走 JSON-RPC 流式（同步、能等答案）；`mode: bus` 把任务发到 `a2a.task`（key=taskId），发完即返回，`wait: true` 时订阅 `a2a.event`（key=contextId）等终态。事件订阅先于投递，避免新消费组从最新位点起读而丢首帧。
 - **skill 契约**：派发消息带 `metadata.skill`（如 `code-review` / `coding` / `analysis` / `code-dev` / `repo-maintenance`），对端据此收紧工具白名单；`ctx.a2a.skills(agent)` 从桥配置的技能映射里读出可选值（pi `code-dev`/`repo-maintenance`/`analysis`；claude-code `code-review`/`coding`；opencode `code-review`/`coding`/`analysis`）。
 - **总线的投递语义**照搬 bridge：taskId 幂等去重、失败 `attempt+1` 重投、超过 `maxAttempts` 或每任务超时进 `a2a.dlq`、消费者崩溃自恢复、启动等消费组 `Stable` 再返回。
+- **进度回传（2026-09-22）**：`ctx.a2a.dispatch` 请求可带 `onProgress(progress: { state?, text })`，报告的是**累计**状态与文本（text 是工件拼接后的全文，不是增量）。`direct` 通道逐帧转发：`statusUpdate` 在状态变化时上报，`artifactUpdate` 每帧上报；终态无工件时取状态消息里的文本补报。`bus` 通道逐事件转发 `a2a.event` 的 `status-update`/`artifact-update`/`terminal`。直连通道的报告器在 `for await` 流内抛出会让派发失败（fast-fail）；总线通道的报告器在消费处理器里被 try/catch 包住（文档明示那是进度通道不是任务记录）。不传回调则行为与原来完全一致。
 
 ## 已知限制与待办
 

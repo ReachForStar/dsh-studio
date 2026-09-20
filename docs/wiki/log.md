@@ -268,3 +268,13 @@
 - `tool-a2a`：`a2a_send` 增 `skill`/`workspace`/`mode`/`wait`（桥 agent 缺 skill 时取该 agent 第一个 skill，没有则报错），`a2a_peers` 列出每个对等端的 skill。
 - 星域席位：`seats.<role>.skill`（天权 `code-review`、瑶光与天梁 `analysis`）与 `channel`（`bus` 自动 `wait`）；失败态回复不再当作成功结果。
 - 实测（本机三网关 + Kafka）：直连 `/review` 返回天权答复；总线派发到 opencode 收到终态事件（该次内容失败来自 opencode 后端，bridge CLI 同题亦失败）；发现并记录 bridge 侧总线任务在任务表不可见（其 CLI 同样查不到）。
+
+## [2026-09-22] feat | A2A 席位派发进度实时上报 + 模型统一 qwen-3.8-27B
+
+- 背景：网页端发出 `/planning` 等指令后页面只显示静态「执行中…」，对端跑 2–10 分钟无任何反馈，观感像卡住（会话日志佐证）。
+- `dsh-a2a`：`dispatch` 请求新增可选 `onProgress({ state?, text })` 回调；direct 逐帧转发 statusUpdate/artifactUpdate，bus 逐事件转发 status-update/artifact-update/terminal，text 为累计全文。
+- `dsh-xingchen`：新增 log-only 会话事件 `xingchen/dispatch-progress`（工具路径带 callId、命令路径带 commandId，声明合并在 `types.ts` 以便客户端 `./client` 面可见），按「状态变化 / 文本增量 ≥200 / 间隔 ≥2.5s」节流并终态强制补报；本机席位失败态（failed/killed）在命令路径落定为错误结果，不再伪装成功。
+- 客户端：`ui-conversation` 的 `CommandNode` / `RunningToolCall` 增 `liveProgress`；`ui-chat` 的 command/tool Definition 按 commandId/callId 折叠进度事件；`GenericCommandCard` 运行时展示对端累计文本尾部（≤400 字符），`ui-tool` 的行模型运行期用进度文本占位 output；locale 增 `command.progress`（zh 实时进度 / en Live progress）。
+- bridge 配置（独立仓 D:/file/a2a-bridge）：`piModel` 由失效的 `amax/deepseek-flash` 改为 `amax/qwen-3.8-27B`，`opencodeModel` 显式同值（三个席位统一该模型；claude-code 席位本就跟随全局 `ANTHROPIC_MODEL`）。改后需重启网关生效。
+- 验证：typecheck（host+client）、`gen-persistence-catalog`（新事件登记 `known-event-types.ts`）、a2a/xingchen/ui-chat/ui-conversation/ui-tool 共 92 文件 1289 测试全过；本任务新增代码无 lint 报错（a2a bus/task-store 等报错为既有债务）。
+- 遗留（另案）：会话重载校验报错根因在 dsh `packages/core/session/src/index.ts:368`（assistant/message 要求 model 来源），疑 v2→v3 迁移写入非 model 来源，待用户确认后单独修。

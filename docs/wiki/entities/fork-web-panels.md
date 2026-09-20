@@ -3,7 +3,7 @@ title: fork Web 面板（ui-polish 的 Git/LaTeX/SSH/画布标签页）
 type: entity
 tags: [客户端, ui-polish, git, latex, ssh, excalidraw, 路由, 去重]
 created: 2026-09-18
-updated: 2026-09-19
+updated: 2026-09-20
 sources: []
 status: active
 ---
@@ -17,6 +17,20 @@ status: active
 文件浏览**不在**这里：右侧栏的内置「工作区文件」树（`ui-sidebar-files`）与文档预览面板负责浏览、预览与编辑，本包不再提供重复的文件标签页（2026-09-18 去重，见下）。LaTeX 面板自带项目文件树与编辑器，那是 TeX 项目工作流的一部分，不构成重复。
 
 面板的宿主半边由 `src/index.ts` 注册在 `/git`、`/latex`、`/bg`、`/scene` 四个前缀路由上；`bg`、`scene` 服务背景图与画布场景文件。所有请求的 `cwd` 都要经 `workspaceCwdResolver` 解析：**已知工作区本身或其子树**被接受，其它路径回落到宿主进程 cwd。
+
+## 背景图与透明（覆盖范围）
+
+`BackgroundRuntime` 把用户选的背景图写进 `body` 的 `background-image`，并在 body 上打 `data-ds-bg-image`；`apply()` 里的 `AMBIENT_OVERRIDES` 样式表据此把页面底色 token 置透明，让图片透出来。**除画布面板外全页透明**（2026-09-20 扩范围）：
+
+| token | 背景图激活时 | 理由 |
+| --- | --- | --- |
+| `--dsw-alias-bg-base` | transparent | 应用底色（外壳、对话区） |
+| `--dsw-alias-bg-layer-1` | transparent | 一级抬升面（卡片、行） |
+| `--dsw-alias-bg-layer-2` | transparent | 二级嵌套面 |
+| `--dsw-specific-sidebar-fill` | transparent | 侧边栏与标题行 |
+| `--dsw-alias-bg-overlay` | **保持不透明** | 菜单/弹窗浮在照片之上，透明会丢对比度 |
+
+画布面板是唯一的例外：`[data-ui-polish-excalidraw]` 内部把上述抬升面 token 重新声明为 `var(--dsw-alias-bg-overlay)`，因为 Excalidraw 自绘画布背景（`viewBackgroundColor`），绘图面透明会破坏线条对比。排查经验：token 层改写无法“局部取消”，排除某个子树只能在该子树内用**未被改写的** token 重新声明。
 
 ## `/git` 路由
 

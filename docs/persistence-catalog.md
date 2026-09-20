@@ -78,6 +78,7 @@ The [format references](persistence-changes/historical-formats/README.md) cover 
 | `event:user/message` | event | `314765bdff29c7862fb6ce820f1773563ba3094a680d163ea21180a2591b8578` | [`event:user/message`](#persistence-type-eventusermessage) |
 | `event:web/deepseek-search-llm-request` | event | `cf6e3aaf1e2de6480aa0157730a41b9a492108a55304100b0f7e112711dd4331` | [`event:web/deepseek-search-llm-request`](#persistence-type-eventwebdeepseek-search-llm-request) |
 | `event:workspace/changes` | event | `e308ccf867a5398e316e0af8cb6ce238a8d33a63b9b384c8250a686786285f72` | [`event:workspace/changes`](#persistence-type-eventworkspacechanges) |
+| `event:xingchen/dispatch-progress` | event | `9474bbb067c7b190f6aef17f0afaa7ca30daeaca1dc9539c040fc8e886fa3b01` | [`event:xingchen/dispatch-progress`](#persistence-type-eventxingchendispatch-progress) |
 
 ## Event envelope
 
@@ -1258,6 +1259,37 @@ Source: [`packages/web/web-search-deepseek/src/provider.ts:82`](../packages/web/
 
 Source: [`packages/deliverables/workspace-changes/src/types.ts:106`](../packages/deliverables/workspace-changes/src/types.ts)
 
+### `xingchen/*`
+
+<a id="xingchendispatch-progress--log-only"></a>
+
+#### `xingchen/dispatch-progress` — log-only
+
+```ts persistence-catalog
+/**
+ * One progress report from a star-domain seat's A2A dispatch: the peer's
+ * latest state and cumulative answer text, as its stream or bus events
+ * arrive. Log-only: the answer still settles through the driving
+ * `tool/result` or `command/done`. `callId` marks the route-tool dispatch,
+ * `commandId` the slash-command dispatch; the matching card folds the
+ * latest report into its live view.
+ */
+'xingchen/dispatch-progress': {
+  role: XingchenSpecialistId
+  callId?: ToolCallId
+  commandId?: CommandId
+  agent: string
+  skill: string
+  mode: 'direct' | 'bus'
+  state?: string
+  text: string
+}
+```
+
+Types: [ToolCallId](subsystems/core.md)
+
+Source: [`packages/xingchen/xingchen/src/types.ts:70`](../packages/xingchen/xingchen/src/types.ts)
+
 ## Resolved persistence types
 
 Each definition appears once. References preserve sharing and recursion; the digest beside a definition includes its complete reachable structure. Source names and locations identify its declarations but are excluded from its digest.
@@ -1478,6 +1510,14 @@ SHA-256: `aa93010d0e521ad7c42273f58d5c9b8bf1dfc94edf1b805a3971b364a35c1877`
 
 `boolean`
 
+<a id="persistence-type-bus"></a>
+
+### `"bus"`
+
+SHA-256: `34c57552838141001b4190b1163921690fb1186c3509ded161721bf0985bd10e`
+
+`"bus"`
+
 <a id="persistence-type-canceled"></a>
 
 ### `"canceled"`
@@ -1661,6 +1701,14 @@ SHA-256: `e7e8f1318170b8284f16ab45a557afd4675c96071c0f2a456636481dab20b427`
 SHA-256: `1a2718b00937b236a0d0910ef5dab2f9f8b65e4bde410cc21f15fbbf29f584d3`
 
 `"deliverables/presented"`
+
+<a id="persistence-type-direct"></a>
+
+### `"direct"`
+
+SHA-256: `0082524a1d7e7805687d637687614c0d0132a5ae83595145bed027d1a5f9c704`
+
+`"direct"`
 
 <a id="persistence-type-dispatch"></a>
 
@@ -4063,6 +4111,50 @@ SHA-256: `e308ccf867a5398e316e0af8cb6ce238a8d33a63b9b384c8250a686786285f72`
 | `time` | required | `number` |
 | `type` | required | `"workspace/changes"` |
 
+<a id="persistence-type-eventxingchendispatch-progress"></a>
+
+### `event:xingchen/dispatch-progress`
+
+SHA-256: `9474bbb067c7b190f6aef17f0afaa7ca30daeaca1dc9539c040fc8e886fa3b01`
+
+| Property | Presence | Type |
+|---|---|---|
+| `data` | required | [`event:xingchen/dispatch-progress.data`](#persistence-type-eventxingchendispatch-progressdata) |
+| `ignorable` | optional | `true` |
+| `seq` | required | `number` |
+| `time` | required | `number` |
+| `type` | required | `"xingchen/dispatch-progress"` |
+
+<a id="persistence-type-eventxingchendispatch-progressdata"></a>
+
+### `event:xingchen/dispatch-progress.data`
+
+SHA-256: `72a89d5f39f0203f5b0f951173c4c8b9d275fcf07fac3540e0840de922ec3926`
+
+Sources: [`packages/xingchen/xingchen/src/types.ts:70`](../packages/xingchen/xingchen/src/types.ts)
+
+| Property | Presence | Type |
+|---|---|---|
+| `agent` | required | `string` |
+| `callId` | optional | `string` |
+| `commandId` | optional | `string` |
+| `mode` | required | [`event:xingchen/dispatch-progress.data.mode`](#persistence-type-eventxingchendispatch-progressdatamode) |
+| `role` | required | [`packages/xingchen/xingchen/src/types.ts#XingchenSpecialistId`](#persistence-type-packagesxingchenxingchensrctypestsxingchenspecialistid) |
+| `skill` | required | `string` |
+| `state` | optional | `string` |
+| `text` | required | `string` |
+
+<a id="persistence-type-eventxingchendispatch-progressdatamode"></a>
+
+### `event:xingchen/dispatch-progress.data.mode`
+
+SHA-256: `4ead02c153a06c5acf222ed5ae7f9866ff99b9d4321eafdc1322f01f7282ce1b`
+
+One of:
+
+- `"bus"`
+- `"direct"`
+
 <a id="persistence-type-every"></a>
 
 ### `"every"`
@@ -5940,6 +6032,20 @@ One of:
 - `"completed"`
 - `"error"`
 
+<a id="persistence-type-packagesxingchenxingchensrctypestsxingchenspecialistid"></a>
+
+### `packages/xingchen/xingchen/src/types.ts#XingchenSpecialistId`
+
+SHA-256: `bc3fac88f647ace3af77572179b658f1a231577120159f834bfa6d04561eb9db`
+
+Sources: [`packages/xingchen/xingchen/src/types.ts:21`](../packages/xingchen/xingchen/src/types.ts)
+
+One of:
+
+- `"tianliang"`
+- `"tianquan"`
+- `"yaoguang"`
+
 <a id="persistence-type-parent"></a>
 
 ### `"parent"`
@@ -6506,6 +6612,22 @@ SHA-256: `5abab3a27fd2736660ecddd94b28d6bbf114986dd894880153bd1be3ccacb563`
 
 `"text-delta"`
 
+<a id="persistence-type-tianliang"></a>
+
+### `"tianliang"`
+
+SHA-256: `e4825eafdd2b84dbf58756f06652d377e1d6877605c2bc6ce83802cd937d6c37`
+
+`"tianliang"`
+
+<a id="persistence-type-tianquan"></a>
+
+### `"tianquan"`
+
+SHA-256: `2594168dd3af461615968604d7ee611e6c1a43aee18985500e66091a41e97b4e`
+
+`"tianquan"`
+
 <a id="persistence-type-todowrite"></a>
 
 ### `"todo/write"`
@@ -6737,3 +6859,19 @@ SHA-256: `a3edd1efd1fef21b72c55e213c8a8b24196b091abde2b89db52be0b2aaae3cfa`
 SHA-256: `8e8155594e07812356b67d732196dda894b0f9c91a5969d51612cf490b0a016d`
 
 `"workspace/changes"`
+
+<a id="persistence-type-xingchendispatch-progress"></a>
+
+### `"xingchen/dispatch-progress"`
+
+SHA-256: `2d5ea382db68e6b09c9d926fbce8bcdecc25a547a56d9c1c75f02cc7710efd90`
+
+`"xingchen/dispatch-progress"`
+
+<a id="persistence-type-yaoguang"></a>
+
+### `"yaoguang"`
+
+SHA-256: `742df05617a8bdfd91c3802febb80a41d62fdaa0e20fe1ea9836305da82b2f8d`
+
+`"yaoguang"`

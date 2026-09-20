@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type {
-  ChatConversationViewNode, ChatSnapshot,
+  ChatConversationViewNode, ChatSnapshot, CommandNode, RunningToolCall,
 } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {
   SessionEventLikeEntry, SessionLiveEventEntry,
@@ -262,6 +262,64 @@ describe('built-in conversation node Definitions', () => {
     expect(current.order).toHaveLength(1)
     expect(current.nodes.get(current.order[0] ?? '')?.kind).toBe('command')
     expect(chatViewDefinition.isActive?.(current)).toBe(false)
+  })
+
+  it('folds star-domain progress reports into the running command card', () => {
+    const value = assembler([
+      at(1, 'command/run', {
+        commandId: 'command-1',
+        name: 'planning',
+        source: { kind: 'user' },
+      }),
+      at(2, 'xingchen/dispatch-progress', {
+        role: 'tianliang',
+        commandId: 'command-1',
+        agent: 'opencode',
+        skill: 'analysis',
+        mode: 'bus',
+        state: 'TASK_STATE_WORKING',
+        text: '第一段',
+      }),
+      at(3, 'xingchen/dispatch-progress', {
+        role: 'tianliang',
+        commandId: 'command-1',
+        agent: 'opencode',
+        skill: 'analysis',
+        mode: 'bus',
+        state: 'TASK_STATE_WORKING',
+        text: '第一段第二段',
+      }),
+    ])
+    const current = snapshot(value)
+    const command = current.nodes.get(current.order[0] ?? '')?.data as CommandNode | undefined
+    expect(command?.liveProgress).toEqual({ state: 'TASK_STATE_WORKING', text: '第一段第二段' })
+  })
+
+  it('folds star-domain progress reports into the running tool call by callId', () => {
+    const value = assembler([
+      at(1, 'turn/start', { turn: 1 }),
+      at(2, 'step/start', { turn: 1, step: 1 }),
+      at(3, 'tool/call', {
+        turn: 1,
+        step: 1,
+        callId: 'call-1',
+        name: 'xingchen_route',
+        arguments: JSON.stringify({ role: 'tianquan', task: 'x' }),
+      }),
+      at(4, 'xingchen/dispatch-progress', {
+        role: 'tianquan',
+        callId: 'call-1',
+        agent: 'claude-code',
+        skill: 'code-review',
+        mode: 'direct',
+        state: 'TASK_STATE_WORKING',
+        text: '进行中',
+      }),
+    ])
+    const current = snapshot(value)
+    const tool = node(current, 'tool-call')
+    const root = (tool?.data as ToolChatData).root as RunningToolCall | undefined
+    expect(root?.liveProgress).toEqual({ state: 'TASK_STATE_WORKING', text: '进行中' })
   })
 
   it('keeps the Turn rail projection current when a chunk updates one node in place', () => {

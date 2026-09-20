@@ -7,6 +7,9 @@
  * @module @reachforstar/dsh-xingchen/types
  */
 
+import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
+import type { ToolCallId } from '@deepseek-ai/dsh-llm/brand'
+
 /**
  * A star-domain role. `qiming` is the native router agent (this harness's own
  * coding agent); the three specialists are external agents reached through
@@ -51,5 +54,28 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
     /** Star-domain routing folded from dispatching commands, the route tool, and turn ends. */
     xingchen: XingchenProjection
+  }
+}
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface SessionEventMap {
+    /**
+     * One progress report from a star-domain seat's A2A dispatch: the peer's
+     * latest state and cumulative answer text, as its stream or bus events
+     * arrive. Log-only: the answer still settles through the driving
+     * `tool/result` or `command/done`. `callId` marks the route-tool dispatch,
+     * `commandId` the slash-command dispatch; the matching card folds the
+     * latest report into its live view.
+     */
+    'xingchen/dispatch-progress': {
+      role: XingchenSpecialistId
+      callId?: ToolCallId
+      commandId?: CommandId
+      agent: string
+      skill: string
+      mode: 'direct' | 'bus'
+      state?: string
+      text: string
+    }
   }
 }

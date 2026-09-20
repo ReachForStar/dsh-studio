@@ -425,4 +425,75 @@ describe('A2AService 桥配置与委派', () => {
     bus.emit({ schema: 'a2a.event/1', taskId: task.taskId, contextId: task.contextId, from: 'pi', type: 'terminal', state: 'TASK_STATE_FAILED', error: 'fetch failed', ts: 2 })
     await expect(waiting).resolves.toMatchObject({ text: 'fetch failed', state: 'TASK_STATE_FAILED' })
   })
+
+  it('直连派发按帧转发进度：状态变化与工件文本各报一次', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const task = { id: 't1', contextId: 'c1', status: { state: 'TASK_STATE_SUBMITTED', timestamp: 'now' }, artifacts: [], history: [] }
+      res.write(`data: ${JSON.stringify({ task })}\n\n`)
+      res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't1', contextId: 'c1', status: { state: 'TASK_STATE_WORKING', timestamp: 'now' } } })}\n\n`)
+      res.write(`data: ${JSON.stringify({ artifactUpdate: { taskId: 't1', contextId: 'c1', artifact: { artifactId: 'reply', parts: [{ text: '第一段' }] } } })}\n\n`)
+      res.write(`data: ${JSON.stringify({ artifactUpdate: { taskId: 't1', contextId: 'c1', artifact: { artifactId: 'reply', parts: [{ text: '第二段' }] } } })}\n\n`)
+      res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't1', contextId: 'c1', status: { state: 'TASK_STATE_WORKING', timestamp: 'now' } } })}\n\n`)
+      res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't1', contextId: 'c1', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
+      res.end()
+    })
+    const service = serviceOf({ bridge: { configPath: bridgeFile() }, peers: { 'claude-code': { url } } })
+    const progress: { state?: string; text: string }[] = []
+    const reply = await service.dispatch({
+      agent: 'claude-code',
+      skill: 'code-review',
+      text: 'x',
+      onProgress: (report) => { progress.push(report) },
+    })
+    expect(reply.state).toBe('TASK_STATE_COMPLETED')
+    expect(progress).toEqual([
+      { state: 'TASK_STATE_WORKING', text: '' },
+      { state: 'TASK_STATE_WORKING', text: '第一段' },
+      { state: 'TASK_STATE_WORKING', text: '第一段第二段' },
+      { state: 'TASK_STATE_COMPLETED', text: '第一段第二段' },
+    ])
+  })
+
+  it('直连派发在终态无工件时用状态消息补文本并上报', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const task = { id: 't1', contextId: 'c1', status: { state: 'TASK_STATE_SUBMITTED', timestamp: 'now' }, artifacts: [], history: [] }
+      res.write(`data: ${JSON.stringify({ task })}\n\n`)
+      res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't1', contextId: 'c1', status: { state: 'TASK_STATE_FAILED', timestamp: 'now', message: { messageId: 'm', role: 'ROLE_AGENT', parts: [{ text: '失败原因' }] } } } })}\n\n`)
+      res.end()
+    })
+    const service = serviceOf({ bridge: { configPath: bridgeFile() }, peers: { 'claude-code': { url } } })
+    const progress: { state?: string; text: string }[] = []
+    await service.dispatch({
+      agent: 'claude-code',
+      skill: 'code-review',
+      text: 'x',
+      onProgress: (report) => { progress.push(report) },
+    })
+    expect(progress.at(-1)).toEqual({ state: 'TASK_STATE_FAILED', text: '失败原因' })
+  })
+
+  it('总线派发按事件转发进度，未配置回调时不报错', async () => {
+    const bus = new FakeBus()
+    const service = new BusBackedService(new Context(), { bridge: { configPath: bridgeFile() } }, bus)
+    const progress: { state?: string; text: string }[] = []
+    const waiting = service.dispatch({ agent: 'pi', skill: 'code-dev', text: 'x', mode: 'bus', wait: true, timeoutMs: 5_000, onProgress: (report) => { progress.push(report) } })
+    await vi.waitFor(() => { expect(bus.produced).toHaveLength(1) })
+    const task = bus.produced[0]
+    if (task === undefined) throw new Error('task was not published')
+    bus.emit({ schema: 'a2a.event/1', taskId: task.taskId, contextId: task.contextId, from: 'pi', type: 'status-update', state: 'TASK_STATE_WORKING', ts: 1 })
+    bus.emit({ schema: 'a2a.event/1', taskId: task.taskId, contextId: task.contextId, from: 'pi', type: 'artifact-update', text: '第一段', ts: 2 })
+    bus.emit({ schema: 'a2a.event/1', taskId: task.taskId, contextId: task.contextId, from: 'pi', type: 'terminal', state: 'TASK_STATE_COMPLETED', ts: 3 })
+    await expect(waiting).resolves.toMatchObject({ text: '第一段', state: 'TASK_STATE_COMPLETED' })
+    expect(progress).toEqual([
+      { state: 'TASK_STATE_WORKING', text: '' },
+      { state: 'TASK_STATE_WORKING', text: '第一段' },
+      { state: 'TASK_STATE_COMPLETED', text: '第一段' },
+    ])
+
+    const second = new BusBackedService(new Context(), { bridge: { configPath: bridgeFile() } }, new FakeBus())
+    const reply = await second.dispatch({ agent: 'pi', skill: 'code-dev', text: 'x', mode: 'bus' })
+    expect(reply.state).toBe('TASK_STATE_SUBMITTED')
+  })
 })

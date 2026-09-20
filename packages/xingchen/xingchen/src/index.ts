@@ -20,11 +20,12 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
-import type { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
+import type { CommandDefinitionId, CommandId } from '@deepseek-ai/dsh-commands/brand'
 import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
 import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
+import { ToolCallId } from '@deepseek-ai/dsh-llm/brand'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { settleRun } from '@deepseek-ai/dsh-subagent'
 import type {} from '@deepseek-ai/dsh-subagent'
@@ -138,6 +139,12 @@ const DEFAULT_SEAT_PROVIDER = 'spawn'
 
 /** Default wait before a seat's dispatch gives up, in milliseconds. */
 const DEFAULT_SEAT_TIMEOUT_MS = 300_000
+
+/** Minimum spacing between two progress reports of one dispatch. */
+const PROGRESS_MIN_INTERVAL_MS = 2_500
+
+/** Text growth since the last report that alone justifies a new one. */
+const PROGRESS_TEXT_STEP = 200
 
 /** Default skill per specialist role, matching what each role's backend advertises. */
 const DEFAULT_SKILLS: Readonly<Record<XingchenSpecialistId, string>> = {
@@ -264,12 +271,14 @@ const ROUTING_SECTION = [
   '- 简单请求由启明直接处理；不为委派而委派。',
 ].join('\n')
 
-/** Task states that mean the seat did not answer. */
-const UNFINISHED_STATES = new Set([
+/** States that mean the seat did not answer: A2A terminal failures plus local seat outcomes. */
+const UNANSWERED_STATES = new Set([
   'TASK_STATE_FAILED',
   'TASK_STATE_CANCELED',
   'TASK_STATE_REJECTED',
   'TASK_STATE_AUTH_REQUIRED',
+  'failed',
+  'killed',
 ])
 
 /**
@@ -395,7 +404,7 @@ export class XingchenService extends Service {
         if (task.trim().length === 0) {
           throw new Error(`${ROUTE_TOOL} requires a non-empty self-contained task`)
         }
-        const reply = await this.dispatch(role, task, agent, exec.signal)
+        const reply = await this.dispatch(role, task, agent, exec.signal, { callId: exec.callId })
         return {
           role,
           text: reply.text,
@@ -423,11 +432,14 @@ export class XingchenService extends Service {
    *
    * A `local` seat runs in this process as a delegated child agent and needs no
    * endpoint; an `a2a` seat sends the same text to its configured peer and
-   * continues that peer conversation per session.
+   * continues that peer conversation per session. An A2A dispatch reports
+   * progress to the seat's session as the peer's stream or bus events arrive,
+   * so the driving tool card or command card stays visibly working.
    * @param role - the specialist role.
    * @param task - the self-contained task text.
    * @param parent - the agent delegating the task.
    * @param signal - cancellation owned by the caller.
+   * @param ids - the driving call's identities, for the progress reports to fold into.
    * @returns the seat's answer text and the state it ended in, when reported.
    */
   async dispatch(
@@ -435,11 +447,12 @@ export class XingchenService extends Service {
     task: string,
     parent: Agent,
     signal?: AbortSignal,
+    ids?: { readonly callId?: ToolCallId; readonly commandId?: CommandId },
   ): Promise<{ readonly text: string; readonly state?: string }> {
     const seat = this.seats[role]
     const text = `${seat.charter}\n\n---\n\n${task}`
     if (seat.mode === 'a2a') {
-      return await this.dispatchToPeer(role, seat.peer, seat.skill, seat.channel, text, parent, signal)
+      return await this.dispatchToPeer(role, seat.peer, seat.skill, seat.channel, text, parent, signal, ids)
     }
     const run = await this.ctx.subagents.start(seat.provider, {
       prompt: [{ type: 'text', text }],
@@ -470,6 +483,9 @@ export class XingchenService extends Service {
    *
    * The task carries the seat's skill as message metadata, which is how a
    * bridge gateway selects the instructions and tools the peer runs with.
+   * Every peer progress report is folded into the seat's session as a
+   * `xingchen/dispatch-progress` event, throttled to one per state change,
+   * text step, or minimum interval, plus one forced report at settlement.
    */
   private async dispatchToPeer(
     role: XingchenSpecialistId,
@@ -479,11 +495,13 @@ export class XingchenService extends Service {
     text: string,
     parent: Agent,
     signal?: AbortSignal,
+    ids?: { readonly callId?: ToolCallId; readonly commandId?: CommandId },
   ): Promise<{ readonly text: string; readonly state?: string }> {
     const key = `${String(parent.session.id)}:${role}`
     const contextId = this.continuations.get(key)
     const bridge = this.ctx.a2a.bridgeConfig
     if (bridge !== undefined && peer in bridge.agents) {
+      const report = progressReporter(parent, role, peer, skill, channel, ids)
       const reply = await this.ctx.a2a.dispatch({
         agent: peer,
         skill,
@@ -494,8 +512,10 @@ export class XingchenService extends Service {
         ...(channel === 'bus' ? { wait: true } : {}),
         ...(contextId === undefined ? {} : { contextId }),
         ...(signal === undefined ? {} : { signal }),
+        onProgress: (progress) => { report(progress.state, progress.text) },
       })
       if (reply.contextId !== undefined) this.continuations.set(key, reply.contextId)
+      report(reply.state, reply.text, true)
       return { text: reply.text, ...reply.state === undefined ? {} : { state: reply.state } }
     }
     const reply: A2APeerReply = await this.ctx.a2a.send({
@@ -517,7 +537,7 @@ export class XingchenService extends Service {
     }
     let reply: { readonly text: string; readonly state?: string }
     try {
-      reply = await this.dispatch(role, task, invocation.agent, invocation.signal)
+      reply = await this.dispatch(role, task, invocation.agent, invocation.signal, { commandId: invocation.commandId })
     } catch (error: unknown) {
       // A seat that cannot answer is the command's outcome, not a crashed
       // handler: report the seat's own message so the missing endpoint or
@@ -529,13 +549,62 @@ export class XingchenService extends Service {
     }
     // A seat that ran but did not finish is not an answer: a failure state
     // must not read as a result to whoever asked for the delegation.
-    if (reply.state !== undefined && UNFINISHED_STATES.has(reply.state)) {
+    if (reply.state !== undefined && UNANSWERED_STATES.has(reply.state)) {
       return {
         kind: 'error',
         text: `${XINGCHEN_ROLE_NAMES[role]} 未完成（${reply.state}）：\n\n${reply.text}`,
       }
     }
     return { kind: 'success', text: `${XINGCHEN_ROLE_NAMES[role]} 已处理：\n\n${reply.text}` }
+  }
+}
+
+/**
+ * Build one dispatch's progress reporter: it folds the peer's state and
+ * cumulative text into `xingchen/dispatch-progress` events on the seat's
+ * session, throttled so a per-token stream cannot flood the log.
+ *
+ * A state change or a text step reports immediately; otherwise a report is
+ * due only after the minimum interval. `force` settles the final report no
+ * matter what the throttle says.
+ * @param parent - the agent owning the session the reports land in.
+ * @param role - the specialist role the dispatch addresses.
+ * @param agent - the peer name the seat resolved to.
+ * @param skill - the skill the task runs under.
+ * @param mode - the channel the dispatch travels on.
+ * @param ids - the driving call's identities, when one exists.
+ * @returns the reporter the dispatch passes as its progress callback.
+ */
+function progressReporter(
+  parent: Agent,
+  role: XingchenSpecialistId,
+  agent: string,
+  skill: string,
+  mode: 'direct' | 'bus',
+  ids?: { readonly callId?: ToolCallId; readonly commandId?: CommandId },
+): (state: string | undefined, text: string, force?: boolean) => void {
+  let reportedState: string | undefined
+  let reportedTextLength = 0
+  let lastReportMs = 0
+  return (state, text, force = false) => {
+    const now = Date.now()
+    const stateChanged = state !== reportedState
+    const textGrew = text.length - reportedTextLength >= PROGRESS_TEXT_STEP
+    const due = now - lastReportMs >= PROGRESS_MIN_INTERVAL_MS
+    if (!force && !stateChanged && !textGrew && !due) return
+    reportedState = state
+    reportedTextLength = text.length
+    lastReportMs = now
+    parent.session.append('xingchen/dispatch-progress', {
+      role,
+      ...ids?.callId === undefined ? {} : { callId: ids.callId },
+      ...ids?.commandId === undefined ? {} : { commandId: ids.commandId },
+      agent,
+      skill,
+      mode,
+      ...state === undefined ? {} : { state },
+      text,
+    })
   }
 }
 

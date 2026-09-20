@@ -106,7 +106,8 @@ export interface ToolRowModel {
   filePath: string | undefined
   /** Original argument JSON retained for expansion-time body formatting. */
   bodyRaw: string | null
-  /** Flattened result text ({@link resultText}); null while running or when the result carries no text. */
+  /** Flattened result text ({@link resultText}); null when the result carries no text. While a
+   *  star-domain dispatch is still running, the peer's latest progress text stands in for it. */
   output: string | null
   /** First line of the result text on an error row; null for every other state. */
   errorSummary: string | null
@@ -253,7 +254,9 @@ export function toolRowModel(toolName: string, block: ToolCallBlock, cwd?: strin
   // The empty string is "no text" for both derived result fields: a settled
   // call with blank content has nothing to expand, and a blank first line
   // would erase the collapsed error row's summary slot.
-  const output = done ? (resultText(block) || null) : null
+  const output = done
+    ? (resultText(block) || null)
+    : block.liveProgress === undefined ? null : block.liveProgress.text || null
   const errorSummary = state === 'error' && output !== null ? firstLine(output) : null
   const bodyRaw = argsRaw === '' ? null : argsRaw
   return {

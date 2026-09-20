@@ -13848,9 +13848,163 @@
           }
         ]
       }
+    },
+    {
+      "key": "event:xingchen/dispatch-progress",
+      "kind": "event",
+      "event": "xingchen/dispatch-progress",
+      "surface": false,
+      "digest": "9474bbb067c7b190f6aef17f0afaa7ca30daeaca1dc9539c040fc8e886fa3b01",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 10,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 12,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agent",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "callId",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "commandId",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "mode",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "role",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "skill",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "state",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "text",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "bus"
+          },
+          {
+            "kind": "literal",
+            "value": "direct"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "tianliang"
+          },
+          {
+            "kind": "literal",
+            "value": "tianquan"
+          },
+          {
+            "kind": "literal",
+            "value": "yaoguang"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "xingchen/dispatch-progress"
+          }
+        ]
+      }
     }
   ],
   "types": [
+    {
+      "digest": "0082524a1d7e7805687d637687614c0d0132a5ae83595145bed027d1a5f9c704",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "direct"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
     {
       "digest": "0116b1f89c05221d56b0ba35c83d302bf4857bc7277d247e9bbaf74b27d2c66e",
       "schema": {
@@ -21494,6 +21648,20 @@
       "sources": []
     },
     {
+      "digest": "2594168dd3af461615968604d7ee611e6c1a43aee18985500e66091a41e97b4e",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "tianquan"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "26718e15e7e395bce9642dba5bbe09b3b1a4ce2213d20d566cd9207d7fc5fb78",
       "schema": {
         "root": 0,
@@ -23603,6 +23771,20 @@
       "sources": [
         "packages/web/web-search-deepseek/src/provider.ts:71"
       ]
+    },
+    {
+      "digest": "2d5ea382db68e6b09c9d926fbce8bcdecc25a547a56d9c1c75f02cc7710efd90",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "xingchen/dispatch-progress"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
     },
     {
       "digest": "2da725e554cd89301d829ed9dc45a572c3cd1b93b5e91d0d71f007976d8a0863",
@@ -27059,6 +27241,20 @@
       "sources": [
         "packages/core/session/src/types.ts:455"
       ]
+    },
+    {
+      "digest": "34c57552838141001b4190b1163921690fb1186c3509ded161721bf0985bd10e",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "bus"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
     },
     {
       "digest": "34d1ab5c5df378186d6054b1a1beea9a41e41965d6f336f0bc0025c441a82e66",
@@ -33303,6 +33499,33 @@
       ]
     },
     {
+      "digest": "4ead02c153a06c5acf222ed5ae7f9866ff99b9d4321eafdc1322f01f7282ce1b",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "union",
+            "types": [
+              1,
+              2
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "bus"
+          },
+          {
+            "kind": "literal",
+            "value": "direct"
+          }
+        ]
+      },
+      "names": [
+        "event:xingchen/dispatch-progress.data.mode"
+      ],
+      "sources": []
+    },
+    {
       "digest": "4f507598cf476214aa7646ce7841a7064a9dcb05d0a1eaaefaf79c2b738f160f",
       "schema": {
         "root": 0,
@@ -38678,6 +38901,105 @@
       ]
     },
     {
+      "digest": "72a89d5f39f0203f5b0f951173c4c8b9d275fcf07fac3540e0840de922ec3926",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agent",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "callId",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "commandId",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "mode",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "role",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "skill",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "state",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "text",
+                "type": 1,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              3,
+              4
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "bus"
+          },
+          {
+            "kind": "literal",
+            "value": "direct"
+          },
+          {
+            "kind": "union",
+            "types": [
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "tianliang"
+          },
+          {
+            "kind": "literal",
+            "value": "tianquan"
+          },
+          {
+            "kind": "literal",
+            "value": "yaoguang"
+          }
+        ]
+      },
+      "names": [
+        "event:xingchen/dispatch-progress.data"
+      ],
+      "sources": [
+        "packages/xingchen/xingchen/src/types.ts:70"
+      ]
+    },
+    {
       "digest": "72ec79127a9c0d0241b1106a74cc2b24c81ce467170f1c3c93f7b71a9496d227",
       "schema": {
         "root": 0,
@@ -38739,6 +39061,20 @@
           {
             "kind": "literal",
             "value": "remove"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "742df05617a8bdfd91c3802febb80a41d62fdaa0e20fe1ea9836305da82b2f8d",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "yaoguang"
           }
         ]
       },
@@ -44411,6 +44747,146 @@
         ]
       },
       "names": [],
+      "sources": []
+    },
+    {
+      "digest": "9474bbb067c7b190f6aef17f0afaa7ca30daeaca1dc9539c040fc8e886fa3b01",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 10,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 12,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agent",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "callId",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "commandId",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "mode",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "role",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "skill",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "state",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "text",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "bus"
+          },
+          {
+            "kind": "literal",
+            "value": "direct"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "tianliang"
+          },
+          {
+            "kind": "literal",
+            "value": "tianquan"
+          },
+          {
+            "kind": "literal",
+            "value": "yaoguang"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "xingchen/dispatch-progress"
+          }
+        ]
+      },
+      "names": [
+        "event:xingchen/dispatch-progress"
+      ],
       "sources": []
     },
     {
@@ -52257,6 +52733,40 @@
       "sources": []
     },
     {
+      "digest": "bc3fac88f647ace3af77572179b658f1a231577120159f834bfa6d04561eb9db",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "union",
+            "types": [
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "tianliang"
+          },
+          {
+            "kind": "literal",
+            "value": "tianquan"
+          },
+          {
+            "kind": "literal",
+            "value": "yaoguang"
+          }
+        ]
+      },
+      "names": [
+        "packages/xingchen/xingchen/src/types.ts#XingchenSpecialistId"
+      ],
+      "sources": [
+        "packages/xingchen/xingchen/src/types.ts:21"
+      ]
+    },
+    {
       "digest": "bcf0caf62d964b2fcf5404bd5c909cfa9a21c3f3c96e6b7e36d9e33565223825",
       "schema": {
         "root": 0,
@@ -58713,6 +59223,7 @@
         "SessionEventEnvelope[54]",
         "SessionEventEnvelope[56]",
         "SessionEventEnvelope[57]",
+        "SessionEventEnvelope[58]",
         "SessionEventEnvelope[5]",
         "SessionEventEnvelope[7]",
         "SessionEventEnvelope[8]",
@@ -58756,6 +59267,20 @@
           {
             "kind": "literal",
             "value": "append"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "e4825eafdd2b84dbf58756f06652d377e1d6877605c2bc6ce83802cd937d6c37",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "tianliang"
           }
         ]
       },

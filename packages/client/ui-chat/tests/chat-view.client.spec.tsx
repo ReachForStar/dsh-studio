@@ -2857,6 +2857,18 @@ describe('ChatView', () => {
     expect(ov.getByText('已完成')).toBeTruthy()
   })
 
+  it('renders live peer progress under a running star-domain command card', () => {
+    const running = makeHarness({
+      nodes: [command({
+        seq: 9, commandId: 'cmd-9' as CommandNode['commandId'], outcome: null,
+        liveProgress: { state: 'TASK_STATE_WORKING', text: '对端正在分析的累计文本' },
+      })],
+    })
+    const view = render(<running.ChatView {...running.props} />)
+    expect(view.getByText('执行中…')).toBeTruthy()
+    expect(view.getByText('对端正在分析的累计文本')).toBeTruthy()
+  })
+
   it('renders /compact as one stateful disclosure from running through completion', () => {
     const running = command({
       commandId: 'cmd-compact' as CommandNode['commandId'],

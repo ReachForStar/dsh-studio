@@ -1,5 +1,5 @@
 import { Context } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
@@ -10,7 +10,7 @@ import { Session, SessionId, SessionStore } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
-import type { A2ABridgeConfig, A2APeerReply } from '@reachforstar/dsh-a2a'
+import type { A2ABridgeConfig, A2ADispatchRequest, A2APeerReply } from '@reachforstar/dsh-a2a'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
 import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
 import * as xingchen from '../src/index.ts'
@@ -31,7 +31,7 @@ interface A2AStub {
   readonly send: ReturnType<typeof vi.fn>
   readonly skills: ReturnType<typeof vi.fn>
   readonly bridgeConfig?: A2ABridgeConfig
-  readonly dispatch: ReturnType<typeof vi.fn>
+  readonly dispatch: Mock<(request: A2ADispatchRequest) => Promise<unknown>>
 }
 
 /** Arguments of one recorded `a2a.send` call. */
@@ -55,7 +55,7 @@ function a2aStub(reply: Partial<A2APeerReply> = {}, peers: readonly string[] = [
     send: vi.fn(() => Promise.resolve({ text: '专家回答', ...reply })),
     skills: vi.fn((agent: string) => (bridge?.skills as Record<string, string[]> | undefined)?.[agent] ?? []),
     ...bridge === undefined ? {} : { bridgeConfig: bridge },
-    dispatch: vi.fn(() => Promise.resolve({ text: '桥回答', agent: 'claude-code', skill: 'code-review', mode: 'direct' })),
+    dispatch: vi.fn((_request: A2ADispatchRequest) => Promise.resolve({ text: '桥回答', agent: 'claude-code', skill: 'code-review', mode: 'direct' })),
   }
 }
 
@@ -551,6 +551,105 @@ describe('@reachforstar/dsh-xingchen/clear', () => {
       kind: 'error',
       text: '上下文清理失败（busy）；该轮尝试已记录在会话日志中。',
     })
+  })
+})
+
+describe('进度上报 xingchen/dispatch-progress', () => {
+  function progressEvents(session: { ownEvents(): readonly unknown[] }): {
+    role: string
+    callId?: unknown
+    commandId?: unknown
+    agent: string
+    skill: string
+    mode: string
+    state?: string
+    text: string
+  }[] {
+    return session.ownEvents()
+      .filter(event => (event as { type: string }).type === 'xingchen/dispatch-progress')
+      .map(event => (event as { data: never }).data)
+  }
+
+  it('命令路径把对端进度写入会话事件，终态强制补报一次并带 commandId', async () => {
+    const stub = a2aStub({}, ['claude-code'], BRIDGE)
+    stub.dispatch.mockImplementation((request: A2ADispatchRequest) => {
+      request.onProgress?.({ state: 'TASK_STATE_WORKING', text: '第一段' })
+      request.onProgress?.({ state: 'TASK_STATE_WORKING', text: '第一段' + 'a'.repeat(250) })
+      return Promise.resolve({
+        text: '第一段' + 'a'.repeat(250),
+        state: 'TASK_STATE_COMPLETED',
+        contextId: 'c1',
+        agent: 'claude-code',
+        skill: 'code-review',
+        mode: 'direct',
+      })
+    })
+    const test = await harness(stub)
+    await test.ctx.commands.execute(test.agent, '/review 评估一下', [], signal)
+    const events = progressEvents(test.session)
+    expect(events).toEqual([
+      expect.objectContaining({ role: 'tianquan', agent: 'claude-code', skill: 'code-review', mode: 'direct', state: 'TASK_STATE_WORKING', text: '第一段' }),
+      expect.objectContaining({ state: 'TASK_STATE_WORKING', text: '第一段' + 'a'.repeat(250) }),
+      expect.objectContaining({ state: 'TASK_STATE_COMPLETED', text: '第一段' + 'a'.repeat(250) }),
+    ])
+    expect(events.every(event => typeof event.commandId === 'string' && event.commandId.length > 0)).toBe(true)
+    expect(events.every(event => event.callId === undefined)).toBe(true)
+  })
+
+  it('工具路径的进度事件带本次调用的 callId', async () => {
+    const stub = a2aStub({}, ['claude-code'], BRIDGE)
+    stub.dispatch.mockImplementation((request: A2ADispatchRequest) => {
+      request.onProgress?.({ state: 'TASK_STATE_WORKING', text: '进行中' })
+      return Promise.resolve({ text: '结论', state: 'TASK_STATE_COMPLETED', contextId: 'c2', agent: 'claude-code', skill: 'code-review', mode: 'direct' })
+    })
+    const test = await harness(stub)
+    const before = toolCounter
+    await runTool(test.ctx, test.agent, { role: 'tianquan', task: '称量这段架构' })
+    const events = progressEvents(test.session)
+    expect(events).toHaveLength(2)
+    expect(events.every(event => event.callId === `xingchen-call-${String(before + 1)}`)).toBe(true)
+    expect(events.every(event => event.commandId === undefined)).toBe(true)
+  })
+
+  it('节流：状态与文本都小步前进时只在首尾各报一次', async () => {
+    const stub = a2aStub({}, ['claude-code'], BRIDGE)
+    stub.dispatch.mockImplementation((request: A2ADispatchRequest) => {
+      for (let i = 1; i <= 50; i += 1) request.onProgress?.({ state: 'TASK_STATE_WORKING', text: 'a'.repeat(i) })
+      return Promise.resolve({ text: 'a'.repeat(50), state: 'TASK_STATE_COMPLETED', contextId: 'c3', agent: 'claude-code', skill: 'code-review', mode: 'direct' })
+    })
+    const test = await harness(stub)
+    await test.ctx.commands.execute(test.agent, '/review 评估一下', [], signal)
+    const events = progressEvents(test.session)
+    expect(events.map(event => ({ state: event.state, text: event.text }))).toEqual([
+      { state: 'TASK_STATE_WORKING', text: 'a' },
+      { state: 'TASK_STATE_COMPLETED', text: 'a'.repeat(50) },
+    ])
+  })
+
+  it('本机席位不产生进度事件；失败态的命令落定为错误结果', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(AgentRegistry)
+    ctx.provide('a2a', a2aStub() as never)
+    const failed = { start: vi.fn(() => Promise.resolve({
+      result: Promise.resolve({ stopReason: 'error', output: [] }),
+      dispose: vi.fn(() => Promise.resolve()),
+    })) }
+    ctx.provide('subagents', failed as never)
+    const plugin = await ctx.plugin(xingchen, {})
+    disposers.push(async () => { await plugin.dispose() })
+    const { agent } = stubAgent(ctx, `xingchen-fail-${Math.random()}`)
+    await ctx.agents.register(agent)
+    const execution = await ctx.commands.execute(agent, '/review 评估一下', [], signal)
+    expect(progressEvents(agent.session)).toEqual([])
+    const result = execution?.result as { kind: string; text: string }
+    expect(result.kind).toBe('error')
+    expect(result.text).toContain('failed')
+    expect(failed.start).toHaveBeenCalledTimes(1)
   })
 })
 

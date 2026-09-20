@@ -278,3 +278,11 @@
 - bridge 配置（独立仓 D:/file/a2a-bridge）：`piModel` 由失效的 `amax/deepseek-flash` 改为 `amax/qwen-3.8-27B`，`opencodeModel` 显式同值（三个席位统一该模型；claude-code 席位本就跟随全局 `ANTHROPIC_MODEL`）。改后需重启网关生效。
 - 验证：typecheck（host+client）、`gen-persistence-catalog`（新事件登记 `known-event-types.ts`）、a2a/xingchen/ui-chat/ui-conversation/ui-tool 共 92 文件 1289 测试全过；本任务新增代码无 lint 报错（a2a bus/task-store 等报错为既有债务）。
 - 遗留（另案）：会话重载校验报错根因在 dsh `packages/core/session/src/index.ts:368`（assistant/message 要求 model 来源），疑 v2→v3 迁移写入非 model 来源，待用户确认后单独修。
+
+## [2026-09-24] fix | 修复会话重载校验报错：assistant/message 空 model 来源
+
+- 背景：重开 pi 会话（及部分更旧会话）抛 `message must have model source`。上条遗留怀疑「v2→v3 迁移写入非 model 来源」，实测 source 是 `kind:'model'` 但 provider/model 为空串。
+- 根因（三层）：加载侧 `assertMessageEventShape` 要求 model 来源 provider/model 非空（上游 b1af35145b 引入）；写入侧 pi 翻译器 `pi-event-translator.ts` 硬编码空 provider/model；v2→v3 迁移忠实搬运空值（非引入者）。
+- 修法（两层）：加载侧放宽——`assistant/message` 仅保留 `kind==='model'` 校验，provider/model 允许空（语义「未知模型」，`hasProviderModel` 仍用于 seed request/header）；写入侧——`PiLoop.launch` 解析的模型路由经 agent 传入 `PiEventTranslator`，assistant source 记真实 provider/model（路由未设则记空，接受为未知）。
+- 验证：session + pi-agent-loop 522 测试全绿（含 2 个新回归）；typecheck 通过；本地 48 会话文件 5502 事件 load 校验 0 个 model-source 失败；6 处 `header.system` 假阳性系绕过迁移（已迁移 v3 伴生文件 0 失败，印证迁移正常）。
+- 清偿 2026-09-22 遗留项。详见 queries/session-reload-model-source.md。

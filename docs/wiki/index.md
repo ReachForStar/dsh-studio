@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-09-19
+updated: 2026-09-24
 ---
 
 # Wiki 索引
@@ -50,3 +50,4 @@ updated: 2026-09-19
 - [Git/LaTeX 面板重写的缺陷与修复（2026-09-19）](queries/ui-polish-git-latex-defects.md) — 六个缺陷：加载中误报合并、嵌套仓库合并状态读错仓库、多仓库 cwd 回落、LaTeX 读写路径基准、空文件写入被拒、AI 写作默认 provider 空结果。
 - [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。
 - [总线任务在 A2A 面查不到（a2a-bridge 实测）](queries/a2a-bus-task-visibility.md) — bridge 自身 CLI 经总线派发的任务同样不在任务表里，harness 侧靠事件流收尾故不受影响。
+- [会话重载校验报错：assistant/message 空 model 来源（2026-09-24）](queries/session-reload-model-source.md) — 根因三层（校验过严/pi 后端记空/迁移搬运）、加载侧放宽 + 写入侧记真实模型的双层修法与真实数据验证。

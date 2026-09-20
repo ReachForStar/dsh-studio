@@ -3,7 +3,7 @@ title: pi 后端（pi-agent-loop）
 type: entity
 tags: [pi, agent-loop, backend, session, amax]
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-24
 sources: []
 status: active
 ---
@@ -46,4 +46,5 @@ status: active
 ## 重要变更记录
 
 - 2026-09：合并上游 `upstream/master`，完成上表全部适配；`typecheck`/`build` 通过，e2e 在无 `AMAX_API_KEY` 时自跳过。
+- 2026-09-24：`PiEventTranslator` 记录模型——`PiLoop.launch` 解析的模型路由（`this.model` 或 `agentOptions.provider/model`）经 agent 传入翻译器，`assistant/message` 的 source 由硬编码空 `provider`/`model` 改为记真实值（路由未设时记空，语义「未知模型」）。配合会话校验放宽修复重载报错，见 [会话重载校验报错](../queries/session-reload-model-source.md)。
 - 已知限制见 `packages/core/pi-agent-loop/README.md` 的「Known Limitations and Deferred Work」：inbox 不接管、无 `agent/session-start`、Pi 专有工具特性不做近似、模型路线需显式声明、resume 依赖持久化。

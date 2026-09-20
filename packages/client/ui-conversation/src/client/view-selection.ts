@@ -1,17 +1,28 @@
 import type { ViewTab } from './contract/views.ts'
 
-const DEFAULT_VIEW_ID = 'chat'
+/**
+ * Fallback View preference order for a Session with no stored selection. The
+ * star-domain flow leads where a build registers it; the transcript is the
+ * shipped default and the last resort.
+ */
+const FALLBACK_VIEW_IDS = ['flow', 'chat'] as const
 
 /**
- * Resolve a preferred registered View, then Chat, without choosing another View.
+ * Resolve a preferred registered View, then the fallback order, without
+ * choosing an unregistered View.
  * @param tabs - currently registered Views.
  * @param selectedId - preferred View identity, when one is stored.
- * @returns the selected View, Chat fallback, or undefined when neither is registered.
+ * @returns the selected View, the first registered fallback, or undefined when none is registered.
  */
 export function resolveActiveView(
   tabs: readonly ViewTab[],
   selectedId: string | null,
 ): ViewTab | undefined {
   const selected = selectedId === null ? undefined : tabs.find(view => view.id === selectedId)
-  return selected ?? tabs.find(view => view.id === DEFAULT_VIEW_ID)
+  if (selected !== undefined) return selected
+  for (const id of FALLBACK_VIEW_IDS) {
+    const fallback = tabs.find(view => view.id === id)
+    if (fallback !== undefined) return fallback
+  }
+  return undefined
 }

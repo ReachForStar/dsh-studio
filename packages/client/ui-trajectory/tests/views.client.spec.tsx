@@ -272,6 +272,9 @@ async function bench(snapshot = historySnapshot(NODES)) {
   const targetSources: ConversationTargetSources = {
     chat: createSnapshotStore<ChatSnapshot | undefined>(undefined),
     trajectory: trajectoryStore,
+    // Registered by ui-polish in the shipped composition; this suite never
+    // selects it, but the merge-extensible map requires every known target.
+    flow: createSnapshotStore<ConversationViewSnapshotMap['flow'] | undefined>(undefined),
   }
   const binding: ConversationBinding = {
     snapshot: conversationStore,

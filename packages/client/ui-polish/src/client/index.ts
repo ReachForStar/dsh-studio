@@ -24,8 +24,11 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the SSH Remote methods and forwarded PTY event declarations.
 import type {} from '@reachforstar/dsh-host-ssh-remotes/remote'
 import type {} from '@reachforstar/dsh-host-ssh-remotes/types'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { BACKGROUND_SETTINGS_NAMESPACE, COMPACTION_RATIO_FIELD, type PolishSettings } from '../background-settings.ts'
 import { BackgroundRuntime } from './background-runtime.ts'
+import { registerFlowConversationNode, registerFlowConversationView } from './flow/flow-definition.ts'
+import { FlowView, type FlowViewInjected } from './flow/FlowView.tsx'
 import { BackgroundRow, type BackgroundRowInjected } from './BackgroundRow.tsx'
 import { CompactionRow, type CompactionRowInjected } from './CompactionRow.tsx'
 import { PricingRow, type PricingRowInjected } from './PricingRow.tsx'
@@ -89,8 +92,9 @@ body[data-ds-bg-image] [data-ui-polish-excalidraw] {
 }
 `
 
-/** Required services: settings transport plus slots/locale for the registrations. */
-export const inject = ['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh']
+/** Required services: settings transport plus slots/locale for the registrations,
+ * and the Conversation registries the star-domain flow target rides. */
+export const inject = ['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh', 'uiConversation']
 
 /**
  * Client plugin body: bind the background preference, paint the body, and
@@ -100,6 +104,10 @@ export const inject = ['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh
 export function apply(ctx: ClientContext): void {
   const host = ctx.settingsScope.bind<PolishSettings>({ namespace: BACKGROUND_SETTINGS_NAMESPACE })
   const background = new BackgroundRuntime(ctx, host)
+  // Star-domain flow: the activity Definition and the view target it renders
+  // into. Both ride ctx.effect through the owning registries.
+  registerFlowConversationNode(ctx)
+  registerFlowConversationView(ctx)
   // Model rate card owner: shared by the stats float (pricing) and the
   // settings row (editing). One instance keeps the scope subscription single.
   const pricing = new PricingRuntime(ctx, host)
@@ -273,6 +281,18 @@ export function apply(ctx: ClientContext): void {
   }
 
   ctx.slots.inject('conversation.view', function* () {
+    // Star-domain flow: the Session drawn as the agent graph. Registered before
+    // the panel tabs so it leads the ring.
+    yield ctx.slots.register({
+      name: 'conversation.view',
+      id: 'flow',
+      order: 5,
+      locale: NS,
+      label: () => t('flow.tab'),
+      inject: (sessionId: SessionId): FlowViewInjected => ({
+        source: ctx.uiConversation.binding(sessionId).target('flow'),
+      }),
+    }, FlowView)
     // Git panel as a conversation view tab: appears in the top tab ring right
     // after the trajectory tab, rendered only when selected. Collapsed state and
     // fetch caching live in the component.

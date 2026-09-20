@@ -282,7 +282,7 @@
 ## [2026-09-24] fix | 修复会话重载校验报错：assistant/message 空 model 来源
 
 - 背景：重开 pi 会话（及部分更旧会话）抛 `message must have model source`。上条遗留怀疑「v2→v3 迁移写入非 model 来源」，实测 source 是 `kind:'model'` 但 provider/model 为空串。
-- 根因（三层）：加载侧 `assertMessageEventShape` 要求 model 来源 provider/model 非空（上游 b1af35145b 引入）；写入侧 pi 翻译器 `pi-event-translator.ts` 硬编码空 provider/model；v2→v3 迁移忠实搬运空值（非引入者）。
+- 根因（三层）：加载侧 `assertMessageEventShape` 要求 model 来源 provider/model 非空（上游 2026-09 收紧校验的提交引入）；写入侧 pi 翻译器 `pi-event-translator.ts` 硬编码空 provider/model；v2→v3 迁移忠实搬运空值（非引入者）。
 - 修法（两层）：加载侧放宽——`assistant/message` 仅保留 `kind==='model'` 校验，provider/model 允许空（语义「未知模型」，`hasProviderModel` 仍用于 seed request/header）；写入侧——`PiLoop.launch` 解析的模型路由经 agent 传入 `PiEventTranslator`，assistant source 记真实 provider/model（路由未设则记空，接受为未知）。
 - 验证：session + pi-agent-loop 522 测试全绿（含 2 个新回归）；typecheck 通过；本地 48 会话文件 5502 事件 load 校验 0 个 model-source 失败；6 处 `header.system` 假阳性系绕过迁移（已迁移 v3 伴生文件 0 失败，印证迁移正常）。
 - 清偿 2026-09-22 遗留项。详见 queries/session-reload-model-source.md。
@@ -311,3 +311,13 @@
 - 决定：这一件放到有完整预算的一轮做，本轮不动 `SESSION_FORMAT_VERSION`（保持在 3，工作区无半成品）。
 - 交接单：`queries/session-format-v4-landing.md`。含三条「为何必须动格式」的证据（surface 只认固定四类事件、`@messageProjection` 只改既有消息、免轮次 surface 事件只有 `user/message`）、版本机制笔记对 `SurfaceEventType` 集属结构性改动的原文、七步落地清单（含顺序不可调换的原因：`createSessionFormatChain` 缺相邻代直接抛错）、一代迁移包的确切文件清单与 `dsh.sessionFormatMigration` 代际清单块、以及动手前必读的既有实现清单。
 - 风险提示留存：迁移代码写错不会报错而是静默迁错用户日志，禁止在未读完 v2-to-v3 的 codec/payload/references/validation 实现时凭猜测镜像。
+
+## [2026-09-24] feat | 会话格式升到 v4：席位答复以 assistant 角色进模型可见内容
+
+- 需求：星域专家席（`/review` `/bug` `/planning`）的答复必须让模型侧看到 assistant 角色。核实后确认只有动会话格式一条路：surface 只认固定四类事件、`@messageProjection` 只改既有消息、免轮次 surface 事件只有 `user/message`，而往 `SurfaceEventType` 集加类型属笔记明列的结构性改动、必须 bump。
+- 新包 `packages/session/session-format-v3-to-v4`：v3→v4 是恒等转换，只多准入 `assistant/peer-message`；含冻结的 V4 编解码器（包住 v3 版）、V4 产物校验器、载荷校验器、双语文档与 8 项迁移测试。
+- 核心：`SESSION_FORMAT_VERSION = 4`；`SessionEventMap` 增 `assistant/peer-message: { message: PeerAssistantMessage }`；`SurfaceEventType`/`SURFACE_EVENT_TYPES` 增该类型；`surfaceMessage()` 按助手消息投影；`llm` 增 `PeerAssistantMessage`（`source` 用 `Exclude<MessageSource, ModelMessageSource>` 从类型上禁止冒充本会话模型）与 `createPeerAssistantMessage`。
+- 连带更新：`session-log-deepseek` 线格式、`session-reference` 投影、`ui-chat` 的 `peer-message` Definition 与卡片渲染器（locale `message.peerAnswer`）、`session-format-catalog` 生成物与工程引用、`gen-tsconfig-paths`。
+- 两个实测踩坑（记入 `concepts/session-format-generations`）：冻结的 v3 校验器会把新 surface 类型读成「已知的非 surface 类型」而拒绝其 `surfaceOp`，故 v4 恢复器不整份委托；行级准入必须只做窄检查，否则会把存储态的 `sourceEventSeqs` 范围形式判死。
+- 文档：历史参考 `docs/persistence-changes/historical-formats/v3.{md,zh.md}`（用 `--archive 3` 在 bump 前归档得到）、`docs/subsystems/session.md` 的 type-equiv 区块、新包双语 README；`test:docs` 20 项门禁全绿。
+- 验证：`typecheck` 两面、`verify-package-dependencies`、相关包 vitest（2447 + 41 + 901 + 745）、客户端与前端产物重建后网页实测无 error/warn。

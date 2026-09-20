@@ -1,17 +1,16 @@
 ---
-title: 落到 v4 的交接：席位答复以 assistant 角色进模型可见内容
+title: 会话格式 v4：席位答复以 assistant 角色进模型可见内容
 type: query
 tags: [session-format, surface, 迁移, xingchen, a2a, 待实施]
 created: 2026-09-20
 updated: 2026-09-20
 sources: []
-status: draft
+status: active
 ---
 
 # 落到 v4 的交接：席位答复以 assistant 角色进模型可见内容
 
-> 状态：**待实施**。本页是动手前的交接单，不是已完成结论。
-> 需求方要求：星域专家席的答复必须让**模型侧看到 assistant 角色**，不能降级成 user 角色注入。
+> 状态：**已实施**（2026-09-24，写入器 v4）。本页保留需求、证据、落地清单与实施结果。代际机制与「新增一代」的顺序见 [会话格式代际](../concepts/session-format-generations.md)。
 
 ## 为什么必须动会话格式（三条证据）
 
@@ -72,3 +71,17 @@ tests/*.spec.ts
 | 复用 `system/message` | 强制 turn/step，命令路径无轮次可填 |
 | 伪造 `assistant/message` 的 model source | 会把对端 provider/model 记进本会话的计价口径，且伪造 turn 结构 |
 | 只做界面呈现（`assistant/attempt` + 客户端气泡） | 不进模型可见内容，只解决观感 |
+
+## 实施结果（2026-09-24）
+
+按上表 1→7 落地，写入器升到 **v4**：
+
+- 新包 `packages/session/session-format-v3-to-v4`：恒等体迁移 + 冻结的 V4 编解码器 + V4 产物校验器 + 载荷校验器，自带双语 README 与 8 项迁移测试。
+- 核心：`SESSION_FORMAT_VERSION = 4`；`SessionEventMap` 增 `assistant/peer-message: { message: PeerAssistantMessage }`；`SurfaceEventType` 与 `SURFACE_EVENT_TYPES` 增该类型；`surfaceMessage()` 按助手消息投影。`llm` 侧新增 `PeerAssistantMessage`（`source: Exclude<MessageSource, ModelMessageSource>`，从类型上禁止它冒充本会话模型）与 `createPeerAssistantMessage`。
+- xingchen：`MessageSourceMap['a2a-seat']` 声明合并；命令路径成功后 append 该事件（自带的测试断言 role/source/内容）。
+- 客户端：`ui-chat` 增 `peer-message` Definition 与卡片渲染器（复用 `AssistantMarkdown`），locale 增 `message.peerAnswer`；`session-reference` 投影与 `session-log-deepseek` 线格式同步。
+- 文档：新包双语 README、`docs/persistence-changes/historical-formats/v3.{md,zh.md}` 历史参考（62 根 / 482 类型）、`docs/subsystems/session.md` 的 type-equiv 区块。
+
+**实际改动比预估多出的两处**（已写入 [代际页](../concepts/session-format-generations.md) 的踩坑小节）：冻结的 v3 校验器无法把新 surface 类型读成不透明事件，所以 v4 校验器不整份委托给 v3；行级准入必须只做窄检查，否则会把存储态的范围形式 `sourceEventSeqs` 判死。
+
+**验证**：`typecheck`（两面）、`test:docs` 20 项门禁、`verify-package-dependencies`、相关包 vitest（core/session + session/* 2447、xingchen 41、ui-chat 与回放 901、ui-conversation/ui-polish/ui-trajectory 745）全绿；客户端与前端产物重建后网页实测无 error/warn。

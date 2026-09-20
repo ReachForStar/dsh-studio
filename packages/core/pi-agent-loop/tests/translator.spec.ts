@@ -91,4 +91,24 @@ describe('PiEventTranslator', () => {
     expect(users).toHaveLength(1)
     expect(users[0]?.data.content).toEqual([{ type: 'text', text: 'hi' }])
   })
+
+  it('records the pi model route on assistant messages', () => {
+    const session = Session.create(SessionId('pi-model'))
+    const translator = new PiEventTranslator(session, { provider: 'amax', modelId: 'qwen-3.8-27B' })
+    let listener: (event: unknown) => void = () => {}
+    translator.subscribe({
+      subscribe(fn: (event: unknown) => void) { listener = fn; return () => {} },
+    })
+
+    listener({ type: 'turn_start' })
+    listener({ type: 'message_end', message: { role: 'user', content: [{ type: 'text', text: 'hi' }] } })
+    listener({
+      type: 'message_end',
+      message: { role: 'assistant', content: [{ type: 'text', text: 'hello' }], stopReason: 'stop' },
+    })
+
+    const assistants = session.snapshotEvents().filter(event => event.type === 'assistant/message')
+    expect(assistants).toHaveLength(1)
+    expect(assistants[0]?.data.message.source).toEqual({ kind: 'model', provider: 'amax', model: 'qwen-3.8-27B' })
+  })
 })

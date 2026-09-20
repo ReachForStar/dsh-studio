@@ -180,14 +180,15 @@ export class PiLoop extends Service implements AgentFactory {
       durable = durableFactory
     }
 
+    const agentProvider = options.agentOptions?.provider
+    const agentModel = options.agentOptions?.model
+    const route = this.model
+      ?? (agentProvider !== undefined && agentModel !== undefined
+        ? { provider: agentProvider, modelId: agentModel }
+        : undefined)
+
     let opened: OpenedPiSession
     try {
-      const agentProvider = options.agentOptions?.provider
-      const agentModel = options.agentOptions?.model
-      const route = this.model
-        ?? (agentProvider !== undefined && agentModel !== undefined
-          ? { provider: agentProvider, modelId: agentModel }
-          : undefined)
       opened = await this.openSession({
         cwd,
         ...route === undefined ? {} : { provider: route.provider, modelId: route.modelId },
@@ -207,6 +208,7 @@ export class PiLoop extends Service implements AgentFactory {
       opened.session,
       durable?.handle,
       durable?.stored,
+      route,
     )
     const tools = this.ctx.get('tools')
     if (tools !== undefined) {

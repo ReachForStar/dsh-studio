@@ -105,6 +105,7 @@ export class PiLoopAgent implements Agent {
     piSession: PiAgentSessionLike,
     durable?: PiDurableWrite,
     storedCount?: number,
+    modelRoute?: { readonly provider: string; readonly modelId: string },
   ) {
     this.id = id
     this.options = options
@@ -126,7 +127,7 @@ export class PiLoopAgent implements Agent {
     }
     this.scope = createScope(loopCtx, this)
     this.ctx = this.scope.ctx.extend({ agent: this })
-    this.translator = new PiEventTranslator(session)
+    this.translator = new PiEventTranslator(session, modelRoute)
     this.translator.subscribe(piSession)
     if (durable !== undefined) {
       this.translator.setOnAppended(() => { this.scheduleFlush() })

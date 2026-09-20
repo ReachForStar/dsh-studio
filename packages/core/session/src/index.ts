@@ -364,7 +364,11 @@ function assertMessageEventShape(event: Record<string, unknown>, subject: string
     return
   }
   if (type === 'assistant/message') {
-    if (sourceRecord['kind'] !== 'model' || !hasProviderModel(sourceRecord)) {
+    // The kind is the load-bearing invariant: an assistant message is a model
+    // response. provider/model may be empty for legacy logs and backends that
+    // do not track per-message model (e.g. the pi backend), which reads as
+    // "unknown model" rather than a validation failure.
+    if (sourceRecord['kind'] !== 'model') {
       throw new Error(`${subject} message must have model source`)
     }
     return

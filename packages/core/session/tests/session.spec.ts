@@ -416,6 +416,31 @@ describe('Session', () => {
     }
   })
 
+  it('accepts a model source with empty provider/model (legacy / untracked model)', () => {
+    // A model response whose provider/model is not recorded (legacy logs and
+    // the pi backend) must still pass the snapshot invariant: the kind is the
+    // load-bearing check, the concrete route may be unknown.
+    const event = {
+      type: 'assistant/message',
+      seq: SessionSeq(0),
+      time: 1,
+      surfaceOp: 'append',
+      data: {
+        turn: 1,
+        step: 1,
+        stream: [],
+        message: {
+          id: 'empty-model',
+          role: 'assistant',
+          content: [{ type: 'text', text: 'content' }],
+          source: { kind: 'model', provider: '', model: '' },
+        },
+      },
+    } as unknown as SessionEvent
+    expect(() => snapshotSessionEvent(event)).not.toThrow()
+    expect(() => Session.create(SessionId('empty-model'), [event])).not.toThrow()
+  })
+
   it('snapshots message events without validating plugin-owned block details', () => {
     const boundary = snapshotSessionEvent({
       type: 'turn/start',

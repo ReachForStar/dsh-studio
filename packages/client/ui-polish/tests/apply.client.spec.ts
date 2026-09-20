@@ -34,16 +34,6 @@ async function bench() {
   await ctx.plugin(SlotRegistry).await()
   const locale = new LocaleRuntime(ctx)
   ctx.provide('locale', locale)
-  // Conversation registries: the flow target registers an event Definition and a
-  // view target; this suite only asserts the registrations happened.
-  const flowRegistrations = { events: [] as unknown[], views: [] as unknown[] }
-  ctx.provide('uiConversation', {
-    events: { register: (definition: unknown) => { flowRegistrations.events.push(definition); return () => {} } },
-    views: { register: (definition: unknown) => { flowRegistrations.views.push(definition); return () => {} } },
-    binding: () => ({
-      target: () => ({ getSnapshot: () => undefined, subscribe: () => () => {} }),
-    }),
-  })
   let backgroundImage: string | undefined
   const namespace = () => ({
     ns: BACKGROUND_SETTINGS_NAMESPACE,
@@ -98,7 +88,7 @@ async function bench() {
     } as never,
     () => null,
   )
-  return { ctx, slots, locale, events, flowRegistrations }
+  return { ctx, slots, locale, events }
 }
 
 afterEach(() => {
@@ -109,7 +99,7 @@ afterEach(() => {
 
 describe('ui-polish apply', () => {
   it('declares the required services', () => {
-    expect(inject).toEqual(['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh', 'uiConversation'])
+    expect(inject).toEqual(['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh'])
   })
 
   it('registers the settings rows, dock entries, and view tabs, and unwinds on dispose', async () => {
@@ -118,14 +108,12 @@ describe('ui-polish apply', () => {
     await fiber.await()
     expect(b.slots.entries(GENERAL).map(e => e.options.id)).toEqual(['polish-background', 'polish-compaction', 'polish-pricing'])
     expect(b.slots.entries(DOCK).map(e => e.options.id)).toEqual(['polish-stats'])
-    expect(b.slots.entries('conversation.view').map(e => e.options.id)).toEqual(['flow', 'git', 'excalidraw', 'latex', 'ssh'])
+    expect(b.slots.entries('conversation.view').map(e => e.options.id)).toEqual(['git', 'excalidraw', 'latex', 'ssh'])
     expect(b.slots.entries(GENERAL).find(e => e.component === BackgroundRow)!.locale).toBe(NS)
     expect(b.slots.entries(GENERAL).find(e => e.component === CompactionRow)!.locale).toBe(NS)
     expect(b.slots.entries(GENERAL).find(e => e.component === PricingRow)!.locale).toBe(NS)
     expect(b.slots.entries(DOCK).find(e => e.component === StatsFloat)!.locale).toBe(NS)
     expect(document.head.querySelector('style[data-ui-polish-ambient]')).not.toBeNull()
-    expect(b.flowRegistrations.events).toHaveLength(1)
-    expect(b.flowRegistrations.views).toHaveLength(1)
     await fiber.dispose()
     expect(b.slots.entries(GENERAL)).toHaveLength(0)
     expect(b.slots.entries(DOCK)).toHaveLength(0)

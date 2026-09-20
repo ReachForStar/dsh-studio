@@ -286,3 +286,12 @@
 - 修法（两层）：加载侧放宽——`assistant/message` 仅保留 `kind==='model'` 校验，provider/model 允许空（语义「未知模型」，`hasProviderModel` 仍用于 seed request/header）；写入侧——`PiLoop.launch` 解析的模型路由经 agent 传入 `PiEventTranslator`，assistant source 记真实 provider/model（路由未设则记空，接受为未知）。
 - 验证：session + pi-agent-loop 522 测试全绿（含 2 个新回归）；typecheck 通过；本地 48 会话文件 5502 事件 load 校验 0 个 model-source 失败；6 处 `header.system` 假阳性系绕过迁移（已迁移 v3 伴生文件 0 失败，印证迁移正常）。
 - 清偿 2026-09-22 遗留项。详见 queries/session-reload-model-source.md。
+
+## [2026-09-20] feat | 背景图透明范围扩到全页（画布面板除外）+ 引入 three.js
+
+- 需求：UI 背景透明以便更换背景图；除画布面板外所有页面都透明；后续用 three.js 做「会话流」3D 视图（启明与全部非启明预设都走该形态，中国风形象）。
+- `ui-polish` 的 `AMBIENT_OVERRIDES` 在原有 `--dsw-alias-bg-base`、`--dsw-specific-sidebar-fill` 之外，追加 `--dsw-alias-bg-layer-1/2` 置透明（卡片、行、面板随之透出背景图）；`--dsw-alias-bg-overlay` 保持不透明（菜单/弹窗需要对比度）。
+- 画布面板用 `[data-ui-polish-excalidraw]` 作用域把抬升面 token 重新声明为 `var(--dsw-alias-bg-overlay)`——token 层改写无法局部取消，只能在该子树内用未被改写的 token 重新声明。
+- 依赖：`@reachforstar/dsh-client-ui-polish` 加入 `three` + `@types/three`（MIT）。未使用前不单独提交：`verify-package-dependencies` 会把未引用依赖判为红项。
+- 验证：ui-polish 12 文件 128 测试全过（含新增断言：四个 token 置透明、overlay 不透明、画布面板重新声明）。
+- 已定位的既有缺陷（本次会话流视图要一并修）：`ui-chat` 的 `chat-snapshot-builder.ts` 里 `isActive` 要求存在非 command 节点，导致只跑 `/planning`（无模型轮次）的会话在 `conversationPhase()` 落回 `blank`，对话区空白——用户报的「/planning 没反应」。

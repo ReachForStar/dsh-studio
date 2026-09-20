@@ -133,4 +133,23 @@ describe('ui-polish apply', () => {
     await fiber.dispose()
     expect(document.body.hasAttribute('data-ds-bg-image')).toBe(false)
   })
+
+  it('makes every page surface transparent for the background image, except the canvas panel', async () => {
+    const b = await bench()
+    const fiber = b.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+    const ambient = document.head.querySelector('style[data-ui-polish-ambient]')!
+    const sheet = ambient.textContent ?? ''
+    // Page surfaces yield to the image (base + both raised layers + sidebar).
+    for (const token of ['--dsw-alias-bg-base', '--dsw-alias-bg-layer-1', '--dsw-alias-bg-layer-2', '--dsw-specific-sidebar-fill']) {
+      expect(sheet).toContain(`${token}: transparent;`)
+    }
+    // Overlays stay opaque so menus and dialogs keep reading against a photo.
+    expect(sheet).not.toContain('--dsw-alias-bg-overlay: transparent;')
+    // The canvas panel re-declares the raised surfaces from the overlay colour.
+    const canvasRule = sheet.slice(sheet.indexOf('[data-ui-polish-excalidraw]'))
+    expect(canvasRule).toContain('--dsw-alias-bg-base: var(--dsw-alias-bg-overlay);')
+    expect(canvasRule).toContain('--dsw-alias-bg-layer-1: var(--dsw-alias-bg-overlay);')
+    await fiber.dispose()
+  })
 })

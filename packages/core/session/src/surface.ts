@@ -51,6 +51,7 @@ const SURFACE_EVENT_TYPES = new Set<string>([
   'system/message',
   'user/message',
   'assistant/message',
+  'assistant/peer-message',
   'tool/result',
 ])
 
@@ -141,9 +142,11 @@ export function deriveEventMessage(
     // system/message the node records "no system prompt" while keeping its
     // surface position; for assistant/message the event exists only to host a
     // max-tokens step's usage and must not inject a content-less assistant
-    // turn into the provider transcript.
+    // turn into the provider transcript. A peer message carries another agent's
+    // answer and is a real assistant turn for the model.
     case 'system/message':
-    case 'assistant/message': {
+    case 'assistant/message':
+    case 'assistant/peer-message': {
       if (event.data.message.content.length === 0) return null
       return event.data.message
     }

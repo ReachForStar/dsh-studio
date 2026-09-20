@@ -46,7 +46,8 @@ function projectSessionConversation(snapshot: SessionSurfaceSnapshot): Projected
         if (text !== '') conversation.push({ role: 'user', text, checkpoint, originalText: text, omittedBytes: 0 })
         break
       }
-      case 'assistant/message': {
+      case 'assistant/message':
+      case 'assistant/peer-message': {
         const text = textContent(event.data.message.content)
         if (text !== '') conversation.push({ role: 'assistant', text, checkpoint: false, originalText: text, omittedBytes: 0 })
         break

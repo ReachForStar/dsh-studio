@@ -116,7 +116,7 @@ function line(value: unknown): string {
   return JSON.stringify(value) + '\n'
 }
 
-async function store(version: 2 | 3, compression: JsonlCompression, rows: readonly SessionFormatJsonObject[]) {
+async function store(version: 2 | 4, compression: JsonlCompression, rows: readonly SessionFormatJsonObject[]) {
   const path = generationLogPath(root, undefined, id, version, compression)
   const header = { type: 'session', version, id, createdAt: 1000, isSeeded: false, delegationDepth: 0 }
   const events = rows.map((row, seq) => ({ ...row, seq, time: 1001 + seq }))
@@ -162,19 +162,19 @@ describe.each(modes)('EOF migration refusal ($compression, $access)', ({ compres
       expect(await observe(path)).toEqual(original)
       await expectOnlyGenerations([path])
       for (const targetCompression of ['none', 'zstd'] as const) {
-        await expect(stat(generationLogPath(root, undefined, id, 3, targetCompression)))
+        await expect(stat(generationLogPath(root, undefined, id, 4, targetCompression)))
           .rejects.toMatchObject({ code: 'ENOENT' })
       }
     }
   })
 
-  it.each(nativeRefusals)('refuses native V3 $name instead of falling back to readable V2', async ({ tail, diagnostic }) => {
+  it.each(nativeRefusals)('refuses native current $name instead of falling back to readable V2', async ({ tail, diagnostic }) => {
     const lowerPath = await store(2, compression, prefix)
     const lower = await observe(lowerPath)
     const ctx = await mount(compression)
     const reader = await ctx.sessionPersistence.open(id, 'read')
     try {
-      expect(reader.header.version).toBe(3)
+      expect(reader.header.version).toBe(4)
       const restored = await reader.read()
       expect(restored.events.map(event => event.type)).toEqual([
         'turn/start', 'step/start', 'system/message', 'user/message', 'system/message', 'request/header',
@@ -186,7 +186,7 @@ describe.each(modes)('EOF migration refusal ($compression, $access)', ({ compres
     expect(await observe(lowerPath)).toEqual(lower)
     await expectOnlyGenerations([lowerPath])
 
-    const path = await store(3, compression, [...nativePrefix, tail])
+    const path = await store(4, compression, [...nativePrefix, tail])
     const original = await observe(path)
     const message = diagnostic + ' (raw log: ' + path + ')'
     for (let attempt = 0; attempt < 2; attempt += 1) {

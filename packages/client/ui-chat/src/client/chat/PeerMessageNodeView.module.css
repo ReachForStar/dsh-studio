@@ -1,0 +1,29 @@
+/* Peer-answer card: visually distinct from this Session's own model output so a
+   reader never mistakes another agent's answer for the local model's. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-left: 2px solid var(--dsw-alias-brand-primary);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 60%, transparent);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.label {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.producer {
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--dsw-font-family-mono, monospace);
+}

@@ -27,14 +27,18 @@ export function assertReleasedV3Header(header: SessionFormatHeader): void {
  * @param knownEventTypes - event types understood by the installed Session package.
  * @returns the same validated artifact.
  */
-export function restoreReleasedV3Artifact(artifact: SessionFormatArtifact, knownEventTypes: ReadonlySet<string>): SessionFormatArtifact {
+export function restoreReleasedV3Artifact(
+  artifact: SessionFormatArtifact,
+  knownEventTypes: ReadonlySet<string>,
+  laterSurfaceTypes: ReadonlySet<string> = new Set(),
+): SessionFormatArtifact {
   assertReleasedV3Header(artifact.header)
   let step: { turn: unknown; step: unknown } | undefined
   let head: number | undefined
   let hasSurface = false
   const events = artifact.events.map((event): SessionFormatEvent => {
     assertV3EventAdmission(event)
-    assertV3Event(event, knownEventTypes)
+    assertV3Event(event, knownEventTypes, laterSurfaceTypes)
     const system = event.type === 'system/message'
     if (event.type === 'step/start') {
       const data = record(event.data, event.type)

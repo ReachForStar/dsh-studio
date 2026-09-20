@@ -256,8 +256,27 @@ describe('/review /bug /planning 人面命令', () => {
     expect(call.text).toContain('评估这个 diff')
   })
 
-  it('bug 与 planning 分别路由到瑶光与天梁', async () => {
+  it('把席位答复作为免轮次的 assistant 消息落进会话事件', async () => {
     const test = await harness()
+    await test.ctx.commands.execute(test.agent, '/planning 分波交付', [], signal)
+    const peer = test.session.ownEvents()
+      .filter(event => (event as { type: string }).type === 'assistant/peer-message')
+    expect(peer).toHaveLength(1)
+    const message = (peer[0] as { data: { message: {
+      id: string
+      role: string
+      source: Record<string, unknown>
+      content: unknown[]
+    } } }).data.message
+    expect(message.role).toBe('assistant')
+    expect(message.id).not.toBe('')
+    // The seat produced the answer, so the source names it and never this Session's model.
+    expect(message.source).toMatchObject({ kind: 'a2a-seat', role: 'tianliang' })
+    expect(message.source).not.toHaveProperty('provider')
+    expect(message.content).toEqual([{ type: 'text', text: '专家回答' }])
+  })
+
+  it('bug 与 planning 分别路由到瑶光与天梁', async () => {    const test = await harness()
     await test.ctx.commands.execute(test.agent, '/bug 复现崩溃', [], signal)
     await test.ctx.commands.execute(test.agent, '/planning 分波交付', [], signal)
     expect(sentCall(test.a2a, 0).peer).toBe('pi')

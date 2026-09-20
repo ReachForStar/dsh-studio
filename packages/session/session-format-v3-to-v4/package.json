@@ -1,6 +1,6 @@
 {
-  "name": "@deepseek-ai/dsh-session-format-v2-to-v3",
-  "description": "Streaming system-prompt, canonical-envelope and PTC migration into V3",
+  "name": "@deepseek-ai/dsh-session-format-v3-to-v4",
+  "description": "Peer-agent assistant messages outside a turn: the v3 to v4 adjacent session-format migration",
   "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
-    "directory": "packages/session/session-format-v2-to-v3"
+    "directory": "packages/session/session-format-v3-to-v4"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -28,26 +28,26 @@
   "license": "MIT",
   "dsh": {
     "sessionFormatMigration": {
-      "from": 2,
-      "to": 3,
+      "from": 3,
+      "to": 4,
       "export": ".",
-      "migration": "sessionFormatV2ToV3",
-      "sourceCodec": "releasedV2SessionFormatCodec",
-      "targetCodec": "releasedV3SessionFormatCodec",
-      "targetHeaderValidator": "assertReleasedV3Header",
-      "targetRestorer": "restoreReleasedV3Artifact"
+      "migration": "sessionFormatV3ToV4",
+      "sourceCodec": "releasedV3SessionFormatCodec",
+      "targetCodec": "releasedV4SessionFormatCodec",
+      "targetHeaderValidator": "assertReleasedV4Header",
+      "targetRestorer": "restoreReleasedV4Artifact"
     }
   },
   "dependencies": {
     "@deepseek-ai/dsh-session-format": "workspace:^",
     "@deepseek-ai/dsh-session-format-v0-to-v1": "workspace:^",
-    "@deepseek-ai/dsh-session-format-v1-to-v2": "workspace:^"
+    "@deepseek-ai/dsh-session-format-v1-to-v2": "workspace:^",
+    "@deepseek-ai/dsh-session-format-v2-to-v3": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-session-format-v3-to-v4": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:^"
   }
 }

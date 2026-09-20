@@ -25,6 +25,7 @@ import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands
 import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
+import { createPeerAssistantMessage } from '@deepseek-ai/dsh-llm'
 import { ToolCallId } from '@deepseek-ai/dsh-llm/brand'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { settleRun } from '@deepseek-ai/dsh-subagent'
@@ -555,7 +556,31 @@ export class XingchenService extends Service {
         text: `${XINGCHEN_ROLE_NAMES[role]} 未完成（${reply.state}）：\n\n${reply.text}`,
       }
     }
+    this.publishSeatReply(invocation.agent, role, reply.text)
     return { kind: 'success', text: `${XINGCHEN_ROLE_NAMES[role]} 已处理：\n\n${reply.text}` }
+  }
+
+  /**
+   * Log one seat answer as a turn-free assistant message.
+   *
+   * The seat ran outside this Session's loop, so the message carries no turn,
+   * step, or provider stream and its source attributes the seat rather than this
+   * Session's model. Without it the answer would exist only as a command
+   * outcome — invisible to the model and absent from the transcript.
+   * @param parent - the agent owning the session the message lands in.
+   * @param role - the specialist role that produced the answer.
+   * @param text - the seat's answer text.
+   */
+  private publishSeatReply(parent: Agent, role: XingchenSpecialistId, text: string): void {
+    if (text.trim() === '') return
+    const seat = this.seats[role]
+    parent.session.append('assistant/peer-message', {
+      message: createPeerAssistantMessage({
+        role: 'assistant',
+        content: [{ type: 'text', text }],
+        source: { kind: 'a2a-seat', role, agent: seat.peer ?? seat.provider, skill: seat.skill },
+      }),
+    }, { surfaceOp: 'append' })
   }
 }
 

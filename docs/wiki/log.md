@@ -295,3 +295,13 @@
 - 依赖：`@reachforstar/dsh-client-ui-polish` 加入 `three` + `@types/three`（MIT）。未使用前不单独提交：`verify-package-dependencies` 会把未引用依赖判为红项。
 - 验证：ui-polish 12 文件 128 测试全过（含新增断言：四个 token 置透明、overlay 不透明、画布面板重新声明）。
 - 已定位的既有缺陷（本次会话流视图要一并修）：`ui-chat` 的 `chat-snapshot-builder.ts` 里 `isActive` 要求存在非 command 节点，导致只跑 `/planning`（无模型轮次）的会话在 `conversationPhase()` 落回 `blank`，对话区空白——用户报的「/planning 没反应」。
+
+## [2026-09-20] feat | 星域「会话流」3D 视图（three.js）+ 视图默认与透明范围
+
+- 需求：启明与全部非启明预设默认以「会话流」3D 呈现；启明前放「人」节点；技能/MCP 工具/斜杠命令/子代理等活动都进图；形象中国风；页面除画布面板外透明。
+- 新增 `packages/client/ui-polish/src/client/flow/`：`flow-graph.ts`（活动→图纯映射 + `flowViewDefinition`，`isActive: nodes.length > 1`）、`flow-definition.ts`（单个事件 Definition 折叠 `user/message`、`tool/call`+`tool/result`、`command/run`+`command/done`、`xingchen/dispatch-progress`、`assistant/message`）、`FlowView.tsx`（three.js：宫灯=启明、印章=席位、案几=人、浮珠=工具；环形布局、光带连线、缓慢摆动、画布透明、附无障碍文本摘要）。
+- 接线：`ctx.uiConversation.events.register` + `views.register({target:'flow'})` + `conversation.view` 槽条目（id `flow`，order 5）+ `inject` 增 `uiConversation`；`view-selection.ts` 回退链改为「偏好 → `flow` → `chat`」。
+- 已核实的事实：MCP 工具名形如 `mcp__<server>__<tool>`；技能调用是名为 `skill` 的工具（参数 `{"name"}`）；`tool/result` 不带工具名，须由配对的 `tool/call` 提供；命令→席位映射在 `packages/xingchen/xingchen/src/route.ts`（review→天权、bug→瑶光、planning→天梁）。
+- 实测（重建客户端与前端产物后）：`会话流` 为默认激活视图，WebGL2 画布 1388×766 已挂载，无障碍摘要「会话流：5 个活动节点——天梁、天梁、天梁、天梁、人」，控制台无 error/warn。测试：ui-polish + ui-conversation 565、ui-trajectory 185 全绿。
+- 顺带修掉用户报的「/planning 没反应」：`chat-snapshot-builder.ts` 的 `isActive` 要求非 command 节点，只跑命令的会话落回 `blank` 空态；flow 视图的 `isActive` 让这类会话判为活跃。
+- 未决（已查证，待实施）：B1b「席位答复以 assistant 角色进模型可见内容」。`@messageProjection` 只能改既有消息，surface 仅认固定四种事件类型，`system/message`/`assistant/message` 强制 turn/step 而命令路径在轮次之外——必须新增 surface 事件类型，而往 `SurfaceEventType` 集加类型属**结构性改动必须 bump**（见版本机制笔记），故需新发布代 v4 + `session-format-v3-to-v4` 迁移包 + 目录与状态记录同步。

@@ -3,7 +3,7 @@ title: 星域多智能体协作（dsh-xingchen）
 type: entity
 tags: [星域, 多智能体, 路由, a2a, preset, 会话投影, fork 扩展]
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-22
 sources: []
 status: active
 ---
@@ -39,6 +39,15 @@ fork 自研的四角色协作系统，位于 `packages/xingchen/xingchen`（包�
 - `xingchen_route` 工具：路由代理判定任务属于专家时调用；任务必须自包含（专家在自己的环境，看不到本工作区）。
 - `/review`、`/bug`、`/planning` 命令：人直接指定专家，不经过模型轮次（`dispatchCommand` 把对等端错误落定为命令错误结果，不抛出）。
 - `routeXingchen` 启发式：行首斜杠命令直接决定；否则需两个以上不同关键词命中且得分严格最高者胜出，平局与单信号留给启明。
+
+## 进度上报（2026-09-22）
+
+A2A 席位派发期间，对端的流式输出会实时写入会话，页面不再只显示「执行中…」：
+
+- **会话事件** `xingchen/dispatch-progress`（log-only，不进模型请求，不随轮次投影）：`{ role, callId?, commandId?, agent, skill, mode, state?, text }`。工具路径带 `callId`（`xingchen_route` 的调用 id），命令路径带 `commandId`（`/review` 等命令 id）；客户端按这两个 id 把最新一条报告折进对应卡片。
+- **节流**（`src/index.ts` 的 `progressReporter`）：状态变化或文本增量 ≥200 字符立即上报；否则距上次上报 ≥2.5s 才报；结算时强制补报一次终态。本机席位不产生进度事件（子代理自己的会话事件已有独立展示）。
+- **失败映射**：`dispatchCommand` 判定「席位未回答」的状态集从 A2A 终态（`TASK_STATE_FAILED` 等）扩到本机席位结果态 `failed`/`killed`——之前本机席位失败会被拼成「天梁 已处理：\n\nerror」的成功结果。
+- **客户端渲染**：事件类型声明合并在 `src/types.ts`（`./client` 面可见，ui-chat 的 Definition 经 `import type {} from '@reachforstar/dsh-xingchen/client'` 引入）；`ui-conversation` 的 `CommandNode`/`RunningToolCall` 增可选 `liveProgress`；`ui-chat` 的 command/tool Definition 按 commandId/callId 把最新一条报告折进对应节点；`GenericCommandCard` 运行时在对端累计文本下展示尾部 ≤400 字符的实时预览（locale `command.progress`），`ui-tool` 行模型运行期用进度文本占位 output。
 
 ## 内置技能
 

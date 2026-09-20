@@ -124,8 +124,17 @@ export class PiEventTranslator {
   private readonly toolCallSeqs = new Map<string, SessionSeq>()
   /** dsh request source (with rpcId) of the in-flight prompt, retiring the echo. */
   private pendingUserSource: UserMessage['source'] | undefined
+  /** Pi model route that produces assistant messages; empty when Pi picked its own default. */
+  private readonly provider: string
+  private readonly modelId: string
 
-  constructor(private readonly session: Session) {}
+  constructor(
+    private readonly session: Session,
+    modelRoute?: { readonly provider: string; readonly modelId: string },
+  ) {
+    this.provider = modelRoute?.provider ?? ''
+    this.modelId = modelRoute?.modelId ?? ''
+  }
 
   /**
    * Remember the dsh request source for the next translated user message.
@@ -208,7 +217,10 @@ export class PiEventTranslator {
       const stream = [...(this.accumulator?.snapshot() ?? [])]
       const assistantMessage = createAssistantMessage({
         content: convertContent(message.content),
-        source: { provider: '', model: '' },
+        // Pi owns its own model route; record it so the log attributes each
+        // response. Empty provider/model means Pi selected its default, which
+        // reads as "unknown model" downstream.
+        source: { provider: this.provider, model: this.modelId },
       })
       const usage = convertUsage(message.usage)
       this.session.append('assistant/message', {

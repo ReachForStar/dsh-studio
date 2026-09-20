@@ -12,6 +12,13 @@ function stateOf(outcome: CommandRowOwnerProps['node']['outcome']): CommandRowSt
   return outcome.kind === 'error' ? 'error' : 'ok'
 }
 
+/** Live preview length cap; longer peer text shows its tail, the newest part. */
+const LIVE_PREVIEW_CHARS = 400
+
+function livePreviewOf(text: string): string {
+  return text.length > LIVE_PREVIEW_CHARS ? `…${text.slice(-LIVE_PREVIEW_CHARS)}` : text
+}
+
 function leadingFor(state: CommandRowState): ReactNode {
   return state === 'error' ? <StateDot state="error" /> : <IconApiOutline14 size={14} />
 }
@@ -34,6 +41,8 @@ export function GenericCommandCard({ node, t, runningSummary }: GenericCommandCa
   const title = node.name ?? t('command.title')
   const state = stateOf(node.outcome)
   const body = text !== undefined && text.includes('\n') ? text : null
+  const liveText = node.liveProgress?.text
+  const live = state === 'running' && liveText !== undefined && liveText.trim() !== '' ? liveText : null
   const open = expanded && body !== null
   return (
     <div className={css.root} data-variant="others" data-state={state}>
@@ -60,6 +69,9 @@ export function GenericCommandCard({ node, t, runningSummary }: GenericCommandCa
       >
         <pre className={css.body} data-error={state === 'error' || undefined}>{body}</pre>
       </DisclosureRow>
+      {live !== null && (
+        <pre className={css.live} aria-label={t('command.progress')}>{livePreviewOf(live)}</pre>
+      )}
     </div>
   )
 }

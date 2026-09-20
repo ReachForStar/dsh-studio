@@ -215,6 +215,17 @@ export interface UnknownSurfaceNode {
 }
 
 /**
+ * Latest live report of one star-domain A2A dispatch, folded from the
+ * log-only `xingchen/dispatch-progress` events (paired by the driving call's
+ * id). `text` is the peer's cumulative answer so far, `state` its last
+ * reported task state.
+ */
+export interface DispatchProgress {
+  state?: string
+  text: string
+}
+
+/**
  * One slash-command lifecycle folded from the log-only `command/run` /
  * `command/done` pair (paired by commandId, mirroring tool call↔result).
  * Log-only events are not surface events, so the command Definition indexes
@@ -245,6 +256,8 @@ export interface CommandNode {
     /** Earlier authoritative domain event for a richer client-computed presentation. */
     sourceEventSeq?: number
   } | null
+  /** Latest peer progress report while a star-domain command is executing; absent otherwise. */
+  liveProgress?: DispatchProgress
 }
 
 /** Finalized conversation node union (kind discriminates; seq is the React key). */
@@ -274,6 +287,8 @@ export interface RunningToolCall {
   time: number
   /** Child calls owned by this call, in dispatch order. */
   subCalls: readonly ToolCallBlock[]
+  /** Latest peer progress report while a star-domain dispatch is running; absent otherwise. */
+  liveProgress?: DispatchProgress
 }
 
 /** One running or settled call, recursively owning its child calls. */

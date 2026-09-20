@@ -1,10 +1,11 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
-  ConversationMatch, ConversationNodeContext, ConversationNodeDefinition, RunningToolCall,
+  ConversationMatch, ConversationNodeContext, ConversationNodeDefinition, DispatchProgress, RunningToolCall,
   ToolCallBlock, ToolResultNode,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { isAppendSurfaceEvent } from '@deepseek-ai/dsh-session/surface'
 import type {} from '@deepseek-ai/dsh-tools/types'
+import type {} from '@reachforstar/dsh-xingchen/client'
 import type { ToolChatData } from '../contract/chat-nodes.ts'
 import { CHAT_SYNTHETIC_SEQ_OFFSETS, chatNode } from './common.ts'
 
@@ -34,6 +35,12 @@ const projectedBlocks = new WeakMap<ToolCallBlock, ProjectedBlockCache>()
 
 function jsonArguments(value: unknown): string {
   return JSON.stringify(value)
+}
+
+function progressOf(match: ConversationMatch): DispatchProgress {
+  if (match.event.type !== 'xingchen/dispatch-progress') throw new Error('progress update requires xingchen/dispatch-progress')
+  const data = match.event.data
+  return { ...data.state === undefined ? {} : { state: data.state }, text: data.text }
 }
 
 function rootCall(match: ConversationMatch): RunningToolCall {
@@ -238,6 +245,9 @@ export const toolDefinition: ConversationNodeDefinition<ToolState> = {
     if (event.type === 'tool/result' && isAppendSurfaceEvent(event)) {
       return { id: String(event.data.message.source.callId), role: 'update' }
     }
+    if (event.type === 'xingchen/dispatch-progress' && event.data.callId !== undefined) {
+      return { id: String(event.data.callId), role: 'update' }
+    }
     if (event.type === 'tool/ptc-dispatch-start' || event.type === 'tool/ptc-dispatch') {
       const rootCallId: unknown = event.data.rootCallId
       return typeof rootCallId === 'string' && rootCallId !== ''
@@ -252,6 +262,11 @@ export const toolDefinition: ConversationNodeDefinition<ToolState> = {
       const running = 'kind' in context.state.root ? undefined : context.state.root
       const result = rootResult(match, running)
       return result === undefined ? context.state : { ...context.state, root: result }
+    }
+    if (match.event.type === 'xingchen/dispatch-progress') {
+      const running = 'kind' in context.state.root ? undefined : context.state.root
+      if (running === undefined) return context.state
+      return { ...context.state, root: { ...running, liveProgress: progressOf(match) } }
     }
     return updateDispatch(context.state, match)
   },

@@ -83,6 +83,14 @@ export interface A2ASendRequest extends A2APeerCall {
   readonly metadata?: Record<string, unknown>
 }
 
+/** One progress report from a running dispatch: the latest state and cumulative answer text. */
+export interface A2ADispatchProgress {
+  /** Latest task state the peer reported, when it has reported one. */
+  readonly state?: string
+  /** Answer text accumulated so far from the peer's artifacts. */
+  readonly text: string
+}
+
 /** One task dispatched into a bridge deployment. */
 export interface A2ADispatchRequest {
   /** Bridge agent name: `pi`, `claude-code`, or `opencode`. */
@@ -106,6 +114,14 @@ export interface A2ADispatchRequest {
   readonly timeoutMs?: number
   /** Cancellation owned by the caller. */
   readonly signal?: AbortSignal
+  /**
+   * Receives one report per state or text change while the task runs. Direct
+   * mode forwards the peer's stream frames; bus mode forwards the
+   * deployment's event frames. The report is advisory: a direct-channel
+   * reporter failure fails the dispatch, while the bus channel contains it
+   * with the bus's documented event-handler containment.
+   */
+  readonly onProgress?: (progress: A2ADispatchProgress) => void
 }
 
 /** What one dispatch answered with. */
@@ -247,14 +263,21 @@ export class A2AService extends Service {
       },
     }, request.signal)) {
       if ('task' in event) task = event.task
-      if ('artifactUpdate' in event) text += textOf(event.artifactUpdate.artifact.parts)
+      if ('artifactUpdate' in event) {
+        text += textOf(event.artifactUpdate.artifact.parts)
+        request.onProgress?.({ ...lastState === undefined ? {} : { state: lastState }, text })
+      }
       if ('statusUpdate' in event) {
-        lastState = event.statusUpdate.status.state
+        const state = event.statusUpdate.status.state
+        const stateChanged = state !== lastState
+        lastState = state
         // A failing gateway reports why in the terminal status message.
         const reason = event.statusUpdate.status.message
-        if (isTerminal(event.statusUpdate.status.state) && text.length === 0 && reason !== undefined) {
+        const textBefore = text
+        if (isTerminal(state) && text.length === 0 && reason !== undefined) {
           text = textOf(reason.parts)
         }
+        if (stateChanged || text !== textBefore) request.onProgress?.({ state, text })
       }
     }
     if (task === undefined) {
@@ -288,13 +311,16 @@ export class A2AService extends Service {
     const taskId = randomUUID()
     const contextId = request.contextId ?? randomUUID()
     let text = ''
+    let state: string | undefined
     let terminal: BusEvent | undefined
     // Subscribe before publishing: a consumer that joins afterwards starts at
     // the topic's end and would miss the events a fast agent already emitted.
     const handle: A2ABusHandle = await bus.consumeEvents(`dsh-${taskId}`, (event) => {
       if (event.taskId !== taskId) return
       if (event.type === 'terminal') terminal = event
-      if (event.text !== undefined && event.type === 'artifact-update') text += event.text
+      if (event.state !== undefined) state = event.state
+      if (event.type === 'artifact-update' && event.text !== undefined) text += event.text
+      if (state !== undefined || text.length > 0) request.onProgress?.({ ...state === undefined ? {} : { state }, text })
     })
     try {
       const task: BusTask = {

@@ -1,11 +1,13 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   CommandNode, CompactionSummaryNode, ConversationMatch, ConversationNodeContext, ConversationNodeDefinition,
+  DispatchProgress,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { CompactionCheckpointSource } from '@deepseek-ai/dsh-compaction/checkpoint'
 import type {} from '@deepseek-ai/dsh-compaction/types'
 import type {} from '@deepseek-ai/dsh-commands/types'
 import { isReplacementSurfaceEvent } from '@deepseek-ai/dsh-session/surface'
+import type {} from '@reachforstar/dsh-xingchen/client'
 import type { ManualCompactionChatData } from '../contract/chat-nodes.ts'
 import { chatNode } from './common.ts'
 
@@ -131,6 +133,12 @@ function compactSummary(match: ConversationMatch | undefined, checkpoint: Conver
   }
 }
 
+function progressOf(match: ConversationMatch): DispatchProgress {
+  if (match.event.type !== 'xingchen/dispatch-progress') throw new Error('progress update requires xingchen/dispatch-progress')
+  const data = match.event.data
+  return { ...data.state === undefined ? {} : { state: data.state }, text: data.text }
+}
+
 function fallbackState(context: ConversationNodeContext<CommandState>): CommandState | undefined {
   const done = context.matches.find(match => match.event.type === 'command/done')
   const checkpoint = context.matches.find(match => compactSource(match.event) !== undefined)
@@ -182,6 +190,9 @@ export const commandDefinition: ConversationNodeDefinition<CommandState> = {
     if (event.type === 'command/done') {
       return { id: String(event.data.commandId), role: 'update' }
     }
+    if (event.type === 'xingchen/dispatch-progress' && event.data.commandId !== undefined) {
+      return { id: String(event.data.commandId), role: 'update' }
+    }
     const checkpoint = compactSource(event)
     if (checkpoint?.sourceCommandId !== undefined) {
       return { id: String(checkpoint.sourceCommandId), role: 'update' }
@@ -199,6 +210,9 @@ export const commandDefinition: ConversationNodeDefinition<CommandState> = {
   update: (context, match) => {
     if (match.event.type === 'command/done') {
       return { ...context.state, command: commandFromDone(match, context.state.command) }
+    }
+    if (match.event.type === 'xingchen/dispatch-progress') {
+      return { ...context.state, command: { ...context.state.command, liveProgress: progressOf(match) } }
     }
     return updateCompactionState(context.state, match)
   },

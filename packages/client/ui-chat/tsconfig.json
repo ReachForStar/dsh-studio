@@ -48,6 +48,9 @@
       "path": "../../llm/llm-retry"
     },
     {
+      "path": "../../xingchen/xingchen"
+    },
+    {
       "path": "../../llm/token-meter"
     },
     {

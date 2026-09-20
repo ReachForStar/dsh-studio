@@ -1,11 +1,10 @@
 import type { ViewTab } from './contract/views.ts'
 
 /**
- * Fallback View preference order for a Session with no stored selection. The
- * star-domain flow leads where a build registers it; the transcript is the
- * shipped default and the last resort.
+ * Fallback View preference order for a Session with no stored selection: the
+ * transcript is the shipped default and the last resort.
  */
-const FALLBACK_VIEW_IDS = ['flow', 'chat'] as const
+const FALLBACK_VIEW_IDS = ['chat'] as const
 
 /**
  * Resolve a preferred registered View, then the fallback order, without

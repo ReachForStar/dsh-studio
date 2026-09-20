@@ -321,3 +321,11 @@
 - 两个实测踩坑（记入 `concepts/session-format-generations`）：冻结的 v3 校验器会把新 surface 类型读成「已知的非 surface 类型」而拒绝其 `surfaceOp`，故 v4 恢复器不整份委托；行级准入必须只做窄检查，否则会把存储态的 `sourceEventSeqs` 范围形式判死。
 - 文档：历史参考 `docs/persistence-changes/historical-formats/v3.{md,zh.md}`（用 `--archive 3` 在 bump 前归档得到）、`docs/subsystems/session.md` 的 type-equiv 区块、新包双语 README；`test:docs` 20 项门禁全绿。
 - 验证：`typecheck` 两面、`verify-package-dependencies`、相关包 vitest（2447 + 41 + 901 + 745）、客户端与前端产物重建后网页实测无 error/warn。
+
+## [2026-09-24] fix | 工具调度符号丢失（A2A 在对话里不可用）+ 拆除会话流视图
+
+- 用户现象：会话里发消息即报 `Cannot read properties of undefined (reading 'prepare')`，`/planning` 等星域派发随之不可用；另报会话流页面异常、要求不再做会话流设计。
+- 根因（见 `queries/tool-scheduler-symbol-duplication.md`）：同一进程存在两份 `@deepseek-ai/dsh-tools`——插件加载器按包名解析到 `lib/`，`lib/` 内裸导入又被 tsx paths 改写到 `src/`——两个 `Symbol('@deepseek-ai/dsh-tools.scheduler')` 身份不同，`ctx.tools[TOOL_RUNTIME_SCHEDULER]` 取到 undefined。pi 侧自带工具不经该调度，故先前误判为"只有某些工具坏"。
+- 修法：`TOOL_RUNTIME_SCHEDULER` 改用 `Symbol.for('@deepseek-ai/dsh-tools.scheduler')`（全局注册符号，副本间同一身份；`unique symbol` 类型不变），并重建 `lib/` 使两份产物一致。
+- 拆除会话流视图：删除 `ui-polish` 的 `flow/`（`FlowView.tsx`、`flow-graph.ts`、`flow-definition.ts`）、`conversation.view` 的 `flow` 注册与 `uiConversation` 注入、`flow.*` locale 键、`ui-trajectory` 测试里的 flow target、`view-selection` 回退视图恢复为 `['chat']`，并移除 `three` / `@types/three` 依赖与 lockfile 条目。会话流相关历史留在本 log 与既有 commits 中。
+- 验证：类型检查两面通过；`packages/core/tools`、`packages/core/agent-loop`、`ui-polish`、`ui-conversation`、`ui-trajectory` 共 93 文件 / 1584 项测试全绿；`verify-package-dependencies` 67 包通过；`test:docs` 20/20。真实 Web 端（agent-browser 驱动）：同一会话修复前 `pwsh` 调用必崩，修复后 `RESULT ok`；`/planning 只回复四个字：修好了` 走通 `command/run → 进度 → assistant/peer-message（天梁/opencode）→ command/done`；顶栏不再出现「会话流」标签，默认落在「对话」。

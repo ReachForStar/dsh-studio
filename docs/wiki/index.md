@@ -52,4 +52,5 @@ updated: 2026-09-24
 - [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。
 - [总线任务在 A2A 面查不到（a2a-bridge 实测）](queries/a2a-bus-task-visibility.md) — bridge 自身 CLI 经总线派发的任务同样不在任务表里，harness 侧靠事件流收尾故不受影响。
 - [会话重载校验报错：assistant/message 空 model 来源（2026-09-24）](queries/session-reload-model-source.md) — 根因三层（校验过严/pi 后端记空/迁移搬运）、加载侧放宽 + 写入侧记真实模型的双层修法与真实数据验证。
-- [会话格式 v4：席位答复以 assistant 角色进模型可见内容](queries/session-format-v4-landing.md) — 为何必须动会话格式、一代迁移包的确切清单，以及本次实施结果与实测踩坑（已实施，写入器 v4）。
+- [会话格式 v4：席位答复以 assistant 角色进模型可见内容](queries/session-format-v4-landing.md)
+- [工具调度符号丢失导致任何工具调用崩溃（2026-09-24）](queries/tool-scheduler-symbol-duplication.md) — src/lib 两份 `dsh-tools` 各造一个同名 `unique symbol`，`ctx.tools[...]` 取不到调度器；改用 `Symbol.for` 并重建 `lib/`，含真实会话复现与 A2A 实测。 — 为何必须动会话格式、一代迁移包的确切清单，以及本次实施结果与实测踩坑（已实施，写入器 v4）。

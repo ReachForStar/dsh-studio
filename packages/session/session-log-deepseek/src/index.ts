@@ -87,6 +87,7 @@ function wireEvent(event: SessionEvent): DeepSeekSessionLogWireEvent {
         ...event.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: event.sourceEventSeqs.map(Number) },
       }
     case 'assistant/message':
+    case 'assistant/peer-message':
       return { ...common, type: event.type, surfaceOp: wireSurfaceOp(event.surfaceOp) }
     default: {
       // Restored unknown ignorable records are opaque, not current surface events.

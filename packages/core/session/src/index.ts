@@ -314,16 +314,17 @@ function assertAdapterDefaults(
   }
 }
 
-/** The four surface event types whose payload carries an identified message. */
+/** The surface event types whose payload carries an identified message. */
 function isMessageEventType(type: unknown): type is SurfaceEventType {
   return type === 'system/message' || type === 'user/message'
-    || type === 'assistant/message' || type === 'tool/result'
+    || type === 'assistant/message' || type === 'assistant/peer-message' || type === 'tool/result'
 }
 
 const MESSAGE_ROLE_BY_TYPE: Record<SurfaceEventType, Message['role']> = {
   'system/message': 'system',
   'user/message': 'user',
   'assistant/message': 'assistant',
+  'assistant/peer-message': 'assistant',
   'tool/result': 'user',
 }
 
@@ -360,6 +361,16 @@ function assertMessageEventShape(event: Record<string, unknown>, subject: string
     if (sourceRecord['kind'] !== 'plugin' || typeof sourceRecord['plugin'] !== 'string'
       || sourceRecord['plugin'] === '') {
       throw new Error(`${subject} message must have plugin source`)
+    }
+    return
+  }
+  if (type === 'assistant/peer-message') {
+    // A peer message carries another agent's answer: claiming this Session's
+    // model source would misattribute the producer and the usage accounting
+    // keyed off it, so the model source is refused here rather than in the type
+    // alone (durable logs are untrusted input).
+    if (sourceRecord['kind'] === 'model') {
+      throw new Error(`${subject} peer message must not claim a model source`)
     }
     return
   }

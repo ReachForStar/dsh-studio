@@ -23,6 +23,7 @@ import { compactionDefinition } from '../src/client/conversation-nodes/compactio
 import { unknownFallbackDefinition } from '../src/client/conversation-nodes/fallback.ts'
 import { nextStepInboxDefinition } from '../src/client/conversation-nodes/inbox.ts'
 import { messageDefinition } from '../src/client/conversation-nodes/message.ts'
+import { peerMessageDefinition } from '../src/client/conversation-nodes/peer-message.ts'
 import { inspectRequestPrompt } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { requestPromptDefinition, systemMessageDefinition } from '../src/client/conversation-nodes/request-prompt.ts'
 import { retryDefinition } from '../src/client/conversation-nodes/retry.ts'
@@ -38,6 +39,7 @@ import type {
 const DEFINITIONS: readonly ConversationNodeDefinition[] = [
   nextStepInboxDefinition,
   messageDefinition,
+  peerMessageDefinition,
   systemMessageDefinition(inspectSystemPrompt),
   requestPromptDefinition(inspectRequestPrompt),
   assistantDefinition,
@@ -262,6 +264,29 @@ describe('built-in conversation node Definitions', () => {
     expect(current.order).toHaveLength(1)
     expect(current.nodes.get(current.order[0] ?? '')?.kind).toBe('command')
     expect(chatViewDefinition.isActive?.(current)).toBe(false)
+  })
+
+  it('renders a peer-agent answer as its own node, outside any turn', () => {
+    const value = assembler([
+      at(1, 'assistant/peer-message', {
+        message: {
+          id: 'peer-1',
+          role: 'assistant',
+          source: { kind: 'a2a-seat', role: 'tianliang', agent: 'opencode', skill: 'analysis' },
+          content: [{ type: 'text', text: '规划通过' }],
+        },
+      }, { surfaceOp: 'append' }),
+    ])
+    const current = snapshot(value)
+    const rendered = node(current, 'peer-message')
+    expect(current.order).toHaveLength(1)
+    expect(rendered?.data).toMatchObject({
+      kind: 'peer-message',
+      messageId: 'peer-1',
+      producer: { agent: 'opencode', skill: 'analysis', role: 'tianliang' },
+    })
+    // The answer is a real assistant turn for the model, so the view is active.
+    expect(chatViewDefinition.isActive?.(current)).toBe(true)
   })
 
   it('folds star-domain progress reports into the running command card', () => {

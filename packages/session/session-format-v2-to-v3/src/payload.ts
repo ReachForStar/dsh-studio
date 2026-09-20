@@ -7,6 +7,9 @@ import { RELEASED_V2_EVENT_DISPOSITIONS } from '@deepseek-ai/dsh-session-format-
 
 /** Audited surface event names; all other admitted events are log-only. */
 export const SURFACE_TYPES: ReadonlySet<string> = new Set(['system/message', 'user/message', 'assistant/message', 'tool/result'])
+/** Later generations' surface types a caller may name; empty keeps the frozen V3 rules. */
+const NO_LATER_SURFACE_TYPES: ReadonlySet<string> = new Set()
+
 const SOURCE_KINDS = new Set(['user', 'plugin', 'model', 'tool', 'agent-instructions', 'session-reference', 'team-message', 'goal', 'skill-invocation', 'skill-catalog', 'coordinator', 'subagent-report', 'subagent-settled', 'webhook', 'agent-message'])
 
 /**
@@ -262,7 +265,11 @@ function assertFeedback(type: string, data: SessionFormatJsonObject): void {
  * @param event - decoded logical event.
  * @param knownEventTypes - additional installed event types whose envelopes are interpreted.
  */
-export function assertV3Event(event: SessionFormatEvent, knownEventTypes?: ReadonlySet<string>): void {
+export function assertV3Event(
+  event: SessionFormatEvent,
+  knownEventTypes?: ReadonlySet<string>,
+  laterSurfaceTypes: ReadonlySet<string> = NO_LATER_SURFACE_TYPES,
+): void {
   const value = record(event, 'format v3 event')
   const subject = `format v3 ${event.type} at seq ${event.seq}`
   const obsolete = event.type === 'tool/code-dispatch-start' || event.type === 'tool/code-dispatch'
@@ -273,14 +280,16 @@ export function assertV3Event(event: SessionFormatEvent, knownEventTypes?: Reado
     || knownEventTypes?.has(event.type) === true)
   const opaque = !known
   keys(value, ['type', 'seq', 'time', 'data'],
-    SURFACE_TYPES.has(event.type) || opaque ? ['ignorable', 'surfaceOp', 'sourceEventSeqs'] : ['ignorable'], subject)
+    SURFACE_TYPES.has(event.type) || laterSurfaceTypes.has(event.type) || opaque
+      ? ['ignorable', 'surfaceOp', 'sourceEventSeqs'] : ['ignorable'], subject)
   if (typeof event.type !== 'string') throw new SessionFormatError(`${subject} type must be a string`)
   sessionFormatCount(event.seq, `${subject} seq`)
   sessionFormatSafeInteger(event.time, `${subject} time`)
   if (Object.hasOwn(value, 'ignorable') && value['ignorable'] !== true) {
     throw new SessionFormatError(`${subject} ignorable must be true when present`)
   }
-  if (SURFACE_TYPES.has(event.type)) {
+  const isSurface = SURFACE_TYPES.has(event.type) || laterSurfaceTypes.has(event.type)
+  if (isSurface) {
     const operation = value['surfaceOp']
     if (operation === undefined) throw new SessionFormatError(`${subject} requires a surfaceOp marker`)
     if (operation !== 'append') {
@@ -296,7 +305,7 @@ export function assertV3Event(event: SessionFormatEvent, knownEventTypes?: Reado
       }
     }
     const sources = value['sourceEventSeqs']
-    if (event.type === 'assistant/message' && sources !== undefined) {
+    if ((event.type === 'assistant/message' || laterSurfaceTypes.has(event.type)) && sources !== undefined) {
       throw new SessionFormatError(`${subject} embeds its stream and cannot carry sourceEventSeqs`)
     }
     if (sources !== undefined) {

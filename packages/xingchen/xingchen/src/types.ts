@@ -57,6 +57,23 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
   }
 }
 
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    /**
+     * A message a star-domain seat produced for this Session through A2A. It
+     * carries no `provider`/`model` because this Session's model did not produce
+     * it — the seat ran its own route, which this log does not own and must not
+     * bill to this Session's model usage.
+     */
+    'a2a-seat': {
+      kind: 'a2a-seat'
+      role: XingchenSpecialistId
+      agent: string
+      skill: string
+    }
+  }
+}
+
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /**

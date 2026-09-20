@@ -151,6 +151,19 @@ export interface AssistantMessage extends Message {
 }
 
 /**
+ * An assistant message another agent produced for this Session — a delegated
+ * subagent, an agent-team member, or an external peer reached over A2A. It keeps
+ * the assistant role the provider transcript expects, while its source names the
+ * producer instead of this Session's model route: `Exclude` removes the model
+ * source so a peer answer can never claim this Session's model, whose usage
+ * accounting and reload validation both read that attribution.
+ */
+export interface PeerAssistantMessage extends Message {
+  readonly role: 'assistant'
+  readonly source: Exclude<MessageSource, ModelMessageSource>
+}
+
+/**
  * A system-role specialization of the shared message representation: one
  * rendered system prompt attributed to the plugin that assembled it. Empty
  * `content` means "no system prompt" and projects to no wire message.
@@ -226,6 +239,17 @@ export function createAssistantMessage(
       ...input.source,
     },
   })
+}
+
+/**
+ * Create one identified peer-assistant message and freeze it before publication.
+ * @param input - complete content and the peer source that produced it.
+ * @returns an immutable peer assistant message with a fresh stable identity.
+ */
+export function createPeerAssistantMessage(
+  input: Omit<PeerAssistantMessage, 'id'> & { readonly id?: never },
+): PeerAssistantMessage {
+  return createMessage(input)
 }
 
 /**

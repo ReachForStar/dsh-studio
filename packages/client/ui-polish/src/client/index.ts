@@ -58,14 +58,27 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
  * Structural surfaces turn transparent while the whole-app background image is
  * active: overriding the base tokens makes every surface that paints them
  * (the app frame, conversation, details, and sidebar columns) yield to the
- * body-painted image. Content elements that need contrast (cards, code blocks,
- * buttons) keep their own non-base fills; this is the standalone plugin's
- * reach without touching core stylesheets.
+ * body-painted image. The raised-surface tokens go with them so page content
+ * (cards, rows, panels) reads as part of the image instead of as opaque tiles.
+ * Overlays keep `--dsw-alias-bg-overlay`: menus and dialogs float above the
+ * page and would lose their contrast against a photograph. The canvas panel is
+ * the one page that stays opaque — Excalidraw paints its own view background,
+ * and a see-through drawing surface removes the contrast drawing needs — so the
+ * raised-surface tokens are re-declared inside it from the un-overridden
+ * overlay colour.
  */
 const AMBIENT_OVERRIDES = `
 body[data-ds-bg-image] {
   --dsw-alias-bg-base: transparent;
+  --dsw-alias-bg-layer-1: transparent;
+  --dsw-alias-bg-layer-2: transparent;
   --dsw-specific-sidebar-fill: transparent;
+}
+body[data-ds-bg-image] [data-ui-polish-excalidraw] {
+  --dsw-alias-bg-base: var(--dsw-alias-bg-overlay);
+  --dsw-alias-bg-layer-1: var(--dsw-alias-bg-overlay);
+  --dsw-alias-bg-layer-2: var(--dsw-alias-bg-overlay);
+  --dsw-specific-sidebar-fill: var(--dsw-alias-bg-overlay);
 }
 /* This plugin owns the composer.dock readout: its floating stats panel carries
    a data-ui-polish-stats marker, so every other dock entry (the core's

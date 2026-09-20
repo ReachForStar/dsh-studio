@@ -305,3 +305,9 @@
 - 实测（重建客户端与前端产物后）：`会话流` 为默认激活视图，WebGL2 画布 1388×766 已挂载，无障碍摘要「会话流：5 个活动节点——天梁、天梁、天梁、天梁、人」，控制台无 error/warn。测试：ui-polish + ui-conversation 565、ui-trajectory 185 全绿。
 - 顺带修掉用户报的「/planning 没反应」：`chat-snapshot-builder.ts` 的 `isActive` 要求非 command 节点，只跑命令的会话落回 `blank` 空态；flow 视图的 `isActive` 让这类会话判为活跃。
 - 未决（已查证，待实施）：B1b「席位答复以 assistant 角色进模型可见内容」。`@messageProjection` 只能改既有消息，surface 仅认固定四种事件类型，`system/message`/`assistant/message` 强制 turn/step 而命令路径在轮次之外——必须新增 surface 事件类型，而往 `SurfaceEventType` 集加类型属**结构性改动必须 bump**（见版本机制笔记），故需新发布代 v4 + `session-format-v3-to-v4` 迁移包 + 目录与状态记录同步。
+
+## [2026-09-20] docs | 落下 v4 交接单：席位答复以 assistant 角色进模型可见内容
+
+- 决定：这一件放到有完整预算的一轮做，本轮不动 `SESSION_FORMAT_VERSION`（保持在 3，工作区无半成品）。
+- 交接单：`queries/session-format-v4-landing.md`。含三条「为何必须动格式」的证据（surface 只认固定四类事件、`@messageProjection` 只改既有消息、免轮次 surface 事件只有 `user/message`）、版本机制笔记对 `SurfaceEventType` 集属结构性改动的原文、七步落地清单（含顺序不可调换的原因：`createSessionFormatChain` 缺相邻代直接抛错）、一代迁移包的确切文件清单与 `dsh.sessionFormatMigration` 代际清单块、以及动手前必读的既有实现清单。
+- 风险提示留存：迁移代码写错不会报错而是静默迁错用户日志，禁止在未读完 v2-to-v3 的 codec/payload/references/validation 实现时凭猜测镜像。

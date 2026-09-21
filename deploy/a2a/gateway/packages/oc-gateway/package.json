@@ -1,0 +1,16 @@
+{
+  "name": "@a2a-bridge/oc-gateway",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./server": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@a2a-bridge/shared": "*"
+  }
+}

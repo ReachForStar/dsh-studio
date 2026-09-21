@@ -18,9 +18,9 @@ pnpm run stack:down --kafka      # also stop the Kafka cluster
 | Component | Port | Source |
 | --- | --- | --- |
 | Kafka 3-broker KRaft cluster | 9092 / 9093 / 9094 | `kafka/docker-compose.yml` (this repository) |
-| pi gateway | 9310 | gateway checkout (`A2A_BRIDGE_DIR`) |
-| Claude Code gateway | 9320 | gateway checkout (`A2A_BRIDGE_DIR`) |
-| opencode gateway | 9330 | gateway checkout (`A2A_BRIDGE_DIR`) |
+| pi gateway | 9310 | `gateway/` (vendored source; `A2A_BRIDGE_DIR` overrides) |
+| Claude Code gateway | 9320 | `gateway/` (vendored source) |
+| opencode gateway | 9330 | `gateway/` (vendored source) |
 | Web app | 3080 | `apps/cli/lib/bin.js` (this repository) |
 
 ## Configuration
@@ -31,7 +31,7 @@ Environment overrides:
 
 | Variable | Meaning | Default |
 | --- | --- | --- |
-| `A2A_BRIDGE_DIR` | gateway checkout providing `packages/*/dist/index.js` | `D:/file/a2a-bridge` |
+| `A2A_BRIDGE_DIR` | gateway checkout providing `packages/*/dist/index.js` | `deploy/a2a/gateway` |
 | `A2A_CONFIG` | bridge configuration path | `deploy/a2a/a2a.config.json` (set by the launcher) |
 | `A2A_BUS_BOOTSTRAP` | Kafka bootstrap servers used by the gateways | value from the configuration |
 | `A2A_API_KEY` | bearer token for the gateway HTTP endpoints | empty (loopback only) |
@@ -41,7 +41,7 @@ The compose file pins `name: kafka`, so the cluster keeps one Docker Compose pro
 ## Requirements
 
 - Docker reachable either directly or through WSL; the launcher probes both and uses whichever answers.
-- A built gateway checkout: `npm run build` in `A2A_BRIDGE_DIR` produces the `dist/` entries `stack:up` starts. Without them the launcher reports the missing path and skips that gateway.
+- A built gateway: `cd deploy/a2a/gateway && npm ci && npm run build` produces the `dist/` entries `stack:up` starts. Without them the launcher reports the missing path and skips that gateway.
 - A built Web app: `pnpm run build` produces `apps/cli/lib/bin.js`.
 
 ## Troubleshooting

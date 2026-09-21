@@ -19,6 +19,7 @@ updated: 2026-09-24
 - [LaTeX 面板（/latex 路由与 Overleaf 式编辑流程）](entities/latex-panel.md) — 项目发现/文件树/路径基准、xelatex+bibtex 临时镜像编译链路（含文件数/字节/单文件边界与缺失引用诊断）、字体与 tlmgr 安装、AI 写作的模型路由与安全边界。
 - [工作区文件删除（ctx.fs.remove → workspaceFiles.delete → 右侧栏文件树）](entities/workspace-file-deletion.md) — 四层删除链的各层要点、父目录围栏与 `FS_NOT_EMPTY`，以及 `workspaceFiles/remove` 与客户端命名空间服务撞名导致整包启动失败、改方法名后必须重建两侧产物的踩坑。
 - [星域多智能体协作（dsh-xingchen）](entities/xingchen-multi-agent.md) — 四角色划分（启明原生路由 + 天权/瑶光/天梁 A2A 专家席）、派发三路径、会话投影与接线位置。
+- [本地 A2A 联调栈（deploy/a2a）](entities/local-a2a-stack.md) — 一条命令拉起 Kafka + 三网关 + Web；已运行则跳过、Kafka 停了自动重启、配置单一来源（`A2A_CONFIG`）与运行期日志位置。
 
 ## 概念 concepts
 

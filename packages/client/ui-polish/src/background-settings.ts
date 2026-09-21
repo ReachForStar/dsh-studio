@@ -19,7 +19,7 @@ export const MODEL_PRICING_FIELD = 'modelPricing'
  * file on disk (served at `/bg/current`); the bound keeps the on-disk file and
  * the upload request from growing unbounded.
  */
-export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024
+export const MAX_BACKGROUND_IMAGE_BYTES = 10 * 1024 * 1024
 
 /** Durable section shared by the Host schema and the browser scope. */
 export interface PolishSettings {

@@ -1,0 +1,33 @@
+{
+  "agents": {
+    "pi": {
+      "port": 9310,
+      "defaultWorkspace": "D:/file/a2a-bridge"
+    },
+    "claude-code": {
+      "port": 9320,
+      "defaultWorkspace": "D:/file/a2a-bridge"
+    },
+    "opencode": {
+      "port": 9330,
+      "defaultWorkspace": "D:/file/a2a-bridge"
+    }
+  },
+  "bus": {
+    "bootstrapServers": ["127.0.0.1:9092"],
+    "taskTopic": "a2a.task",
+    "eventTopic": "a2a.event",
+    "dlqTopic": "a2a.dlq",
+    "partitions": 6,
+    "maxAttempts": 3
+  },
+  "piModel": "amax/qwen-3.8-27B",
+  "opencodeModel": "amax/qwen-3.8-27B",
+  "opencodeSkillAgents": {
+    "code-review": "bridge-review",
+    "analysis": "bridge-review",
+    "coding": "bridge-coding"
+  },
+  "idleMs": 1800000,
+  "taskTimeoutMs": 600000
+}

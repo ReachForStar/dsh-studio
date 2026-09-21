@@ -53,7 +53,7 @@ The [CLI behavior reference](reference/README.md) owns exact layer precedence, f
 
 ## Development
 
-Production runs require built package and frontend artifacts. From the repository root, run `pnpm run build` separately, then use `pnpm dsh <args...>` to run the TypeScript entry and forward every argument; the [source-execution reference](reference/README.md#source-execution) owns the module-resolution contract.
+Production runs require built package and frontend artifacts. From the repository root, run `pnpm run build` separately, then use `pnpm dsh <args...>` to run that built entry and forward every argument; `pnpm run dsh:source` runs the TypeScript entry through tsx for launcher-only work, and the [source-execution reference](reference/README.md#source-execution) owns the module-resolution contract.
 
 The `@deepseek-ai/dsh/profile-boot` export provides the shared profile lifecycle to the Desktop host. A resolved application profile supplies its own installation anchor for runtime package resolution while retaining the Harness home patch, proxy environment, telemetry switch, patch reload, and bounded shutdown.
 

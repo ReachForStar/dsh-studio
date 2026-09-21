@@ -8,15 +8,36 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 文档：[https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
 
-**本仓库是基于官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的自定义分支**：它以官方发布版为基础，并在其上叠加了下一节所述的 Web GUI 打磨、模型面向的白板工具与 Pi 委派后端。所有新增仍以 Cordis 插件形态交付，通过组合挂载，官方核心保持不变。
+**本仓库是基于官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的自定义分支**：它以官方发布版为基础，并在其上叠加了下一节所述的星域多智能体路由、A2A 网关与本地联调栈、Web GUI 打磨、模型面向的白板工具与 Pi 后端。所有新增仍以 Cordis 插件形态交付，通过组合挂载，官方核心保持不变。
 
 ## 相对官方版本的定制
 
+### 星域多智能体（启明 + 天权 / 瑶光 / 天梁）
+
 | 包 | 本分支新增 |
 |---|---|
-| [`@deepseek-ai/dsh-client-ui-polish`](packages/client/ui-polish/README.zh.md) | Web GUI 打磨：全局背景图片、按模型单价估算每条已结算消息费用的会话统计浮窗（模型费率卡可编辑）、会话视图内的就地文件与 git 面板、内嵌 Excalidraw 白板标签页（与模型的工具共享同一场景）、可配置的自动压缩上下文阈值。 |
+| [`@deepseek-ai/dsh-xingchen`](packages/xingchen/xingchen/README.zh.md) | 启明把会话路由到三个专家席——天权（架构与代码评审）、瑶光（缺陷复现）、天梁（交付计划）——经 `/review`、`/bug`、`/planning` 触发，在进程内作为子代理或经 A2A 对等端执行；席位答复以 assistant 角色进入转录。详见[星域路由](docs/subsystems/xingchen.zh.md)。 |
+| [`@deepseek-ai/dsh-a2a`](packages/a2a/a2a/README.zh.md) | A2A 客户端：协议类型、直连 HTTP 派发，以及承载任务与事件回放的 Kafka 总线通道。 |
+| [`@deepseek-ai/dsh-a2a-host`](packages/a2a/a2a-host/README.zh.md) | 本部署对外发布的 A2A 宿主端点，用于接收对等端请求。 |
+| [`@deepseek-ai/dsh-tool-a2a`](packages/a2a/tool-a2a/README.zh.md) | 模型面向的对等端工具（`a2a_peers`、`a2a_send`），用于对话内派发。 |
+| [`deploy/a2a/`](deploy/a2a/README.zh.md) | 本地联调栈：三 broker Kafka 集群、已迁入本仓库的三台 A2A 网关与 Web 应用，一条命令拉起且已运行则跳过。 |
+
+### Pi 后端
+
+| 包 | 本分支新增 |
+|---|---|
+| [`@deepseek-ai/dsh-pi-agent-loop`](packages/core/pi-agent-loop/README.zh.md) | 把 Pi 编码 agent 作为原生循环之外的第二会话后端，按会话选择。 |
+| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.zh.md) | 通过 RPC 模式把任务委派给 [Pi 编码 agent](https://github.com/earendil-works/pi) 的子代理提供方。 |
+| [`@deepseek-ai/dsh-llm-pi-ai`](packages/llm/llm-pi-ai/README.zh.md) | Pi 后端使用的提供方路由与模型目录解析。 |
+
+### Web GUI、工作区与工具
+
+| 包 | 本分支新增 |
+|---|---|
+| [`@deepseek-ai/dsh-client-ui-polish`](packages/client/ui-polish/README.zh.md) | Web GUI 打磨：全局背景图片（上传上限 10MB，启用后结构面转为透明）、按模型单价估算每条已结算消息费用的会话统计浮窗（模型费率卡可编辑）、会话视图内的就地 Git 与 LaTeX 面板、内嵌 Excalidraw 白板标签页（与模型的工具共享同一场景）、可配置的自动压缩上下文阈值。 |
 | [`@deepseek-ai/dsh-tool-excalidraw`](packages/fs/tool-excalidraw/README.zh.md) | 模型面向的白板工具——`excalidraw_read`、`excalidraw_write`、`excalidraw_draw`、`excalidraw_export`——读写画布标签页渲染的同一工作区场景文件。 |
-| [`@deepseek-ai/dsh-subagent-pi`](packages/subagent/subagent-pi/README.zh.md) | 通过 RPC 模式把任务委派给 [Pi 编码 agent](https://github.com/earendil-works/pi) 的子代理提供方；Pi 集成包文档覆盖反向的 Pi→dsh 委派。 |
+| [`@deepseek-ai/dsh-client-ui-ssh`](packages/client/ui-ssh/README.zh.md) 以及 [`@deepseek-ai/dsh-remote-ssh`](packages/remote/ssh/README.zh.md)、[`@deepseek-ai/dsh-remote-fs-sftp`](packages/remote/fs-sftp/README.zh.md)、[`@deepseek-ai/dsh-remote-subprocess-sftp`](packages/remote/subprocess-sftp/README.zh.md) | SSH/SFTP 工作区：Web UI 内的交互式终端面板，以及共用同一 SFTP 接缝的远端文件系统与子进程提供方。 |
+| [`deploy/brand/`](deploy/brand/README.zh.md) | Web 应用背景图资产，附布局带来的浅色主题可读性约束与各候选图所用的提示词。 |
 
 ## 核心特性
 
@@ -67,7 +88,16 @@ pnpm run build
 pnpm dsh web
 ```
 
-`pnpm run build` 会准备仓库产物。`pnpm dsh web` 会直接使用这些已构建产物，不会重新构建。
+`pnpm run build` 会准备仓库产物。`pnpm dsh web` 运行构建入口并直接使用这些产物，不会重新构建；`pnpm run dsh:source` 则通过 tsx 运行 `apps/cli/src/bin.ts`，仅用于启动器自身的工作。
+
+若要拉起整套本地评审／缺陷／计划栈——Kafka 集群、已迁入本仓库的 `deploy/a2a/gateway` 三台 A2A 网关与 Web 应用——使用栈启动器，它只启动尚未运行的部分：
+
+```sh
+cd deploy/a2a/gateway && npm ci && npm run build
+cd ../../.. && pnpm run stack:up
+```
+
+`pnpm run stack:status` 报告各组件状态，`pnpm run stack:down` 停止启动器所启动的内容（加 `--kafka` 同时停集群）。详见 [deploy/a2a/README.zh.md](deploy/a2a/README.zh.md)。
 
 ## 社区与支持
 

@@ -1,0 +1,62 @@
+# Apache Kafka 3-broker KRaft 集群（在 WSL 中运行）
+# 由 `pnpm run stack:up` 拉起（已在运行时跳过）；也可单独执行：
+#   wsl -e bash -lc "docker compose -f $(wslpath -a '<此文件>') up -d"
+# 客户端（Windows 侧）bootstrap: 127.0.0.1:9092,127.0.0.1:9093,127.0.0.1:9094
+# 停集群：pnpm run stack:down --kafka
+name: kafka
+
+x-kafka-common: &kafka-common
+  image: apache/kafka:3.9.0
+  environment: &kafka-common-env
+    KAFKA_PROCESS_ROLES: broker,controller
+    KAFKA_LISTENERS: CLIENT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CLIENT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+    KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+    KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:29093,2@kafka-2:29093,3@kafka-3:29093
+    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    KAFKA_GROUP_COORDINATOR_REPLICATION_FACTOR: 3
+    KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+    KAFKA_NUM_PARTITIONS: 6
+
+services:
+  kafka-1:
+    <<: *kafka-common
+    ports:
+      - "127.0.0.1:9092:9092"
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: CLIENT://127.0.0.1:9092,INTERNAL://kafka-1:29092,CONTROLLER://kafka-1:29093
+    volumes:
+      - kafka1-data:/var/lib/kafka/data
+    depends_on:
+      - kafka-2
+      - kafka-3
+  kafka-2:
+    <<: *kafka-common
+    ports:
+      - "127.0.0.1:9093:9092"
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 2
+      KAFKA_ADVERTISED_LISTENERS: CLIENT://127.0.0.1:9093,INTERNAL://kafka-2:29092,CONTROLLER://kafka-2:29093
+    volumes:
+      - kafka2-data:/var/lib/kafka/data
+  kafka-3:
+    <<: *kafka-common
+    ports:
+      - "127.0.0.1:9094:9092"
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 3
+      KAFKA_ADVERTISED_LISTENERS: CLIENT://127.0.0.1:9094,INTERNAL://kafka-3:29092,CONTROLLER://kafka-3:29093
+    volumes:
+      - kafka3-data:/var/lib/kafka/data
+
+volumes:
+  kafka1-data:
+  kafka2-data:
+  kafka3-data:

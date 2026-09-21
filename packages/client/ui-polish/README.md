@@ -171,7 +171,7 @@ None.
 - **Token-override transparency** — while a background image is active, every surface painting the base tokens becomes transparent, including some content elements that read `--dsw-alias-bg-base` (e.g. code blocks), which can reduce their contrast on a busy image.
 - **Plain-text file editing** — the Git panel edits files in a monospace textarea, not a syntax-highlighted editor; the LaTeX editor is a plain textarea as well.
 - **Local TeX dependency** — the LaTeX panel compiles with the machine's own TeX distribution (`xelatex`, `bibtex`, `tlmgr`); a machine without them reports a missing-engine error instead of a degraded preview.
-- **Background upload cap** — images are capped at 2MB (the served copy is a file on disk; the settings document keeps only the URL).
+- **Background upload cap** — images are capped at 10MB (the served copy is a file on disk; the settings document keeps only the URL).
 - **Bundle weight** — the Excalidraw canvas tab inlines the whiteboard library into the client bundle (~12 MB uncompressed), so the whole plugin bundle is heavy; the canvas tab is the only consumer of that weight.
 
 <a id="dev-note"></a>

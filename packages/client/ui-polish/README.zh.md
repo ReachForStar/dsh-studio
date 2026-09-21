@@ -171,7 +171,7 @@ node 半在 host webserver 上注册四个前缀；每个请求都携带工作�
 - **token 覆盖透明**——背景图激活时，所有绘制基础 token 的表面都变透明，包括部分读取 `--dsw-alias-bg-base` 的内容元素（如代码块），在复杂图片上可能降低对比度。
 - **纯文本编辑**——Git 面板在等宽 textarea 中编辑，而非语法高亮编辑器；LaTeX 编辑器同样为纯文本 textarea。
 - **依赖本机 TeX**——LaTeX 面板用本机 TeX 发行版（`xelatex`、`bibtex`、`tlmgr`）编译；缺少发行版时报引擎缺失错误，而非降级预览。
-- **背景上传上限**——图片上限 2MB（提供的是磁盘文件副本；settings 文档只保留 URL）。
+- **背景上传上限**——图片上限 10MB（提供的是磁盘文件副本；settings 文档只保留 URL）。
 - **包体积**——Excalidraw 画布标签页将白板库内联进 client bundle（未压缩约 12 MB），整个插件包较重；画布标签页是该体积的唯一消费者。
 
 <a id="dev-note"></a>

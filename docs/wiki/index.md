@@ -37,6 +37,7 @@ updated: 2026-09-24
 - [跨包运行时导出的重复安装分类（2026-09-19）](decisions/2026-09-19-runtime-export-classification.md) — 六条导出登记 safe 的逐条依据、分类与依赖分区的连带关系，以及四个客户端包 peerDependencies 收敛到 cordis 后的发布布局变化。
 - [星域专家席经 A2A 抵达（2026-09-19）](decisions/2026-09-19-xingchen-external-specialist-seats.md) — 三个备选方案（本地预设+子代理、进程内专家会话、A2A 席位）的取舍与后果。
 - [A2A 对接改用 a2a-bridge 方案（2026-09-20）](decisions/2026-09-20-a2a-bridge-scheme.md) — 双通道（直连 + Kafka 总线）、skill 契约、配置单一来源，以及不依赖跨仓本地包的理由。
+- [启动器改用构建产物面（2026-09-24）](decisions/2026-09-24-launcher-artifact-plane.md) — 三个方案取舍；插件行永远由加载器解析到 `lib/`，故默认 `dsh` 改走产物面（新增 `dsh:source` 保留 tsx 向量），以及门禁与文档的连带更新。
 
 ## 查询沉淀 queries
 

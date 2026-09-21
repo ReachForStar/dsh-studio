@@ -5,7 +5,7 @@ description: Use before pushing, force-pushing, marking ready for review, or cla
 
 # DSH Pre-Push Checks
 
-Use this skill to run relevant local evidence once before a `deepseek-harness` push. The sole ordering exception is `gh stack sync`, which may publish a cascading rebase before the rewritten layers can be validated; validate them immediately afterward and do not merge until the evidence passes. Git hooks are intentionally narrow: pre-commit fixes staged lint, checks staged whitespace, and guards vendored-source metadata; pre-push runs only the incremental repository typecheck. CI owns exhaustive coverage and the platform matrix.
+Use this skill to run relevant local evidence once before a `deepseek-harness` push. The sole ordering exception is `gh stack sync`, which may publish a cascading rebase before the rewritten layers can be validated; validate them immediately afterward and do not merge until the evidence passes. Git hooks are intentionally narrow: pre-commit fixes staged lint, checks staged whitespace, and guards vendored-source metadata; pre-push runs only the incremental repository typecheck. **In this fork no CI owns exhaustive coverage or the platform matrix**: upstream's `ci.yml`, `ci-master.yml`, `e2e.yml`, and `sandbox.yml` are removed, and the workflows that remain cover only the native addon system under `native/**`, PR preview deployments, and the issue and approval policies. Local evidence is therefore the only evidence for harness behavior, and a change no narrower check covers needs the full local approximation before it is pushed.
 
 ## Inspect the outgoing change
 
@@ -30,7 +30,7 @@ There is no universal local baseline beyond the hooks. Every behavior change nee
 
 When the outgoing change adds or changes a resource-owning or asynchronous test, fixture, helper, or CI execution path, use [dsh-ci-test-reliability](../dsh-ci-test-reliability/SKILL.md) first to decide whether restoration, negative-control, quiescent-teardown, or concurrent-process evidence applies. This skill still selects the commands and avoids repeating evidence that already passed.
 
-- **Package or script behavior:** run the owning Vitest file or focused test name. Add adjacent package tests when a shared contract changes; leave repository-wide coverage to CI unless the change is genuinely cross-cutting or the user requests it.
+- **Package or script behavior:** run the owning Vitest file or focused test name. Add adjacent package tests when a shared contract changes; leave repository-wide coverage to the full local rehearsal below unless the change is genuinely cross-cutting or the user requests it.
 - **Remote mock typing:** unbuilt `any` is an explicit local fallback, not strict evidence. Run `pnpm run typecheck` before handing off Remote/mock changes; rebuild missing, stale, or partial generated declarations before diagnosing remaining errors. Keep the exception in the [test proxy](../../../packages/test-support/remote-mock/README.md#remote-proxy), never in production Remote types, ambient flags, or copied signatures.
 - **Documentation, Agent Notes, catalogs, or doc-linked comments:** run `pnpm run doc-sync`; run full lint when the documentation workflow requires it.
 - **Model-, editor-, CLI-, or terminal-visible output:** run the focused keyless snapshot or real runnable-example scenario that owns the output.
@@ -74,7 +74,7 @@ pnpm exec vitest related packages/<group>/<package>/src/<changed>.ts \
 
 ## Full local rehearsal
 
-Run the complete local approximation only when the user explicitly requests it, while diagnosing a CI failure, or when the change spans the repository so broadly that no narrower set is credible. Use the current workflow and package scripts as the inventory; do not recreate the removed `check:pre-push` aggregate.
+Run the complete local approximation whenever the change reaches further than any narrower check covers, while diagnosing a failing check, or when the user explicitly requests it. With no harness CI in this fork, that rehearsal is the only place the repository-wide gates ever run; use the current workflow and package scripts as the inventory, and do not recreate the removed `check:pre-push` aggregate.
 
 ## Protect history-rewriting pushes
 
@@ -95,7 +95,7 @@ If post-sync evidence fails, leave the lease-protected published heads in place,
 
 ## Handle failures
 
-If a relevant check fails before an ordinary push, stop and fix or explain the blocker. Do not push and hope CI differs. For the post-sync exception, block the merge and follow the repair procedure above.
+If a relevant check fails before an ordinary push, stop and fix or explain the blocker. Do not push and hope CI differs — this fork has no harness CI to differ. For the post-sync exception, block the merge and follow the repair procedure above.
 
 If a failure looks environment-specific, prove it:
 
@@ -117,7 +117,7 @@ For ordinary and standalone rebase pushes:
 git rev-parse HEAD origin/$(git branch --show-current)
 ```
 
-For GitHub PRs, inspect remote CI after the push:
+For GitHub PRs, inspect remote CI after the push. Only the native addon system, the PR preview deployment, and the issue and approval policies report checks here; an empty check list says nothing about harness tests, which this fork never runs in CI:
 
 ```sh
 gh pr checks

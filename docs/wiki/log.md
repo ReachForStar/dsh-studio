@@ -337,3 +337,10 @@
 - 因此新增根脚本 `dsh:built`（`node apps/cli/lib/bin.js`）：全部裸导入都由 Node 解析到 `lib/`，全进程单份同名模块。改代码后必须先 `pnpm run build`。`pnpm dsh` 源码启动保留（仅覆盖 `apps/cli` 自身）；混用不再推荐。
 - 验证：`pnpm run dsh:built --help` 正常；产物启动的 Web 实例（不带 `--patch`，token 见会话记录）可正常 boot，会话可打开、命令可下发（本次受 amax 网关 `upstream error: do request failed` 影响，模型轮次未取到回复，属外部依赖故障，与改动无关）。
 - 详情追加在 `queries/tool-scheduler-symbol-duplication.md` 末节。
+
+## [2026-09-24] change | 根脚本 `dsh` 默认改走构建产物面
+
+- 决定：`dsh` → `node apps/cli/lib/bin.js`，新增 `dsh:source` → `node --import tsx/esm apps/cli/src/bin.ts`，使全进程单份模块（依据见 `decisions/2026-09-24-launcher-artifact-plane.md` 与 `queries/tool-scheduler-symbol-duplication.md`）。
+- 连带更新：`apps/cli/tests/source-launch.compat.spec.ts` 改为断言这两个脚本的值（仍以 tsx 向量启动源码入口，保住 Node 兼容矩阵的原意）、`AGENTS.md` 命令注释、`apps/cli/README.{md,zh.md}`、`apps/cli/reference/README.{md,zh.md}`（并重新录制两对 `README.i18n.yaml`）。
+- 验证：`source-launch.compat.spec.ts` 2/2；`test:docs` 20/20（含 translation pairing 1048 对）；`tsc -b` 两面通过；`pnpm dsh --help` 与 `pnpm run dsh:source --help` 均正常。
+- 注意：改插件包后必须先 `pnpm run build`；根 README 第 62–66 行「先构建再用 `pnpm dsh`、脚本使用构建产物」的描述因此成立。

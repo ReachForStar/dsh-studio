@@ -76,3 +76,24 @@ export const TOOL_RUNTIME_SCHEDULER: unique symbol = Symbol.for('@deepseek-ai/ds
 - 新增任何**跨包 `unique symbol`** 契约时改用 `Symbol.for('<package>.<name>')`；当前仓库此类导出只有这一处（已全量核对）。
 - 该现象在诊断上有个易认特征：报错是 `reading '<method>'` 而非 `reading 'Symbol(...)'`，说明取到的对象存在、只是符号键落在另一份副本上。
 - 运行期判定「是不是源码面/产物面混用」的最快手段：在可疑处打印 `Object.getOwnPropertySymbols(receiver)` 与目标符号的身份比较，再打印本模块的 `import.meta.url`。
+
+## 彻底消除：启动方式必须与插件树同面（2026-09-24 追加）
+
+上面的 `Symbol.for` 只是让符号契约对副本混用免疫；混用本身仍然存在，属仓库明令禁止的「源码面与产物面混用」，仍有其他潜在危害（同名模块两份、各自的模块级状态与注册表、跨副本 `instanceof` 判定）。彻底消除需要先弄清加载器的解析规则，实测结论如下：
+
+- **插件树天生是产物面**：配置里的插件行是裸包名，由加载器经安装锚点（仓库 `node_modules`）走 Node 解析，命中包 `exports` 的 `lib/`。实测：把某个包的 `lib/` 临时移走后启动，报 `agent-loop (required) Package: @deepseek-ai/dsh-agent-loop` 加载失败——**加载器没有回退到 `src/` 的机制**。
+- **tsx 的 tsconfig paths 只作用于它拦截到的裸导入**：`pnpm dsh`（`node --import tsx/esm apps/cli/src/bin.ts`）下，CLI 自身与 `lib/` 文件内部的裸导入都被映射到 `src/`，而插件行的入口解析走 Node 内部加载器、不受映射影响 → 于是 `agent-loop` 来自 `lib/`、它导入的 `dsh-tools` 来自 `src/` → 两份并存。
+- **单面实测**（`import.meta.resolve`）：
+  - 带 tsx：`@deepseek-ai/dsh-tools` → `packages/core/tools/src/index.ts`（源码面单份）；
+  - 不带 tsx（从 `agent-loop/lib` 内解析）：→ `packages/core/tools/lib/index.js`（产物面单份）。
+
+因此彻底消除的做法是**用构建产物启动，不开 tsx**：
+
+```bash
+pnpm run build            # 改完代码必须先构建
+pnpm run dsh:built web    # 等价于 pnpm dsh web，但只走产物面
+```
+
+产物启动下所有裸导入（含 `lib/` 内部的）都由 Node 解析到 `lib/`，全进程只有一份同名模块。代价是源码改动必须重建才生效——但这一点原本就成立：插件树一直来自 `lib/`，`pnpm dsh` 的「源码启动」只覆盖 `apps/cli` 自身，容易造成「改了源码就生效」的错觉。
+
+`pnpm dsh`（tsx 源码启动）保留，用于只改 `apps/cli` 的场景；改任何插件包都必须 `dsh:built`（或先构建再用 `dsh`，但不推荐混用）。

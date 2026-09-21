@@ -26,10 +26,9 @@ const PROBE_KEY = `process.env.${PROBE_NAME}`
 const originalProbe = process.env[PROBE_NAME]
 const roots: string[] = []
 // The fork dropped the official CI/release workflows (build-exe, ci,
-// ci-master, sandbox) and keeps the native landlock-run workflow beside the
-// upstream node-addon-system rename of it.
+// ci-master, sandbox) and the native landlock-run workflow upstream folded
+// into node-addon-system when it moved that workspace to native/system.
 const dshBuildWorkflows = [
-  'landlock-run.yml',
   'node-addon-system.yml',
 ]
 

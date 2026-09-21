@@ -344,3 +344,11 @@
 - 连带更新：`apps/cli/tests/source-launch.compat.spec.ts` 改为断言这两个脚本的值（仍以 tsx 向量启动源码入口，保住 Node 兼容矩阵的原意）、`AGENTS.md` 命令注释、`apps/cli/README.{md,zh.md}`、`apps/cli/reference/README.{md,zh.md}`（并重新录制两对 `README.i18n.yaml`）。
 - 验证：`source-launch.compat.spec.ts` 2/2；`test:docs` 20/20（含 translation pairing 1048 对）；`tsc -b` 两面通过；`pnpm dsh --help` 与 `pnpm run dsh:source --help` 均正常。
 - 注意：改插件包后必须先 `pnpm run build`；根 README 第 62–66 行「先构建再用 `pnpm dsh`、脚本使用构建产物」的描述因此成立。
+
+## [2026-09-24] feat | 仓库内一键启动 A2A 联调栈 + 背景图与上传上限
+
+- 新增 `deploy/a2a/`：`kafka/docker-compose.yml`（三 broker KRaft，固定 `name: kafka`）、`a2a.config.json`（网关配置入库，无密钥）、`stack.mjs`（`up`/`down`/`status`）与双语 README；根脚本 `stack:up`、`stack:down`、`stack:status`。Kafka 三容器都 running 则跳过、否则 `docker compose up -d`；网关与 Web 按端口监听情况只拉起缺的部分；`down` 只停本栈记录的进程。
+- 配置单一来源：`stack:up` 导出 `A2A_CONFIG=deploy/a2a/a2a.config.json` 给三台网关与 Web 应用，模板 profile patch 从同一变量解析 `a2a.bridge.configPath` 并以其为默认值。
+- 实测：全停后 `stack:up` 拉起 Kafka（跳过）+ 三网关 + Web；`/planning 只回复四个字：仓库启动` 走通 `command/run → 进度 → assistant/peer-message（天梁/opencode）→ command/done`；`down --kafka` 停止网关、Web 与集群；再 `up` 时集群自动恢复（容器 6–8 秒 Up）。
+- 背景图：新增 `deploy/brand/`（双语 README + 四张 2624×1472 候选图与提示词），按当前布局（`cover`+`fixed`、结构面透明）给出浅色主题可读性约束，并用 Pillow 灰度统计核验各版亮度与分区对比。上传上限 `MAX_BACKGROUND_IMAGE_BYTES` 由 2MB 放宽到 10MB，同步中英文案与 `ui-polish` 双语 README，并重新登记三个受影响的翻译配对。
+- 门禁：`test:docs` 20/20（translation pairing 1050 对）、`tsc -b` 两面、`ui-polish` 128 项测试全绿。

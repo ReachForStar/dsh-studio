@@ -352,3 +352,10 @@
 - 实测：全停后 `stack:up` 拉起 Kafka（跳过）+ 三网关 + Web；`/planning 只回复四个字：仓库启动` 走通 `command/run → 进度 → assistant/peer-message（天梁/opencode）→ command/done`；`down --kafka` 停止网关、Web 与集群；再 `up` 时集群自动恢复（容器 6–8 秒 Up）。
 - 背景图：新增 `deploy/brand/`（双语 README + 四张 2624×1472 候选图与提示词），按当前布局（`cover`+`fixed`、结构面透明）给出浅色主题可读性约束，并用 Pillow 灰度统计核验各版亮度与分区对比。上传上限 `MAX_BACKGROUND_IMAGE_BYTES` 由 2MB 放宽到 10MB，同步中英文案与 `ui-polish` 双语 README，并重新登记三个受影响的翻译配对。
 - 门禁：`test:docs` 20/20（translation pairing 1050 对）、`tsc -b` 两面、`ui-polish` 128 项测试全绿。
+
+## [2026-09-24] feat | 三台 A2A 网关源码迁入本仓库
+
+- 迁入内容：`packages/{shared,pi-gateway,cc-gateway,oc-gateway}`、`cli/`、`config/`、`e2e/run.mjs`、`package.json`、`package-lock.json`、`tsconfig*.json`、`.env.example` 与双语 README，落到 `deploy/a2a/gateway/`；来源为 `a2a-bridge` 项目提交 `fdaf67b1b9c7e5809744a6764707a602be8474ed`。原仓库的知识库（`docs/wiki`、`docs/raw`）与本仓库的文档门禁冲突，未一并迁入；需要的内容记在本仓库 wiki 中。
+- `stack.mjs` 的网关默认目录改为 `deploy/a2a/gateway`（`A2A_BRIDGE_DIR` 仍可指向其它检出）；`node_modules/`、`dist/`、`*.tsbuildinfo` 由该目录自己的 `.gitignore` 忽略。
+- 自包含验证：在该目录 `npm ci`（141 包）+ `npm run build`（`tsc -b`）通过；`stack:up` 从仓库内路径拉起三台网关（进程命令行与 agent card 200 均已核对）；`node cli/dispatch.mjs --to opencode --skill analysis --input "只回复两字：自洽" --mode direct` 返回 `TASK_STATE_COMPLETED`，结果文本为预期值。
+- 门禁：`test:docs` 20/20（translation pairing 1051 对）。

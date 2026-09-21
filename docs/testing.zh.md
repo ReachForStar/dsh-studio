@@ -4,6 +4,9 @@
 
 本文说明本仓库的分层测试方式，以及保持绿色测试套件有意义的规则。命令见根目录 [AGENTS.md](../AGENTS.md)；相关 Agent Note 承载设计动机。
 
+**本 fork 不在 CI 里跑 harness 各包的检查**——工作流集合只覆盖 `native/**`、PR 预览与 issue／审批策略——因此下文各层级的门禁都在本地执行，选择方法见 [dsh-pre-push-checks](../.agents/skills/dsh-pre-push-checks/SKILL.md)。
+
+
 ## 层级
 
 - **单元测试**（`pnpm run test`）：vitest 运行包和示例各自的 `tests/**` 目录下的测试，以及匹配 `scripts/**/*.spec.ts` 的仓库脚本测试；测试文件与其所覆盖的代码区域放在一起。每个注册表都有一个 HMR（热模块替换）安全测试（对向该注册表贡献内容的 fiber 执行 dispose（资源释放），并断言清理完成）。优先覆盖边界情况、错误路径、事件顺序、并发竞态，以及针对约定回归的永久测试（见 `packages/core/agent-loop/tests/contract-regressions.spec.ts`）。

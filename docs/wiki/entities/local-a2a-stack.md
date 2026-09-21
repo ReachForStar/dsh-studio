@@ -17,7 +17,7 @@ status: active
 | 组件 | 端口 | 来源 |
 | --- | --- | --- |
 | Kafka 三 broker KRaft 集群 | 9092/9093/9094 | 本仓库 `deploy/a2a/kafka/docker-compose.yml` |
-| pi / Claude Code / opencode 网关 | 9310/9320/9330 | 网关检出目录 `A2A_BRIDGE_DIR`（默认 `D:/file/a2a-bridge`） |
+| pi / Claude Code / opencode 网关 | 9310/9320/9330 | 本仓库 `deploy/a2a/gateway`（源码已入库；`A2A_BRIDGE_DIR` 可覆盖） |
 | Web 应用 | 3080 | 本仓库 `apps/cli/lib/bin.js`（构建产物） |
 
 ## 幂等规则（为什么反复执行是安全的）
@@ -36,10 +36,12 @@ status: active
 - `deploy/a2a/stack.mjs`：编排脚本（纯 ESM + Node 内置模块，不依赖构建）。
 - `deploy/a2a/kafka/docker-compose.yml`：集群定义。
 - `deploy/a2a/a2a.config.json`：网关配置。
+- `deploy/a2a/gateway/`：三台网关的源码（自 `a2a-bridge` 项目 `fdaf67b1b9c7e5809744a6764707a602be8474ed` 迁入），自带 `package.json` 与锁文件，`npm ci && npm run build` 生成 `packages/*/dist/index.js`；`packages/shared` 是协议与总线实现，`cli/` 是运维命令。
 - `tmp/a2a-stack/`：运行期日志（`gw-<name>.log`、`web.log`）与已启动进程记录；`web.log` 里有 Web 应用的 token。
 
 ## 重要变更记录
 
+- 2026-09-24 网关源码入库：三台网关与 `shared`/`cli`/`e2e` 一并迁入 `deploy/a2a/gateway/`；`stack:up` 默认从仓库内路径启动（`A2A_BRIDGE_DIR` 仍可覆盖）。实测：`npm ci`（141 包）+ `npm run build` 通过，栈从仓库内路径拉起三台网关，`node cli/dispatch.mjs --to opencode --skill analysis --input "只回复两字：自洽"` 返回 `TASK_STATE_COMPLETED` 与预期文本。
 - 2026-09-24 建立：把原先散在 `D:/file/a2a-bridge/infra` 与手工 `Start-Process` 的启动流程收敛进本仓库；Kafka 与网关按「已运行则跳过」处理，实测过「全停 → 一键拉起 → `/planning` 端到端成功」与「停掉 Kafka → `up` 自动重启集群（容器 6–8 秒恢复）」。
 
 ## 关联页面

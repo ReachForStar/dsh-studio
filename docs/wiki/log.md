@@ -329,3 +329,11 @@
 - 修法：`TOOL_RUNTIME_SCHEDULER` 改用 `Symbol.for('@deepseek-ai/dsh-tools.scheduler')`（全局注册符号，副本间同一身份；`unique symbol` 类型不变），并重建 `lib/` 使两份产物一致。
 - 拆除会话流视图：删除 `ui-polish` 的 `flow/`（`FlowView.tsx`、`flow-graph.ts`、`flow-definition.ts`）、`conversation.view` 的 `flow` 注册与 `uiConversation` 注入、`flow.*` locale 键、`ui-trajectory` 测试里的 flow target、`view-selection` 回退视图恢复为 `['chat']`，并移除 `three` / `@types/three` 依赖与 lockfile 条目。会话流相关历史留在本 log 与既有 commits 中。
 - 验证：类型检查两面通过；`packages/core/tools`、`packages/core/agent-loop`、`ui-polish`、`ui-conversation`、`ui-trajectory` 共 93 文件 / 1584 项测试全绿；`verify-package-dependencies` 67 包通过；`test:docs` 20/20。真实 Web 端（agent-browser 驱动）：同一会话修复前 `pwsh` 调用必崩，修复后 `RESULT ok`；`/planning 只回复四个字：修好了` 走通 `command/run → 进度 → assistant/peer-message（天梁/opencode）→ command/done`；顶栏不再出现「会话流」标签，默认落在「对话」。
+
+## [2026-09-24] fix | 彻底消除源码面/产物面混用：新增产物启动 `dsh:built`
+
+- 实测确认加载器没有 `src/` 回退：插件行由安装锚点走 Node 解析命中 `lib/`（移走某包 `lib/` 后启动直接报该插件加载失败）；tsx 的 paths 只作用于它拦截到的裸导入，于是出现「`agent-loop` 来自 `lib/`、其导入的 `dsh-tools` 来自 `src/`」的两份并存。
+- 单面实测：带 tsx 时 `@deepseek-ai/dsh-tools` → `packages/core/tools/src/index.ts`；不带 tsx 时 → `packages/core/tools/lib/index.js`。
+- 因此新增根脚本 `dsh:built`（`node apps/cli/lib/bin.js`）：全部裸导入都由 Node 解析到 `lib/`，全进程单份同名模块。改代码后必须先 `pnpm run build`。`pnpm dsh` 源码启动保留（仅覆盖 `apps/cli` 自身）；混用不再推荐。
+- 验证：`pnpm run dsh:built --help` 正常；产物启动的 Web 实例（不带 `--patch`，token 见会话记录）可正常 boot，会话可打开、命令可下发（本次受 amax 网关 `upstream error: do request failed` 影响，模型轮次未取到回复，属外部依赖故障，与改动无关）。
+- 详情追加在 `queries/tool-scheduler-symbol-duplication.md` 末节。

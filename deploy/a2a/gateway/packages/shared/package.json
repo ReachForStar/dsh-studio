@@ -1,0 +1,21 @@
+{
+  "name": "@a2a-bridge/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./bus": "./dist/bus.js",
+    "./a2a": "./dist/a2a.js",
+    "./schema": "./dist/schema.js",
+    "./config": "./dist/config.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "1.1.0",
+    "kafkajs": "2.2.4"
+  }
+}

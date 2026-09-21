@@ -44,8 +44,8 @@ const GATEWAYS = [
 /** Web app port, matching the CLI default. */
 const WEB_PORT = 3080
 
-/** Bridge checkout supplying the gateway entry points. */
-const BRIDGE = process.env.A2A_BRIDGE_DIR ?? 'D:/file/a2a-bridge'
+/** Bridge checkout supplying the gateway entry points; the vendored copy is the default. */
+const BRIDGE = process.env.A2A_BRIDGE_DIR ?? join(HERE, 'gateway')
 
 /** Kafka compose project name, pinned in the compose file. */
 const KAFKA_PROJECT = 'kafka'

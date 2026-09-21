@@ -1,0 +1,22 @@
+{
+  "name": "a2a-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "pi、Claude Code 与 opencode 通过 A2A 协议互调：三网关 + Kafka API 总线（3-broker KRaft 集群）",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "start:pi": "node packages/pi-gateway/dist/index.js",
+    "start:cc": "node packages/cc-gateway/dist/index.js",
+    "start:oc": "node packages/oc-gateway/dist/index.js",
+    "bus:smoke": "node cli/bus-smoke.mjs",
+    "e2e": "node e2e/run.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.3",
+    "typescript": "5.9.3"
+  }
+}

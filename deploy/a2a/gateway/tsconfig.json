@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/pi-gateway" },
+    { "path": "packages/cc-gateway" },
+    { "path": "packages/oc-gateway" }
+  ]
+}

@@ -2,15 +2,15 @@
   "agents": {
     "pi": {
       "port": 9310,
-      "defaultWorkspace": "D:/file/a2a-bridge"
+      "defaultWorkspace": "D:/deepseek-harness/a2aWorkspace"
     },
     "claude-code": {
       "port": 9320,
-      "defaultWorkspace": "D:/file/a2a-bridge"
+      "defaultWorkspace": "D:/deepseek-harness/a2aWorkspace"
     },
     "opencode": {
       "port": 9330,
-      "defaultWorkspace": "D:/file/a2a-bridge"
+      "defaultWorkspace": "D:/deepseek-harness/a2aWorkspace"
     }
   },
   "bus": {

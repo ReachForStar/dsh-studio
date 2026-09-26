@@ -31,6 +31,11 @@ export class TaskStore {
   private readonly byContext = new Map<string, string[]>()
   private readonly maxTasks: number
   private readonly maxHistory: number
+  /**
+   * 淘汰回调：任务被淘汰时通知，服务端用于清理该任务的 push 配置，
+   * 防配置表随任务淘汰无界增长。
+   */
+  onEvict?: (taskId: string) => void
 
   /**
    * @param options - retention bounds; defaults suit a long-running agent.
@@ -56,18 +61,31 @@ export class TaskStore {
    * @returns the created task, submitted and empty.
    */
   create(contextId?: string, metadata?: Record<string, unknown>): A2ATask {
+    return this.ensureTask(randomUUID(), contextId, metadata)
+  }
+
+  /**
+   * 按 id 取或建任务。调用方已生成 taskId，且可能因重投递而已存在。
+   * @param id - task identity the caller minted.
+   * @param contextId - conversation to attach the task to; a fresh one when absent.
+   * @param metadata - peer-defined task metadata.
+   * @returns the existing or newly created task, submitted and empty.
+   */
+  ensureTask(id: string, contextId?: string, metadata?: Record<string, unknown>): A2ATask {
+    const existing = this.tasks.get(id)
+    if (existing !== undefined) return existing
     const context = contextId ?? randomUUID()
     const task: A2ATask = {
-      id: randomUUID(),
+      id,
       contextId: context,
       status: { state: 'TASK_STATE_SUBMITTED', timestamp: now() },
       artifacts: [],
       history: [],
       ...metadata === undefined ? {} : { metadata },
     }
-    this.tasks.set(task.id, task)
+    this.tasks.set(id, task)
     const siblings = this.byContext.get(context) ?? []
-    siblings.push(task.id)
+    siblings.push(id)
     this.byContext.set(context, siblings)
     this.evict()
     return task
@@ -189,6 +207,7 @@ export class TaskStore {
       if (this.tasks.size <= this.maxTasks) break
       if (!isTerminalState(task.status.state)) continue
       this.tasks.delete(id)
+      this.onEvict?.(id)
       const siblings = this.byContext.get(task.contextId)
       if (siblings === undefined) continue
       const index = siblings.indexOf(id)

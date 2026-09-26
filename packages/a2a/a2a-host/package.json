@@ -18,12 +18,17 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./kafka-detect": {
+      "types": "./lib/types/kafka-detect.d.ts",
+      "default": "./lib/types/kafka-detect.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/**/*.js",
-    "lib/**/*.d.ts"
+    "lib/**/*.d.ts",
+    "infra/kafka/docker-compose.yml"
   ],
   "license": "MIT",
   "dependencies": {

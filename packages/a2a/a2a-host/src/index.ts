@@ -1,3 +1,4 @@
+import { createServer } from 'node:net'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { createA2AServer, TaskStore } from '@reachforstar/dsh-a2a'
@@ -220,16 +221,36 @@ export class A2AHostService extends Service {
 }
 
 /**
+ * 检测端口是否已被占用；用完即关，不持有监听。
+ * 检测与实际 listen 之间有竞态，但同一进程内足够避免重复启动。
+ */
+async function isPortInUse(host: string, port: number): Promise<boolean> {
+  return new Promise<boolean>(resolve => {
+    const probe = createServer()
+    probe.once('error', () => resolve(true))
+    probe.listen(port, host, () => probe.close(() => resolve(false)))
+  })
+}
+
+/**
  * Register the A2A host and wait for its listener.
  *
+ * 端口已被占用时跳过启动（可能是上一次未退干净的实例，或用户手动启动的网关），
+ * 而不是抛 EADDRINUSE 中断整个 Loader 树。
  * The service is constructed here rather than mounted through `ctx.plugin`:
  * Cordis runs a nested plugin's `init` outside the enclosing fiber, so a
  * module-level plugin that returned immediately would finish booting before its
  * endpoint existed — and would report neither the bound port nor a failed bind.
  * @param ctx - the owning host context.
  * @param config - endpoint, session, and card settings.
- * @returns a promise resolved once the listener is bound.
+ * @returns a promise resolved once the listener is bound, or immediately when the port is already taken.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
+  const host = config.host ?? '127.0.0.1'
+  const port = config.port ?? 9310
+  if (await isPortInUse(host, port)) {
+    ctx.logger.info(`a2a-host: ${host}:${port} 已被占用，跳过启动`)
+    return
+  }
   await new A2AHostService(ctx, config).start()
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { A2A_PROTOCOL_VERSION } from './schema.ts'
+import { A2A_PROTOCOL_VERSION, isTerminal } from './schema.ts'
 import type { A2ATaskRow } from './task-store.ts'
 import type {
   A2AStreamEvent,
@@ -165,7 +165,14 @@ export class A2AClient {
         return
       } catch (error) {
         const text = error instanceof Error ? error.message : String(error)
-        if (observed || attempt >= 1 || !isTransient(text)) throw error
+        if (observed) {
+          // 流已开始：中途瞬态断连（未收到终态帧）= 截断，带原因上报，不重试
+          if (isTransient(text)) {
+            throw new Error(`A2A SendStreamingMessage stream ended without a terminal frame: ${text}`)
+          }
+          throw error
+        }
+        if (attempt >= 1 || !isTransient(text)) throw error
         await new Promise(resolve => setTimeout(resolve, 500))
       }
     }
@@ -202,9 +209,14 @@ export class A2AClient {
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
+    let terminal = false
     for (;;) {
       const { done, value } = await reader.read()
-      if (done) return
+      if (done) {
+        // 流在未收到终态帧时关闭 = 截断（服务端崩溃/提前关流），不能静默吞掉
+        if (!terminal) throw new Error('A2A SendStreamingMessage stream ended without a terminal frame')
+        return
+      }
       buffer += decoder.decode(value, { stream: true })
       let end = buffer.indexOf('\n\n')
       while (end >= 0) {
@@ -216,6 +228,7 @@ export class A2AClient {
           if (event.error !== undefined) {
             throw new Error(`A2A SendStreamingMessage failed with code ${event.error.code}: ${event.error.message}`)
           }
+          if ('statusUpdate' in event && isTerminal(event.statusUpdate.status.state)) terminal = true
           yield event
         }
         end = buffer.indexOf('\n\n')

@@ -3,7 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { AgentPresetRow } from '@deepseek-ai/dsh-agent-preset-registry/types'
-import { writeDefaultPreset } from './settings-store.ts'
+import { a2aHiddenPresetIds, writeDefaultPreset } from './settings-store.ts'
 
 /** The read-only composition viewer over one preset. */
 export interface PresetView {
@@ -46,7 +46,11 @@ export class AgentPresetSectionController {
     try {
       const result = await this.ctx.remote.agentPresets.list()
       if (!result.ok) throw new Error(result.error.message)
-      this.set({ status: 'ready', error: null, rows: result.value.presets })
+      const hiddenIds = await a2aHiddenPresetIds(this.ctx)
+      const rows = hiddenIds.size > 0
+        ? result.value.presets.filter(row => !hiddenIds.has(row.id))
+        : result.value.presets
+      this.set({ status: 'ready', error: null, rows })
     } catch (error) { this.set({ status: 'error', error: message(error) }) }
   }
 

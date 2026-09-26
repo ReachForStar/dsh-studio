@@ -94,6 +94,14 @@
       "@reachforstar/dsh-a2a/schema": ["./packages/a2a/a2a/src/schema.ts"],
       "@reachforstar/dsh-a2a/server": ["./packages/a2a/a2a/src/server.ts"],
       "@reachforstar/dsh-a2a-host": ["./packages/a2a/a2a-host/src/index.ts"],
+      "@reachforstar/dsh-a2a-host/kafka-detect": ["./packages/a2a/a2a-host/src/kafka-detect.ts"],
+      "@reachforstar/dsh-a2a-status": ["./packages/a2a/a2a-status/src/index.ts"],
+      "@reachforstar/dsh-a2a-status/types": ["./packages/a2a/a2a-status/src/types.ts"],
+      "@reachforstar/dsh-a2a-status/invariant": ["./packages/a2a/a2a-status/src/invariant.ts"],
+      "@reachforstar/dsh-a2a-status/remote": ["./packages/a2a/a2a-status/lib/typert.remote-client.d.ts"],
+      "@reachforstar/dsh-a2a-status/typert": ["./packages/a2a/a2a-status/lib/typert.host.d.ts"],
+      "@reachforstar/dsh-client-ui-a2a-status": ["./packages/client/ui-a2a-status/src/index.ts"],
+      "@reachforstar/dsh-client-ui-a2a-status/client": ["./packages/client/ui-a2a-status/src/client/index.ts"],
       "@reachforstar/dsh-tool-a2a": ["./packages/a2a/tool-a2a/src/index.ts"],
 
       "@deepseek-ai/dsh-api-job-controller": ["./packages/api/job-controller/src/index.ts"],
@@ -487,6 +495,7 @@
       "@deepseek-ai/dsh-session-format-v1-to-v2": ["./packages/session/session-format-v1-to-v2/src"],
       "@deepseek-ai/dsh-session-format-v2-to-v3": ["./packages/session/session-format-v2-to-v3/src"],
       "@deepseek-ai/dsh-session-format-v3-to-v4": ["./packages/session/session-format-v3-to-v4/src"],
+      "@deepseek-ai/dsh-session-format-v4-to-v5": ["./packages/session/session-format-v4-to-v5/src"],
       "@deepseek-ai/dsh-session-log-deepseek": ["./packages/session/session-log-deepseek/src"],
       "@deepseek-ai/dsh-session-log-deepseek/invariant": ["./packages/session/session-log-deepseek/src/invariant.ts"],
       "@deepseek-ai/dsh-session-log-export": ["./packages/session-query/session-log-export/src"],
@@ -588,8 +597,12 @@
       "@deepseek-ai/dsh-workflow-ptc": ["./packages/workflow/workflow-ptc/src"],
       "@deepseek-ai/dsh-workspace": ["./packages/workspace/workspace/src"],
       "@deepseek-ai/dsh-workspace/invariant": ["./packages/workspace/workspace/src/invariant.ts"],
-      "@deepseek-ai/dsh-workspace-changes": ["./packages/deliverables/workspace-changes/src"]
+      "@deepseek-ai/dsh-workspace-changes": ["./packages/deliverables/workspace-changes/src"],
       // END generated package aliases
+      // react 类型解析（沙箱无法创建 node_modules 符号链接时的回退）
+      "react": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/jsx-runtime.d.ts"],
+      "react/jsx-dev-runtime": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/jsx-dev-runtime.d.ts"]
     }
   }
 }

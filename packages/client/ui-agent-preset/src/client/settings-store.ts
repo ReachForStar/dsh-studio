@@ -9,11 +9,35 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // Type-only: pulls the ctx.remote merge into this program.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only: pulls the ctx.a2aStatus merge (a2a 服务状态 store) into this program.
+import type {} from '@reachforstar/dsh-client-ui-a2a-status/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { AgentPresetRoster } from '@deepseek-ai/dsh-agent-preset-registry/types'
 
 /** The agent-preset settings namespace on the host wire. */
 export const AGENT_PRESET_SETTINGS_NS = 'agent-preset-registry'
+
+/** 启明星域路由预设 id；依赖 a2a 服务，服务不可用时从选择面隐藏。 */
+const A2A_PRESET_XINGCHEN_QIMING = 'xingchen-qiming'
+
+const EMPTY_SET: ReadonlySet<string> = new Set()
+
+/**
+ * 返回因 a2a 服务不可用而需隐藏的预设 id 集合。
+ * a2aStatus store 未加载（ui-a2a-status 缺失）或状态未就绪时返回空集（不隐藏），
+ * 仅在状态明确为 ready 且不可用时隐藏启明预设。
+ * @param ctx - 浏览器插件上下文。
+ * @returns 需隐藏的预设 id 集合。
+ */
+export async function a2aHiddenPresetIds(ctx: ClientContext): Promise<ReadonlySet<string>> {
+  const a2aStatus = ctx.get('a2aStatus')
+  if (a2aStatus === undefined) return EMPTY_SET
+  await a2aStatus.load()
+  const snapshot = a2aStatus.store.getSnapshot()
+  return snapshot.status === 'ready' && !snapshot.available
+    ? new Set([A2A_PRESET_XINGCHEN_QIMING])
+    : EMPTY_SET
+}
 
 /**
  * Persist one preset as the default for sessions created later.
@@ -107,8 +131,9 @@ export async function beginRosterRead<S extends { status: string; error: string 
  */
 export function presetOptions(
   presets: readonly { id: string; name?: string; description?: string; broken?: string }[],
+  hiddenIds: ReadonlySet<string> = EMPTY_SET,
 ): AgentPresetOption[] {
-  return presets.filter(preset => preset.broken === undefined).map(preset => ({
+  return presets.filter(preset => preset.broken === undefined && !hiddenIds.has(preset.id)).map(preset => ({
     id: preset.id,
     ...preset.name === undefined ? {} : { name: preset.name },
     ...preset.description === undefined ? {} : { description: preset.description },
@@ -158,10 +183,11 @@ export class AgentPresetSettingsController {
       this.set({ status: 'unavailable', options: [] })
       return
     }
+    const hiddenIds = await a2aHiddenPresetIds(this.ctx)
     this.set({
       status: 'ready',
       error: null,
-      options: presetOptions(presets),
+      options: presetOptions(presets, hiddenIds),
     })
   }
 

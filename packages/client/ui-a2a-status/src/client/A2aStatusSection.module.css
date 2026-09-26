@@ -1,0 +1,56 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.description {
+  color: var(--dsw-text-secondary, #6b7280);
+  margin: 0;
+}
+
+.status {
+  color: var(--dsw-text-secondary, #6b7280);
+  margin: 0;
+}
+
+.failure {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.failure p {
+  color: var(--dsw-danger, #dc2626);
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.grid dt {
+  color: var(--dsw-text-secondary, #6b7280);
+}
+
+.grid dd {
+  margin: 0;
+}
+
+.grid dd[data-host-running="true"],
+.grid dd[data-kafka-ready="true"] {
+  color: var(--dsw-success, #16a34a);
+}
+
+.grid dd[data-host-running="false"],
+.grid dd[data-kafka-ready="false"] {
+  color: var(--dsw-danger, #dc2626);
+}
+
+.notice {
+  color: var(--dsw-warning, #d97706);
+  margin: 0;
+}

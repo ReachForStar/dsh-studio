@@ -50,7 +50,7 @@ export const BrowserMcpConfig: Schema<BrowserMcpAttachConfig | (Omit<BrowserMcpL
     endpoint: Schema.string().pattern(/^https?:\/\/[^\s/]+|^wss?:\/\/[^\s/]+/u).required(),
     toolCallTimeoutMs: Schema.number().min(1),
   }),
-])
+]).default({ mode: 'launch', headless: true })
 
 /**
  * Reject an invalid debugging endpoint before acquiring provider or browser resources.

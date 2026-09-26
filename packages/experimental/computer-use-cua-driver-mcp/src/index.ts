@@ -34,12 +34,12 @@ export const Config: z<Partial<Config>, Config> = z.object({
   args: z.array(String).default(['mcp']),
   toolCallTimeoutMs: z.number().min(1),
   reconnect: z.object({
-    enabled: z.boolean(),
-    initialDelayMs: z.number().min(1),
-    maxDelayMs: z.number().min(1),
-    maxAttempts: z.number().min(1).step(1),
-  }),
-})
+    enabled: z.boolean().default(true),
+    initialDelayMs: z.number().min(1).default(500),
+    maxDelayMs: z.number().min(1).default(30000),
+    maxAttempts: z.number().min(1).step(1).default(10),
+  }).default({ enabled: true, initialDelayMs: 500, maxDelayMs: 30000, maxAttempts: 10 }),
+}).default({ command: 'cua-driver', args: ['mcp'], reconnect: { enabled: true, initialDelayMs: 500, maxDelayMs: 30000, maxAttempts: 10 } })
 
 /**
  * Reserve computer use and activate the installed Cua Driver's MCP tools.

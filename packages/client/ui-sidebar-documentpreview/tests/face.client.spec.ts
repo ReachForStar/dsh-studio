@@ -14,7 +14,7 @@ import { textFace } from '../src/client/face.ts'
 import type { DocumentFileBytes, ReadDocumentBytes, ReadWorkspaceFilePage, WriteWorkspaceFile, WriteWorkspaceFileBytes } from '../src/client/rpc.ts'
 import { hostFileOf } from '../src/client/rpc.ts'
 import { createTextStore } from '../src/client/store.ts'
-import { ABSOLUTE_PATH, FILE, PATH, SESSION, failure, page } from './fixtures.client.ts'
+import { ABSOLUTE_PATH, FILE, PATH, SESSION, createResources, failure, page } from './fixtures.client.ts'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 
 const TAB_1 = 'tab-1' as TabId
@@ -95,7 +95,8 @@ function bench(sessionId = 'other-session' as SessionId) {
   const forget = vi.fn(instance.actions.forget)
   // Injected for another session on purpose: the address's session must win.
   const writes = { write: vi.fn<WriteWorkspaceFile>(), writeBytes: vi.fn<WriteWorkspaceFileBytes>() }
-  const face = textFace(read, bytes, writes.write, writes.writeBytes)(sessionId, { ...instance.actions, forget })
+  const resources = createResources()
+  const face = textFace(read, bytes, writes.write, writes.writeBytes, resources)(sessionId, { ...instance.actions, forget })
   /** Settle the oldest outstanding read, or the oldest one for `offset`. */
   const settle = async (result: RemoteResult<WorkspaceFileText>, offset?: number): Promise<void> => {
     const at = offset === undefined ? 0 : pending.findIndex(call => call.offset === offset)
@@ -105,7 +106,7 @@ function bench(sessionId = 'other-session' as SessionId) {
     await call.promise
   }
   return {
-    instance, read, face, forget, settle, bytes, controller,
+    instance, read, face, forget, settle, bytes, controller, resources,
     settleAll: whole.settle,
     outstandingAll: whole.outstanding,
     outstanding: () => pending.map(call => call.offset),
@@ -121,6 +122,19 @@ const settlements = [
 ] as const
 
 describe('textFace', () => {
+  it('subscribes to a dependency once and stops accepting members after the tab ends', () => {
+    const { face, resources, controller, forget } = bench()
+    const source = vi.spyOn(resources, 'source')
+    const address = sessionFileAddress(SESSION, 'style.css')
+    face.addResource(TAB_1, address, controller.signal)
+    face.addResource(TAB_1, address, controller.signal)
+    expect(source).toHaveBeenCalledExactlyOnceWith(address)
+    controller.abort()
+    expect(forget).toHaveBeenCalledExactlyOnceWith(TAB_1)
+    face.addResource(TAB_1, sessionFileAddress(SESSION, 'other.css'), controller.signal)
+    expect(source).toHaveBeenCalledTimes(1)
+  })
+
   it('marks the read in flight, then keeps the page', async () => {
     const { read, face, settle, tab } = bench()
     const controller = new AbortController()
@@ -224,6 +238,7 @@ describe('textFace', () => {
     expect(tab()?.complete).toBeUndefined()
     await settleAll(result)
     expect(tab()).toMatchObject({ mode: 'bytes-complete', loading: false, complete: result.value, version: 'v1', eof: true, pages: {} })
+    expect(tab()?.complete?.data).toBe(result.value.data)
   })
 
   it('records a complete-read failure and clears it when the read is retried', async () => {
@@ -404,7 +419,7 @@ it.each([new Error('invalid bytes'), 'invalid bytes'])('reports an active comple
   const controller = new AbortController()
   const read = vi.fn<ReadDocumentBytes>().mockRejectedValue(failure)
   try {
-    textFace(vi.fn(), read, vi.fn(), vi.fn())(SESSION, instance.actions).loadAll(TAB_1, FILE, controller.signal)
+    textFace(vi.fn(), read, vi.fn(), vi.fn(), createResources())(SESSION, instance.actions).loadAll(TAB_1, FILE, controller.signal)
     await Promise.resolve()
     expect(instance.getSnapshot().byTab[TAB_1]?.failure).toMatchObject({ code: 'gateway/internal', message: 'invalid bytes' })
   } finally { controller.abort() }
@@ -414,7 +429,7 @@ it('ignores a complete-read rejection after renderer-owned loading takes over', 
   const instance = createTextStore().create()
   const controller = new AbortController()
   const pending = Promise.withResolvers<Awaited<ReturnType<ReadDocumentBytes>>>()
-  const face = textFace(vi.fn(), () => pending.promise, vi.fn(), vi.fn())(SESSION, instance.actions)
+  const face = textFace(vi.fn(), () => pending.promise, vi.fn(), vi.fn(), createResources())(SESSION, instance.actions)
   try {
     face.loadAll(TAB_1, FILE, controller.signal)
     face.prepareRenderer(TAB_1, controller.signal, 'office')

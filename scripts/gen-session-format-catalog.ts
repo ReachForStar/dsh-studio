@@ -181,13 +181,7 @@ export function renderSessionFormatCatalog(
     const names = [item.targetCodec, item.migration]
     if (item.from === 0) names.push(item.sourceCodec)
     if (item.to === currentVersion) names.push(item.targetRestorer, item.targetHeaderValidator)
-    const named = [...new Set(names)].sort()
-    const single = `import { ${named.join(', ')} } from '${item.importPath}'`
-    // Keep the generated import inside the repository line budget: a workspace
-    // package path with a long name would otherwise exceed it.
-    return single.length <= 140
-      ? single
-      : ['import {', ...named.map(name => `  ${name},`), `} from '${item.importPath}'`].join(String.fromCharCode(10))
+    return `import { ${[...new Set(names)].sort().join(', ')} } from '${item.importPath}'`
   })
   const first = declarations[0]
   const codecs = first === undefined
@@ -196,13 +190,6 @@ export function renderSessionFormatCatalog(
   const restorer = declarations.at(-1)?.targetRestorer
   const headerValidator = declarations.at(-1)?.targetHeaderValidator
   const currentCodec = declarations.at(-1)?.targetCodec
-  /** Emit `key: [items]` on one line while it fits the repository line budget. */
-  const listLine = (key: string, items: readonly string[]): string => {
-    const single = `  ${key}: [${items.join(', ')}],`
-    return single.length <= 140
-      ? single
-      : [`  ${key}: [`, ...items.map(item => `    ${item},`), '  ],'].join(String.fromCharCode(10))
-  }
   if (restorer === undefined) throw new Error('gen-session-format-catalog: current format has no target restorer')
   if (headerValidator === undefined) {
     throw new Error('gen-session-format-catalog: current format has no target header validator')
@@ -216,15 +203,20 @@ export function renderSessionFormatCatalog(
     '',
     "import { KNOWN_SESSION_EVENT_TYPES } from '@deepseek-ai/dsh-session'",
     "import { createSessionFormatCatalog } from '@deepseek-ai/dsh-session-format'",
+    "import type { SessionFormatCatalogOptions } from '@deepseek-ai/dsh-session-format'",
     "import { validateInstalledCurrentSessionArtifact, validateInstalledCurrentSessionHeader } from './current.ts'",
     ...imports,
     '',
-    '/** Physical codec dispatch and complete adjacent chain, independent of mounted plugins. */',
-    'export const sessionFormatCatalog = createSessionFormatCatalog({',
+    '/** Static assembly shared by current reads and parent-specific historical restoration. */',
+    'export const sessionFormatCatalogOptions: SessionFormatCatalogOptions = {',
     `  currentVersion: ${currentVersion},`,
-    listLine('codecs', codecs),
+    '  codecs: [',
+    ...codecs.map(codec => `    ${codec},`),
+    '  ],',
     `  currentEncoder: ${currentCodec},`,
-    listLine('migrations', declarations.map(item => item.migration)),
+    '  migrations: [',
+    ...declarations.map(item => `    ${item.migration},`),
+    '  ],',
     '  restoreCurrent(artifact) {',
     `    const restored = ${restorer}(artifact, KNOWN_SESSION_EVENT_TYPES)`,
     '    validateInstalledCurrentSessionArtifact(restored)',
@@ -238,7 +230,10 @@ export function renderSessionFormatCatalog(
     '    validateInstalledCurrentSessionHeader(header)',
     '    return header',
     '  },',
-    '})',
+    '}',
+    '',
+    '/** Physical codec dispatch and complete adjacent chain, independent of mounted plugins. */',
+    'export const sessionFormatCatalog = createSessionFormatCatalog(sessionFormatCatalogOptions)',
     '',
   ].join('\n')
 }

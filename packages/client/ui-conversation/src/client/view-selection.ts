@@ -1,27 +1,21 @@
 import type { ViewTab } from './contract/views.ts'
 
-/**
- * Fallback View preference order for a Session with no stored selection: the
- * transcript is the shipped default and the last resort.
- */
-const FALLBACK_VIEW_IDS = ['chat'] as const
+/** Fallback View selected when no stored preference resolves to a registered View. */
+export const DEFAULT_VIEW_ID = 'chat'
+
+/** Registered identity of the trajectory View. */
+export const TRAJECTORY_VIEW_ID = 'trajectory'
 
 /**
- * Resolve a preferred registered View, then the fallback order, without
- * choosing an unregistered View.
+ * Resolve a preferred registered View, then Chat, without choosing another View.
  * @param tabs - currently registered Views.
  * @param selectedId - preferred View identity, when one is stored.
- * @returns the selected View, the first registered fallback, or undefined when none is registered.
+ * @returns the selected View, Chat fallback, or undefined when neither is registered.
  */
 export function resolveActiveView(
   tabs: readonly ViewTab[],
   selectedId: string | null,
 ): ViewTab | undefined {
   const selected = selectedId === null ? undefined : tabs.find(view => view.id === selectedId)
-  if (selected !== undefined) return selected
-  for (const id of FALLBACK_VIEW_IDS) {
-    const fallback = tabs.find(view => view.id === id)
-    if (fallback !== undefined) return fallback
-  }
-  return undefined
+  return selected ?? tabs.find(view => view.id === DEFAULT_VIEW_ID)
 }

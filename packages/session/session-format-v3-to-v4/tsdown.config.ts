@@ -1,6 +1,5 @@
 import { defineConfig } from 'tsdown'
 
-/** Build the frozen adjacent-migration library. */
 export default defineConfig({
   entry: ['lib/types/index.js'],
   outDir: 'lib',

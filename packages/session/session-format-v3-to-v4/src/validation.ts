@@ -1,105 +1,130 @@
-/** Native V4 validation: the V3 relationship rules plus the turn-free peer assistant message. */
+/** Native V4 metadata and generation-owned relationship validation. */
 
-import { SessionFormatError, SessionFormatUnsupportedMigrationError } from '@deepseek-ai/dsh-session-format'
-import type { SessionFormatArtifact, SessionFormatHeader } from '@deepseek-ai/dsh-session-format'
-import { assertReleasedV3Header, restoreReleasedV3Artifact } from '@deepseek-ai/dsh-session-format-v2-to-v3'
-import { assertV4Event, PEER_MESSAGE, record, SURFACE_TYPES } from './payload.ts'
+import { isAbsolute } from 'node:path'
+import { SessionFormatError, SessionFormatUnsupportedMigrationError, isSessionFormatJsonObject, sessionFormatCount } from '@deepseek-ai/dsh-session-format'
+import type { SessionFormatArtifact, SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
+import { assertV4DeveloperData } from './developer.ts'
+import { assertV4LifecycleRelationships } from './relationships.ts'
+import { assertV4MessageSources } from './message-sources.ts'
+import { catalogFact } from './facts.ts'
+import { assertV4RetiredSyntax } from './retired-syntax.ts'
+import { assertV4SystemMessageFields } from './system-message.ts'
+import { assertV4ForkResult } from './fork-result.ts'
+import { assertV4ToolResultMessage } from './tool-role.ts'
 
 /**
- * Validate v4 logical metadata with the released-v3 fields.
- * The generation admits one event type and changes no header field, so the
- * frozen v3 shape is the v4 shape with a higher version number.
- * @param header - decoded v4 Session header.
+ * Validate the exact native V4 logical header.
+ * @param header - decoded or otherwise untrusted V4 Session header candidate.
  */
-export function assertReleasedV4Header(header: SessionFormatHeader): void {
-  if (header.version !== 4) throw new SessionFormatError('expected format v4 header')
-  assertReleasedV3Header({ ...header, version: 3 })
+export function assertReleasedV4Header(header: unknown): void {
+  if (!isSessionFormatJsonObject(header) || header['version'] !== 4) throw new SessionFormatError('expected format v4 header')
+  const required = ['version', 'id', 'createdAt', 'isSeeded', 'delegationDepth']
+  const allowed = new Set([...required, 'cwd', 'parentSession', 'origin', 'agentPreset'])
+  const missing = required.find(key => !Object.hasOwn(header, key))
+  const unexpected = Object.keys(header).find(key => !allowed.has(key))
+  if (missing !== undefined) throw new SessionFormatError(`format v4 header lacks required field ${missing}`)
+  if (unexpected !== undefined) throw new SessionFormatError(`format v4 header has unexpected field ${unexpected}`)
+  if (typeof header.id !== 'string') throw new SessionFormatError('format v4 header id must be a string')
+  sessionFormatCount(header.createdAt, 'format v4 header createdAt')
+  sessionFormatCount(header.delegationDepth, 'format v4 header delegationDepth')
+  if (typeof header.isSeeded !== 'boolean') throw new SessionFormatError('format v4 header isSeeded must be boolean')
+  if (header.cwd !== undefined && (typeof header.cwd !== 'string' || !isAbsolute(header.cwd))) {
+    throw new SessionFormatError('format v4 header cwd must be absolute')
+  }
+  for (const key of ['parentSession', 'agentPreset']) {
+    if (header[key] !== undefined && typeof header[key] !== 'string') {
+      throw new SessionFormatError(`format v4 header ${key} must be a string`)
+    }
+  }
+  if (header.origin !== undefined && header.origin !== 'subagent') {
+    throw new SessionFormatError('format v4 header origin must be "subagent"')
+  }
 }
 
 /**
- * Validate surface ownership, the unknown-event guard, the protected system head,
- * and event density for one detached v4 artifact. Message identities and payloads
- * are returned unchanged.
- *
- * This restorer does not delegate to the frozen v3 one. A predecessor validates
- * the envelope of a type it cannot classify as opaque, which is exactly what a
- * newer surface type needs; the frozen v3 rules instead read `assistant/peer-message`
- * as a known non-surface type and refuse its `surfaceOp`. The predecessor chain
- * owns those rules for its own artifacts, and the installed current validation runs
- * after this function on the live path.
- * @param artifact - detached v4 artifact.
+ * Validate V4 inheritance, vocabulary, native message admission, and
+ * lifecycle, compaction, tool, retry, title, command, catalog, and delivery ownership.
+ * Installed Session restoration owns common event envelopes and message acceptance.
+ * @param artifact - complete detached V4 artifact.
  * @param knownEventTypes - event types understood by the installed Session package.
- * @returns the same validated artifact.
+ * @returns the same validated artifact and event objects.
  */
-export function restoreReleasedV4Artifact(
-  artifact: SessionFormatArtifact,
-  knownEventTypes: ReadonlySet<string>,
-): SessionFormatArtifact {
+export function restoreReleasedV4Artifact(artifact: SessionFormatArtifact, knownEventTypes: ReadonlySet<string>): SessionFormatArtifact {
   assertReleasedV4Header(artifact.header)
-  let step: { readonly turn: unknown; readonly step: unknown } | undefined
-  let head: number | undefined
-  let hasSurface = false
+  const cut = sessionFormatCount(artifact.inheritedEventCount, 'format v4 inherited event count')
+  if (cut > artifact.events.length) throw new SessionFormatError('format v4 inherited event count exceeds its events')
+  if (!artifact.header.isSeeded && cut !== 0) throw new SessionFormatError('unseeded format v4 Session has inherited events')
+  let lastInheritedMarker: number | undefined
   for (const [index, event] of artifact.events.entries()) {
-    // The guard refuses a required event this build cannot interpret, which is the
-    // failure the released generations refused through their own vocabulary.
     if (!knownEventTypes.has(event.type) && event['ignorable'] !== true) {
       throw new SessionFormatUnsupportedMigrationError(
-        `format v4 contains unknown event type ${JSON.stringify(event.type)} at seq ${String(index)}`,
+        `format v4 contains unknown event type ${JSON.stringify(event.type)} at seq ${index}`,
       )
     }
-    assertV4Event(event, knownEventTypes)
-    if (event.seq !== index) throw new SessionFormatError(`format v4 event ${String(index)} is not dense`)
-    if (event.type === 'step/start') {
-      const data = record(event.data, event.type)
-      step = { turn: data['turn'], step: data['step'] }
-    } else if (event.type === 'step/end' || event.type === 'turn/end') {
-      step = undefined
-    }
-    if (event.type === 'system/message') {
-      const data = record(event.data, 'system/message')
-      if (step === undefined || step.turn !== data['turn'] || step.step !== data['step']) {
-        throw new SessionFormatError('system/message does not match an open step')
-      }
-      const operation = event['surfaceOp']
-      if (hasSurface && head === undefined) {
-        throw new SessionFormatError('system/message requires a protected first surface head')
-      }
-      if (operation === 'append') {
-        if (!hasSurface) head = event.seq
-      } else {
-        const replace = record(operation, 'system replacement')
-        if (replace['startSeq'] === head || replace['endSeq'] === head) {
-          if (replace['startSeq'] !== head || replace['endSeq'] !== head) {
-            throw new SessionFormatError('system/message must replace exactly the current system head')
-          }
-          head = event.seq
-        }
-      }
-    } else if (SURFACE_TYPES.has(event.type) && event['surfaceOp'] !== 'append') {
-      const replace = record(event['surfaceOp'], 'surface replacement')
-      if (replace['startSeq'] === head || replace['endSeq'] === head) {
-        throw new SessionFormatError('surface replacement cannot shadow the protected system head')
-      }
-    }
-    if (event.type === 'compaction/prune' || event.type === 'compaction/summary') {
-      const seqs = record(event.data, event.type)['shadowedSeqs']
-      if (Array.isArray(seqs) && seqs.some(seq => seq === head)) {
-        throw new SessionFormatError('compaction cannot shadow the protected system head')
-      }
-    }
-    if (SURFACE_TYPES.has(event.type)) hasSurface = true
+    if (event.seq !== index) throw new SessionFormatError(`format v4 event ${index} is not dense`)
+    if (!knownEventTypes.has(event.type)) continue
+    assertV4RetiredSyntax(event)
+    assertV4SystemMessageFields(event)
+    assertV4ToolResultMessage(event)
+    assertV4ForkResult(event)
+    if (event.type === 'session/end-seed' && isSessionFormatJsonObject(event.data)
+      && event.data['inherited'] === true) lastInheritedMarker = index
   }
-  // Delegate the frozen predecessor chain, naming this generation's surface type so
-  // the frozen rules admit it as an opaque surface event instead of reading it as a
-  // known non-surface type. The predecessor chain then owns the relationship checks
-  // that are not this generation's to re-derive.
-  restoreReleasedV3Artifact(
-    { ...artifact, header: { ...artifact.header, version: 3 } },
-    knownEventTypes,
-    new Set([PEER_MESSAGE]),
-  )
+  if (artifact.header.isSeeded && lastInheritedMarker !== cut) {
+    throw new SessionFormatError('format v4 seeded header disagrees with its last inherited end-seed marker')
+  }
+  if (!artifact.header.isSeeded && lastInheritedMarker !== undefined) {
+    throw new SessionFormatError('format v4 unseeded Session contains an inherited end-seed marker')
+  }
+  assertReleasedV4Relationships(artifact, knownEventTypes)
   return artifact
 }
 
-/** The V4-only event name, re-exported for callers that classify artifacts by hand. */
-export { PEER_MESSAGE as RELEASED_V4_PEER_MESSAGE }
+/**
+ * Validate delivery generation and active-generation coordinates before evaluating ownership.
+ * @param event - decoded event whose delivery payload may be inspected.
+ * @param currentVersion - generation whose watermark coordinates are active.
+ * @returns the active delivery's nonempty Session id, or undefined for other events and generations.
+ */
+export function validateDeliveryAccepted(event: SessionFormatEvent, currentVersion: 3 | 4): string | undefined {
+  if (event.type !== 'session-log-deepseek/delivery-accepted') return undefined
+  const data = event.data
+  if (!isSessionFormatJsonObject(data)) throw new SessionFormatError('delivery-accepted data must be an object')
+  const version = sessionFormatCount(data['sessionFormatVersion'] === undefined ? 0 : data['sessionFormatVersion'], 'delivery sessionFormatVersion')
+  if (version !== currentVersion) return undefined
+  const throughSeq = sessionFormatCount(data['throughSeq'], 'delivery throughSeq')
+  if (throughSeq >= event.seq) throw new SessionFormatError('delivery throughSeq must precede its marker')
+  const id = data['sessionId']
+  if (typeof id !== 'string' || id.length === 0) throw new SessionFormatError('delivery requires a nonempty Session id')
+  return id
+}
+
+/**
+ * Validate native developer fields, message sources, lifecycle, catalog, and delivery
+ * relationships without changing event vocabulary or tail recovery.
+ * The owning admission stage rejects unknown required events;
+ * unknown ignorable records retain their uninterpreted payloads.
+ * @param artifact - decoded artifact with its final inherited cut.
+ * @param knownEventTypes - installed event types whose payloads this reader interprets.
+ */
+export function assertReleasedV4Relationships(artifact: SessionFormatArtifact, knownEventTypes: ReadonlySet<string>): void {
+  const ids = new Set<string>()
+  for (const event of artifact.events) {
+    if (!knownEventTypes.has(event.type)) continue
+    assertV4DeveloperData(event)
+    assertV4MessageSources(event)
+    const deliveryId = validateDeliveryAccepted(event, 4)
+    if (deliveryId !== undefined
+      && !(artifact.header.parentSession !== undefined && event.seq < artifact.inheritedEventCount)
+      && deliveryId !== artifact.header.id) {
+      throw new SessionFormatError('current-generation delivery marker names the wrong Session')
+    }
+    if (event.type === 'subagent/catalog' && event.seq >= artifact.inheritedEventCount) {
+      const fact = catalogFact(event.data)
+      const id = fact['childId'] as string
+      if (ids.has(id)) throw new SessionFormatError(`duplicate catalog child ${id}`)
+      ids.add(id)
+    }
+  }
+  assertV4LifecycleRelationships(artifact, knownEventTypes)
+}

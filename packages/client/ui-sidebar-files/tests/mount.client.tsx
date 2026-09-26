@@ -8,7 +8,7 @@
 import { useSyncExternalStore } from 'react'
 import { render } from '@testing-library/react'
 import type { RenderResult } from '@testing-library/react'
-import { vi } from 'vitest'
+import { onTestFinished, vi } from 'vitest'
 import type { Mock } from 'vitest'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
@@ -20,8 +20,10 @@ import { FilesBody } from '../src/client/FilesBody.tsx'
 import type { FilesBodyProps } from '../src/client/FilesBody.tsx'
 import { zh } from '../src/client/locales.ts'
 import { createFilesStore } from '../src/client/store.ts'
-import { scriptedDelete, scriptedList } from './scripted-remote.client.ts'
-import type { ScriptedDelete, ScriptedList } from './scripted-remote.client.ts'
+import { scriptedDelete } from './scripted-remote.client.ts'
+import type { ScriptedDelete } from './scripted-remote.client.ts'
+import { scriptedList } from './scripted-list.client.ts'
+import type { ScriptedList } from './scripted-list.client.ts'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 
 export const SESSION = 's-test' as SessionId
@@ -40,6 +42,7 @@ type FilesStoreInstance = ReturnType<ReturnType<typeof createFilesStore>['create
 
 /** The owner's tab actions as recording mocks. */
 interface MockedTabActions {
+  readonly bindCommands: Mock<SidebarRightTabActions['bindCommands']>
   readonly openResource: Mock<SidebarRightTabActions['openResource']>
   readonly openTab: Mock<SidebarRightTabActions['openTab']>
   readonly close: Mock<SidebarRightTabActions['close']>
@@ -59,13 +62,18 @@ export interface Mounted {
 }
 
 /** One store instance, one face, one owner share. */
-function harness(cwd: string | null) {
+function harness(cwd: string | null, refreshShortcut?: ReturnType<FilesBodyProps['useTabInfo']>['tab']['refreshShortcut']) {
   const instance = createFilesStore().create()
   const script = scriptedList()
   const removal = scriptedDelete()
-  const face = filesFace(script.list, removal.remove)(SESSION, instance.actions)
+  const face = filesFace(script.list, removal.remove, script.watch)(SESSION, instance.actions)
   const controller = new AbortController()
+  onTestFinished(async () => {
+    controller.abort()
+    await script.dispose()
+  })
   const tabActions: MockedTabActions = {
+    bindCommands: vi.fn(() => vi.fn()),
     openResource: vi.fn<SidebarRightTabActions['openResource']>(),
     openTab: vi.fn<SidebarRightTabActions['openTab']>(),
     close: vi.fn<SidebarRightTabActions['close']>(),
@@ -80,7 +88,7 @@ function harness(cwd: string | null) {
         id: TAB, kind: 'files', contentId: 'files', title: zh['type.label'], visible: true,
         navigation: { address: 'files', params: undefined, revision: 1 },
         signal: controller.signal,
-        actions: tabActions,
+        actions: tabActions, refreshShortcut,
       },
     }),
     sessionId: SESSION,
@@ -96,9 +104,10 @@ function harness(cwd: string | null) {
 /**
  * Mount the body.
  * @param cwd - the session's working directory as `useSessions` reports it; `null` for a session without one.
+ * @param refreshShortcut - effective binding advertised by the tab owner.
  */
-export function mountBody(cwd: string | null = ROOT): Mounted {
-  const { shared, ...hands } = harness(cwd)
+export function mountBody(cwd: string | null = ROOT, refreshShortcut?: ReturnType<FilesBodyProps['useTabInfo']>['tab']['refreshShortcut']): Mounted {
+  const { shared, ...hands } = harness(cwd, refreshShortcut)
   const view = render(<FilesBody {...shared as unknown as FilesBodyProps} />)
   return { ...hands, view, remount: () => render(<FilesBody {...shared as unknown as FilesBodyProps} />) }
 }

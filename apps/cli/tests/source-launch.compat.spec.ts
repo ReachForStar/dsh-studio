@@ -2,21 +2,25 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { execa } from 'execa'
 import { describe, expect, it } from 'vitest'
+import { testProfileResolution } from './profiles/headless/tests/profile-resolution.ts'
 
 /**
- * Keyless smoke for SOURCE `dsh` execution: run `apps/cli/src/bin.ts`
- * with the exact source runtime vector (`node --import tsx/esm`, the vector the
- * root `dsh:source` script invokes directly) and assert the
- * required-config diagnostic. The Node compatibility matrix runs this
- * WHOLE file, so a Node release changing module hooks or TypeScript handling
- * breaks this gate instead of the source vector; the root `dsh` script runs the
- * built `lib/` entry, which the built-bin suite covers.
+ * Keyless source-launch and profile-resolution checks through the source
+ * runtime vector (`node --import tsx/esm` on `apps/cli/src/bin.ts`, the vector
+ * the root `dsh:source` script invokes directly). The Node compatibility
+ * matrix runs this WHOLE file without a build, so a Node release changing
+ * module hooks or TypeScript handling breaks this gate instead of the source
+ * vector; the root `dsh` script runs the built `lib/` entry, which the
+ * built-bin suite covers. Source tool execution with native/generated
+ * dependencies belongs to the build-backed source-tool suite.
  */
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
 const dshSourceBin = 'apps/cli/src/bin.ts'
 
 describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
+  testProfileResolution('src')
+
   it('launches the source CLI without building', async () => {
     const rootPackage = JSON.parse(await readFile(new URL('../../../package.json', import.meta.url), 'utf8')) as {
       readonly scripts?: Record<string, string>

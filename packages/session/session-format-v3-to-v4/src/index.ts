@@ -1,7 +1,8 @@
-/** V4 admits the turn-free peer assistant message; the frozen v3 codec carries the physical layer. */
+/** Tool-role V3-to-V4 migration with native V4 framing and delivery validation. */
 
 export { releasedV3SessionFormatCodec } from '@deepseek-ai/dsh-session-format-v2-to-v3'
 export * from './codec.ts'
 export * from './migration.ts'
-export * from './payload.ts'
-export * from './validation.ts'
+export { assertReleasedV4Header, assertReleasedV4Relationships, restoreReleasedV4Artifact } from './validation.ts'
+export { historicalChildCatalogSource } from './facts.ts'
+export { RELEASED_V3_EVENT_TYPES } from './extension-identities.ts'

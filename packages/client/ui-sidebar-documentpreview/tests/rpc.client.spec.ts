@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
-import { createReadPage, createWriteFile, createWriteFileBytes, documentFileBytes, hostFileOf } from '../src/client/rpc.ts'
+import { createReadPage, createWriteFile, createWriteFileBytes, hostFileOf } from '../src/client/rpc.ts'
 import type { ReadWorkspaceFilePage, WorkspaceFilesReadRemote } from '../src/client/index.ts'
 import { ADDRESS, FILE, PATH, SESSION, page } from './fixtures.client.ts'
 
@@ -87,19 +87,5 @@ describe('createWriteFileBytes', () => {
     await save(FILE, new Uint8Array(), undefined, new AbortController().signal)
 
     expect(writeBytes).toHaveBeenCalledWith(SESSION, PATH, '', {}, expect.anything())
-  })
-})
-
-describe('documentFileBytes', () => {
-  it.each(['', 'AAH/'])('decodes complete Remote bytes without changing metadata (%j)', (data) => {
-    const file = { absolutePath: '/workspace/a.bin', version: 'v1', bytes: 3, offset: 0, data, eof: true }
-    const result = documentFileBytes(file)
-    expect(result).toEqual({ ...file, data: data === '' ? new Uint8Array() : new Uint8Array([0, 1, 255]) })
-    expect(result.data.buffer).toBeInstanceOf(ArrayBuffer)
-    expect(file.data).toBe(data)
-  })
-
-  it('rejects malformed wire base64', () => {
-    expect(() => documentFileBytes({ absolutePath: '/workspace/a.bin', version: 'v1', offset: 0, data: '!!!', eof: true })).toThrow()
   })
 })

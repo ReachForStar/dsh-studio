@@ -5,19 +5,15 @@
 
 import { KNOWN_SESSION_EVENT_TYPES } from '@deepseek-ai/dsh-session'
 import { createSessionFormatCatalog } from '@deepseek-ai/dsh-session-format'
+import type { SessionFormatCatalogOptions } from '@deepseek-ai/dsh-session-format'
 import { validateInstalledCurrentSessionArtifact, validateInstalledCurrentSessionHeader } from './current.ts'
 import { releasedV0SessionFormatCodec, releasedV1SessionFormatCodec, sessionFormatV0ToV1 } from '@deepseek-ai/dsh-session-format-v0-to-v1'
 import { releasedV2SessionFormatCodec, sessionFormatV1ToV2 } from '@deepseek-ai/dsh-session-format-v1-to-v2'
 import { releasedV3SessionFormatCodec, sessionFormatV2ToV3 } from '@deepseek-ai/dsh-session-format-v2-to-v3'
-import {
-  assertReleasedV4Header,
-  releasedV4SessionFormatCodec,
-  restoreReleasedV4Artifact,
-  sessionFormatV3ToV4,
-} from '@deepseek-ai/dsh-session-format-v3-to-v4'
+import { assertReleasedV4Header, releasedV4SessionFormatCodec, restoreReleasedV4Artifact, sessionFormatV3ToV4 } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 
-/** Physical codec dispatch and complete adjacent chain, independent of mounted plugins. */
-export const sessionFormatCatalog = createSessionFormatCatalog({
+/** Static assembly shared by current reads and parent-specific historical restoration. */
+export const sessionFormatCatalogOptions: SessionFormatCatalogOptions = {
   currentVersion: 4,
   codecs: [
     releasedV0SessionFormatCodec,
@@ -27,7 +23,12 @@ export const sessionFormatCatalog = createSessionFormatCatalog({
     releasedV4SessionFormatCodec,
   ],
   currentEncoder: releasedV4SessionFormatCodec,
-  migrations: [sessionFormatV0ToV1, sessionFormatV1ToV2, sessionFormatV2ToV3, sessionFormatV3ToV4],
+  migrations: [
+    sessionFormatV0ToV1,
+    sessionFormatV1ToV2,
+    sessionFormatV2ToV3,
+    sessionFormatV3ToV4,
+  ],
   restoreCurrent(artifact) {
     const restored = restoreReleasedV4Artifact(artifact, KNOWN_SESSION_EVENT_TYPES)
     validateInstalledCurrentSessionArtifact(restored)
@@ -41,4 +42,7 @@ export const sessionFormatCatalog = createSessionFormatCatalog({
     validateInstalledCurrentSessionHeader(header)
     return header
   },
-})
+}
+
+/** Physical codec dispatch and complete adjacent chain, independent of mounted plugins. */
+export const sessionFormatCatalog = createSessionFormatCatalog(sessionFormatCatalogOptions)

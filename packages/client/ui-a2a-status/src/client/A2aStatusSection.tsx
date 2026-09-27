@@ -42,8 +42,10 @@ export function A2aStatusSection({ controller, useSnapshot, t }: A2aStatusSectio
             {state.hostRunning ? t('hostRunning').replace('{port}', String(state.hostPort)) : t('hostStopped')}
           </dd>
           <dt>{t('kafkaStatus')}</dt>
-          <dd data-kafka-ready={state.kafkaReady}>
-            {state.kafkaReady ? t('kafkaReady') : t('kafkaUnavailable')}
+          <dd data-kafka-phase={state.kafkaPhase}>
+            {state.kafkaPhase === 'starting' ? t('kafkaStarting')
+              : state.kafkaPhase === 'ready' ? t('kafkaReady')
+              : t('kafkaUnavailable')}
           </dd>
         </dl>
       ) : null}

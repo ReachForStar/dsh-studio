@@ -19,6 +19,7 @@ export interface A2aStatusState {
   available: boolean
   hostRunning: boolean
   hostPort: number
+  kafkaPhase: 'starting' | 'ready' | 'unavailable'
   kafkaReady: boolean
   kafkaBrokers: readonly string[]
   kafkaReason: string
@@ -31,6 +32,7 @@ const IDLE_STATE: A2aStatusState = {
   available: false,
   hostRunning: false,
   hostPort: 0,
+  kafkaPhase: 'starting',
   kafkaReady: false,
   kafkaBrokers: [],
   kafkaReason: '',
@@ -73,6 +75,7 @@ export class A2aStatusStore {
         state.error = null
         state.hostRunning = result.hostRunning
         state.hostPort = result.hostPort
+        state.kafkaPhase = result.kafkaPhase
         state.kafkaReady = result.kafkaReady
         state.kafkaBrokers = result.kafkaBrokers
         state.kafkaReason = result.kafkaReason

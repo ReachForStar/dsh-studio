@@ -86,6 +86,7 @@
     "@deepseek-ai/dsh-typert-protocol": "workspace:*",
     "@deepseek-ai/dsh-user-approval": "workspace:*",
     "@deepseek-ai/dsh-user-questions": "workspace:*",
+    "@reachforstar/dsh-a2a-status": "workspace:*",
     "@reachforstar/dsh-host-ssh-remotes": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "zod": "^4.4.3",

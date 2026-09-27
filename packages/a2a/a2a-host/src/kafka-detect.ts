@@ -5,7 +5,8 @@
 
 import { createConnection } from 'node:net'
 import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
+
 import { dirname, join } from 'node:path'
 
 /** Kafka broker 地址列表。 */
@@ -37,7 +38,8 @@ export interface EnsureKafkaOptions {
 
 const DEFAULT_BROKERS: KafkaBrokers = ['127.0.0.1:9092', '127.0.0.1:9093', '127.0.0.1:9094']
 
-const DEFAULT_COMPOSE = join(dirname(fileURLToPath(import.meta.resolve('./package.json'))), 'infra', 'kafka', 'docker-compose.yml')
+const require = createRequire(import.meta.url)
+const DEFAULT_COMPOSE = join(dirname(require.resolve('./package.json')), 'infra', 'kafka', 'docker-compose.yml')
 
 /** 检测单个 host:port 是否可连（TCP 探测，500ms 超时）。 */
 function isPortReachable(host: string, port: number, timeoutMs = 500): Promise<boolean> {

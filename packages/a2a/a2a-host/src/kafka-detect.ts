@@ -39,7 +39,7 @@ export interface EnsureKafkaOptions {
 const DEFAULT_BROKERS: KafkaBrokers = ['127.0.0.1:9092', '127.0.0.1:9093', '127.0.0.1:9094']
 
 const require = createRequire(import.meta.url)
-const DEFAULT_COMPOSE = join(dirname(require.resolve('./package.json')), 'infra', 'kafka', 'docker-compose.yml')
+const DEFAULT_COMPOSE = join(dirname(require.resolve('@reachforstar/dsh-a2a-host/package.json')), 'infra', 'kafka', 'docker-compose.yml')
 
 /** 检测单个 host:port 是否可连（TCP 探测，500ms 超时）。 */
 function isPortReachable(host: string, port: number, timeoutMs = 500): Promise<boolean> {

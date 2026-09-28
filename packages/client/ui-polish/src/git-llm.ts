@@ -66,7 +66,7 @@ async function streamRoute(
     system: params.system,
     messages: [createUserMessage({
       content: [{ type: 'text', text: params.user }],
-      source: { kind: 'plugin', plugin: 'dsh-client-ui-polish' },
+      source: { kind: 'ui-polish' },
     })],
     temperature: 0,
     signal: params.signal,

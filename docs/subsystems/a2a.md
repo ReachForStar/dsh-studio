@@ -65,6 +65,13 @@ A reference is resolved against the configured peers first and treated as an end
 
 ```ts cordis-catalog
 /**
+ * Skills one agent accepts, as the deployment's skill maps declare them.
+ * @param agent - bridge agent name.
+ * @returns the agent's skill ids, empty for a name the deployment does not run.
+ */
+skills(agent: string): string[]
+
+/**
  * Every configured peer name, in configuration order.
  * @returns the configured peer names.
  */
@@ -85,6 +92,20 @@ resolve(ref: A2APeerRef): A2APeerConfig
  * @throws Error when the peer is unknown or the call fails.
  */
 async send(request: A2ASendRequest): Promise<A2APeerReply>
+
+/**
+ * Dispatch one task into the bridge deployment.
+ *
+ * `direct` streams the answer back over JSON-RPC and returns when the task
+ * reaches a terminal state; `bus` publishes the task to the deployment's
+ * topic and returns as soon as it is claimed, or at the terminal event when
+ * the caller asks to wait. A bus task outlives this process, so its text is
+ * whatever the event stream delivered before the call returned.
+ * @param request - the agent, skill, task text, and channel to use.
+ * @returns the answer text and the addressing that continues the conversation.
+ * @throws Error when no bridge is configured, the agent is unknown, or the call fails.
+ */
+async dispatch(request: A2ADispatchRequest): Promise<A2ADispatchReply>
 
 /**
  * Read one peer's card.

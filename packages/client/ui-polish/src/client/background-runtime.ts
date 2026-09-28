@@ -5,7 +5,7 @@
 // retracted on clear and on dispose.
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { BACKGROUND_IMAGE_FIELD, type PolishSettings } from '../background-settings.ts'
 
 /** Body attribute marking that a whole-app background image is active. */
@@ -25,11 +25,11 @@ export class BackgroundRuntime {
 
   /**
    * @param ctx - owning context (scope subscription rides ctx.effect).
-   * @param host - durable preference scope bound by the owning plugin.
+   * @param host - durable preference form bound by the owning plugin.
    */
   constructor(
     ctx: Context,
-    private readonly host: SettingsScope<PolishSettings>,
+    private readonly host: ConfigForm<PolishSettings>,
   ) {
     ctx.effect(() => host.subscribe(() => { this.adopt() }), 'ui-polish: background settings adoption')
     this.adopt()

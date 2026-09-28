@@ -8,6 +8,7 @@ import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type { WorkspaceFileStat, WorkspaceFileText } from '@deepseek-ai/dsh-api-workspace-files/types'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import { textFace } from '../src/client/face.ts'
+import type { Resources } from '@deepseek-ai/dsh-client-resources/client'
 import type { ReadDocumentBytes, ReadWorkspaceFilePage, WriteWorkspaceFile, WriteWorkspaceFileBytes } from '../src/client/rpc.ts'
 import { createTextStore } from '../src/client/store.ts'
 import { ABSOLUTE_PATH, FILE, PATH } from './fixtures.client.ts'
@@ -39,9 +40,15 @@ function bench(): {
   const writeBytes = vi.fn<WriteWorkspaceFileBytes>(() => new Promise<RemoteResult<WorkspaceFileStat>>((resolve) => {
     pending.resolve = resolve
   }))
+  // The write path never opens a shared resource; a reached source is a bug, so it fails loud.
+  const resources: Resources = {
+    source: () => { throw new Error('face-save: unexpected resource source') },
+    register: () => () => {},
+    pin: () => {},
+  }
   return {
     instance,
-    face: textFace(read, bytes, write, writeBytes)('s-1' as never, instance.actions),
+    face: textFace(read, bytes, write, writeBytes, resources)('s-1' as never, instance.actions),
     write,
     writeBytes,
     pending,

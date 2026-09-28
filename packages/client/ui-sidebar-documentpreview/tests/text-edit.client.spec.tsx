@@ -160,12 +160,14 @@ describe('TextPreview — binary saves', () => {
     const props = h.props()
     const view = render(<TextPreview {...{
       ...props,
-      renderSlot: (_key: string, owner: { saveBytes: (data: Uint8Array) => void; saveFailure: string | undefined }) => (
+      renderSlot: (key: string, owner: { saveBytes: (data: Uint8Array) => void; saveFailure: string | undefined }) => (
+      key === 'sidebar.right.tab.document' && (
         <div>
           <button type="button" data-test-save onClick={() => { owner.saveBytes(Uint8Array.from([9])) }} />
           {owner.saveFailure !== undefined && <span data-test-failure>{owner.saveFailure}</span>}
         </div>
-      ),
+      )
+    ),
     } as unknown as typeof props} />)
     await settle()
 
@@ -180,8 +182,10 @@ describe('TextPreview — binary saves', () => {
     const props = h.props()
     const view = render(<TextPreview {...{
       ...props,
-      renderSlot: (_key: string, owner: { saveBytes: (data: Uint8Array) => void }) => (
-        <button type="button" data-test-save onClick={() => { owner.saveBytes(Uint8Array.from([1, 2])) }} />
+      renderSlot: (key: string, owner: { saveBytes: (data: Uint8Array) => void }) => (
+        key === 'sidebar.right.tab.document'
+          ? <button type="button" data-test-save onClick={() => { owner.saveBytes(Uint8Array.from([1, 2])) }} />
+          : null
       ),
     } as unknown as typeof props} />)
     await settle()

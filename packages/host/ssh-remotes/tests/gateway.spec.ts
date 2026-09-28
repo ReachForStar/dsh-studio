@@ -7,7 +7,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
-import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
 import { StubSshService } from '../../../remote/ssh/tests/stub-service.ts'
 import SshGateway, { toRemoteDefinition, toSaveInput, validateSaveRequest } from '../src/index.ts'
 import type { SshRemoteSaveRequest } from '../src/types.ts'
@@ -21,7 +20,6 @@ afterEach(async () => {
 async function harness(): Promise<{ ctx: Context; gateway: SshGateway; ssh: StubSshService }> {
   const ctx = new Context()
   contexts.push(ctx)
-  await ctx.plugin(MemorySettings)
   await ctx.plugin(StubSshService)
   await ctx.plugin(SshGateway)
   const gateway = ctx.get('sshGateway') as SshGateway

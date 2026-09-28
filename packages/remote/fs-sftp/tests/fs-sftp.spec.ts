@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
+import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
 import LocalSshService from '@reachforstar/dsh-ssh-local'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
@@ -38,8 +38,14 @@ async function boot(mode: SandboxMode, workspaceRoot: string = '/ws'): Promise<R
   await mkdir(join(server.root, 'ws'), { recursive: true })
   await mkdir(join(server.root, 'tmp'), { recursive: true })
   const ctx = new Context()
-  await ctx.plugin(MemorySettings)
-  await ctx.plugin(LocalSshService, { defaultExecTimeoutMs: 60_000, maxExecTimeoutMs: 300_000, outputMaxBytes: 65_536 })
+  // Mount the provider as a real loader entry (its entry id owns the settings
+  // section) and back `ctx.settings.update` with the live volatile config.
+  const live = await liveConfig(ctx, LocalSshService, { defaultExecTimeoutMs: 60_000, maxExecTimeoutMs: 300_000, outputMaxBytes: 65_536 })
+  ctx.provide('settings', {
+    update: async (_entry: string, patch: Record<string, unknown>) => {
+      await live.update(patch)
+    },
+  } as never)
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SandboxPolicyService, { mode, workspaceRoot })
   const saved = await ctx.sshSftp.save({

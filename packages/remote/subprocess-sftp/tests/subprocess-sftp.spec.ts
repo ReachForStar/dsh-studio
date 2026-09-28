@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
+import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
 import LocalSshService from '@reachforstar/dsh-ssh-local'
 import { SubprocessExecutableNotFoundError } from '@deepseek-ai/dsh-subprocess'
 import type { SubprocessTerminalHandle } from '@deepseek-ai/dsh-subprocess'
@@ -29,8 +29,14 @@ posixSuite('sftp subprocess provider', () => {
     server = await TestSshServer.start({ detachedExec: true })
     await mkdir(join(server.root, 'ws'), { recursive: true })
     ctx = new Context()
-    await ctx.plugin(MemorySettings)
-    await ctx.plugin(LocalSshService, { defaultExecTimeoutMs: 60_000, maxExecTimeoutMs: 300_000, outputMaxBytes: 65_536 })
+    // Mount the provider as a real loader entry (its entry id owns the
+    // settings section) and back `ctx.settings.update` with the live config.
+    const live = await liveConfig(ctx, LocalSshService, { defaultExecTimeoutMs: 60_000, maxExecTimeoutMs: 300_000, outputMaxBytes: 65_536 })
+    ctx.provide('settings', {
+      update: async (_entry: string, patch: Record<string, unknown>) => {
+        await live.update(patch)
+      },
+    } as never)
     const saved = await ctx.sshSftp.save({
       name: 'sp-box',
       host: '127.0.0.1',

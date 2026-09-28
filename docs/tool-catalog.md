@@ -1466,7 +1466,7 @@ The whiteboard scene tools derive the target workspace from the calling agent's 
 
 ### `a2a_peers`
 
-List the remote A2A agents this deployment can call, with the name each is addressed by and the display name from its published agent card. Call it before `a2a_send` when you do not already know which peers exist. It reports a peer whose card could not be read beside that peer instead of failing the whole listing.
+List the remote A2A agents this deployment can call, with the name each is addressed by, the display name from its published agent card, and the skills it accepts. Call it before `a2a_send` when you do not already know which peers exist. It reports a peer whose card could not be read beside that peer instead of failing the whole listing.
 
 ```json
 {
@@ -1479,7 +1479,9 @@ Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/inde
 
 ### `a2a_send`
 
-Send one message to a remote A2A agent and return its answer. Address a peer by the name `a2a_peers` reports, or by an endpoint URL. The peer works in its own environment: it can read and write files there, but it cannot see this workspace. Pass the `contextId` a previous call returned to continue the same conversation, so the peer keeps its earlier turns; omit it to start a new one. This call waits for the peer to finish, which can take minutes — prefer delegating a complete unit of work over many small round trips.
+Send one task to a remote A2A agent and return its answer. Address a peer by the name `a2a_peers` reports, or by an endpoint URL. The peer works in its own environment: it can read and write files there, but it cannot see this workspace. Pass the `contextId` a previous call returned to continue the same conversation, so the peer keeps its earlier turns; omit it to start a new one.
+
+Choose the skill the peer should work under, such as code review or coding; `a2a_peers` lists what each peer accepts and the peer uses its default when you omit one. `mode: "direct"` waits for the answer, which can take minutes — prefer delegating a complete unit of work over many small round trips. `mode: "bus"` publishes the task and returns as soon as it is claimed: use it for work that outlives this turn, and add `wait: true` when you also want the answer.
 
 ```json
 {
@@ -1491,7 +1493,27 @@ Send one message to a remote A2A agent and return its answer. Address a peer by 
     },
     "message": {
       "type": "string",
-      "description": "The message to send, as a self-contained request the peer can act on."
+      "description": "The task text, as a self-contained request the peer can act on."
+    },
+    "skill": {
+      "type": "string",
+      "description": "Skill the peer works under, from `a2a_peers`; omit to use the peer default."
+    },
+    "workspace": {
+      "type": "string",
+      "description": "Directory the peer runs in, when it should not use its own default."
+    },
+    "mode": {
+      "type": "string",
+      "description": "Channel: \"direct\" waits for the answer, \"bus\" publishes and returns early.",
+      "enum": [
+        "direct",
+        "bus"
+      ]
+    },
+    "wait": {
+      "type": "boolean",
+      "description": "On \"bus\", wait for the task to finish before returning."
     },
     "contextId": {
       "type": "string",

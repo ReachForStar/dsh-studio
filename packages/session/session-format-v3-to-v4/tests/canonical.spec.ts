@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createSessionFormatCatalogWithChildren, sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog'
+import { createSessionFormatCatalogWithChildren, sessionFormatCatalog } from './catalog.ts'
+import { Session, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
+import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
 import { SessionFormatEventCollector } from '@deepseek-ai/dsh-session-format'
 import type { SessionFormatArtifact, SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
 import { releasedV4SessionFormatCodec, restoreReleasedV4Artifact } from '../src/index.ts'
@@ -30,12 +32,22 @@ function migrated() {
 }
 
 function reopen(artifact: SessionFormatArtifact) {
-  const header = sessionFormatCatalog.encodeCurrentHeader(artifact.header, artifact.inheritedEventCount)
-  const restore = sessionFormatCatalog.createRestore(header, {
+  const physical = sessionFormatCatalog.encodeCurrentHeader(artifact.header, artifact.inheritedEventCount)
+  const restore = sessionFormatCatalog.createRestore(physical, {
     recovery: 'strict', validation: 'current',
   })
   for (const event of artifact.events) restore.decodeRow(sessionFormatCatalog.encodeCurrentEvent(event))
-  return restore.finish()
+  const restored = restore.finish()
+  // The released V4 reader validates stored JSON but not logical surface metadata; upstream ran that
+  // through the installed current Session via the catalog. A live Session is native V5, so adopt the
+  // restored V4 artifact under a V5 header carrying the same identity to reproduce that validation.
+  const adopted: SessionHeader = {
+    version: 5, id: SessionId(header.id), createdAt: header.createdAt,
+    isSeeded: header.isSeeded, parentSession: SessionId(header.parentSession), delegationDepth: header.delegationDepth,
+  }
+  Session.fromRestore(SessionId(header.id), restored.events as SessionEvent[], adopted,
+    SessionLogOffset(restored.inheritedEventCount), 'detached')
+  return restored
 }
 
 describe('canonical V4 integration', () => {

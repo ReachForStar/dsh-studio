@@ -240,10 +240,12 @@ it.each(['declared', 'exception', 'foreign'] as const)('shows %s conversion fail
 
 it('starts no conversion when a body receives ordinary shared content', () => {
   const h = setup()
+  const useStore = <T,>(selector: (state: OfficeState) => T): T => selector(h.office.getSnapshot())
   const props = { ...h.h.props(), content: { kind: 'bytes', data: new Uint8Array() },
     resourceAddress: ADDRESS, wrap: false, scrollportRef: vi.fn(),
-    addResource: vi.fn(), setResources: vi.fn(),
-    useStore: () => undefined, actions: h.office.actions, load: vi.fn(), retainTab: vi.fn(), t: makeTranslate(en),
+    addResource: vi.fn(), setResources: vi.fn(), saveBytes: vi.fn(), saving: false, saveFailure: undefined,
+    useStore, actions: h.office.actions, load: vi.fn(), retainTab: vi.fn(), t: makeTranslate(en),
+    renderSlot: () => null,
   } as OfficeBodyProps
   const view = render(<OfficeBody {...props} />)
   expect(view.container.childElementCount).toBe(0)

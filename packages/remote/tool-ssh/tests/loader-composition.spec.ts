@@ -1,8 +1,9 @@
 /**
- * Real-composition guard for the SSH tool family: a test-only cordis.yml boots
- * the actual settings provider, the real ssh2-backed executor, and the tool
- * plugin through the Loader, then the guarded executor drives a save → exec →
- * download journey against a real in-process SSH server.
+ * Real-composition guard for the SSH tool family: a test-only profile boots
+ * the actual Settings service and ConfigEditor, the real ssh2-backed provider,
+ * and the tool plugin through the Loader, then the guarded executor drives a
+ * save → exec → download journey against a real in-process SSH server. The
+ * save persists through the real settings seam into the profile patch file.
  */
 
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -11,13 +12,13 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
+import Loader, { type ModuleLoaderV2 } from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import LocalSshService from '@reachforstar/dsh-ssh-local'
+import { profileComposition } from '../../../settings/settings/tests/profile-composition.ts'
 import * as ToolSsh from '../src/index.ts'
 import { TEST_SSH_PASSWORD, TEST_SSH_USERNAME, TestSshServer } from '../../ssh-local/tests/test-server.ts'
 
@@ -38,26 +39,23 @@ afterEach(async () => {
 })
 
 describe('ssh tools through a real Loader composition', () => {
-  it('boots from cordis.yml and completes a save → exec → download journey', async () => {
+  it('boots from a profile and completes a save → exec → download journey', async () => {
     server = await TestSshServer.start()
     root = await mkdtemp(join(tmpdir(), 'dsh-tool-ssh-loader-'))
-    const settingsPath = join(root, 'settings.yaml')
-    await writeFile(settingsPath, '')
 
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
-      '- id: settings',
-      "  name: '@deepseek-ai/dsh-settings-file'",
-      '  config:',
-      `    path: ${JSON.stringify(settingsPath)}`,
-      '    debounceMs: 10',
-      "- name: '@deepseek-ai/dsh-tools'",
-      "- name: '@deepseek-ai/dsh-system-prompt'",
-      "- name: '@reachforstar/dsh-ssh-local'",
+      '- id: tools',
+      "  name: '@deepseek-ai/dsh-tools'",
+      '- id: system-prompt',
+      "  name: '@deepseek-ai/dsh-system-prompt'",
+      '- id: ssh-local',
+      "  name: '@reachforstar/dsh-ssh-local'",
       '  config:',
       '    defaultExecTimeoutMs: 60000',
       '    outputMaxBytes: 65536',
-      "- name: '@reachforstar/dsh-tool-ssh'",
+      '- id: tool-ssh',
+      "  name: '@reachforstar/dsh-tool-ssh'",
       '',
     ].join('\n'))
 
@@ -67,24 +65,25 @@ describe('ssh tools through a real Loader composition', () => {
     await ctx.plugin(Loader)
     ctx.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
-      ['@deepseek-ai/dsh-settings-file', FileSettingsProvider],
       ['@deepseek-ai/dsh-tools', ToolRuntime],
       ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
       ['@reachforstar/dsh-ssh-local', LocalSshService],
       ['@reachforstar/dsh-tool-ssh', ToolSsh],
     ])
-    ctx.loader.internal = {
+    const internal: ModuleLoaderV2 = {
       version: 'v2',
-      async import(specifier: string) {
+      loadCache: new Map(),
+      import: (specifier: string) => {
         if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
-        return modules.get(specifier)
+        return Promise.resolve(modules.get(specifier))
       },
-    } as unknown as NonNullable<typeof ctx.loader.internal>
-    await ctx.loader.create({
-      name: 'cordis:include',
-      config: { path: pathToFileURL(configPath).href },
-    })
-    await ctx.loader.await()
+      register(): never { throw new Error('unexpected module hook registration') },
+      getOrCreateModuleJob(): never { throw new Error('unexpected module job creation') },
+      resolveSync(): never { throw new Error('unexpected synchronous module resolution') },
+      load(): never { throw new Error('unexpected module load') },
+    }
+    ctx.loader.internal = internal
+    const patchPath = await profileComposition(ctx, root, configPath)
 
     expect(ctx.tools.schemas().map(schema => schema.name)).toContain('ssh_exec')
 
@@ -106,6 +105,10 @@ describe('ssh tools through a real Loader composition', () => {
       password: TEST_SSH_PASSWORD,
     })
     expect(saved.isError).toBe(false)
+
+    // The save went through the real Settings service into the profile patch.
+    const patch = await readFile(patchPath, 'utf8')
+    expect(patch).toContain('loader-box')
 
     const ran = await execute('ssh_exec', { connection: 'loader-box', command: 'echo composed' })
     expect(textOf(ran)).toContain('composed')

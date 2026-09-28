@@ -2,15 +2,15 @@
 /** Background runtime: scope adoption, body painting, and write retraction. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { stubSettingsScope, type StubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
+import { stubConfigForm, type StubConfigForm } from '@deepseek-ai/dsh-client-test-runtime'
 import type { PolishSettings } from '../src/background-settings.ts'
 import { BackgroundRuntime, BG_IMAGE_ATTRIBUTE } from '../src/client/background-runtime.ts'
 
 const PNG = 'data:image/png;base64,QUJD'
 
-function make(): { ctx: Context; runtime: BackgroundRuntime; host: StubSettingsScope<PolishSettings> } {
+function make(): { ctx: Context; runtime: BackgroundRuntime; host: StubConfigForm<PolishSettings> } {
   const ctx = new Context()
-  const host = stubSettingsScope<PolishSettings>()
+  const host = stubConfigForm<PolishSettings>()
   return { ctx, runtime: new BackgroundRuntime(ctx, host.scope), host }
 }
 

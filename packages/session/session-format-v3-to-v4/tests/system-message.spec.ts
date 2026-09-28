@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SessionFormatEventCollector, type SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
-import { createSessionFormatCatalogWithChildren, sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog'
+import { createSessionFormatCatalogWithChildren, sessionFormatCatalog } from './catalog.ts'
 import { releasedV4SessionFormatCodec } from '../src/codec.ts'
 
 const header = { type: 'session', version: 4, id: 'system-fields', createdAt: 1, delegationDepth: 0, isSeeded: false }

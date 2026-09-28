@@ -42,7 +42,7 @@ updated: 2026-09-24
 
 ## 查询沉淀 queries
 
-- [本机（Windows）合并与门禁踩坑](queries/windows-merge-gates.md) — tsconfig project reference、bsdtar 盘符、双语配对与生成器分类等失败的现象/根因/解法。
+- [本机（Windows）合并与门禁踩坑](queries/windows-merge-gates.md) — tsconfig project reference、bsdtar 盘符、双语配对与生成器分类等失败的现象/根因/解法；含 2026-09-26 轮的 AMSI 崩溃、git 时限竞态、分组复跑法与 unknown-cast 基线重生成。
 - [fork 客户端栈迁移到上游框架（2026-09-03）](queries/fork-client-stack-migration.md) — 自研 client runtime 退役、面板迁移与两条至今有效的 tsconfig 约定。
 - [fork Web UI 修复与快照通道（2026-09-04）](queries/fork-web-ui-repairs.md) — 设置刷新/SSH 面板/模型页按钮/Web 金样漂移的根因与修复。
 - [实验能力试验 profile（web-lab）与上游实验插件启用情况](queries/web-lab-profile-and-experimental-plugins.md) — Browser Use / Computer Use / Auto review / 远端工作区各自的前置、验证结果与边界，含 patch 替换语义与 Web 工作区路径校验两个踩坑。
@@ -54,5 +54,6 @@ updated: 2026-09-24
 - [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。
 - [总线任务在 A2A 面查不到（a2a-bridge 实测）](queries/a2a-bus-task-visibility.md) — bridge 自身 CLI 经总线派发的任务同样不在任务表里，harness 侧靠事件流收尾故不受影响。
 - [会话重载校验报错：assistant/message 空 model 来源（2026-09-24）](queries/session-reload-model-source.md) — 根因三层（校验过严/pi 后端记空/迁移搬运）、加载侧放宽 + 写入侧记真实模型的双层修法与真实数据验证。
-- [会话格式 v4：席位答复以 assistant 角色进模型可见内容](queries/session-format-v4-landing.md)
-- [工具调度符号丢失导致任何工具调用崩溃（2026-09-24）](queries/tool-scheduler-symbol-duplication.md) — src/lib 两份 `dsh-tools` 各造一个同名 `unique symbol`，`ctx.tools[...]` 取不到调度器；改用 `Symbol.for` 并重建 `lib/`，含真实会话复现与 A2A 实测。 — 为何必须动会话格式、一代迁移包的确切清单，以及本次实施结果与实测踩坑（已实施，写入器 v4）。
+- [会话格式 v4：席位答复以 assistant 角色进模型可见内容](queries/session-format-v4-landing.md) — 为何必须动会话格式、一代迁移包的确切清单，以及本次实施结果与实测踩坑（写入器曾为 v4，现为 v5）。
+- [工具调度符号丢失导致任何工具调用崩溃（2026-09-24）](queries/tool-scheduler-symbol-duplication.md) — src/lib 两份 `dsh-tools` 各造一个同名 `unique symbol`，`ctx.tools[...]` 取不到调度器；改用 `Symbol.for` 并重建 `lib/`，含真实会话复现与 A2A 实测。
+- [会话格式 v5 落地与 v4→v5 包的合并修复（2026-09-26）](queries/session-format-v5-landing.md) — `deferLoading` 与 tool-change 标签的迁移层越界、README 代际位移重建、v4 历史格式归档流程，以及 fork 自有 v4 日志读不出的遗留项。

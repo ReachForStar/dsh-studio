@@ -3,7 +3,7 @@ title: 会话格式代际（相邻迁移链）
 type: concept
 tags: [session-format, 迁移, 版本, surface, 发布]
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-09-26
 sources: []
 status: active
 ---
@@ -24,7 +24,18 @@ status: active
 
 ## 在本项目中的具体含义
 
-当前写入器为 **v4**（`packages/core/session/src/types.ts`）。v3→v4 是**恒等转换**：只多准入一个 surface 事件 `assistant/peer-message`（另一个智能体在本会话循环之外产出的助手消息），事件体、坐标、身份、引用全部原样保留。
+当前写入器为 **v5**（`packages/core/session/src/types.ts`）。v4→v5 由上游引入：`developer/message` 事件、tool 角色结果表示、生产者拥有的消息源、`tool-addition`/`tool-removal` 内容标签与 `deferLoading` 请求工具字段，属结构性改动。
+
+**同一个版本号在本仓库有两个代际**。合并前的 fork v4 与上游 v4 都标 `version: 4`，声明却不同：
+
+| | fork v4（合并前本仓库写入器） | 上游 v4（v4→v5 的源代际） |
+| --- | --- | --- |
+| 表面事件增量 | `assistant/peer-message`（席位答复以 assistant 角色进模型可见内容） | `developer/message` |
+| 消息源 | `{ kind: 'plugin', plugin }` 包装 | 生产者拥有的 `kind` |
+| 工具结果 | `tool/result` 携带 `tool-result` 内容块包装 | 原生 `role: 'tool'` 消息 |
+| 请求工具 | 无 `deferLoading` | 声明 `deferLoading` |
+
+因此 v5 的准入词汇 `RELEASED_V4_EVENT_TYPES`（`packages/session/session-format-v4-to-v5/src/extension-identities.ts`）在上游集合之外**额外**接纳 `assistant/peer-message`，`session-format-v4-to-v5` 是「上游 v3→v4 边 + fork 方言」的合并包，不是上游文件的逐字副本。fork v4 与上游 v4 的归档差异记录在 [docs/persistence-changes/historical-formats/v4.md](../../../docs/persistence-changes/historical-formats/v4.md)。
 
 ## 新增一代的落地顺序（不可调换）
 
@@ -43,4 +54,5 @@ status: active
 ## 关联页面
 
 - [落到 v4 的交接：席位答复以 assistant 角色进模型可见内容](../queries/session-format-v4-landing.md) —— 本次换代的需求、证据与实施结果。
+- [会话格式 v5 落地与 v4→v5 包的合并修复](../queries/session-format-v5-landing.md) —— 上游 v3→v4 边并入 fork 方言时的越界校验、README 代际位移与 v4 归档步骤。
 - [会话重载校验报错：assistant/message 空 model 来源](../queries/session-reload-model-source.md) —— 同一批会话格式工作的另一处修复。

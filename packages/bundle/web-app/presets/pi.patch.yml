@@ -1,0 +1,17 @@
+# Agent preset pi: one `@deepseek-ai/dsh-agent-preset` declaration inserted
+# after the web patch. A session driven by the Pi coding-agent runtime. The Pi
+# loop supplies its own tools and model routing, and dsh tools are injected
+# through `pi-agent-loop`'s tool sharing, so the composition stays empty —
+# `backend: pi` is what routes the session to Pi. The `pi-agent-loop` host row
+# stays in each deployment's profile patch, beside its user-specific model and
+# provider configuration; this bundle ships the preset declaration only. Edits
+# saved from the Web editor override this row's `config.plugins` by id from the
+# profile patch.
+- insert:
+    - id: preset-pi
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: pi
+        order: 10
+        backend: pi
+        plugins: []

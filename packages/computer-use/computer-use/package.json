@@ -2,6 +2,7 @@
   "name": "@deepseek-ai/dsh-computer-use",
   "description": "Exclusive named computer-use provider registration",
   "version": "0.1.7-rc.2",
+  "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"
   },
@@ -21,12 +22,15 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
     "./brand": {
       "types": "./lib/types/brand.d.ts",
       "default": "./lib/types/brand.js"
     }
   },
   "files": [
+    "icon.svg",
+    "locale/*.json",
     "lib/index.js",
     "cordis.patch.yml",
     "lib/types/**/*.js",

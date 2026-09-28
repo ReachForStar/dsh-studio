@@ -297,6 +297,10 @@
     - id: ui-ssh
       name: '@reachforstar/dsh-client-ui-ssh'
 
+    # A2A 服务状态指示器在 Settings 中，并暴露 a2aStatus store 供入口显隐。
+    - id: ui-a2a-status
+      name: '@reachforstar/dsh-client-ui-a2a-status'
+
     # Plugin management: the sidebar Plugins page installs, enables, disables,
     # and removes the profile's bundles through the `pluginManager` Remote.
     # Without a profile-backed Host it reports itself unavailable.
@@ -338,6 +342,11 @@
       config:
         port: !!js Number(process.env.DSH_A2A_PORT ?? 9310)
         apiKey: !!js process.env.DSH_A2A_API_KEY
+
+    # a2a 服务状态查询网关：暴露 a2a-host 监听状态和 Kafka 可达性，供前端
+    # 状态指示器和 a2a 入口显隐消费。a2a-host 缺失时报告未运行。
+    - id: a2a-status
+      name: '@reachforstar/dsh-a2a-status'
 
     - id: ui-attachment
       name: '@deepseek-ai/dsh-client-ui-attachment'

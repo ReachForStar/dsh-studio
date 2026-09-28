@@ -83,7 +83,8 @@ describe('HtmlBody', () => {
       source: address => address === ADDRESS ? root : dependencySource,
       register: () => () => {}, pin: () => {},
     }
-    const face = textFace(h.read, h.bytes, resources)(SESSION, h.instance.actions)
+    // Read-only scenario: the write slots are never reached, so plain spies suffice.
+    const face = textFace(h.read, h.bytes, vi.fn(), vi.fn(), resources)(SESSION, h.instance.actions)
     const data = utf8(extension === 'css'
       ? '<link rel="stylesheet" href="./asset.css"><p>HTML content</p>'
       : '<p>HTML content</p><script src="./asset.js"></script>')

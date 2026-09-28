@@ -475,7 +475,7 @@ export class XingchenService extends Service {
       throw new Error(`${XINGCHEN_ROLE_NAMES[role]} 席位超过 ${String(seat.timeoutMs)}ms 未完成，已释放子运行`)
     }
     const outcome = settled.outcome
-    if (outcome.status === 'completed') return { text: outcome.output ?? '', state: outcome.status }
+    if (outcome.status === 'completed') return { text: outcome.result ?? '', state: outcome.status }
     return { text: outcome.detail ?? `${XINGCHEN_ROLE_NAMES[role]} 席位未完成（${outcome.status}）`, state: outcome.status }
   }
 

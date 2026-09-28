@@ -51,7 +51,9 @@ describe('filesFace', () => {
     await h.removal.settle({ ok: true, value: { kind: 'file' } })
     await expect(removal).resolves.toBeNull()
     expect(h.removal.calls()).toEqual([{ path: `${ROOT}/src`, recursive: false }])
-    expect(h.snapshot()!.levels[ROOT]).toEqual({ kind: 'loading' })
+    // The dropped row disappears at once: `removed` filters the ready level, and the background
+    // re-list of `load` keeps showing it rather than flashing an empty 'loading' state.
+    expect(h.snapshot()!.levels[ROOT]).toEqual({ kind: 'ready', level: { entries: [], truncated: false } })
     await h.settle({ ok: true, value: { entries: [], truncated: false } })
     expect(h.snapshot()!.levels[ROOT]).toEqual({ kind: 'ready', level: { entries: [], truncated: false } })
   })

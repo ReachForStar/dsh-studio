@@ -93,7 +93,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-agent-loop`
 
 - `inject`: `agents` · `sessions` · `llm` · `tools` · `systemPrompt` · `sessionProjections`
-- `refs`: [`AgentOptions`](subsystems/core.md) · [`SessionId`](subsystems/core.md) · `Volatile` (`@deepseek-ai/cosmokit`)
+- `refs`: [`AgentBackend`](subsystems/session.md) · [`AgentOptions`](subsystems/core.md) · [`SessionId`](subsystems/core.md) · `Volatile` (`@deepseek-ai/cosmokit`)
 - `source`: [`packages/core/agent-loop/src/index.ts:292`](../packages/core/agent-loop/src/index.ts)
 
 ```ts config-catalog
@@ -114,6 +114,8 @@ export interface Config {
     cwd?: string
     /** Persisted session to resume instead of creating a fresh session. */
     resumeSessionId?: SessionId
+    /** Loop backend that drives this agent (`dsh` default, `pi` for Pi). */
+    backend?: AgentBackend
   })[]
 }
 ```
@@ -141,7 +143,7 @@ export type Config = PresetDefinition
 
 - `inject`: `loader` · `sessionProjections`
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/preset/agent-preset-registry/src/preset.ts:13`](../packages/preset/agent-preset-registry/src/preset.ts)
+- `source`: [`packages/preset/agent-preset-registry/src/preset.ts:19`](../packages/preset/agent-preset-registry/src/preset.ts)
 
 ```ts config-catalog
 /** Registry selection policy. */
@@ -320,7 +322,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-api-workspace-files`
 
 - `inject`: `fs` · `sandboxPolicy` · `sessions` · `typert`
-- `source`: [`packages/api/workspace-files/src/index.ts:70`](../packages/api/workspace-files/src/index.ts)
+- `source`: [`packages/api/workspace-files/src/index.ts:75`](../packages/api/workspace-files/src/index.ts)
 
 ```ts config-catalog
 /** Deployment caps on one page or one listing. */
@@ -1201,7 +1203,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-fs-local`
 
-- `source`: [`packages/fs/fs-local/src/index.ts:45`](../packages/fs/fs-local/src/index.ts)
+- `source`: [`packages/fs/fs-local/src/index.ts:49`](../packages/fs/fs-local/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the local filesystem backend. */
@@ -1579,7 +1581,7 @@ export interface Config extends ProtocolConfig {
 
 - `inject`: `llm`
 - `refs`: `Api` (`@earendil-works/pi-ai`) · `CacheRetention` (`@earendil-works/pi-ai`) · `Model` (`@earendil-works/pi-ai`) · `ModelThinkingLevel` (`@earendil-works/pi-ai`) · `OpenAICompletionsCompat` (`@earendil-works/pi-ai`) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · `ThinkingBudgets` (`@earendil-works/pi-ai`) · `Transport` (`@earendil-works/pi-ai`) · `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/llm/llm-pi-ai/src/config.ts:222`](../packages/llm/llm-pi-ai/src/config.ts)
+- `source`: [`packages/llm/llm-pi-ai/src/config.ts:233`](../packages/llm/llm-pi-ai/src/config.ts)
 
 ```ts config-catalog
 /** Plugin configuration: the provider routes this instance owns. */
@@ -2201,6 +2203,102 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-persona -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-pi-agent-loop -->
+<a id="deepseek-aidsh-pi-agent-loop"></a>
+
+## `@deepseek-ai/dsh-pi-agent-loop`
+
+- `inject`: `agents` · `sessions`
+- `source`: [`packages/core/pi-agent-loop/src/index.ts:61`](../packages/core/pi-agent-loop/src/index.ts)
+
+```ts config-catalog
+/** Configuration for the Pi agent loop. */
+export interface PiLoopConfig {
+  /** Replace the real Pi session opener (test seam). */
+  openSession?: OpenPiSession
+  /** OpenAI-compatible gateways registered into Pi before model selection. */
+  providers?: readonly PiProviderConfig[]
+  /**
+   * The Pi model route every session uses. When set, it wins over dsh's
+   * `agentOptions.provider/model` (whose provider names dsh adapters, not Pi
+   * providers); omit to fall back to dsh's selection.
+   */
+  model?: {
+    /** Pi provider id of the fixed route. */
+    readonly provider: string
+    /** Model id within that provider. */
+    readonly modelId: string
+  }
+}
+
+/** Factory for opening one Pi session; injectable for tests. */
+export type OpenPiSession = (options: {
+  /** Working directory the Pi session's file tools resolve against. */
+  cwd: string
+  /** Pi provider id the session's model route selects. */
+  provider?: string
+  /** Model id within the selected provider. */
+  modelId?: string
+  /** Gateways registered into the Pi runtime before model selection. */
+  providers?: readonly PiProviderConfig[]
+}) => Promise<OpenedPiSession>
+
+/** One OpenAI-compatible gateway registered into Pi's ModelRuntime. */
+export interface PiProviderConfig {
+  /** Gateway id; also the provider name Pi routes by. */
+  readonly id: string
+  /** Gateway base URL for the OpenAI-compatible API. */
+  readonly baseUrl: string
+  /** Environment variable holding the gateway credential. */
+  readonly apiKeyEnv: string
+  /** Wire dialect; only the OpenAI completions dialect is supported. */
+  readonly api?: 'openai-completions'
+  /** Models the gateway serves. */
+  readonly models: readonly PiProviderModelConfig[]
+}
+
+/** One opened Pi AgentSession plus its disposal. */
+export interface OpenedPiSession {
+  /** The live session surface; the loop drives its event stream. */
+  readonly session: PiAgentSessionLike
+  dispose(): void
+}
+
+/** One gateway model the Pi runtime should advertise. */
+export interface PiProviderModelConfig {
+  /** Model id the gateway serves. */
+  readonly id: string
+  /** Display name shown by Pi's model picker. */
+  readonly name: string
+  /** Whether the model emits reasoning content. */
+  readonly reasoning?: boolean
+  /** Context window in tokens the runtime enforces. */
+  readonly contextWindow: number
+  /** Output-token cap this model advertises to the Pi runtime. */
+  readonly maxTokens: number
+}
+
+/** The Pi AgentSession surface this driver needs; narrow so tests can supply a stub. */
+export interface PiAgentSessionLike {
+  /** Whether the Pi session currently has a turn in flight. */
+  readonly isStreaming: boolean
+  prompt(text: string): Promise<void>
+  steer(text: string): Promise<void>
+  followUp(text: string): Promise<void>
+  abort(): Promise<void>
+  dispose(): void
+  /** Subscribe to Pi agent events; returns the unsubscribe function. */
+  subscribe(listener: (event: unknown) => void): () => void
+  /** Pi's extension runner, when present, for late-registering custom tools. */
+  extensionRunner?: {
+    registerTool(tool: unknown): void
+    getAllRegisteredTools(): Array<{ definition: unknown }>
+    createContext(): unknown
+  }
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-pi-agent-loop -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-plan-mode -->
 <a id="deepseek-aidsh-plan-mode"></a>
@@ -3957,7 +4055,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-tools`
 
 - `inject`: `systemPrompt`
-- `source`: [`packages/core/tools/src/index.ts:674`](../packages/core/tools/src/index.ts)
+- `source`: [`packages/core/tools/src/index.ts:678`](../packages/core/tools/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: how the registered tools are presented to the model. */
@@ -4270,6 +4368,334 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-workspace-changes -->
 
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-a2a -->
+<a id="reachforstardsh-a2a"></a>
+
+## `@reachforstar/dsh-a2a`
+
+- `source`: [`packages/a2a/a2a/src/index.ts:54`](../packages/a2a/a2a/src/index.ts)
+
+```ts config-catalog
+/** Plugin configuration: the peers this deployment may call. */
+export interface Config {
+  /** Remote agents by caller-facing name. */
+  peers?: Record<string, A2APeerConfig>
+  /**
+   * Bridge deployment to dispatch into. When set, its configuration file
+   * supplies the three agent endpoints, their skills, and the bus topics, so a
+   * deployment does not restate them here.
+   */
+  bridge?: {
+    /** Path of the bridge's `config.json`; defaults to the `A2A_CONFIG` environment variable. */
+    configPath?: string
+    /** Name this harness publishes tasks as; defaults to `dsh`. */
+    agent?: string
+  }
+}
+
+/** One configured remote A2A agent. */
+export interface A2APeerConfig {
+  /** JSON-RPC endpoint, such as `https://agents.example/a2a/`. */
+  url: string
+  /** API key the peer's endpoint requires, sent as `X-Api-Key`. */
+  apiKey?: string
+  /** Path the peer publishes its card at, when not the well-known location. */
+  cardPath?: string
+  /** How long one call waits for the peer, in milliseconds. */
+  timeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-a2a -->
+
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-a2a-host -->
+<a id="reachforstardsh-a2a-host"></a>
+
+## `@reachforstar/dsh-a2a-host`
+
+- `inject`: `sessionController`
+- `refs`: [`AgentSkill`](../packages/a2a/a2a/src/index.ts)
+- `source`: [`packages/a2a/a2a-host/src/index.ts:35`](../packages/a2a/a2a-host/src/index.ts)
+
+```ts config-catalog
+/** Plugin configuration. */
+export interface Config {
+  /** Interface to bind; loopback keeps the endpoint off the network. */
+  host?: string
+  /** TCP port to bind; 0 binds a free port. */
+  port?: number
+  /** Value calls must carry in `X-Api-Key`; empty serves unauthenticated. */
+  apiKey?: string
+  /** Endpoint peers are told to call, when it differs from host and port. */
+  url?: string
+  /** Working directory sessions start in; the host default when absent. */
+  cwd?: string
+  /** Agent preset sessions are created with; the deployment default when absent. */
+  agentPreset?: string
+  /** How long one turn may run before its task fails. */
+  turnTimeoutMs?: number
+  /** Card identity and advertised skills. */
+  card?: {
+    /** Display name peers see for this agent. */
+    name?: string
+    /** One-line description of what this agent does. */
+    description?: string
+    /** Card version this deployment advertises. */
+    version?: string
+    /** URL a peer reads for human documentation. */
+    documentationUrl?: string
+    /** Skills the card advertises; a peer discovers capabilities from them. */
+    skills?: AgentSkill[]
+  }
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-a2a-host -->
+
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-client-ui-polish -->
+<a id="reachforstardsh-client-ui-polish"></a>
+
+## `@reachforstar/dsh-client-ui-polish`
+
+- `refs`: `Volatile` (`@deepseek-ai/cordis`)
+- `source`: [`packages/client/ui-polish/src/background-settings.ts:47`](../packages/client/ui-polish/src/background-settings.ts)
+
+```ts config-catalog
+/**
+ * Live plugin Config: the same three fields marked volatile so the settings
+ * forms own them on this profile entry and edits apply without a restart.
+ */
+export interface Config {
+  /** Served background image URL (or a legacy data URL); absent when none is set. */
+  [BACKGROUND_IMAGE_FIELD]: Volatile<string | undefined>
+  /** Automatic compaction pressure ratio; absent = harness default (0.8). */
+  [COMPACTION_RATIO_FIELD]: Volatile<number | undefined>
+  /** User-edited model rate card as JSON text; absent = the built-in seed card. */
+  [MODEL_PRICING_FIELD]: Volatile<string | undefined>
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-client-ui-polish -->
+
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-fs-sftp -->
+<a id="reachforstardsh-fs-sftp"></a>
+
+## `@reachforstar/dsh-fs-sftp`
+
+- `inject`: `sshSftp` · `sandboxPolicy`
+- `source`: [`packages/remote/fs-sftp/src/index.ts:39`](../packages/remote/fs-sftp/src/index.ts)
+
+```ts config-catalog
+/** Configuration for the remote SFTP filesystem backend. */
+export interface Config {
+  /** Name or id of the saved `ctx.sshSftp` connection this backend uses. */
+  connection: string
+  /** Base directory (on the remote) for relative paths. */
+  cwd: string
+  /**
+   * Exclusive UTF-8 byte limit on each overwrite-diff side, mirroring
+   * `@deepseek-ai/dsh-fs-local`. Defaults to 10 MiB.
+   */
+  diffBasisMaxBytes?: number
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-fs-sftp -->
+
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-ssh-local -->
+<a id="reachforstardsh-ssh-local"></a>
+
+## `@reachforstar/dsh-ssh-local`
+
+- `refs`: [`SshStoredDefinition`](../packages/remote/ssh/src/index.ts) · `Volatile` (`@deepseek-ai/cordis`)
+- `source`: [`packages/remote/ssh-local/src/index.ts:55`](../packages/remote/ssh-local/src/index.ts)
+
+```ts config-catalog
+/**
+ * Configuration for the local SSH provider. Every field is volatile: the
+ * execution defaults and the connection registry (connections, knownHosts) are
+ * live-editable through the settings forms and persist on this profile entry.
+ */
+export interface Config {
+  /** Default foreground command timeout in milliseconds (default 60000). */
+  defaultExecTimeoutMs: Volatile<number>
+  /** Cap for per-call timeout overrides in milliseconds (default 600000). */
+  maxExecTimeoutMs: Volatile<number>
+  /** Per-stream capture cap in bytes; overflow keeps the tail (default 65536). */
+  outputMaxBytes: Volatile<number>
+  /**
+   * Host key policy: `accept-new` remembers an unknown key on first contact
+   * and rejects later changes; `reject` refuses any key that is neither
+   * pinned on the definition nor remembered. (Default `accept-new`.)
+   */
+  strictHostKey: Volatile<'accept-new' | 'reject'>
+  /**
+   * When true, use the ssh2 algorithm defaults (legacy kex/cipher/MAC
+   * fallbacks included) for maximum server compatibility. Default false
+   * restricts the handshake to modern algorithms.
+   */
+  allowLegacyAlgorithms: Volatile<boolean>
+  /**
+   * SSH keep-alive interval in milliseconds (0 disables; default 0).
+   */
+  keepaliveIntervalMs: Volatile<number>
+  /**
+   * Reject private keys whose POSIX permissions let group/others read them
+   * (OpenSSH behavior; Windows ACLs are not checked). Default true.
+   */
+  strictPrivateKeyPermissions: Volatile<boolean>
+  /**
+   * SFTP transfers larger than this many bytes use the parallel
+   * fastGet/fastPut path (0 disables the fast path; default 1 MiB).
+   */
+  fastTransferThresholdBytes: Volatile<number>
+  /** Saved connection definitions (ids unbranded at rest). */
+  connections: Volatile<SshStoredDefinition[]>
+  /** Remembered host keys: `host:port` → `SHA256:<base64>` fingerprint. */
+  knownHosts: Volatile<Record<string, string>>
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-ssh-local -->
+
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-subagent-pi -->
+<a id="reachforstardsh-subagent-pi"></a>
+
+## `@reachforstar/dsh-subagent-pi`
+
+- `inject`: `subagents` · `subprocess`
+- `source`: [`packages/subagent/subagent-pi/src/index.ts:32`](../packages/subagent/subagent-pi/src/index.ts)
+
+```ts config-catalog
+/** Deployment-owned environment, process-release bounds, and Pi directories. */
+export interface Config {
+  /**
+   * Explicit environment entries layered over the subprocess seam's
+   * credential-scrubbed parent environment. Pi credentials (for example
+   * `DEEPSEEK_API_KEY`) and any Pi extension variables belong here.
+   */
+  env?: Record<string, string>
+  /** Grace in milliseconds for Pi's cooperative EOF shutdown before termination. */
+  disposeEofGraceMs?: number
+  /** Grace in milliseconds for app-server process-tree termination. */
+  disposeGraceMs?: number
+  /**
+   * Pi executable (bare name on `PATH`) or a test fixture launcher; the
+   * provider appends `--mode rpc`.
+   */
+  command?: string
+  /** Fixed arguments appended after the Pi executable. */
+  args?: string[]
+  /**
+   * Absolute `PI_CODING_AGENT_DIR` override naming where Pi keeps agent
+   * settings and trust state. When omitted, Pi uses its native home
+   * (`~/.pi/agent`). Wins over an `env.PI_CODING_AGENT_DIR` entry.
+   */
+  agentDir?: string
+  /**
+   * Absolute `PI_CODING_AGENT_SESSION_DIR` override naming where Pi keeps
+   * session files. When omitted, Pi uses its native session location. Wins
+   * over an `env.PI_CODING_AGENT_SESSION_DIR` entry.
+   */
+  sessionDir?: string
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-subagent-pi -->
+
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-subprocess-sftp -->
+<a id="reachforstardsh-subprocess-sftp"></a>
+
+## `@reachforstar/dsh-subprocess-sftp`
+
+- `inject`: `sshSftp`
+- `source`: [`packages/remote/subprocess-sftp/src/index.ts:32`](../packages/remote/subprocess-sftp/src/index.ts)
+
+```ts config-catalog
+/** Configuration for the remote subprocess provider. */
+export interface Config {
+  /** Name or id of the saved `ctx.sshSftp` connection commands run on. */
+  connection: string
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-subprocess-sftp -->
+
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-xingchen -->
+<a id="reachforstardsh-xingchen"></a>
+
+## `@reachforstar/dsh-xingchen`
+
+- `source`: [`packages/xingchen/xingchen/src/index.ts:60`](../packages/xingchen/xingchen/src/index.ts)
+
+```ts config-catalog
+/** Deployment config: which A2A peer each specialist seat addresses. */
+export interface XingchenConfig {
+  /** A2A peer name per specialist role; used by seats running in `a2a` mode. */
+  peers?: XingchenPeerNames
+  /** Override a specialist role's default charter (prompt-isolation text). */
+  charters?: XingchenCharters
+  /** How each specialist seat runs; every seat defaults to a local spawned agent. */
+  seats?: XingchenSeats
+}
+
+/** A2A peer name per specialist role. */
+export interface XingchenPeerNames {
+  /** Peer serving 天权（架构评估与代码审查） */
+  readonly tianquan?: string
+  /** Peer serving 瑶光（疑难 Bug 复现与根因） */
+  readonly yaoguang?: string
+  /** Peer serving 天梁（版本规划与分波交付） */
+  readonly tianliang?: string
+}
+
+/** Charter override per specialist role. */
+export interface XingchenCharters {
+  /** 替换天权默认章程的文本 */
+  readonly tianquan?: string
+  /** 替换瑶光默认章程的文本 */
+  readonly yaoguang?: string
+  /** 替换天梁默认章程的文本 */
+  readonly tianliang?: string
+}
+
+/** Specialist seat configuration by role. */
+export interface XingchenSeats {
+  /** 天权席位运行方式 */
+  readonly tianquan?: XingchenSeatConfig
+  /** 瑶光席位运行方式 */
+  readonly yaoguang?: XingchenSeatConfig
+  /** 天梁席位运行方式 */
+  readonly tianliang?: XingchenSeatConfig
+}
+
+/** One specialist seat's runtime choice. */
+export interface XingchenSeatConfig {
+  /**
+   * `local` runs the seat in this process as a delegated child agent (needs
+   * no peer endpoint); `a2a` sends it to the configured peer. Omitted: the
+   * seat is `a2a` when its peer name is configured on the `a2a` row, else
+   * `local`.
+   */
+  readonly mode?: 'local' | 'a2a'
+  /** `ctx.subagents` provider used in `local` mode; default `spawn`. */
+  readonly provider?: string
+  /** Child model route for `local` mode, as `provider/model`; default inherits the parent. */
+  readonly model?: string
+  /**
+   * Skill an `a2a` seat works under, from the peer's advertised set. Defaults
+   * per role: review for 天权, analysis for 瑶光 and 天梁.
+   */
+  readonly skill?: string
+  /**
+   * Channel an `a2a` seat dispatches on: `direct` waits for the answer, `bus`
+   * publishes the task and returns once the peer claims it. Defaults to
+   * `direct`.
+   */
+  readonly channel?: 'direct' | 'bus'
+  /**
+   * How long a `local` seat may run before its dispatch gives up, in
+   * milliseconds; default 300000. On expiry the child run is disposed and the
+   * dispatch fails with the elapsed limit instead of waiting forever.
+   */
+  readonly timeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-xingchen -->
+
 ## Loadable plugins with no config
 
 These load from a `cordis.yml` entry with no `config:` block; they declare no configuration API.
@@ -4373,6 +4799,11 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-user-questions` | — | [`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts) |
 | `@deepseek-ai/dsh-webhook` | `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry` | [`packages/webhook/webhook/src/index.ts`](../packages/webhook/webhook/src/index.ts) |
 | `@deepseek-ai/dsh-workspace` | `storageDomain` · `sessionPersistence` | [`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts) |
+| `@reachforstar/dsh-client-ui-ssh` | — | [`packages/client/ui-ssh/src/index.ts`](../packages/client/ui-ssh/src/index.ts) |
+| `@reachforstar/dsh-host-ssh-remotes` | `sshSftp` | [`packages/host/ssh-remotes/src/index.ts`](../packages/host/ssh-remotes/src/index.ts) |
+| `@reachforstar/dsh-tool-a2a` | `tools` · `a2a` | [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts) |
+| `@reachforstar/dsh-tool-excalidraw` | `tools` | [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts) |
+| `@reachforstar/dsh-tool-ssh` | `tools` · `sshSftp` · `systemPrompt` | [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts) |
 <!-- END GENERATED config-catalog:no-config -->
 
 ## Seam packages (not directly loadable)
@@ -4398,6 +4829,7 @@ Abstract service classes — a deployment loads a concrete implementation packag
 | `@deepseek-ai/dsh-spill` | `SpillStore` | — | [`packages/spill/spill/src/index.ts`](../packages/spill/spill/src/index.ts) |
 | `@deepseek-ai/dsh-subprocess` | `SubprocessRuntime` | — | [`packages/subprocess/subprocess/src/index.ts`](../packages/subprocess/subprocess/src/index.ts) |
 | `@deepseek-ai/dsh-workflow` | `WorkflowEngine` | — | [`packages/workflow/workflow/src/index.ts`](../packages/workflow/workflow/src/index.ts) |
+| `@reachforstar/dsh-ssh` | `SshService` | — | [`packages/remote/ssh/src/index.ts`](../packages/remote/ssh/src/index.ts) |
 <!-- END GENERATED config-catalog:seam -->
 
 ## Library packages (no plugin entry)
@@ -4450,6 +4882,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 | `@deepseek-ai/dsh-session-format-v1-to-v2` | — | [`packages/session/session-format-v1-to-v2/src/index.ts`](../packages/session/session-format-v1-to-v2/src/index.ts) |
 | `@deepseek-ai/dsh-session-format-v2-to-v3` | — | [`packages/session/session-format-v2-to-v3/src/index.ts`](../packages/session/session-format-v2-to-v3/src/index.ts) |
 | `@deepseek-ai/dsh-session-format-v3-to-v4` | — | [`packages/session/session-format-v3-to-v4/src/index.ts`](../packages/session/session-format-v3-to-v4/src/index.ts) |
+| `@deepseek-ai/dsh-session-format-v4-to-v5` | — | [`packages/session/session-format-v4-to-v5/src/index.ts`](../packages/session/session-format-v4-to-v5/src/index.ts) |
 | `@deepseek-ai/dsh-session-snapshot` | — | [`packages/test-support/session-snapshot/src/index.ts`](../packages/test-support/session-snapshot/src/index.ts) |
 | `@deepseek-ai/dsh-session-telemetry` | — | [`packages/session/session-telemetry/src/index.ts`](../packages/session/session-telemetry/src/index.ts) |
 | `@deepseek-ai/dsh-session-title-llm` | — | [`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts) |

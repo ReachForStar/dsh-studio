@@ -13,6 +13,7 @@ import type {
   SshPtyExitInfo,
   SshPtySession,
   SshRunResult,
+  SshSettingsSection,
   SshSftp,
 } from '../src/index.ts'
 
@@ -124,6 +125,26 @@ export class StubSshService extends SshService {
 
   /** Live handles by definition id: the stub shares them like the real provider does. */
   private readonly handles = new Map<string, SshConnection>()
+
+  /** In-memory registry section backing the two storage hooks. */
+  private section: SshSettingsSection = { connections: [], knownHosts: {} }
+
+  /**
+   * Test-only replacement of the backing section, bypassing the save boundary —
+   * used to simulate a settings document edited externally (e.g. into
+   * duplicate ids/names) that the registry must then report through `list()`.
+   */
+  seedSection(next: SshSettingsSection): void {
+    this.section = next
+  }
+
+  protected readSection(): SshSettingsSection {
+    return this.section
+  }
+
+  protected async writeSection(next: SshSettingsSection): Promise<void> {
+    this.section = next
+  }
 
   async connect(id: SshConnectionId): Promise<SshConnection> {
     const definition = this.get(id)

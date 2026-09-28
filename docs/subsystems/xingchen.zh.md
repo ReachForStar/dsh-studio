@@ -81,16 +81,24 @@ Owns the role bindings (peer + charter), the dispatch with per-session peer-conv
 
 ```ts cordis-catalog
 /**
- * Dispatch one task to a specialist role through its A2A peer, prefixing
- * the role charter and continuing the per-session peer conversation.
+ * Dispatch one task to a specialist seat, prefixing the role charter.
+ *
+ * A `local` seat runs in this process as a delegated child agent and needs no
+ * endpoint; an `a2a` seat sends the same text to its configured peer and
+ * continues that peer conversation per session. An A2A dispatch reports
+ * progress to the seat's session as the peer's stream or bus events arrive,
+ * so the driving tool card or command card stays visibly working.
  * @param role - the specialist role.
  * @param task - the self-contained task text.
- * @param sessionKey - the session id owning the conversation continuity.
+ * @param parent - the agent delegating the task.
  * @param signal - cancellation owned by the caller.
- * @returns the peer's answer and its continuation addressing.
+ * @param ids - the driving call's identities, for the progress reports to fold into.
+ * @returns the seat's answer text and the state it ended in, when reported.
  */
-async dispatch( role: XingchenSpecialistId, task: string, sessionKey: string, signal?: AbortSignal, ): Promise<A2APeerReply>
+async dispatch( role: XingchenSpecialistId, task: string, parent: Agent, signal?: AbortSignal, ids?: { readonly callId?: ToolCallId; readonly commandId?: CommandId }, ): Promise<{ readonly text: string; readonly state?: string }>
 ```
+
+Types: [Agent](core.zh.md) · [CommandId](commands.zh.md) · [ToolCallId](llm-streaming.zh.md)
 
 Source: [`packages/xingchen/xingchen/src/index.ts`](../../packages/xingchen/xingchen/src/index.ts)
 <!-- END GENERATED cordis-surface -->

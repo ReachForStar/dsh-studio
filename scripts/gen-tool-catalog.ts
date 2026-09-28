@@ -80,7 +80,6 @@ import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
 import LocalSshService from '@reachforstar/dsh-ssh-local'
 import * as ToolSsh from '@reachforstar/dsh-tool-ssh'
-import { MemorySettings } from '../packages/settings/settings/tests/memory.ts'
 import * as ToolWorkspaceDependencies from '@deepseek-ai/dsh-tool-workspace-dependencies'
 import { githubSlug } from './verify-md-links.ts'
 
@@ -358,9 +357,9 @@ const TOOL_PACKAGES: ToolPackage[] = [
     requires: ['ctx.tools', 'ctx.ssh', 'ctx.systemPrompt'],
     writes: ['tool/call', 'tool/result', 'settings/document-updated (ssh definition saves)'],
     async mount(ctx) {
-      // The ssh tools consume the ctx.ssh seam; the local provider plus an
-      // in-memory settings provider satisfy the inject without any I/O.
-      await ctx.plugin(MemorySettings)
+      // The ssh tools consume the ctx.ssh seam; the local provider mounts
+      // dormant without a settings backend — schema harvest never saves, and
+      // only a save would reach for the settings service.
       await ctx.plugin(LocalSshService)
       await ctx.plugin(ToolSsh)
     },

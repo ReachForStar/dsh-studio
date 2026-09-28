@@ -16,15 +16,6 @@ const BUILTIN_COPY = new Map<string, { title: PluginManagerLocaleKey; descriptio
   ['@deepseek-ai/dsh-computer-use', {
     title: 'builtinComputerUseTitle', description: 'builtinComputerUseDescription', beta: true,
   }],
-  ['@deepseek-ai/dsh-experimental-agent-team-profile', {
-    title: 'builtinAgentTeamTitle', description: 'builtinAgentTeamDescription', beta: true,
-  }],
-  ['@deepseek-ai/dsh-experimental-agent-team-web-profile', {
-    title: 'builtinAgentTeamWebTitle', description: 'builtinAgentTeamWebDescription', beta: true,
-  }],
-  ['@deepseek-ai/dsh-experimental-auto-review', {
-    title: 'builtinAutoReviewTitle', description: 'builtinAutoReviewDescription', beta: true,
-  }],
 ])
 
 /** The registries with a name of their own, by host. */

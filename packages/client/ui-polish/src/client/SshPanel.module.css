@@ -38,21 +38,21 @@
   max-width: 280px;
   padding: 4px 10px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
   font-size: 13px;
 }
 
 .select:focus-visible {
-  outline: 2px solid var(--dsw-alias-accent);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: -1px;
 }
 
 .button {
   padding: 4px 12px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: var(--dsw-alias-button-floating-fill);
   color: var(--dsw-alias-label-primary);
   font-size: 12px;
@@ -65,7 +65,7 @@
 }
 
 .button:focus-visible {
-  outline: 2px solid var(--dsw-alias-accent);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: -1px;
 }
 
@@ -84,7 +84,7 @@
 .error {
   flex: none;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: color-mix(in srgb, var(--dsw-alias-error) 12%, transparent);
   color: var(--dsw-alias-error);
   overflow-wrap: anywhere;
@@ -96,7 +96,7 @@
   max-height: 45vh;
   position: relative;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 10px;
+  border-radius: var(--dsw-radius-md);
   overflow: hidden;
   background: var(--dsw-alias-bg-base);
 }
@@ -114,7 +114,7 @@
   right: 8px;
   padding: 4px 10px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
+  border-radius: var(--dsw-radius-sm);
   background: var(--dsw-alias-button-floating-fill);
   color: var(--dsw-alias-label-primary);
   font-size: 12px;
@@ -127,7 +127,7 @@
 }
 
 .closeButton:focus-visible {
-  outline: 2px solid var(--dsw-alias-accent);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: -1px;
 }
 
@@ -162,7 +162,7 @@
 
 .crumb {
   padding: 2px 5px;
-  border-radius: 5px;
+  border-radius: var(--dsw-radius-xs);
   border: none;
   background: transparent;
   color: var(--dsw-alias-label-secondary);
@@ -178,7 +178,7 @@
 }
 
 .crumb:focus-visible {
-  outline: 2px solid var(--dsw-alias-accent);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: -1px;
 }
 
@@ -199,7 +199,7 @@
 .filter {
   padding: 4px 10px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
   font-size: 12px;
@@ -211,7 +211,7 @@
 }
 
 .filter:focus-visible {
-  outline: 2px solid var(--dsw-alias-accent);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: -1px;
 }
 
@@ -276,7 +276,7 @@
 .actionBtn {
   padding: 2px 8px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
@@ -291,7 +291,7 @@
 }
 
 .actionBtn:focus-visible {
-  outline: 2px solid var(--dsw-alias-accent);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: -1px;
 }
 

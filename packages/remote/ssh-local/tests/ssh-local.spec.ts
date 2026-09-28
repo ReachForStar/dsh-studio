@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
+import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
 import { SshConnectionId, SshError, type SshPtyExitInfo, type SshPtySession, type SshSftp } from '@reachforstar/dsh-ssh'
 import LocalSshService, { shellQuote } from '../src/index.ts'
 import { TEST_SSH_PASSWORD, TEST_SSH_USERNAME, TestSshServer } from './test-server.ts'
@@ -25,11 +25,25 @@ async function startServer(): Promise<TestSshServer> {
   return server
 }
 
+/**
+ * Mount the provider as a real loader entry (so `ctx.fiber.entry` gives the
+ * settings entry id) and provide a settings stub whose `update` writes the
+ * patch back into the live volatile config, exactly like the real Settings
+ * service does.
+ */
+async function mountProvider(ctx: Context, config: Record<string, unknown> = {}): Promise<void> {
+  const live = await liveConfig(ctx, LocalSshService, config)
+  ctx.provide('settings', {
+    update: async (_entry: string, patch: Record<string, unknown>) => {
+      await live.update(patch)
+    },
+  } as never)
+}
+
 async function setup(): Promise<Context> {
   const ctx = new Context()
   context = ctx
-  await ctx.plugin(MemorySettings)
-  await ctx.plugin(LocalSshService, { defaultExecTimeoutMs: 60_000, maxExecTimeoutMs: 300_000, outputMaxBytes: 65_536 })
+  await mountProvider(ctx, { defaultExecTimeoutMs: 60_000, maxExecTimeoutMs: 300_000, outputMaxBytes: 65_536 })
   return ctx
 }
 
@@ -49,6 +63,21 @@ function saveInput(overrides: Record<string, unknown> = {}): Record<string, unkn
 afterEach(async () => {
   await context?.fiber.dispose()
   context = undefined
+  // The provider tears its connection pool down fire-and-forget, so stopping
+  // the server immediately can sever TCP sockets while an SFTP request is
+  // still outstanding (e.g. the remote-handle close of a finished read
+  // stream); ssh2 escalates those into uncaught "No response from server"
+  // exceptions. Wait until the server sees the disconnect count go stable.
+  if (server !== undefined) {
+    const deadline = Date.now() + 3000
+    let previous = -1
+    for (;;) {
+      await new Promise(resolve => setTimeout(resolve, 50))
+      const current = server.disconnects
+      if (current === previous || Date.now() > deadline) break
+      previous = current
+    }
+  }
   await server?.stop()
   server = undefined
   if (localRoot !== undefined) await rm(localRoot, { recursive: true, force: true })
@@ -331,8 +360,7 @@ describe('ssh-local sftp operations', () => {
   it('honors a zero fast-transfer threshold (stream-only transfers)', async () => {
     const ctx = new Context()
     context = ctx
-    await ctx.plugin(MemorySettings)
-    await ctx.plugin(LocalSshService, { fastTransferThresholdBytes: 0 })
+    await mountProvider(ctx, { fastTransferThresholdBytes: 0 })
     const saved = await ctx.sshSftp.save(saveInput())
     const handle = await ctx.sshSftp.connect(saved.id)
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-local-'))
@@ -440,8 +468,7 @@ describe('ssh-local host key verification and transfer performance', () => {
   it('rejects an unknown host key under strictHostKey: reject', async () => {
     const ctx = new Context()
     context = ctx
-    await ctx.plugin(MemorySettings)
-    await ctx.plugin(LocalSshService, { strictHostKey: 'reject' })
+    await mountProvider(ctx, { strictHostKey: 'reject' })
     await ctx.sshSftp.save(saveInput())
     await expect(ctx.sshSftp.connect(SshConnectionId('test-box'))).rejects.toMatchObject({ code: 'SSH_HOST_KEY_UNKNOWN' })
   })
@@ -474,8 +501,7 @@ describe('ssh-local host key verification and transfer performance', () => {
   it('transfers large files through the parallel fastGet/fastPut path', async () => {
     const ctx = new Context()
     context = ctx
-    await ctx.plugin(MemorySettings)
-    await ctx.plugin(LocalSshService, { fastTransferThresholdBytes: 1024 })
+    await mountProvider(ctx, { fastTransferThresholdBytes: 1024 })
     const saved = await ctx.sshSftp.save(saveInput())
     const handle = await ctx.sshSftp.connect(saved.id)
     localRoot = await mkdtemp(join(tmpdir(), 'dsh-ssh-fast-'))
@@ -507,8 +533,7 @@ describe('ssh-local provider configuration', () => {
   it('applies every config default when none is supplied', async () => {
     const ctx = new Context()
     context = ctx
-    await ctx.plugin(MemorySettings)
-    await ctx.plugin(LocalSshService)
+    await mountProvider(ctx)
     await ctx.sshSftp.save(saveInput())
     const handle = await ctx.sshSftp.connect(SshConnectionId('test-box'))
     await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo ok' }))).resolves.toMatchObject({ exitCode: 0 })
@@ -517,18 +542,15 @@ describe('ssh-local provider configuration', () => {
   it('rejects a config whose exec cap is below its default', async () => {
     const ctx = new Context()
     context = ctx
-    await ctx.plugin(MemorySettings)
-    await expect(ctx.plugin(LocalSshService, {
-      defaultExecTimeoutMs: 100_000,
-      maxExecTimeoutMs: 50_000,
-    })).rejects.toThrow(/maxExecTimeoutMs must be >= defaultExecTimeoutMs/)
+    await mountProvider(ctx, { defaultExecTimeoutMs: 100_000, maxExecTimeoutMs: 50_000 })
+    // The cap mismatch is caught on the first lazy config read, not at mount.
+    expect(() => ctx.sshSftp.resolveExec({ command: 'x' })).toThrow(/maxExecTimeoutMs must be >= defaultExecTimeoutMs/)
   })
 
   it('connects with legacy algorithms and a keep-alive interval', async () => {
     const ctx = new Context()
     context = ctx
-    await ctx.plugin(MemorySettings)
-    await ctx.plugin(LocalSshService, { allowLegacyAlgorithms: true, keepaliveIntervalMs: 5000 })
+    await mountProvider(ctx, { allowLegacyAlgorithms: true, keepaliveIntervalMs: 5000 })
     await ctx.sshSftp.save(saveInput())
     const handle = await ctx.sshSftp.connect(SshConnectionId('test-box'))
     await expect(handle.exec(ctx.sshSftp.resolveExec({ command: 'echo legacy' }))).resolves.toMatchObject({ exitCode: 0 })
@@ -770,6 +792,10 @@ describe('ssh-local sftp streaming', () => {
     await seedRemoteFile(sftp, 'payload.txt', 'remote me')
 
     const file = await sftp.openRead('payload.txt')
+    // Destroying mid-read can leave an SFTP request outstanding; ssh2 reports
+    // it as a stream error when the channel later closes. The stream is being
+    // discarded on purpose, so keep that late report from going unhandled.
+    file.stream.on('error', () => undefined)
     file.stream.destroy()
     await file.close()
   })

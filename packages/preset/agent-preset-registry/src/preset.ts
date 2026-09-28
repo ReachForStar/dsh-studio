@@ -7,6 +7,12 @@ export interface AgentPreset {
   readonly description?: string
   readonly order?: number
   readonly broken?: string
+  /**
+   * Loop backend this preset asks for (`dsh` default, `pi` for the Pi runtime);
+   * absent means the harness default loop. A session routes to the named loop
+   * without the caller re-supplying the choice.
+   */
+  readonly backend?: string
 }
 
 /** Registry selection policy. */

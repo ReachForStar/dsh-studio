@@ -21,6 +21,10 @@ export type AgentPresetSettingsKey =
   | 'presetMinimalDescription'
   | 'presetCordisName'
   | 'presetCordisDescription'
+  | 'presetXingchenQimingName'
+  | 'presetXingchenQimingDescription'
+  | 'presetPiName'
+  | 'presetPiDescription'
   | 'inUse'
   | 'noDescription'
   | 'brokenBadge'
@@ -55,6 +59,14 @@ export const en: Record<AgentPresetSettingsKey, string> = {
   presetCordisName: 'Creator mode',
   presetCordisDescription:
     'Customize DSH through conversation. Let the agent write plugins that add features or UI, or combine tools and prompts to create your own mode.',
+
+  presetXingchenQimingName: 'Qiming · Star-domain Router',
+  presetXingchenQimingDescription:
+    'General full-stack guide and the default routing role of the star-domain multi-agent system. Specialist tasks belonging to Tianquan/Yaoguang/Tianliang are delegated to the matching A2A specialist through xingchen_route.',
+
+  presetPiName: 'Pi Backend',
+  presetPiDescription:
+    'A session backend driven by the Pi coding-agent runtime, with switchable models and tools.',
 
   inUse: 'New task default',
 
@@ -92,6 +104,12 @@ export const zh: Record<AgentPresetSettingsKey, string> = {
   presetMinimalDescription: 'Agent 仅使用终端工具完成任务，适合测试和对比其基础表现。',
   presetCordisName: '创造模式',
   presetCordisDescription: '用对话定制 DSH：让 Agent 编写插件，添加新功能或界面；也能组合工具和提示词，创建自己的模式。',
+
+  presetXingchenQimingName: '启明 · 星域路由',
+  presetXingchenQimingDescription: '通用全栈开发引导者，星域多智能体协作系统的默认路由角色；明确属于天权/瑶光/天梁的专家任务经 xingchen_route 委派给对应 A2A 专家。',
+
+  presetPiName: 'Pi 后端',
+  presetPiDescription: '由 Pi coding-agent 运行时驱动的会话后端，可切换模型/工具。',
 
   inUse: '新任务默认',
 

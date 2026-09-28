@@ -14,23 +14,23 @@ import type { Context } from '@deepseek-ai/cordis'
 // Type-only: pulls the agent event declarations (agent/pre-step) into scope.
 import type {} from '@deepseek-ai/dsh-agent'
 // Type-only: pulls the agentPresets Context merge (ctx.agentPresets).
-import type {} from '@deepseek-ai/dsh-agent-presets'
+import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 // Type-only: pulls the compaction Context merge (ctx.compaction) so the
 // agent-addressed service face typechecks.
 import type {} from '@deepseek-ai/dsh-compaction'
-import type { SettingsScope } from '@deepseek-ai/dsh-settings'
-import type { PolishSettings } from './background-settings.ts'
+import { COMPACTION_RATIO_FIELD, type Config } from './background-settings.ts'
 
 /** The harness default automatic threshold (compaction-basic DEFAULT_THRESHOLD_RATIO). */
 const HARNESS_DEFAULT_RATIO = 0.8
 
 /**
- * The user-chosen ratio read from the settings scope, or undefined when not set.
- * @param scope - the ui-polish settings scope (already bound by the caller).
+ * The user-chosen ratio read from the live plugin Config, or undefined when not
+ * set.
+ * @param config - the ui-polish plugin Config (volatile fields read live).
  * @returns the ratio when configured, else undefined (harness default applies).
  */
-export function configuredRatio(scope: SettingsScope<PolishSettings>): number | undefined {
-  const value = scope.get().compactionThresholdRatio
+export function configuredRatio(config: Config): number | undefined {
+  const value = config[COMPACTION_RATIO_FIELD].get()
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
@@ -42,18 +42,18 @@ export function configuredRatio(scope: SettingsScope<PolishSettings>): number | 
  * pressure trigger with a per-call threshold override compacts until pressure
  * sits below the user's ratio, and the built-in listener then measures below
  * its own 0.8 bar.
- * @param ctx - host context with settings and agentPresets.
- * @param scope - the ui-polish settings scope (bound by the caller).
+ * @param ctx - host context with agentPresets.
+ * @param config - the ui-polish plugin Config (volatile fields read live).
  */
 export function installCompactionControl(
   ctx: Context,
-  scope: SettingsScope<PolishSettings>,
+  config: Config,
 ): void {
   const disposePreStep = ctx.on('agent/pre-step', async (
     { agent, signal },
     next,
   ) => {
-    const ratio = configuredRatio(scope)
+    const ratio = configuredRatio(config)
     if (ratio === undefined || ratio >= HARNESS_DEFAULT_RATIO) return next()
     if (signal.aborted) return next()
     try {

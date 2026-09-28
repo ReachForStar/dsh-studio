@@ -12,13 +12,15 @@ import { readFile, rm, stat } from 'node:fs/promises'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { basename, dirname } from 'node:path'
 import { PassThrough } from 'node:stream'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, type Volatile } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { Client, type ClientChannel, type ConnectConfig, type SFTPWrapper, type Stats } from 'ssh2'
 // Type-only: pulls the settings Context merge (ctx.settings).
 import type {} from '@deepseek-ai/dsh-settings'
+// Type-only: pulls the Loader Fiber merge (ctx.fiber.entry).
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { clampTimeout } from '@deepseek-ai/dsh-timeout'
-import { SshConnectionId, SshError, SshService } from '@reachforstar/dsh-ssh'
+import { SshConnectionId, SshConnectionsSchema, SshError, SshKnownHostsSchema, SshService } from '@reachforstar/dsh-ssh'
 import type {
   SftpEntry,
   SshAuth,
@@ -33,7 +35,9 @@ import type {
   SshPtySession,
   SshReadableFile,
   SshRunResult,
+  SshSettingsSection,
   SshSftp,
+  SshStoredDefinition,
   SshWritableFile,
 } from '@reachforstar/dsh-ssh'
 
@@ -43,52 +47,62 @@ const SFTP_STATUS_NO_SUCH_FILE = 2
 /** Settings namespace of this provider's own execution defaults. */
 export const SSH_LOCAL_SETTINGS_NAMESPACE = 'ssh-local'
 
-/** Configuration for the local SSH provider. */
+/**
+ * Configuration for the local SSH provider. Every field is volatile: the
+ * execution defaults and the connection registry (connections, knownHosts) are
+ * live-editable through the settings forms and persist on this profile entry.
+ */
 export interface Config {
   /** Default foreground command timeout in milliseconds (default 60000). */
-  defaultExecTimeoutMs?: number
+  defaultExecTimeoutMs: Volatile<number>
   /** Cap for per-call timeout overrides in milliseconds (default 600000). */
-  maxExecTimeoutMs?: number
+  maxExecTimeoutMs: Volatile<number>
   /** Per-stream capture cap in bytes; overflow keeps the tail (default 65536). */
-  outputMaxBytes?: number
+  outputMaxBytes: Volatile<number>
   /**
    * Host key policy: `accept-new` remembers an unknown key on first contact
    * and rejects later changes; `reject` refuses any key that is neither
    * pinned on the definition nor remembered. (Default `accept-new`.)
    */
-  strictHostKey?: 'accept-new' | 'reject'
+  strictHostKey: Volatile<'accept-new' | 'reject'>
   /**
    * When true, use the ssh2 algorithm defaults (legacy kex/cipher/MAC
    * fallbacks included) for maximum server compatibility. Default false
    * restricts the handshake to modern algorithms.
    */
-  allowLegacyAlgorithms?: boolean
+  allowLegacyAlgorithms: Volatile<boolean>
   /**
    * SSH keep-alive interval in milliseconds (0 disables; default 0).
    */
-  keepaliveIntervalMs?: number
+  keepaliveIntervalMs: Volatile<number>
   /**
    * Reject private keys whose POSIX permissions let group/others read them
    * (OpenSSH behavior; Windows ACLs are not checked). Default true.
    */
-  strictPrivateKeyPermissions?: boolean
+  strictPrivateKeyPermissions: Volatile<boolean>
   /**
    * SFTP transfers larger than this many bytes use the parallel
    * fastGet/fastPut path (0 disables the fast path; default 1 MiB).
    */
-  fastTransferThresholdBytes?: number
+  fastTransferThresholdBytes: Volatile<number>
+  /** Saved connection definitions (ids unbranded at rest). */
+  connections: Volatile<SshStoredDefinition[]>
+  /** Remembered host keys: `host:port` → `SHA256:<base64>` fingerprint. */
+  knownHosts: Volatile<Record<string, string>>
 }
 
 /** Runtime configuration schema for the local SSH provider. */
-export const Config: z<Config> = z.object({
-  defaultExecTimeoutMs: z.natural().default(60_000),
-  maxExecTimeoutMs: z.natural().default(600_000),
-  outputMaxBytes: z.natural().default(65_536),
-  strictHostKey: z.union([z.const('accept-new'), z.const('reject')]).default('accept-new'),
-  allowLegacyAlgorithms: z.boolean().default(false),
-  keepaliveIntervalMs: z.natural().default(0),
-  strictPrivateKeyPermissions: z.boolean().default(true),
-  fastTransferThresholdBytes: z.natural().default(1_048_576),
+export const Config = z.object({
+  defaultExecTimeoutMs: z.natural().default(60_000).volatile(),
+  maxExecTimeoutMs: z.natural().default(600_000).volatile(),
+  outputMaxBytes: z.natural().default(65_536).volatile(),
+  strictHostKey: z.union([z.const('accept-new'), z.const('reject')]).default('accept-new').volatile(),
+  allowLegacyAlgorithms: z.boolean().default(false).volatile(),
+  keepaliveIntervalMs: z.natural().default(0).volatile(),
+  strictPrivateKeyPermissions: z.boolean().default(true).volatile(),
+  fastTransferThresholdBytes: z.natural().default(1_048_576).volatile(),
+  connections: SshConnectionsSchema.default([]).volatile(),
+  knownHosts: SshKnownHostsSchema.default({}).volatile(),
 })
 
 /** Validated execution defaults. */
@@ -104,18 +118,16 @@ export interface ResolvedConfig {
 }
 
 function resolveConfig(config: Config): ResolvedConfig {
-  /* v8 ignore start -- schemastery fills every default before construction, so each ?? right side below is unreachable */
   const resolved = {
-    defaultExecTimeoutMs: config.defaultExecTimeoutMs ?? 60_000,
-    maxExecTimeoutMs: config.maxExecTimeoutMs ?? 600_000,
-    outputMaxBytes: config.outputMaxBytes ?? 65_536,
-    strictHostKey: config.strictHostKey ?? 'accept-new',
-    allowLegacyAlgorithms: config.allowLegacyAlgorithms ?? false,
-    keepaliveIntervalMs: config.keepaliveIntervalMs ?? 0,
-    strictPrivateKeyPermissions: config.strictPrivateKeyPermissions ?? true,
-    fastTransferThresholdBytes: config.fastTransferThresholdBytes ?? 1_048_576,
+    defaultExecTimeoutMs: config.defaultExecTimeoutMs.get(),
+    maxExecTimeoutMs: config.maxExecTimeoutMs.get(),
+    outputMaxBytes: config.outputMaxBytes.get(),
+    strictHostKey: config.strictHostKey.get(),
+    allowLegacyAlgorithms: config.allowLegacyAlgorithms.get(),
+    keepaliveIntervalMs: config.keepaliveIntervalMs.get(),
+    strictPrivateKeyPermissions: config.strictPrivateKeyPermissions.get(),
+    fastTransferThresholdBytes: config.fastTransferThresholdBytes.get(),
   }
-  /* v8 ignore stop */
   if (resolved.maxExecTimeoutMs < resolved.defaultExecTimeoutMs) {
     throw new Error('ssh-local: maxExecTimeoutMs must be >= defaultExecTimeoutMs')
   }
@@ -142,7 +154,7 @@ const SECURE_ALGORITHMS: SecureAlgorithms = {
   cipher: [
     'aes128-gcm@openssh.com',
     'aes256-gcm@openssh.com',
-    'chacha20-poly1305@openssh.com',
+
     'aes128-ctr',
     'aes192-ctr',
     'aes256-ctr',
@@ -1250,27 +1262,16 @@ class LocalSftp implements SshSftp {
  * or error) evicts itself; the next {@link connect} opens a fresh one.
  */
 export class LocalSshService extends SshService {
-  static Config: z<Config> = Config
+  static Config: z = Config
 
-  /** The currently authoritative config: the settings section, or the composition entry. */
-  private source: () => ResolvedConfig
+  /** Profile entry id this provider persists its registry and defaults under. */
+  private readonly entryId: string | undefined
 
   private readonly connections = new Map<SshConnectionId, LocalConnection>()
 
-  constructor(ctx: Context, config: Config) {
+  constructor(ctx: Context, private readonly raw: Config) {
     super(ctx)
-    const entry = resolveConfig(config)
-    // v8 ignore next -- no test boots ssh-local without a settings service; the settings mount replaces this placeholder before any read
-    this.source = () => entry
-    ctx.settings.installSection(ctx, SSH_LOCAL_SETTINGS_NAMESPACE, Config, entry, {
-      validate: (value) => {
-        resolveConfig(value)
-      },
-      setSource: (current) => {
-        this.source = current as () => ResolvedConfig
-      },
-      onChange: () => {},
-    })
+    this.entryId = ctx.fiber.entry?.options.id
     ctx.effect(() => () => {
       for (const connection of [...this.connections.values()]) {
         void connection.close()
@@ -1279,9 +1280,20 @@ export class LocalSshService extends SshService {
     }, 'ssh-local: connection pool teardown')
   }
 
-  /** Current validated config (defaults + caps applied). */
+  /** Current validated config (defaults + caps applied), read live. */
   get config(): ResolvedConfig {
-    return this.source()
+    return resolveConfig(this.raw)
+  }
+
+  protected readSection(): SshSettingsSection {
+    return { connections: [...this.raw.connections.get()], knownHosts: this.raw.knownHosts.get() }
+  }
+
+  protected async writeSection(next: SshSettingsSection): Promise<void> {
+    const settings = this.ctx.get('settings')
+    if (settings === undefined) throw new Error('ssh-local: the settings service is required to persist the connection registry')
+    if (this.entryId === undefined) throw new Error('ssh-local: the provider must be mounted as a profile entry to own its settings')
+    await settings.update(this.entryId, { connections: next.connections, knownHosts: next.knownHosts })
   }
 
   async connect(id: SshConnectionId): Promise<SshConnection> {

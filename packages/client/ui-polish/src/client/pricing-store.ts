@@ -5,7 +5,7 @@
 // {@link card}; writes only through {@link save} (validating) and {@link reset}.
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { MODEL_PRICING_FIELD, type PolishSettings } from '../background-settings.ts'
 import { parseRateCard, SEED_RATE_CARD, type RateCardData } from './cost.ts'
 
@@ -22,7 +22,7 @@ export class PricingRuntime {
    */
   constructor(
     ctx: Context,
-    private readonly host: SettingsScope<PolishSettings>,
+    private readonly host: ConfigForm<PolishSettings>,
   ) {
     ctx.effect(() => host.subscribe(() => { this.adopt() }), 'ui-polish: pricing adoption')
     this.adopt()

@@ -3,7 +3,8 @@
 import { memo, useMemo } from 'react'
 import type { AssistantBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
-import type { ChatNodeViewProps } from '../contract/slots.ts'
+import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ChatNodeViewProps, PresentationInjected } from '../contract/slots.ts'
 import { AssistantMarkdown } from './AssistantMarkdown.tsx'
 import css from './PeerMessageNodeView.module.css'
 
@@ -31,8 +32,8 @@ function toAssistantBlocks(content: readonly ContentBlock[]): readonly Assistant
 
 /** Keyed Chat renderer for one peer-agent answer. */
 export const PeerMessageNodeView = memo(function PeerMessageNodeView({
-  node, renderMessageImages, t,
-}: ChatNodeViewProps<'peer-message'>) {
+  node, renderMessageImages, useDisclosure, usePresentation, t,
+}: ChatNodeViewProps<'peer-message'> & InjectFace<PresentationInjected>) {
   const data = node.data
   const blocks = useMemo(() => toAssistantBlocks(data.content), [data.content])
   // The producer line names what the log actually recorded: the peer and the
@@ -50,6 +51,8 @@ export const PeerMessageNodeView = memo(function PeerMessageNodeView({
         blocks={blocks}
         streaming={false}
         renderMessageImages={renderMessageImages}
+        useDisclosure={useDisclosure}
+        usePresentation={usePresentation}
         t={t}
       />
     </div>

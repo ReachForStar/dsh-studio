@@ -87,6 +87,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Peer registry and one-call vocabulary over the A2A client.\n\nA reference is resolved against the configured peers first and treated as an endpoint URL otherwise, so a model or operator can address an agent this deployment never configured. Names are resolved per call rather than cached: a peer\'s endpoint and credentials are configuration, and a stale client would keep calling an endpoint the deployment has since changed.',
     methods: [
       {
+        signature: 'skills(agent: string): string[]',
+        description: 'Skills one agent accepts, as the deployment\'s skill maps declare them.',
+        parameters: [{ name: 'agent', description: 'bridge agent name.' }],
+        returns: 'the agent\'s skill ids, empty for a name the deployment does not run.',
+      },
+      {
         signature: 'list(): string[]',
         description: 'Every configured peer name, in configuration order.',
         parameters: [],
@@ -105,6 +111,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'request', description: 'the peer, the message text, and any continuation.' }],
         returns: 'the peer\'s answer and the addressing that continues it.',
         throws: ['Error when the peer is unknown or the call fails.'],
+      },
+      {
+        signature: 'async dispatch(request: A2ADispatchRequest): Promise<A2ADispatchReply>',
+        description: 'Dispatch one task into the bridge deployment.\n\n`direct` streams the answer back over JSON-RPC and returns when the task reaches a terminal state; `bus` publishes the task to the deployment\'s topic and returns as soon as it is claimed, or at the terminal event when the caller asks to wait. A bus task outlives this process, so its text is whatever the event stream delivered before the call returned.',
+        parameters: [{ name: 'request', description: 'the agent, skill, task text, and channel to use.' }],
+        returns: 'the answer text and the addressing that continues the conversation.',
+        throws: ['Error when no bridge is configured, the agent is unknown, or the call fails.'],
       },
       {
         signature: 'async card(ref: A2APeerRef, signal?: AbortSignal): Promise<AgentCard>',
@@ -2831,7 +2844,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'sshSftp',
     summary: 'Abstract SSH/SFTP service.',
-    description: 'Abstract SSH/SFTP service. The base class owns the settings-backed definition registry (list/get/save/remove and the compose-able test); providers implement connect and resolveExec. Mount exactly one provider per context (a second registration throws, cordis\' standard duplicate-service behavior). Requires a settings provider: the registry\'s document is the `ssh` settings namespace.',
+    description: 'Abstract SSH/SFTP service. The base class owns the definition registry (list/get/save/remove and the compose-able test); providers implement connect, resolveExec, and the two registry-storage hooks readSection/writeSection that back the registry with the provider entry\'s own volatile Config. Mount exactly one provider per context (a second registration throws, cordis\' standard duplicate-service behavior).',
     methods: [
       {
         signature: 'list(): readonly SshConnectionDefinition[]',
@@ -3859,10 +3872,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: '`ctx.xingchen`: the star-domain routing service.\n\nOwns the role bindings (peer + charter), the dispatch with per-session peer-conversation continuity, the `xingchen_route` tool, the `/review` `/bug` `/planning` commands, the routing prompt section, and the `xingchen` projection registration.',
     methods: [
       {
-        signature: 'async dispatch( role: XingchenSpecialistId, task: string, sessionKey: string, signal?: AbortSignal, ): Promise<A2APeerReply>',
-        description: 'Dispatch one task to a specialist role through its A2A peer, prefixing the role charter and continuing the per-session peer conversation.',
-        parameters: [{ name: 'role', description: 'the specialist role.' }, { name: 'task', description: 'the self-contained task text.' }, { name: 'sessionKey', description: 'the session id owning the conversation continuity.' }, { name: 'signal', description: 'cancellation owned by the caller.' }],
-        returns: 'the peer\'s answer and its continuation addressing.',
+        signature: 'async dispatch( role: XingchenSpecialistId, task: string, parent: Agent, signal?: AbortSignal, ids?: { readonly callId?: ToolCallId; readonly commandId?: CommandId }, ): Promise<{ readonly text: string; readonly state?: string }>',
+        description: 'Dispatch one task to a specialist seat, prefixing the role charter.\n\nA `local` seat runs in this process as a delegated child agent and needs no endpoint; an `a2a` seat sends the same text to its configured peer and continues that peer conversation per session. An A2A dispatch reports progress to the seat\'s session as the peer\'s stream or bus events arrive, so the driving tool card or command card stays visibly working.',
+        parameters: [{ name: 'role', description: 'the specialist role.' }, { name: 'task', description: 'the self-contained task text.' }, { name: 'parent', description: 'the agent delegating the task.' }, { name: 'signal', description: 'cancellation owned by the caller.' }, { name: 'ids', description: 'the driving call\'s identities, for the progress reports to fold into.' }],
+        returns: 'the seat\'s answer text and the state it ended in, when reported.',
       },
     ],
   },
@@ -4543,6 +4556,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface A2AArtifact {\n    artifactId: string;\n    name?: string;\n    description?: string;\n    parts: A2APart[];\n    metadata?: Record<string, unknown>;\n}',
   },
   {
+    name: 'A2ADispatchProgress',
+    declaration: 'export interface A2ADispatchProgress {\n    readonly state?: string;\n    readonly text: string;\n}',
+  },
+  {
+    name: 'A2ADispatchReply',
+    declaration: 'export interface A2ADispatchReply extends A2APeerReply {\n    readonly agent: string;\n    readonly skill: string;\n    readonly mode: \'direct\' | \'bus\';\n}',
+  },
+  {
+    name: 'A2ADispatchRequest',
+    declaration: 'export interface A2ADispatchRequest {\n    readonly agent: string;\n    readonly skill: string;\n    readonly text: string;\n    readonly workspace?: string;\n    readonly contextId?: string;\n    readonly mode?: \'direct\' | \'bus\';\n    readonly wait?: boolean;\n    readonly timeoutMs?: number;\n    readonly signal?: AbortSignal;\n    readonly onProgress?: (progress: A2ADispatchProgress) => void;\n}',
+  },
+  {
     name: 'A2AMessage',
     declaration: 'export interface A2AMessage {\n    messageId: string;\n    contextId?: string;\n    taskId?: string;\n    role: Role;\n    parts: A2APart[];\n    metadata?: Record<string, unknown>;\n    extensions?: string[];\n    referenceTaskIds?: string[];\n}',
   },
@@ -4572,7 +4597,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'A2ASendRequest',
-    declaration: 'export interface A2ASendRequest extends A2APeerCall {\n    readonly peer: A2APeerRef;\n    readonly text: string;\n}',
+    declaration: 'export interface A2ASendRequest extends A2APeerCall {\n    readonly peer: A2APeerRef;\n    readonly text: string;\n    readonly metadata?: Record<string, unknown>;\n}',
   },
   {
     name: 'A2ATask',
@@ -5992,7 +6017,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MessageRoleMap',
-    declaration: 'export interface MessageRoleMap {\n    system: SystemMessage;\n    developer: DeveloperMessage;\n    user: UserMessage;\n    assistant: AssistantMessage;\n    tool: ToolResultMessage;\n}',
+    declaration: 'export interface MessageRoleMap {\n    system: SystemMessage;\n    developer: DeveloperMessage;\n    user: UserMessage;\n    assistant: AssistantMessage | PeerAssistantMessage;\n    tool: ToolResultMessage;\n}',
+  },
+  {
+    name: 'MessageSource',
+    declaration: 'export type MessageSource = MessageSourceMap[keyof MessageSourceMap];',
   },
   {
     name: 'MessageSourceMap',
@@ -6093,6 +6122,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PeerAdmission',
     declaration: 'export type PeerAdmission = {\n    readonly peer: PeerScope;\n} | {\n    readonly rejection: 401 | 403;\n};',
+  },
+  {
+    name: 'PeerAssistantMessage',
+    declaration: 'export interface PeerAssistantMessage extends MessageBase {\n    readonly role: \'assistant\';\n    readonly source: Exclude<MessageSource, ModelMessageSource>;\n}',
   },
   {
     name: 'PeerId',
@@ -6196,7 +6229,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PresetDefinition',
-    declaration: 'export interface PresetDefinition {\n    readonly id: string;\n    readonly name?: string;\n    readonly description?: string;\n    readonly order?: number;\n    readonly plugins: readonly (Omit<EntryOptions, \'id\' | \'disabled\'> & {\n        id?: string;\n        disabled?: EntryOptions[\'disabled\'] | JsExpr;\n    })[];\n}',
+    declaration: 'export interface PresetDefinition {\n    readonly id: string;\n    readonly name?: string;\n    readonly description?: string;\n    readonly order?: number;\n    readonly backend?: string;\n    readonly plugins: readonly (Omit<EntryOptions, \'id\' | \'disabled\'> & {\n        id?: string;\n        disabled?: EntryOptions[\'disabled\'] | JsExpr;\n    })[];\n}',
   },
   {
     name: 'PresetOption',
@@ -6708,7 +6741,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionEventMap',
-    declaration: 'export interface SessionEventMap {\n    \'turn/start\': {\n        turn: number;\n    };\n    \'turn/end\': {\n        turn: number;\n        reason: TurnEndReason;\n    };\n    \'step/start\': {\n        turn: number;\n        step: number;\n    };\n    \'step/end\': {\n        turn: number;\n        step: number;\n    };\n    \'user/message\': UserMessage;\n    \'developer/message\': {\n        turn: number;\n        step: number;\n        message: DeveloperMessage;\n        headerSeq?: SessionSeq;\n    };\n    \'system/message\': {\n        turn: number;\n        step: number;\n        message: SystemMessage;\n    };\n    \'assistant/message\': {\n        turn: number;\n        step: number;\n        message: AssistantMessage;\n        stream: AssistantStreamRecord[];\n        usage?: TokenUsage;\n        interrupted?: true;\n    };\n    \'assistant/attempt\': {\n        turn: number;\n        step: number;\n        stream: AssistantStreamRecord[];\n    };\n    \'tool/call\': {\n        turn: number;\n        step: number;\n        callId: ToolCallId;\n        name: string;\n        arguments: string;\n    };\n    \'tool/result\': {\n        turn: number;\n        step: number;\n        message: ToolResultMessage;\n        error?: {\n            name: string;\n            code: string;\n            reason?: string;\n        };\n        meta?: JsonValue;\n    };\n    \'request/header\': {\n        header: EpochHeader;\n        reason: RequestHeaderReason;\n        startsSeries?: true;\n    };\n    \'request/context\': RequestContext;\n    \'session/end-seed\': {\n   /* …truncated — full shape in source */',
+    declaration: 'export interface SessionEventMap {\n    \'turn/start\': {\n        turn: number;\n    };\n    \'turn/end\': {\n        turn: number;\n        reason: TurnEndReason;\n    };\n    \'step/start\': {\n        turn: number;\n        step: number;\n    };\n    \'step/end\': {\n        turn: number;\n        step: number;\n    };\n    \'user/message\': UserMessage;\n    \'developer/message\': {\n        turn: number;\n        step: number;\n        message: DeveloperMessage;\n        headerSeq?: SessionSeq;\n    };\n    \'system/message\': {\n        turn: number;\n        step: number;\n        message: SystemMessage;\n    };\n    \'assistant/message\': {\n        turn: number;\n        step: number;\n        message: AssistantMessage;\n        stream: AssistantStreamRecord[];\n        usage?: TokenUsage;\n        interrupted?: true;\n    };\n    \'assistant/peer-message\': {\n        message: PeerAssistantMessage;\n    };\n    \'assistant/attempt\': {\n        turn: number;\n        step: number;\n        stream: AssistantStreamRecord[];\n    };\n    \'tool/call\': {\n        turn: number;\n        step: number;\n        callId: ToolCallId;\n        name: string;\n        arguments: string;\n    };\n    \'tool/result\': {\n        turn: number;\n        step: number;\n        message: ToolResultMessage;\n        error?: {\n            name: string;\n            code: string;\n            reason?: string;\n        };\n        meta?: JsonValue;\n    };\n    \'request/header\': {\n        header: EpochHeader;\n        reason: RequestHeaderReason;\n        startsSeries?: tr /* …truncated — full shape in source */',
   },
   {
     name: 'SessionEventMetadataFilter',
@@ -7600,11 +7633,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SurfaceEventType',
-    declaration: 'export type SurfaceEventType = \'system/message\' | \'developer/message\' | \'user/message\' | \'assistant/message\' | \'tool/result\';',
+    declaration: 'export type SurfaceEventType = \'system/message\' | \'developer/message\' | \'user/message\' | \'assistant/message\' | \'assistant/peer-message\' | \'tool/result\';',
   },
   {
     name: 'SurfaceIntent',
-    declaration: 'export type SurfaceIntent<T extends SurfaceEventType = SurfaceEventType> = {\n    surfaceOp: SurfaceOp;\n} & (T extends \'assistant/message\' ? {\n    sourceEventSeqs?: never;\n} : {\n    sourceEventSeqs?: SessionSeq[];\n});',
+    declaration: 'export type SurfaceIntent<T extends SurfaceEventType = SurfaceEventType> = {\n    surfaceOp: SurfaceOp;\n} & (T extends \'assistant/message\' | \'assistant/peer-message\' ? {\n    sourceEventSeqs?: never;\n} : {\n    sourceEventSeqs?: SessionSeq[];\n});',
   },
   {
     name: 'SurfaceOp',

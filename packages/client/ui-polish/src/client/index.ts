@@ -11,7 +11,7 @@
  */
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-// Type-only: pulls the settings scope Context merge (ctx.settingsScope).
+// Type-only: pulls the config forms Context merge (ctx.configForms).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the ui-settings-general SlotMap merge (the settings.general.item entry).
 import type {} from '@deepseek-ai/dsh-client-ui-settings-general/client'
@@ -90,7 +90,7 @@ body[data-ds-bg-image] [data-ui-polish-excalidraw] {
 `
 
 /** Required services: settings transport plus slots/locale for the registrations. */
-export const inject = ['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh']
+export const inject = ['slots', 'locale', 'configForms', 'remote', 'remote.ssh']
 
 /**
  * Client plugin body: bind the background preference, paint the body, and
@@ -98,7 +98,7 @@ export const inject = ['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh
  * @param ctx - client cordis context.
  */
 export function apply(ctx: ClientContext): void {
-  const host = ctx.settingsScope.bind<PolishSettings>({ namespace: BACKGROUND_SETTINGS_NAMESPACE })
+  const host = ctx.configForms.get<PolishSettings>(BACKGROUND_SETTINGS_NAMESPACE)
   const background = new BackgroundRuntime(ctx, host)
   // Model rate card owner: shared by the stats float (pricing) and the
   // settings row (editing). One instance keeps the scope subscription single.

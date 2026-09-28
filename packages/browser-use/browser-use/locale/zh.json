@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "浏览器自动化",
+    "description": "启用浏览器自动化工具，由 Playwright MCP 驱动 Chromium。"
+  }
+}

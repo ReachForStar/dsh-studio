@@ -131,29 +131,31 @@ function runCommand(command: string, args: readonly string[], cwd: string, timeo
  * @throws when the executable is not found anywhere.
  */
 async function findEngine(name: string): Promise<string> {
-  try {
-    await runCommand(name, ['--version'], process.cwd(), 10_000)
-    return name
-  } catch {
-    let years: string[] = []
+  // A candidate is usable only when `--version` exits 0. A missing `.bat` probed through the shell
+  // still resolves runCommand (cmd.exe starts, then reports the absent file with a non-zero exit),
+  // so exit-code checking here is what keeps a stray TeX Live tree without a real binary from being
+  // chosen over a working distribution.
+  const probe = async (command: string): Promise<boolean> => {
     try {
-      years = readdirSync('C:/texlive').sort().reverse()
+      return (await runCommand(command, ['--version'], process.cwd(), 10_000)).code === 0
     } catch {
-      years = []
+      return false
     }
-    for (const year of years) {
-      for (const suffix of ['.exe', '.bat']) {
-        const candidate = `C:/texlive/${year}/bin/windows/${name}${suffix}`
-        try {
-          await runCommand(candidate, ['--version'], process.cwd(), 10_000)
-          return candidate
-        } catch {
-          // Try the next form / distribution year.
-        }
-      }
-    }
-    throw new Error(`latex panel: ${name} not found (install TeX Live or add it to PATH)`)
   }
+  if (await probe(name)) return name
+  let years: string[] = []
+  try {
+    years = readdirSync('C:/texlive').sort().reverse()
+  } catch {
+    years = []
+  }
+  for (const year of years) {
+    for (const suffix of ['.exe', '.bat']) {
+      const candidate = `C:/texlive/${year}/bin/windows/${name}${suffix}`
+      if (await probe(candidate)) return candidate
+    }
+  }
+  throw new Error(`latex panel: ${name} not found (install TeX Live or add it to PATH)`)
 }
 
 /** The cached xelatex location (resolved once). */
@@ -849,7 +851,7 @@ function writeMessages(
   request: AiWriteRequest,
   route: LlmRoute,
 ): (ReturnType<typeof createUserMessage> | ReturnType<typeof createAssistantMessage>)[] {
-  const source = { kind: 'plugin', plugin: 'dsh-client-ui-polish' } as const
+  const source = { kind: 'ui-polish' } as const
   const context = request.selection !== undefined
     ? `${AI_WRITE_PROMPT.selection}:\n${request.selection}`
     : `${AI_WRITE_PROMPT.source}:\n${request.fileContent}`

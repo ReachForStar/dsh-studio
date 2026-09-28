@@ -14,7 +14,7 @@ import clsx from 'clsx'
 import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
 import type { PropsLocale, PropsRuntime, PropsStore, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import {
-  Button, IconFolderCloseRegular, IconFolderOpenRegular, IconRefreshOutlineRegular, IconTrashOutline16, Modal, Tooltip, classifyFileType,
+  Button, IconFolderCloseRegular, IconFolderOpenRegular, IconRefreshOutlineRegular, IconTrashOutlineRegular, Modal, Tooltip, classifyFileType,
   IconPauseOutlineRegular, IconPlayOutlineRegular, FileTypeIcon, PathLabel,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
@@ -106,7 +106,7 @@ function Entry({ parent, entry, tree }: { parent: string; entry: WorkspaceDirect
       data-files-delete={entry.type}
       onClick={() => { tree.onDelete(parent, entry) }}
     >
-      <IconTrashOutline16 />
+      <IconTrashOutlineRegular size={16} />
     </button>
   )
   if (entry.type === 'directory') {

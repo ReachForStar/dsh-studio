@@ -1,21 +1,19 @@
 /**
  * Registry behavior of the `ctx.sshSftp` Service Definition: save/get/list/remove,
- * name uniqueness, secret-free views, the compose-able test probe, and the
- * settings-document persistence boundary — all through the real settings seam
- * with an in-memory provider.
+ * name uniqueness, secret-free views, and the compose-able test probe. The
+ * stub subclass backs the storage hooks in memory, so the registry under test
+ * is exercised without a settings backend.
  */
 
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
-import { SSH_SETTINGS_NAMESPACE, SshConnectionId } from '../src/index.ts'
+import { SshConnectionId } from '../src/index.ts'
 import { StubSshService } from './stub-service.ts'
 
-async function setup(): Promise<{ ctx: Context; ssh: StubSshService; settings: MemorySettings }> {
+async function setup(): Promise<{ ctx: Context; ssh: StubSshService }> {
   const ctx = new Context()
-  await ctx.plugin(MemorySettings)
   await ctx.plugin(StubSshService)
-  return { ctx, ssh: ctx.sshSftp as StubSshService, settings: ctx.settings as MemorySettings }
+  return { ctx, ssh: ctx.sshSftp as StubSshService }
 }
 
 function saveInput(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -160,22 +158,6 @@ describe('ssh definition registry', () => {
     void second
   })
 
-  it('persists definitions in the settings document across service reloads', async () => {
-    const { ctx, settings, ssh } = await setup()
-    const created = await ssh.save(saveInput({ name: 'persisted' }))
-    const raw = settings.doc[SSH_SETTINGS_NAMESPACE] as { connections: unknown[] }
-    expect(raw.connections).toEqual([created])
-    expect(settings.persisted.at(-1)).toMatchObject({ ns: SSH_SETTINGS_NAMESPACE })
-
-    // A second context seeded with the same document sees the saved definition.
-    const reloadedCtx = new Context()
-    await reloadedCtx.plugin(MemorySettings, { doc: { [SSH_SETTINGS_NAMESPACE]: raw } })
-    await reloadedCtx.plugin(StubSshService)
-    expect(reloadedCtx.sshSftp.list()).toEqual([created])
-    await reloadedCtx.fiber.dispose()
-    await ctx.fiber.dispose()
-  })
-
   it('projects secret-free views and resolves refs through the service', async () => {
     const { ssh } = await setup()
     const passwordDef = await ssh.save(saveInput())
@@ -228,24 +210,13 @@ describe('ssh definition registry', () => {
     await expect(ssh.test('ghost')).rejects.toMatchObject({ code: 'SSH_NOT_FOUND' })
   })
 
-  it('fails loud when the registry is used after its fiber disposed', async () => {
-    const { ctx, ssh } = await setup()
-    await ssh.save(saveInput())
-    await ctx.fiber.dispose()
-    await expect(ssh.save(saveInput({ name: 'late' }))).rejects.toThrow(/not ready/)
-    // The registration was withdrawn with the fiber: the service reads the
-    // empty section until a fresh registration owns the namespace.
-    expect(ssh.list()).toEqual([])
-  })
-
-  it('releases the settings namespace when the service fiber disposes (HMR safety)', async () => {
+  it('withdraws the service with its fiber and re-registers cleanly (HMR safety)', async () => {
     const ctx = new Context()
-    await ctx.plugin(MemorySettings)
     const fiber = await ctx.plugin(StubSshService)
     await ctx.sshSftp.save(saveInput())
     await fiber.dispose()
     expect(ctx.get('sshSftp')).toBeUndefined()
-    // Re-registration succeeds, proving the namespace registration was removed.
+    // Re-registration succeeds: a fresh fiber owns the service again and saves.
     await ctx.plugin(StubSshService)
     await expect(ctx.sshSftp.save(saveInput({ name: 'again' }))).resolves.toMatchObject({ name: 'again' })
     await ctx.fiber.dispose()

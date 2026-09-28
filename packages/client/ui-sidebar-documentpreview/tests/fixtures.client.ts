@@ -136,15 +136,30 @@ export function harness(script: Record<number, RemoteResult<WorkspaceFileText>> 
   const read = vi.fn<ReadWorkspaceFilePage>((_session, _path, offset) =>
     Promise.resolve(pages[offset] ?? failure('workspace-file/not-found', { path: PATH })))
   const bytes = vi.fn<ReadDocumentBytes>()
-  const write = vi.fn<WriteWorkspaceFile>(() => Promise.resolve({
-    ok: true, value: { absolutePath: ABSOLUTE_PATH, version: 'v2', bytes: 100 },
-  }))
-  const writeBytes = vi.fn<WriteWorkspaceFileBytes>(() => Promise.resolve({
-    ok: true, value: { absolutePath: ABSOLUTE_PATH, version: 'v2', bytes: 100 },
-  }))
+  const write = vi.fn<WriteWorkspaceFile>()
+  const writeBytes = vi.fn<WriteWorkspaceFileBytes>()
   const face = textFace(read, bytes, write, writeBytes, createResources())(SESSION, instance.actions)
   const current = { version: 'v1' as string | undefined, failure: undefined as RemoteFailure | undefined, snapshot: meta('v1', undefined) }
   const refresh = (): void => { current.snapshot = meta(current.version, current.failure) }
+  // A Host write publishes the file's new version into the resource observation and into the pages a
+  // later read returns. The merged auto-refresh reloads when the resource moves ahead of the tab, so
+  // a fixture that kept both at v1 would reload stale pages and roll the committed version back. The
+  // bump runs after the write resolves so the reader's own completion settles first.
+  const publishWrite = (writeResult: RemoteResult<WorkspaceFileStat>): RemoteResult<WorkspaceFileStat> => {
+    if (writeResult.ok) {
+      const version = writeResult.value.version
+      current.version = version
+      for (const key of Object.keys(pages)) {
+        const page = pages[Number(key)]
+        if (page?.ok) pages[Number(key)] = { ok: true, value: { ...page.value, version } }
+      }
+    }
+    refresh()
+    return writeResult
+  }
+  const written: RemoteResult<WorkspaceFileStat> = { ok: true, value: { absolutePath: ABSOLUTE_PATH, version: 'v2', bytes: 100 } }
+  write.mockImplementation(() => Promise.resolve(written).then(publishWrite))
+  writeBytes.mockImplementation(() => Promise.resolve(written).then(publishWrite))
   const useResource = vi.fn<() => ResourceSnapshot<WorkspaceFileStat>>(() => current.snapshot)
   const controller = new AbortController()
   onTestFinished(() => { controller.abort() })

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "计算机操作",
+    "description": "启用桌面自动化工具，通过 Cua Driver 读取屏幕并操作指针与键盘。"
+  }
+}

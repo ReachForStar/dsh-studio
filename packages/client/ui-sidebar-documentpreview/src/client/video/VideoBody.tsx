@@ -72,7 +72,7 @@ export function VideoBody({ content, resourceAddress, t }: VideoBodyProps): Reac
     return <p className={css.status} role="alert">{t('unsupported')}</p>
   }
   if (source?.data !== data || source.mediaType !== mediaType) {
-    return <LoadingIndicator className={css.status} label={t('loading')} />
+    return <LoadingIndicator label={t('loading')} />
   }
   if (source.kind === 'failed') return <p className={css.status} role="alert">{t('failed')}</p>
   const { name } = pathPartsOf(path)

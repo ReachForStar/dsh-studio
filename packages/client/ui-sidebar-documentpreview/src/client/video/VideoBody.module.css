@@ -19,7 +19,7 @@
   max-width: 100%;
   max-height: 70vh;
   margin: auto;
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: #000;
   outline: none;
 }

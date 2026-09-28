@@ -7,7 +7,7 @@
   gap: 4px;
   padding: 8px 12px;
   border-left: 2px solid var(--dsw-alias-brand-primary);
-  border-radius: 6px;
+  border-radius: var(--dsw-radius-sm);
   background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 60%, transparent);
 }
 

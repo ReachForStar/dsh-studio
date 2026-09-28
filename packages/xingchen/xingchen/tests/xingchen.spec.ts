@@ -11,7 +11,7 @@ import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import type { A2ABridgeConfig, A2ADispatchRequest, A2APeerReply } from '@reachforstar/dsh-a2a'
-import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
+import type { SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session/types'
 import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
 import * as xingchen from '../src/index.ts'
 import type { XingchenConfig } from '../src/index.ts'
@@ -260,14 +260,9 @@ describe('/review /bug /planning 人面命令', () => {
     const test = await harness()
     await test.ctx.commands.execute(test.agent, '/planning 分波交付', [], signal)
     const peer = test.session.ownEvents()
-      .filter(event => (event as { type: string }).type === 'assistant/peer-message')
+      .filter((event): event is SessionEvent<'assistant/peer-message'> => event.type === 'assistant/peer-message')
     expect(peer).toHaveLength(1)
-    const message = (peer[0] as { data: { message: {
-      id: string
-      role: string
-      source: Record<string, unknown>
-      content: unknown[]
-    } } }).data.message
+    const message = peer[0]!.data.message
     expect(message.role).toBe('assistant')
     expect(message.id).not.toBe('')
     // The seat produced the answer, so the source names it and never this Session's model.

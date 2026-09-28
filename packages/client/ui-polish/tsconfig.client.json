@@ -25,13 +25,13 @@
       "path": "../ui-renderer"
     },
     {
-      "path": "../locale"
+      "path": "../locale/tsconfig.client.json"
     },
     {
-      "path": "../ui-conversation"
+      "path": "../ui-conversation/tsconfig.client.json"
     },
     {
-      "path": "../ui-chat"
+      "path": "../ui-chat/tsconfig.client.json"
     },
     {
       "path": "../ui-workspace"
@@ -43,10 +43,10 @@
       "path": "../ui-primitives"
     },
     {
-      "path": "../ui-settings"
+      "path": "../ui-settings/tsconfig.client.json"
     },
     {
-      "path": "../ui-settings-general"
+      "path": "../ui-settings-general/tsconfig.client.json"
     },
     {
       "path": "../ui-slots"

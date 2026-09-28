@@ -12,7 +12,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
+import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
 import LocalSshService from '@reachforstar/dsh-ssh-local'
 import * as ToolSsh from '../src/index.ts'
 import { TEST_SSH_PASSWORD, TEST_SSH_USERNAME, TestSshServer } from '../../ssh-local/tests/test-server.ts'
@@ -21,14 +21,27 @@ let server: TestSshServer | undefined
 let context: Context | undefined
 let localRoot: string | undefined
 
-async function setup(): Promise<Context> {
-  const ctx = new Context()
-  context = ctx
-  await ctx.plugin(MemorySettings)
-  await ctx.plugin(LocalSshService)
+/**
+ * Mount the real provider stack: the local provider as a loader entry (its
+ * entry id owns the settings section), a settings stub whose `update` writes
+ * back into the live volatile config, then prompt/tools/ssh plugins as usual.
+ */
+async function mountStack(ctx: Context): Promise<void> {
+  const live = await liveConfig(ctx, LocalSshService)
+  ctx.provide('settings', {
+    update: async (_entry: string, patch: Record<string, unknown>) => {
+      await live.update(patch)
+    },
+  } as never)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(ToolSsh)
+}
+
+async function setup(): Promise<Context> {
+  const ctx = new Context()
+  context = ctx
+  await mountStack(ctx)
   return ctx
 }
 
@@ -331,11 +344,7 @@ describe('ssh tools UI presentation', () => {
     server = await TestSshServer.start()
     const ctx = new Context()
     context = ctx
-    await ctx.plugin(MemorySettings)
-    await ctx.plugin(LocalSshService)
-    await ctx.plugin(SystemPrompt)
-    await ctx.plugin(ToolRuntime)
-    await ctx.plugin(ToolSsh)
+    await mountStack(ctx)
   })
 
   it('ssh_exec presents a terminal call and result with a truthful pill', () => {

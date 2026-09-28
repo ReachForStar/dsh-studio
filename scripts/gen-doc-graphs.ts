@@ -196,7 +196,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'xingchen/xingchen',
     title: 'Star-domain role routing',
     mode: 'core',
-    consumers: ['preset/agent-presets'],
+    consumers: ['web-app'],
     note: 'Owns the four-role partition and the A2A dispatch behind it: the delegation tool, the /review /bug /planning commands, the routing prompt section, and the role/stop-reason session projection.',
   },
   {

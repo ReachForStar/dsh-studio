@@ -1240,25 +1240,33 @@ describe('JSONL immutable generation publication', () => {
     expect(await readFile(expected, 'utf8')).toBe(line(header(SESSION_FORMAT_VERSION)) + line(event0))
   })
 
-  it.each(['different', 'malformed', 'symlink', 'directory'] as const)(
+  async function assertCollidingTargetFailsLoud(kind: 'different' | 'malformed' | 'symlink' | 'directory') {
+    const root = await tempRoot()
+    const request = options(root)
+    const source = Buffer.from(line(header(0)) + line(event0))
+    await writeFile(request.sourcePath, source)
+    if (kind === 'different') await writeFile(request.currentPath, line(header(SESSION_FORMAT_VERSION)) + line(event1))
+    if (kind === 'malformed') await writeFile(request.currentPath, '{not-json}\n')
+    if (kind === 'symlink') await symlink(request.sourcePath, request.currentPath)
+    if (kind === 'directory') await mkdir(request.currentPath)
+
+    await expect(ensureJsonlGenerationCurrent(request)).rejects.toBeInstanceOf(
+      JsonlGenerationTargetConflictError,
+    )
+
+    expect(await readFile(request.sourcePath)).toEqual(source)
+    expect((await readdir(root)).every(name => !name.includes('.tmp'))).toBe(true)
+  }
+
+  it.each(['different', 'malformed', 'directory'] as const)(
     'fails loud without altering a colliding %s target',
-    async (kind) => {
-      const root = await tempRoot()
-      const request = options(root)
-      const source = Buffer.from(line(header(0)) + line(event0))
-      await writeFile(request.sourcePath, source)
-      if (kind === 'different') await writeFile(request.currentPath, line(header(SESSION_FORMAT_VERSION)) + line(event1))
-      if (kind === 'malformed') await writeFile(request.currentPath, '{not-json}\n')
-      if (kind === 'symlink') await symlink(request.sourcePath, request.currentPath)
-      if (kind === 'directory') await mkdir(request.currentPath)
+    assertCollidingTargetFailsLoud,
+  )
 
-      await expect(ensureJsonlGenerationCurrent(request)).rejects.toBeInstanceOf(
-        JsonlGenerationTargetConflictError,
-      )
-
-      expect(await readFile(request.sourcePath)).toEqual(source)
-      expect((await readdir(root)).every(name => !name.includes('.tmp'))).toBe(true)
-    },
+  // Windows denies unprivileged symlink creation, so a colliding symlink target cannot be staged there.
+  it.skipIf(process.platform === 'win32')(
+    'fails loud without altering a colliding symlink target',
+    () => assertCollidingTargetFailsLoud('symlink'),
   )
 
   it('normalizes a non-Error rejection while reopening an existing target', async () => {

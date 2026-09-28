@@ -85,7 +85,8 @@
   line-height: 1;
   background: transparent;
   border: none;
-  border-radius: 22px;
+  border-radius: 50%;
+  corner-shape: round;
   cursor: pointer;
   opacity: 0;
 }

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Browser Use",
+    "description": "Enable browser automation tools driven by Playwright MCP."
+  }
+}

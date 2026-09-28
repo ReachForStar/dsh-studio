@@ -270,7 +270,7 @@ describe('first-party Session format catalog', () => {
     stream.decodeRow({ type: 'feedback/record', seq: 0, time: 2, data: { text: 'retained' } })
 
     expect(stream.finish()).toMatchObject({
-      header: { version: 4, id: 'streaming' },
+      header: { version: 5, id: 'streaming' },
       inheritedEventCount: 0,
       events: [{ type: 'feedback/record', seq: 0 }],
     })
@@ -278,19 +278,24 @@ describe('first-party Session format catalog', () => {
 })
 
 describe('historical child prerequisite catalog', () => {
-  it('uses the V3 event vocabulary for ignorable events whose names become known later', () => {
+  it('migrates a V3 ignorable event unknown to the released V3 reader identically in both catalogs', () => {
     const header = { type: 'session', version: 3, id: 'old-extension', createdAt: 1, isSeeded: false, delegationDepth: 0 }
     const rows = [
       { type: 'feedback/record', seq: 0, time: 1, data: { text: 'saved' } },
       { type: 'developer/message', seq: 1, time: 2, ignorable: true, surfaceOp: 'append', sourceEventSeqs: [0],
         data: { content: [{ type: 'tool-result', toolCallId: 'opaque', content: [] }], vendor: true } },
     ]
+    const namespaced = [rows[0], { ...rows[1], type: 'plugin:developer/message' }]
     const historical = historicalSessionFormatCatalog.createRestore(header, { recovery: 'strict', validation: 'current' })
     for (const row of rows) historical.decodeRow(row)
-    expect(historical.finish().events).toEqual(rows)
+    const historicalArtifact = historical.finish()
+    expect(historicalArtifact.header.version).toBe(4)
+    expect(historicalArtifact.events).toEqual(namespaced)
     const current = createSessionFormatCatalogWithChildren([]).createRestore(header, { recovery: 'strict', validation: 'current' })
     for (const row of rows) current.decodeRow(row)
-    expect(current.finish().events).toEqual([rows[0], { ...rows[1], type: 'plugin:developer/message' }])
+    const currentArtifact = current.finish()
+    expect(currentArtifact.header.version).toBe(5)
+    expect(currentArtifact.events).toEqual(namespaced)
   })
 
   it('restores V3 and preceding versions without the incoming catalog-completion edge', () => {
@@ -298,7 +303,7 @@ describe('historical child prerequisite catalog', () => {
     expect(historicalSessionFormatCatalog.readHeader(header)).toMatchObject({ status: 'migration-required' })
     for (const validation of ['current', 'transformed'] as const) {
       const restored = historicalSessionFormatCatalog.createRestore(header, { recovery: 'strict', validation }).finish()
-      expect(restored.header.version).toBe(3)
+      expect(restored.header.version).toBe(4)
       expect(historicalSessionFormatCatalog.createRestore({ ...header, version: 3 }, { recovery: 'strict', validation }).finish()).toEqual(restored)
     }
   })

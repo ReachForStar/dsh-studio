@@ -33,7 +33,7 @@
 .action,
 .newButton {
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
+  border-radius: var(--dsw-radius-sm);
   padding: 4px 10px;
   background: transparent;
   color: var(--dsw-alias-label-primary);
@@ -67,7 +67,7 @@
   justify-content: space-between;
   gap: 12px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   padding: 10px 12px;
   background: var(--dsw-alias-bg-layer-1);
 }
@@ -129,7 +129,7 @@
   flex-direction: column;
   gap: 12px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   padding: 14px;
   background: var(--dsw-alias-bg-layer-1);
 }
@@ -163,7 +163,7 @@
 .field select {
   height: 34px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
+  border-radius: var(--dsw-radius-sm);
   padding: 0 10px;
   outline: none;
   background: var(--dsw-alias-bg-layer-2);
@@ -175,7 +175,7 @@
 .field input:focus-visible,
 .field select:focus-visible {
   border-color: var(--dsw-alias-state-business-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-alias-state-business-primary) 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)) 18%, transparent);
 }
 
 .formError {
@@ -190,7 +190,7 @@
 
 .saveButton {
   border: 1px solid var(--dsw-alias-state-business-primary);
-  border-radius: 6px;
+  border-radius: var(--dsw-radius-sm);
   padding: 5px 14px;
   background: var(--dsw-alias-state-business-primary);
   color: var(--dsw-alias-label-on-business-primary, #fff);

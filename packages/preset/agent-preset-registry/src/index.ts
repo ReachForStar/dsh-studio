@@ -158,6 +158,7 @@ export class AgentPresetRegistry extends TypertRemoteService {
         ...(record.config.name === undefined ? {} : { name: record.config.name }),
         ...(record.config.description === undefined ? {} : { description: record.config.description }),
         ...(record.config.order === undefined ? {} : { order: record.config.order }),
+        ...(record.config.backend === undefined ? {} : { backend: record.config.backend }),
         ...(broken === undefined ? {} : { broken }),
       }
     }))
@@ -183,7 +184,11 @@ export class AgentPresetRegistry extends TypertRemoteService {
     if (record === undefined) throw new RemoteError('agent-preset/not-found', `Unknown agent preset: ${wanted}`,
       { agentPreset: wanted, available: [...this.definitions.keys()] })
     const broken = await this.diagnostic(record)
-    return { id: wanted, ...(broken === undefined ? {} : { broken }) }
+    return {
+      id: wanted,
+      ...(broken === undefined ? {} : { broken }),
+      ...(record.config.backend === undefined ? {} : { backend: record.config.backend }),
+    }
   }
 
   /** Read one declaration's child plugin list as YAML, for viewing only.

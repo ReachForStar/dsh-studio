@@ -6,7 +6,8 @@
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-import { SSH_SETTINGS_NAMESPACE } from './index.ts'
+// Type-only: pulls the settings Events merge (settings/document-updated).
+import type {} from '@deepseek-ai/dsh-settings'
 
 const PACKAGE_NAME = '@reachforstar/dsh-ssh'
 
@@ -16,19 +17,17 @@ export const name = 'ssh-invariant'
 export const inject = ['invariants']
 
 /**
- * Install the registry contract: after every commit to the `ssh` settings
- * section, the registry's own read must report unique ids and unique names.
- * `save` enforces both; this check extends the guarantee to documents edited
- * externally, which would otherwise silently shadow one connection by name.
+ * Install the registry contract: after any settings document commit that could
+ * carry the registry, the live registry's own read must report unique ids and
+ * unique names. `save` enforces both; this check extends the guarantee to
+ * profile documents edited externally, which would otherwise silently shadow
+ * one connection by name.
  */
 const install: InvariantInstaller = (ctx: Context, fail: InvariantFailure) => {
-  ctx.on('settings/updated', (ns, _next, _prev) => {
-    if (ns !== SSH_SETTINGS_NAMESPACE) return
+  ctx.on('settings/document-updated', () => {
     const ssh = ctx.get('sshSftp')
-    if (ssh === undefined) {
-      fail(`settings/updated for "${String(ns)}" emitted without a live ssh service`)
-      return
-    }
+    // No live registry to validate; a provider that is not mounted owns no ids.
+    if (ssh === undefined) return
     const definitions = ssh.list()
     const ids = new Set(definitions.map(definition => definition.id))
     if (ids.size !== definitions.length) {

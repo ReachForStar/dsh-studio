@@ -30,9 +30,14 @@ describe('uninstalled producer attribution', () => {
     const artifact = { header, events: output.values, inheritedEventCount }
     const restored = restoreReleasedV4Artifact(artifact, new Set(input.map(event => event.type)))
     expect(restored.events).toEqual(input)
-    // The format reader validates stored JSON; adoption validates the current Session fields.
+    // The format reader validates stored JSON; adoption validates the current Session fields. A live
+    // Session is always native V5, so adopt under a V5 header carrying the same stored identity.
+    const adopted: SessionHeader = {
+      version: 5, id: SessionId(header.id), createdAt: header.createdAt,
+      isSeeded: header.isSeeded, delegationDepth: header.delegationDepth,
+    }
     const session = Session.fromRestore(
-      SessionId(header.id), restored.events as readonly SessionEvent[], restored.header as unknown as SessionHeader,
+      SessionId(header.id), restored.events as readonly SessionEvent[], adopted,
       SessionLogOffset(restored.inheritedEventCount), 'detached',
     )
     expect(session.deriveMessages()).toEqual([message])

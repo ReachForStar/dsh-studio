@@ -1,14 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { userAgent } from '@deepseek-ai/dsh-llm'
 import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai'
-import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
 import { getBuiltinModels } from '@earendil-works/pi-ai/providers/all'
 import { AMAX_API_KEY_ENV } from '../src/catalog.ts'
 import { discoverModels } from '../src/discovery.ts'
@@ -16,8 +12,6 @@ import { discoverModels } from '../src/discovery.ts'
 const servers: Server[] = []
 /** Credential variables a test set, cleared so the next one starts unset. */
 const touchedEnv: string[] = []
-/** Throwaway $DSH_HOME directories a test created, removed at teardown. */
-const homes: string[] = []
 
 afterEach(async () => {
   // A no-op when the test never stubbed `fetch`; only 'probe key format'
@@ -25,7 +19,6 @@ afterEach(async () => {
   vi.unstubAllGlobals()
   for (const name of touchedEnv.splice(0)) Reflect.deleteProperty(process.env, name)
   await Promise.all(servers.splice(0).map(server => new Promise(resolve => server.close(resolve))))
-  await Promise.all(homes.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
 
 interface ListingServer {
@@ -596,13 +589,9 @@ describe('probe key format', () => {
         headers: { 'content-type': 'application/json' },
       })
     })
-    const dir = await mkdtemp(join(tmpdir(), 'dsh-pi-amax-'))
-    homes.push(dir)
-    await writeFile(join(dir, 'settings.yaml'), '')
-    const ctx = new Context()
-    await ctx.plugin(LlmRuntime)
-    await ctx.plugin(FileSettingsProvider, { path: join(dir, 'settings.yaml'), watch: false })
-    await ctx.plugin(LlmPiAi, {})
+    // The draft needs no stored profile at all: the env read answers before
+    // any settings seam is reached, so a bare dormant mount is enough.
+    const ctx = await harness()
 
     const models = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'amax' })
 

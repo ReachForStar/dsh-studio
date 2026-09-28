@@ -1,5 +1,6 @@
 /** UI-polish preferences stored in the Host user-settings document. */
 
+import type { Volatile } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 
 /** Settings namespace owned by the ui-polish plugin. */
@@ -37,4 +38,28 @@ export const PolishSettingsSchema: z<PolishSettings> = z.object({
   [BACKGROUND_IMAGE_FIELD]: z.string(),
   [COMPACTION_RATIO_FIELD]: z.number().min(0.5).max(0.8),
   [MODEL_PRICING_FIELD]: z.string(),
+})
+
+/**
+ * Live plugin Config: the same three fields marked volatile so the settings
+ * forms own them on this profile entry and edits apply without a restart.
+ */
+export interface Config {
+  /** Served background image URL (or a legacy data URL); absent when none is set. */
+  [BACKGROUND_IMAGE_FIELD]: Volatile<string | undefined>
+  /** Automatic compaction pressure ratio; absent = harness default (0.8). */
+  [COMPACTION_RATIO_FIELD]: Volatile<number | undefined>
+  /** User-edited model rate card as JSON text; absent = the built-in seed card. */
+  [MODEL_PRICING_FIELD]: Volatile<string | undefined>
+}
+
+/**
+ * Live plugin Config schema: the same three fields marked volatile so the
+ * settings forms own them on this profile entry and edits apply without a
+ * restart.
+ */
+export const Config = z.object({
+  [BACKGROUND_IMAGE_FIELD]: z.string().volatile(),
+  [COMPACTION_RATIO_FIELD]: z.number().min(0.5).max(0.8).volatile(),
+  [MODEL_PRICING_FIELD]: z.string().volatile(),
 })

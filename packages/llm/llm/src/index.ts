@@ -993,6 +993,9 @@ export class LlmRuntime extends TypertRemoteService {
     const messages: RequestMessage[] = options.messages.map((message) => {
       if (message.role !== 'assistant') return message
       const source = message.source
+      // A peer assistant message carries a non-model source; only model-routed
+      // assistant messages own replay state and provider/model identity.
+      if (source.kind !== 'model') return message
       if (source.replayState === undefined) return message
       if (this.adapters.get(source.provider)?.adapter === adapter) return message
       return freezeMessage({

@@ -10,7 +10,6 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { SettingsScope } from '@deepseek-ai/dsh-settings'
 import {
   SshConnectionId,
   SshError,
@@ -26,6 +25,7 @@ import type {
   SshExecRequest,
   SshExecSpec,
   SshSettingsSection,
+  SshStoredDefinition,
   SshTestResult,
 } from './types.ts'
 
@@ -49,6 +49,7 @@ export type {
   SshReadableFile,
   SshRunResult,
   SshSftp,
+  SshSettingsSection,
   SshStoredDefinition,
   SshTestResult,
   SshWritableFile,
@@ -69,22 +70,30 @@ const SshAuthSchema = z.union([
   }),
 ])
 
+/**
+ * At-rest schema of the stored connection list (ids unbranded on disk). A
+ * provider composes this into its own volatile Config so the registry persists
+ * through the profile entry and surfaces in the settings editor.
+ */
+export const SshConnectionsSchema = z.array(z.object({
+  id: z.string(),
+  name: z.string(),
+  host: z.string(),
+  port: z.natural().max(65535),
+  username: z.string(),
+  auth: SshAuthSchema,
+  connectTimeoutMs: z.natural().max(300_000),
+  hostKeyFingerprint: z.string(),
+}))
+
+/** At-rest schema of the remembered host-key map (`host:port` → fingerprint). */
+export const SshKnownHostsSchema = z.dict(z.string())
+
 /** At-rest schema of the definition registry section (ids unbranded on disk). */
 export const SshSettingsSchema: z<SshSettingsSection> = z.object({
-  connections: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    host: z.string(),
-    port: z.natural().max(65535),
-    username: z.string(),
-    auth: SshAuthSchema,
-    connectTimeoutMs: z.natural().max(300_000),
-    hostKeyFingerprint: z.string(),
-  })).default([]),
-  knownHosts: z.dict(z.string()).default({}),
+  connections: SshConnectionsSchema.default([]),
+  knownHosts: SshKnownHostsSchema.default({}),
 })
-
-const EMPTY_SECTION: SshSettingsSection = { connections: [], knownHosts: {} }
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -93,29 +102,34 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /**
- * Abstract SSH/SFTP service. The base class owns the settings-backed definition
- * registry (list/get/save/remove and the compose-able {@link test}); providers
- * implement {@link connect} and {@link resolveExec}. Mount exactly one provider
- * per context (a second registration throws, cordis' standard duplicate-service
- * behavior). Requires a settings provider: the registry's document is the
- * `ssh` settings namespace.
+ * Abstract SSH/SFTP service. The base class owns the definition registry
+ * (list/get/save/remove and the compose-able {@link test}); providers implement
+ * {@link connect}, {@link resolveExec}, and the two registry-storage hooks
+ * {@link readSection}/{@link writeSection} that back the registry with the
+ * provider entry's own volatile Config. Mount exactly one provider per context
+ * (a second registration throws, cordis' standard duplicate-service behavior).
  */
 export abstract class SshService extends Service {
-  /** The registry document lives in user settings; the fiber waits for it. */
-  static inject = ['settings']
-
-  private scope: SettingsScope<SshSettingsSection> | undefined
-
+  /**
+   * @param ctx - Cordis context; the service registers as `sshSftp`.
+   */
   constructor(ctx: Context) {
     super(ctx, 'sshSftp')
-    ctx.effect(() => {
-      const scope = ctx.settings.register(SSH_SETTINGS_NAMESPACE, SshSettingsSchema)
-      this.scope = scope
-      return () => {
-        this.scope = undefined
-      }
-    }, 'ssh: definition registry settings section')
   }
+
+  /**
+   * Read the current at-rest registry section (a frozen snapshot; never
+   * mutate). Providers back this with their own volatile Config.
+   * @returns the stored connections and remembered host keys.
+   */
+  protected abstract readSection(): SshSettingsSection
+
+  /**
+   * Persist a next registry section. Providers write it through their entry's
+   * volatile Config so the change survives reloads and reaches the settings UI.
+   * @param next - the complete section to store.
+   */
+  protected abstract writeSection(next: SshSettingsSection): Promise<void>
 
   /**
    * Read the current registry contents (frozen snapshots; never mutate).
@@ -158,7 +172,7 @@ export abstract class SshService extends Service {
     const next = existing === undefined
       ? [...current, definition]
       : current.map(entry => entry.id === definition.id ? definition : entry)
-    await this.scopeOrThrow().update({ connections: next })
+    await this.writeSection({ ...this.readSection(), connections: next.map(toStoredDefinition) })
     return definition
   }
 
@@ -171,7 +185,7 @@ export abstract class SshService extends Service {
     const current = this.readDefinitions()
     const next = current.filter(candidate => candidate.id !== ref && candidate.name !== ref)
     if (next.length === current.length) return false
-    await this.scopeOrThrow().update({ connections: next })
+    await this.writeSection({ ...this.readSection(), connections: next.map(toStoredDefinition) })
     return true
   }
 
@@ -181,7 +195,7 @@ export abstract class SshService extends Service {
    * @returns the remembered `SHA256:<base64>` fingerprint, or undefined.
    */
   knownHostFingerprint(hostPort: string): string | undefined {
-    return this.scopeOrThrow().get().knownHosts[hostPort]
+    return this.readSection().knownHosts[hostPort]
   }
 
   /**
@@ -191,10 +205,9 @@ export abstract class SshService extends Service {
    * @param fingerprint - the `SHA256:<base64>` fingerprint to remember.
    */
   async rememberHostKey(hostPort: string, fingerprint: string): Promise<void> {
-    const scope = this.scopeOrThrow()
-    const section = scope.get()
+    const section = this.readSection()
     if (section.knownHosts[hostPort] === fingerprint) return
-    await scope.update({ knownHosts: { ...section.knownHosts, [hostPort]: fingerprint } })
+    await this.writeSection({ ...section, knownHosts: { ...section.knownHosts, [hostPort]: fingerprint } })
   }
 
   /**
@@ -265,17 +278,8 @@ export abstract class SshService extends Service {
     return resolveDefinition(this.readDefinitions(), ref)
   }
 
-  private scopeOrThrow(): SettingsScope<SshSettingsSection> {
-    const scope = this.scope
-    if (scope === undefined) {
-      throw new Error('ssh definition registry is not ready (settings section not registered)')
-    }
-    return scope
-  }
-
   private readDefinitions(): readonly SshConnectionDefinition[] {
-    const section = this.scope?.get() ?? EMPTY_SECTION
-    return section.connections.map((entry) => {
+    return this.readSection().connections.map((entry) => {
       const { hostKeyFingerprint: rawFingerprint, ...rest } = entry
       return {
         ...rest,
@@ -283,6 +287,21 @@ export abstract class SshService extends Service {
         ...rawFingerprint !== undefined && rawFingerprint !== null ? { hostKeyFingerprint: rawFingerprint } : {},
       }
     })
+  }
+}
+
+/**
+ * Project one live definition back to its at-rest stored form (branded id
+ * unbranded to a plain string) for a registry write.
+ * @param definition - the live definition to store.
+ * @returns the at-rest stored definition.
+ */
+function toStoredDefinition(definition: SshConnectionDefinition): SshStoredDefinition {
+  const { id, hostKeyFingerprint, ...rest } = definition
+  return {
+    ...rest,
+    id: String(id),
+    ...hostKeyFingerprint === undefined ? {} : { hostKeyFingerprint },
   }
 }
 

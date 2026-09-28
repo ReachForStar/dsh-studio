@@ -24,7 +24,7 @@ import type {
   SubprocessTerminalSignal,
   SubprocessTerminalSpawnSpec,
 } from '@deepseek-ai/dsh-subprocess'
-import { OutputCollector } from '@deepseek-ai/dsh-subprocess-local/output'
+import { logSpillFailure, OutputCollector, type SpillFailureReporter } from '@deepseek-ai/dsh-subprocess-local/output'
 import { SshError } from '@reachforstar/dsh-ssh'
 import type { SshConnection, SshConnectionId, SshExecSession, SshPtySession } from '@reachforstar/dsh-ssh'
 
@@ -165,7 +165,9 @@ class RemoteProcess implements SubprocessHandle {
 
   private buildCollector(name: 'stdout' | 'stderr', mode: SubprocessOutputMode): SubprocessCollectedOutputs['stdout'] | undefined {
     if (typeof mode !== 'object') return undefined
-    const collector = new OutputCollector(mode.maxBytes, mode.spill?.maxBytes, name, this.provider.spillDir)
+    const collector = new OutputCollector(mode.maxBytes, name, mode.spill === undefined ? undefined : {
+      maxBytes: mode.spill.maxBytes, dir: this.provider.spillDir, onFailure: this.provider.reportSpillFailure,
+    })
     this.collectors[name] = collector
     return { readFrom: (fromByte: number) => collector.readFrom(fromByte) }
   }
@@ -298,6 +300,8 @@ export class SftpSubprocessRuntime extends SubprocessRuntime {
   private connectionPromise: Promise<SshConnection> | undefined
   /** Local spill directory for collected-stream spill files. */
   readonly spillDir: string
+  /** Reports a spill-file write failure for a collected stream. */
+  readonly reportSpillFailure: SpillFailureReporter
   private readonly live = new Set<RemoteProcess>()
   private readonly terminals = new Set<SubprocessTerminalHandle>()
   private readonly terminalAllocations = new Set<Promise<SubprocessTerminalHandle>>()
@@ -307,6 +311,7 @@ export class SftpSubprocessRuntime extends SubprocessRuntime {
     super(ctx)
     this.connectionId = ctx.sshSftp.resolve(config.connection).id
     this.spillDir = process.env.TMPDIR ?? (process.platform === 'win32' ? process.env.TEMP ?? '' : '/tmp')
+    this.reportSpillFailure = logSpillFailure(ctx.logger, 'subprocess-sftp')
     ctx.effect(() => async () => {
       this.lifetime.abort(new Error('the SSH subprocess provider was disposed'))
       const processes = [...this.live].map(handle => (async () => {

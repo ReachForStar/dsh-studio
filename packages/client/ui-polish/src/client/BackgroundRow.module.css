@@ -26,7 +26,7 @@
   box-sizing: border-box;
   padding: 6px 14px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   font: inherit;
   font-size: 13px;
@@ -44,7 +44,7 @@
   height: 44px;
   object-fit: cover;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
 }
 
 /* Hidden file picker; opened programmatically by the upload button. */
@@ -62,7 +62,7 @@
   box-sizing: border-box;
   padding: 6px 10px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   font: inherit;
   font-size: 13px;
@@ -87,7 +87,7 @@
   width: 100%;
   padding: 8px 10px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   font: inherit;
   font-size: 12px;
@@ -100,7 +100,7 @@
 .button {
   padding: 6px 12px;
   border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   font: inherit;
   font-size: 13px;

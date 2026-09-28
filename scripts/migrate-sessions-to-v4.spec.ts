@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { execa } from 'execa'
+import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
 import type { SessionFormatJsonObject } from '@deepseek-ai/dsh-session-format'
 import { encodeSegment, generationLogFilename, type JsonlCompression } from '../packages/session/session-persistence-jsonl/src/format.ts'
 import { compressZstdFrame, decompressZstdFrame, scanZstdFrames } from '../packages/session/session-persistence-jsonl/src/zstd.ts'
@@ -14,6 +15,9 @@ import { removeFixtureSafely } from './test-fixture-cleanup.ts'
 
 const repository = resolve(import.meta.dirname, '..')
 const script = join(repository, 'scripts/migrate-sessions-to-v4.ts')
+/** The command publishes V4 successors and refuses any other writer, so its integration cases need a V4 checkout. */
+const writerVersion: number = SESSION_FORMAT_VERSION
+const publishesV4 = writerVersion === 4
 const directories = new Set<string>()
 const stopProcesses: Array<() => Promise<void>> = []
 
@@ -158,7 +162,7 @@ describe('one-time V4 migration command', () => {
     expect(active).toBe(0)
   })
 
-  it.each(['none', 'zstd'] as const)('publishes %s successors, preserves sources and current bytes on rerun', async (compression) => {
+  it.skipIf(!publishesV4).each(['none', 'zstd'] as const)('publishes %s successors, preserves sources and current bytes on rerun', async (compression) => {
     const root = temporaryRoot()
     const old = await fixture(root, 'old', 0, compression)
     const older = await fixture(root, 'tool/session~名', 0, compression)
@@ -225,7 +229,7 @@ describe('one-time V4 migration command', () => {
     }
   })
 
-  it.each(['none', 'zstd'] as const)('preserves %s parent/child history and catalog with serial or parallel jobs', async (compression) => {
+  it.skipIf(!publishesV4).each(['none', 'zstd'] as const)('preserves %s parent/child history and catalog with serial or parallel jobs', async (compression) => {
     const outputs: Buffer[][] = []
     for (const jobs of [1, 2]) {
       const root = temporaryRoot()
@@ -254,7 +258,7 @@ describe('one-time V4 migration command', () => {
     expect(outputs[1]).toEqual(outputs[0])
   })
 
-  it('reports a bad Session and still migrates a later good Session', async () => {
+  it.skipIf(!publishesV4)('reports a bad Session and still migrates a later good Session', async () => {
     const root = temporaryRoot()
     const bad = await fixture(root, 'a-bad', 3, 'none', [{ type: 'unrecognized/required', data: {} }])
     const good = await fixture(root, 'z-good', 3, 'none', toolTurn)
@@ -273,7 +277,7 @@ describe('one-time V4 migration command', () => {
     expect(existsSync(join(good.directory, 'session.v4.jsonl'))).toBe(true)
   })
 
-  it('groups matching failures by source version while retaining each input diagnostic', async () => {
+  it.skipIf(!publishesV4)('groups matching failures by source version while retaining each input diagnostic', async () => {
     const root = temporaryRoot()
     const event = { type: 'unrecognized/required', data: {} }
     const first = await fixture(root, 'a-v3', 3, 'none', [event])
@@ -302,7 +306,7 @@ describe('one-time V4 migration command', () => {
     for (const source of [first, second, legacy]) expect(await readFile(source.path)).toEqual(source.bytes)
   })
 
-  it('groups sequence failures without dropping their distinct sequence coordinates', async () => {
+  it.skipIf(!publishesV4)('groups sequence failures without dropping their distinct sequence coordinates', async () => {
     const root = temporaryRoot()
     const items: Array<{ inputPath: string; expectedSeq: number; actualSeq: number }> = []
     for (const [id, actualSeq] of [['a-gap', 2], ['b-gap', 4]] as const) {
@@ -324,7 +328,7 @@ describe('one-time V4 migration command', () => {
     })
   })
 
-  it('reports a source-change deferral and retries after the other input completes', async () => {
+  it.skipIf(!publishesV4)('reports a source-change deferral and retries after the other input completes', async () => {
     const root = temporaryRoot()
     const parent = await fixture(root, 'a-parent', 3, 'none')
     const child = await fixture(root, 'b-child', 3, 'none', [{
@@ -364,7 +368,7 @@ describe('one-time V4 migration command', () => {
     for (const source of [parent, child]) expect(await readFile(source.path)).toEqual(source.bytes)
   })
 
-  it('opens an existing V4 torn tail without repairing its bytes', async () => {
+  it.skipIf(!publishesV4)('opens an existing V4 torn tail without repairing its bytes', async () => {
     const root = temporaryRoot()
     const current = await fixture(root, 'current', 4, 'none')
     const torn = Buffer.concat([current.bytes, Buffer.from('{"unfinished"')])
@@ -375,7 +379,7 @@ describe('one-time V4 migration command', () => {
     expect(await readFile(current.path)).toEqual(torn)
   })
 
-  it('reports unsupported root-level logs and does not traverse directory links', async () => {
+  it.skipIf(!publishesV4)('reports unsupported root-level logs and does not traverse directory links', async () => {
     const root = temporaryRoot()
     const outside = temporaryRoot()
     const original = await fixture(outside, 'outside', 3, 'none')
@@ -388,7 +392,7 @@ describe('one-time V4 migration command', () => {
     expect(existsSync(join(original.directory, 'session.v4.jsonl'))).toBe(false)
   })
 
-  it('shows help, rejects unknown arguments, and logs a missing root failure', async () => {
+  it.skipIf(!publishesV4)('shows help, rejects unknown arguments, and logs a missing root failure', async () => {
     const help = await run('--help')
     expect(help.stdout).toContain('Defaults to ~/.dsh/sessions')
     expect(help.stdout).toContain('CPU count capped at 16')
@@ -406,7 +410,7 @@ describe('one-time V4 migration command', () => {
     })
   })
 
-  it.each(['32', '1e2', '+1', '01', ' 1'])('accepts positive safe-integer --jobs %s', async (jobs) => {
+  it.skipIf(!publishesV4).each(['32', '1e2', '+1', '01', ' 1'])('accepts positive safe-integer --jobs %s', async (jobs) => {
     const result = await run('--sessions-dir', temporaryRoot(), '--jobs', jobs)
     expect(result.status, result.stdout + result.stderr).toBe(0)
     expect(result.stdout).toContain(`Session jobs: ${Number(jobs)}`)

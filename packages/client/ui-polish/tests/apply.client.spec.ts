@@ -99,7 +99,7 @@ afterEach(() => {
 
 describe('ui-polish apply', () => {
   it('declares the required services', () => {
-    expect(inject).toEqual(['slots', 'locale', 'settingsScope', 'remote', 'remote.ssh'])
+    expect(inject).toEqual(['slots', 'locale', 'configForms', 'remote', 'remote.ssh'])
   })
 
   it('registers the settings rows, dock entries, and view tabs, and unwinds on dispose', async () => {

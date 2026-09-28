@@ -35,6 +35,8 @@
     "presets/ptc.patch.yml",
     "presets/minimal.patch.yml",
     "presets/cordis.patch.yml",
+    "presets/xingchen-qiming.patch.yml",
+    "presets/pi.patch.yml",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
@@ -45,7 +47,9 @@
         "./presets/standard.patch.yml",
         "./presets/ptc.patch.yml",
         "./presets/minimal.patch.yml",
-        "./presets/cordis.patch.yml"
+        "./presets/cordis.patch.yml",
+        "./presets/xingchen-qiming.patch.yml",
+        "./presets/pi.patch.yml"
       ]
     }
   },
@@ -86,8 +90,10 @@
     "@deepseek-ai/dsh-client-ui-message-feedback": "workspace:*",
     "@deepseek-ai/dsh-client-ui-model-selection": "workspace:*",
     "@reachforstar/dsh-a2a-host": "workspace:*",
+    "@reachforstar/dsh-a2a-status": "workspace:*",
     "@reachforstar/dsh-client-ui-polish": "workspace:*",
     "@reachforstar/dsh-client-ui-ssh": "workspace:*",
+    "@reachforstar/dsh-client-ui-a2a-status": "workspace:*",
     "@deepseek-ai/dsh-client-ui-open-in-app": "workspace:*",
     "@deepseek-ai/dsh-client-ui-permission-presets": "workspace:*",
     "@deepseek-ai/dsh-client-ui-plan": "workspace:*",
@@ -136,6 +142,7 @@
     "@deepseek-ai/dsh-host-plugin-inventory": "workspace:*",
     "@reachforstar/dsh-host-ssh-remotes": "workspace:*",
     "@reachforstar/dsh-tool-ssh": "workspace:*",
+    "@reachforstar/dsh-tool-excalidraw": "workspace:*",
     "@reachforstar/dsh-xingchen": "workspace:*",
     "@deepseek-ai/dsh-host-webserver": "workspace:*",
     "@deepseek-ai/dsh-launch-environment": "workspace:*",

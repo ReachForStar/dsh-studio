@@ -42,7 +42,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.sshSftp` — `SshService` (abstract seam)
 
-Abstract SSH/SFTP service. The base class owns the settings-backed definition registry (list/get/save/remove and the compose-able test); providers implement connect and resolveExec. Mount exactly one provider per context (a second registration throws, cordis' standard duplicate-service behavior). Requires a settings provider: the registry's document is the `ssh` settings namespace.
+Abstract SSH/SFTP service. The base class owns the definition registry (list/get/save/remove and the compose-able test); providers implement connect, resolveExec, and the two registry-storage hooks readSection/writeSection that back the registry with the provider entry's own volatile Config. Mount exactly one provider per context (a second registration throws, cordis' standard duplicate-service behavior).
 
 ```ts cordis-catalog
 /**

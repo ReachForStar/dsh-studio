@@ -7,6 +7,11 @@ export interface PresetDefinition {
   readonly name?: string
   readonly description?: string
   readonly order?: number
+  /**
+   * Loop backend this preset asks for (`dsh` default, `pi` for the Pi runtime);
+   * absent means the harness default loop.
+   */
+  readonly backend?: string
   readonly plugins: readonly (Omit<EntryOptions, 'id' | 'disabled'> & { id?: string; disabled?: EntryOptions['disabled'] | JsExpr })[]
 }
 

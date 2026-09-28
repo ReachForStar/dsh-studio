@@ -35,7 +35,7 @@
 }
 
 .root:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: 2px;
 }
 
@@ -43,7 +43,7 @@
 .root[data-expanded='true'] {
   width: min(100vw - 32px, 360px);
   padding: 12px 14px 14px;
-  border-radius: 12px;
+  border-radius: var(--dsw-radius-md);
 }
 
 /* Collapsed capsule: the workspace total, with a muted token triple after it. */

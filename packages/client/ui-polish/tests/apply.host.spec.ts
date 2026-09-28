@@ -1,18 +1,13 @@
-/** ui-polish node half: registers the background settings namespace. */
-import { Context } from '@deepseek-ai/cordis'
-import { describe, expect, it, vi } from 'vitest'
-import { apply } from '../src/index.ts'
-import { BACKGROUND_SETTINGS_NAMESPACE, PolishSettingsSchema } from '../src/background-settings.ts'
+/** ui-polish node half: withdraws its fiber from the generated settings pages. */
+import { describe, it } from 'vitest'
+import { omitsGeneratedPage } from '../../../settings/settings/tests/live-config.ts'
+import * as polish from '../src/index.ts'
 
 describe('ui-polish host', () => {
-  it('registers the background settings namespace when the settings service is present', async () => {
-    const ctx = new Context()
-    const register = vi.fn()
-    ctx.provide('settings', { register } as never)
-    await ctx.plugin({ apply }).await()
-    expect(register).toHaveBeenCalledWith(
-      BACKGROUND_SETTINGS_NAMESPACE,
-      PolishSettingsSchema,
-    )
+  // The preferences live on this entry's volatile Config and the browser half
+  // ships custom rows, so the host half keeps the fiber off the auto-generated
+  // settings pages instead of registering a namespace.
+  it('withdraws its fiber from the generated settings pages', async () => {
+    await omitsGeneratedPage(ctx => ctx.plugin(polish))
   })
 })

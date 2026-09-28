@@ -3,7 +3,7 @@ title: 本机（Windows）合并与门禁踩坑
 type: query
 tags: [merge, windows, pnpm, tsconfig, doc-gates, troubleshooting]
 created: 2026-09-17
-updated: 2026-09-18
+updated: 2026-09-26
 sources: []
 status: active
 ---
@@ -45,6 +45,17 @@ status: active
 | `workspace-changes` 的 `git.spec.ts` 两个用例（超时消息文案 + 5s 超时） | 与上游逐字节相同；Node 的超时中止消息为 `The operation was aborted due to timeout`，用例期望旧文案 `timed out after 1ms`；另有一例 5s 期限偏紧 | 同上，环境/上游差异，不改 fork 代码 |
 | `ui-theme` 的 `corner-shape-styles` 报 fork 文件里 full-round 圆角未配 `corner-shape: round` | 上游新增门禁扫描全仓 `*.module.css`；fork 自有的 `Slider.module.css`（thumb 50%）与 `StatsFloat.module.css`（.chip 999px）未配对 | 在两处 full-round 圆角旁补 `corner-shape: round;`（与 fork 既有配对写法一致） |
 
+## 2026-09-26 合并轮新增分类
+
+| 失败 | 归因 | 证据与处置 |
+| --- | --- | --- |
+| `apps/desktop` 的 `installed-update-network` 与 `packages/util/native-command` 的 `file-applications-windows`（各 1 例）| 子进程 `powershell.exe` 在 `System.Management.Automation.AmsiUtils.AmsiScanBuffer` 抛 `AccessViolationException`（AMSI 扫描崩溃），高负载下才触发 | 两个文件单独复跑全绿；`git hash-object` 与上游一致，属本机 AMSI/负载问题，不改用例 |
+| `packages/deliverables/workspace-changes` 的 `plugin.spec.ts` 两例 5s 超时 | 每个用例真起 `git` 子进程，本机负载下超期 | `--testTimeout=30000` 下全绿；与上游逐字节相同 |
+| `packages/deliverables/workspace-changes` 的 `git.spec.ts`「reports timeouts and external aborts」 | `timeoutMs: 1` 时中止落在进程启动前，底层抛 Node 的 `The operation was aborted due to timeout`，`src/git.ts:73` 的 `timed out after 1ms` 分支未命中 | 与上游逐字节相同，属上游用例自身的时限竞态，不在合并轮改动 |
+| `scripts/build-exe-for-python-sdk.spec.ts` 两例 | 构建脚本按「含空格的参数加引号」渲染命令行，本机 Node 路径 `…\Author Software\nvm\.nodejs\node.exe` 含空格，用例却按裸路径拼接断言 | 用例改为按同一条渲染规则先算出可打印路径（该 spec 顶部 `printedExecPath`），4 处断言共用 |
+| 79 个失败文件的分组复跑 | 全量并发下的负载噪声占多数 | 12 个文件一组串行复跑（`pnpm exec vitest run --fileParallelism=false <files>`），79 → 6 个文件；注意 `packages/boot/app-boot/tests/linked-resolution-matrix.spec.ts` 单文件 4800 用例耗时约 950s，全量串行不可行 |
+| `verify-no-unknown-casts` 把 77 处 fork 断言判为新增 | 合并带进来的基线只列上游断言，fork 自有包（ui-polish、subagent-pi、xingchen、a2a、`deploy/a2a/gateway`、v4-to-v5 镜像）从未登记 | 用当前树扫描结果整体重写基线（553→591 文件、1448→1525 条，恰好只增 77 条、未删上游任何条目）；注意 `--prune` 在有新增违规时拒写，无法从零引导 |
+
 ## 如何判定「合并回归 vs 环境差异」
 
 对每个可疑失败先做一步归零：`git hash-object <file>` 与 `git rev-parse upstream/master:<file>` 对比。若失败文件与上游一致，则该失败必为环境/延迟差异（或上游自身缺陷），不应当作合并错误去改 fork 代码；否则才逐行审阅冲突解。
@@ -57,3 +68,5 @@ status: active
 - 改动 `ctx` 服务键、生成器分类、双语配对记录后，一次跑齐：`pnpm run typecheck` → `gen-doc-graphs --check` → `pnpm run test:docs`。
 - `docs/wiki/` 已在 `scripts/translation-pairing.manifest.json` 中排除；新增 wiki 页不需要英文对侧。
 - Windows 上 `tar`、`pnpm pack`、`tsc -b` 的路径/产物行为与 POSIX 不同，涉及归档或别名时先在本机复现一次再改测试。
+- 限并发要写全 `--fileParallelism=false`；裸写 `--fileParallelism` 会触发 pathe 启动崩溃（`input.replace is not a function`），进程无结果。全量跑仍用默认并发，取证靠分组串行复跑。
+- 分组复跑前先剔除已单独验证为绿的失败文件（例如负载类超时），否则等于再跑一遍全量。

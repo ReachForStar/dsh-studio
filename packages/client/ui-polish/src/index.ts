@@ -6,9 +6,17 @@ import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 // Type-only: pulls the workspace registry Context merge (ctx.workspaceRegistry).
 import type {} from '@deepseek-ai/dsh-workspace'
-import {
-  BACKGROUND_SETTINGS_NAMESPACE, MAX_BACKGROUND_IMAGE_BYTES, PolishSettingsSchema,
-} from './background-settings.ts'
+// Type-only: pulls the settings Context merge (ctx.settings).
+import type {} from '@deepseek-ai/dsh-settings'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'ui-polish': { kind: 'ui-polish' }
+  }
+}
+
+import { MAX_BACKGROUND_IMAGE_BYTES } from './background-settings.ts'
+import type { Config } from './background-settings.ts'
 import { BACKGROUND_IMAGE_FILE, handleBackgroundRequest } from './background-service.ts'
 import { installCompactionControl } from './compaction-control.ts'
 import { handleExcalidrawRequest } from './excalidraw-service.ts'
@@ -17,7 +25,7 @@ import { createCommitMessageBridge } from './git-llm.ts'
 import { handleLatexRequest } from './latex-service.ts'
 
 export {
-  BACKGROUND_IMAGE_FIELD, BACKGROUND_SETTINGS_NAMESPACE, MAX_BACKGROUND_IMAGE_BYTES,
+  BACKGROUND_IMAGE_FIELD, BACKGROUND_SETTINGS_NAMESPACE, Config, MAX_BACKGROUND_IMAGE_BYTES,
   type PolishSettings,
 } from './background-settings.ts'
 export { handleBackgroundRequest, BACKGROUND_IMAGE_FILE } from './background-service.ts'
@@ -28,8 +36,6 @@ export {
 } from './git-service.ts'
 export { handleLatexRequest } from './latex-service.ts'
 
-const NAMESPACE = BACKGROUND_SETTINGS_NAMESPACE
-
 /** Host process working directory: the fallback repository when no workspace matches. */
 const FALLBACK_CWD = process.cwd()
 
@@ -37,18 +43,21 @@ const FALLBACK_CWD = process.cwd()
 const BACKGROUND_IMAGE_PATH = dshHomePath('profiles', 'web', BACKGROUND_IMAGE_FILE)
 
 /**
- * Register the durable background section and the git panel HTTP surface when
- * the optional Host settings / webserver services are composed. The git panel
- * targets the workspace the browser is currently viewing: each request carries
- * the workspace path, resolved per request against the live workspace registry
- * so a workspace switch is followed without a restart.
+ * Register the git/latex/background HTTP surfaces and the configurable
+ * automatic-compaction control. The ui-polish preferences live on this entry's
+ * volatile Config; the plugin withdraws its fiber from the generated settings
+ * pages because it ships custom rows instead. The git panel targets the
+ * workspace the browser is currently viewing: each request carries the
+ * workspace path, resolved per request against the live workspace registry so a
+ * workspace switch is followed without a restart.
  * @param ctx - Host context that may acquire the settings and webserver services.
+ * @param config - this entry's live volatile Config.
  */
-export function apply(ctx: Context): void {
+export function apply(ctx: Context, config: Config): void {
   ctx.inject(['settings'], (settingsCtx) => {
-    const scope = settingsCtx.settings.register(NAMESPACE, PolishSettingsSchema)
-    installCompactionControl(settingsCtx, scope)
+    settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber))
   })
+  installCompactionControl(ctx, config)
   ctx.inject(['webServer', 'llm'], (serverCtx) => {
     const webServer = serverCtx.webServer
     // Resolve per request so a workspace switch is followed without a restart.

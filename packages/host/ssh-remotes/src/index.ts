@@ -41,6 +41,7 @@ interface SshConnectionFetch {
     register(route: {
       readonly path: string
       readonly methods: readonly ('GET' | 'POST')[]
+      readonly requestBody: 'buffered' | 'streaming'
       readonly fetch: (request: Request) => Promise<Response>
     }): () => Promise<void>
   }
@@ -210,11 +211,13 @@ export class SshGateway extends TypertRemoteService {
         const disposeDownload = connectionOf(connectionCtx).fetch.register({
           path: '/api/ssh/sftp/download',
           methods: ['GET'],
+          requestBody: 'buffered',
           fetch: request => this.download(request),
         })
         const disposeUpload = connectionOf(connectionCtx).fetch.register({
           path: '/api/ssh/sftp/upload',
           methods: ['POST'],
+          requestBody: 'streaming',
           fetch: request => this.upload(request),
         })
         return async () => {

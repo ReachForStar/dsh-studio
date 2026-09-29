@@ -98,7 +98,7 @@
       "@reachforstar/dsh-a2a-status": ["./packages/a2a/a2a-status/src/index.ts"],
       "@reachforstar/dsh-a2a-status/types": ["./packages/a2a/a2a-status/src/types.ts"],
       "@reachforstar/dsh-a2a-status/invariant": ["./packages/a2a/a2a-status/src/invariant.ts"],
-      "@reachforstar/dsh-a2a-status/remote": ["./packages/a2a/a2a-status/lib/typert.remote-client.d.ts"],
+
       "@reachforstar/dsh-a2a-status/typert": ["./packages/a2a/a2a-status/lib/typert.host.d.ts"],
       "@reachforstar/dsh-client-ui-a2a-status": ["./packages/client/ui-a2a-status/src/index.ts"],
       "@reachforstar/dsh-client-ui-a2a-status/client": ["./packages/client/ui-a2a-status/src/client/index.ts"],
@@ -366,7 +366,7 @@
       "@reachforstar/dsh-client-ui-ssh/invariant": ["./packages/client/ui-ssh/src/invariant.ts"],
       "@reachforstar/dsh-host-ssh-remotes": ["./packages/host/ssh-remotes/src"],
       "@reachforstar/dsh-host-ssh-remotes/types": ["./packages/host/ssh-remotes/lib/types/types.d.ts"],
-      "@reachforstar/dsh-host-ssh-remotes/remote": ["./packages/host/ssh-remotes/lib/typert.remote-client.d.ts"],
+
       "@reachforstar/dsh-host-ssh-remotes/invariant": ["./packages/host/ssh-remotes/src/invariant.ts"],
       "@reachforstar/dsh-xingchen": ["./packages/xingchen/xingchen/src/index.ts"],
       "@reachforstar/dsh-xingchen/clear": ["./packages/xingchen/xingchen/src/clear.ts"],

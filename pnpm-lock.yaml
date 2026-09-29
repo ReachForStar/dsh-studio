@@ -1044,6 +1044,10 @@ importers:
         version: link:../a2a
 
   packages/a2a/a2a-status:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^

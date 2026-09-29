@@ -34,6 +34,7 @@ import { managementText, noticeText, packageText, registryText, rowText, type Tr
 import type { PluginPackageRef, PluginRowRef, PluginsSubject } from './slot-contract.ts'
 import type { ConfigPageForm } from './slot-contract.ts'
 import css from './PluginManagerPage.module.css'
+import { CuaDriverInstall } from './CuaDriverInstall.tsx'
 
 /** Full component props assembled by the main slot renderer. */
 export type PluginManagerPageProps =
@@ -346,7 +347,7 @@ function DetailTop({ crumbLabel, crumbText, onBack, icon, actions }: {
 }
 
 /** One package as a card that opens its page: its name, its one-liner, its tags, and its bundle switch. */
-function PackageCard({ pkg, t, resolveText, busy, highlighted, onOpen, onSetEnabled }: {
+function PackageCard({ pkg, t, resolveText, busy, highlighted, onOpen, onSetEnabled, footer }: {
   readonly pkg: PackageView
   readonly t: Translate
   readonly resolveText: ResolveText
@@ -354,6 +355,7 @@ function PackageCard({ pkg, t, resolveText, busy, highlighted, onOpen, onSetEnab
   readonly highlighted: boolean
   readonly onOpen: () => void
   readonly onSetEnabled: (enabled: boolean) => void
+  readonly footer?: ReactNode
 }): ReactNode {
   const { title, description, beta } = packageText(pkg, resolveText, t)
   const status = packageStatus(pkg)
@@ -379,6 +381,7 @@ function PackageCard({ pkg, t, resolveText, busy, highlighted, onOpen, onSetEnab
         end={<EnableSwitch pkg={pkg} title={title} t={t} busy={busy} onSetEnabled={onSetEnabled} />}
       />
       <MetadataError error={pkg.meta?.error} t={t} />
+      {footer}
     </li>
   )
 }
@@ -1201,6 +1204,7 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
       highlighted={state.highlight === pkg.name}
       onOpen={() => { setActivation(null); setView({ kind: 'package', name: pkg.name }) }}
       onSetEnabled={(enabled) => { setActivation(enabled ? pkg.name : null); props.setEnabled(pkg.name, enabled) }}
+      footer={pkg.name === '@deepseek-ai/dsh-computer-use' ? <CuaDriverInstall t={t} /> : undefined}
     />
   )
   // The Official group: the bundles the installation ships, then the plugins that registered their configuration.

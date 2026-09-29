@@ -1310,3 +1310,61 @@ label.registryOption {
   color: var(--dsw-alias-state-error-primary);
   overflow-wrap: anywhere;
 }
+.cuaDriverStatus {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: var(--dsw-alias-text-secondary);
+}
+
+.cuaDriverInstall {
+  margin: 8px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cuaDriverWarning {
+  font-size: 12px;
+  color: var(--dsw-alias-state-warning-primary, var(--dsw-alias-state-error-primary));
+}
+
+.cuaDriverSuccess {
+  font-size: 12px;
+  color: var(--dsw-alias-state-success-primary, var(--dsw-alias-text-primary));
+}
+
+.cuaDriverError {
+  font-size: 12px;
+  color: var(--dsw-alias-state-error-primary);
+  overflow-wrap: anywhere;
+}
+
+.cuaDriverButton {
+  font-size: 12px;
+  padding: 2px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--dsw-alias-border-primary);
+  background: var(--dsw-alias-bg-secondary);
+  color: var(--dsw-alias-text-primary);
+  cursor: pointer;
+}
+
+.cuaDriverButton:hover {
+  background: var(--dsw-alias-bg-tertiary, var(--dsw-alias-bg-primary));
+}
+
+.cuaDriverProgress {
+  width: 100%;
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 11px;
+  line-height: 16px;
+  font-family: var(--dsw-alias-font-mono, monospace);
+  color: var(--dsw-alias-text-secondary);
+}
+
+.cuaDriverLogLine {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -35,7 +35,7 @@ The active serial references run on the self-hosted `vm-backup` (`serial / linux
 - **Set each timeout equal to its latency target** - rejected because scheduling variance would cancel correct work and suppress the evidence needed to diagnose a regression.
 - **Trust only the concurrent primary inventory** - rejected because scheduling and validation share implementation assumptions; a serial aggregate is an independent completeness check.
 - **Run the serial references on every pull request** - rejected because they duplicate complete cross-platform aggregates and add macOS work to every change; the required jobs already execute the blocking Linux and native Windows checks, and the other native jobs supply the complete Windows result.
-- **Run the real-kernel Sandbox matrix on every pull request** - rejected because its four statuses do not participate in branch protection, while repeated installs, Landlock builds, and macOS unit parity consume runner capacity without changing the merge verdict. The master run retains the platform and installed-launcher signal.
+- **Run the real-kernel Sandbox matrix on every pull request** - rejected because its statuses do not participate in branch protection, while repeated installs, Landlock builds, and macOS unit parity consume runner capacity without changing the merge verdict. The master run retains the platform and installed-launcher signal.
 - **Use one operating-system matrix** - rejected because three named jobs make the reference surface visible without another selection mechanism.
 - **Run the serial reference on larger runners** - rejected because both required CI and its independent reference must remain runnable when organization-owned pools cannot allocate jobs.
 

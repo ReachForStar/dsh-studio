@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-09-24
+updated: 2026-10-02
 ---
 
 # Wiki 索引
@@ -18,7 +18,7 @@ updated: 2026-09-24
 - [fork Web 面板（ui-polish 的 Git/LaTeX/SSH/画布标签页）](entities/fork-web-panels.md) — 面板职责、`/git/*` 路由表（多仓库卡片、规则与生成模型、合并状态）、`ctx.fs` 接缝之外的守卫与编辑边界，以及文件面板去重。
 - [LaTeX 面板（/latex 路由与 Overleaf 式编辑流程）](entities/latex-panel.md) — 项目发现/文件树/路径基准、xelatex+bibtex 临时镜像编译链路（含文件数/字节/单文件边界与缺失引用诊断）、字体与 tlmgr 安装、AI 写作的模型路由与安全边界。
 - [工作区文件删除（ctx.fs.remove → workspaceFiles.delete → 右侧栏文件树）](entities/workspace-file-deletion.md) — 四层删除链的各层要点、父目录围栏与 `FS_NOT_EMPTY`，以及 `workspaceFiles/remove` 与客户端命名空间服务撞名导致整包启动失败、改方法名后必须重建两侧产物的踩坑。
-- [星域多智能体协作（dsh-xingchen）](entities/xingchen-multi-agent.md) — 四角色划分（启明原生路由 + 天权/瑶光/天梁 A2A 专家席）、派发三路径、会话投影与接线位置。
+- [星域多智能体协作（dsh-xingchen）](entities/xingchen-multi-agent.md) — 四角色划分、本地与 A2A 席位的配置判断、派发入口、会话投影与现有预设接线。
 - [本地 A2A 联调栈（deploy/a2a）](entities/local-a2a-stack.md) — 一条命令拉起 Kafka + 三网关 + Web；已运行则跳过、Kafka 停了自动重启、配置单一来源（`A2A_CONFIG`）与运行期日志位置。
 
 ## 概念 concepts
@@ -36,7 +36,7 @@ updated: 2026-09-24
 - [合并上游 upstream/master（2026-09）](decisions/2026-09-upstream-sync.md) — 全量合并的来源取舍、`ctx.ssh` 让位、会话 v3 `backend` 字段、CI 与生成物处理。
 - [实验能力可视化开关：沿用上游 OPTIONAL_BUNDLES 模式](decisions/2026-09-visual-experimental-toggle.md) — Browser Use / Computer Use / Auto review 成为可选 bundle，Web 插件页一键开关；用户专属配置不进 bundle。
 - [跨包运行时导出的重复安装分类（2026-09-19）](decisions/2026-09-19-runtime-export-classification.md) — 六条导出登记 safe 的逐条依据、分类与依赖分区的连带关系，以及四个客户端包 peerDependencies 收敛到 cordis 后的发布布局变化。
-- [星域专家席经 A2A 抵达（2026-09-19）](decisions/2026-09-19-xingchen-external-specialist-seats.md) — 三个备选方案（本地预设+子代理、进程内专家会话、A2A 席位）的取舍与后果。
+- [星域专家席经 A2A 抵达（2026-09-19）](decisions/2026-09-19-xingchen-external-specialist-seats.md) — 已被当前本地/A2A 可选席位模式取代；保留早期三个方案的取舍与后果。
 - [A2A 对接改用 a2a-bridge 方案（2026-09-20）](decisions/2026-09-20-a2a-bridge-scheme.md) — 双通道（直连 + Kafka 总线）、skill 契约、配置单一来源，以及不依赖跨仓本地包的理由。
 - [启动器改用构建产物面（2026-09-24）](decisions/2026-09-24-launcher-artifact-plane.md) — 三个方案取舍；插件行永远由加载器解析到 `lib/`，故默认 `dsh` 改走产物面（新增 `dsh:source` 保留 tsx 向量），以及门禁与文档的连带更新。
 
@@ -52,6 +52,7 @@ updated: 2026-09-24
 - [CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md) — ui-polish 内嵌 Excalidraw 后 CJS 构建提升共享 `client.rolldown-runtime.js`，prologue 同步 require 模块表答不了；combo 携带同步闭包 + 相对 chunk 解析的修法与验证。
 - [Git/LaTeX 面板重写的缺陷与修复（2026-09-19）](queries/ui-polish-git-latex-defects.md) — 六个缺陷：加载中误报合并、嵌套仓库合并状态读错仓库、多仓库 cwd 回落、LaTeX 读写路径基准、空文件写入被拒、AI 写作默认 provider 空结果。
 - [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。
+- [星域预设不可见与普通消息没有回复（2026-10-02）](queries/xingchen-usability.md) — 入站 A2A Host 状态误用于隐藏本地预设（已修）；启明与 standard 在 `amax/c-y2/gpt-6-sol` 上的失败属于该路由上游，与专家派发无关，且既有会话不会随全局默认值换模型。
 - [总线任务在 A2A 面查不到（a2a-bridge 实测）](queries/a2a-bus-task-visibility.md) — bridge 自身 CLI 经总线派发的任务同样不在任务表里，harness 侧靠事件流收尾故不受影响。
 - [会话重载校验报错：assistant/message 空 model 来源（2026-09-24）](queries/session-reload-model-source.md) — 根因三层（校验过严/pi 后端记空/迁移搬运）、加载侧放宽 + 写入侧记真实模型的双层修法与真实数据验证。
 - [会话格式 v4：席位答复以 assistant 角色进模型可见内容](queries/session-format-v4-landing.md) — 为何必须动会话格式、一代迁移包的确切清单，以及本次实施结果与实测踩坑（写入器曾为 v4，现为 v5）。

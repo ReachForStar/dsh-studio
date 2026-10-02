@@ -3,7 +3,7 @@ title: fork 自研包的门禁红项清单
 type: query
 tags: [gates, doc-sync, lint, coverage, constraints, fork, 待办]
 created: 2026-09-18
-updated: 2026-09-19
+updated: 2026-10-02
 sources: []
 status: active
 ---
@@ -53,8 +53,18 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - `packages/client/ui-sidebar-files`：`ctx.fs` 接缝的删除能力落到这棵树上后，该上游包多了每行删除控件 + 确认弹窗、`paths.ts`、以及 `workspaceFiles.delete` 的接线（见 [工作区文件删除](../entities/workspace-file-deletion.md)）。
 - `packages/client/ui-sidebar-documentpreview`：office 文档预览与文本级编辑（见 [文档面板的编辑与保存](../entities/document-panel-editing.md)）。
 
+## 2026-10-02 复检：工作区行尾与 README 门禁
+
+- **行尾漂移**：仓库规范是 `* text=auto eol=lf`，git 在提交侧把 CRLF 归一化为 LF，所以工作区文件的 CRLF **完全不出现在 `git status` / `git diff` 里**；但 `verify-package-readme-model-experience`、`doc-standard.spec.ts` 这类直接读工作区字节的门禁会看到它。本次实测：`packages/a2a/a2a-status/README.md` 的 `## Model Experience` 被报成 `"## Model Experience\r"`，同一 README 的 frontmatter 也被报缺失（`^---\n` 匹配不上 `---\r\n`）。本机现在仍有 42 个受控文本文件是 CRLF（集中在 `packages/a2a/**`、`packages/client/ui-a2a-status/**`、`packages/client/ui-polish/**` 与几个 `.agents/notes` 下的 yaml），多为历史上用 PowerShell `Set-Content` 写入所致。判定方法：逐文件读字节看有无 `\r\n`；修复只需把这批文件重写为 LF，git 侧无 diff。
+- `verify-package-readme-model-experience`：`packages/a2a/a2a-status` 未登记进 `NO_MODEL_EXPERIENCE_SECTION` / `SENTENCE_MODEL_EXPERIENCE`，README 里的散文式 Model Experience 既不是短句形式也没有结构化条目，因此报「must contain one or more complete model-context entries」；`packages/client/ui-a2a-status` 则根本没有 README。两者都是该包建立时就有的缺口。
+- `scripts/doc-standard.spec.ts`：`packages/a2a/a2a-status/README.md` 缺 `## Table of Contents` 与 `### Dev Note`。frontmatter 缺失的报警是上面的行尾问题，归一化后自行消失。
+- `verify-client-catalog`：`slot 'tool.call.toolview'` 报告 124 行，超过 120 行预算（`gen-client-catalog.ts` 的 `MAX_ENTRY_LINES`）。这是 fork 累积的 toolview 注册者太多，不是某次改动引入；要绿得精简该 slot 传给注册者的接口面或启用更小的注册描述。
+- `verify-persistence-formats`：`v5: SessionHeader.version must match the current writer version` —— 与[会话格式 v5 落地](session-format-v5-landing.md)同源。
+- `verify-translation-pairing`：`packages/a2a/a2a-status/README.md` 原本无配对记录（README 与 README.zh.md 都在，缺 `.i18n.yaml`），本次改动该对后已补记；其余存量条目未动。
+
 ## 复发预防
 
 - fork 改了上游扫描范围内的包（`packages/*/*`）后，本地一次跑齐：`pnpm run test:docs` → `pnpm run typecheck` → `pnpm run lint` → `pnpm run constraints` → `pnpm run verify-package-dependencies`；新增包另跑 `pnpm run doc-sync`（生成物门禁），接线清单见 [星域包新包接线](xingchen-review-fixes.md#新-fork-包的门禁接线清单)。
-- 新增 fork 包时同步四件套：子系统页 + `LINK_MAP` 类型分类、组 README（链子系统页）、`TOOL_PACKAGES`（若是工具包）、按 `node bin/normalize-crlf.mjs` 之外的生成器重跑（catalog 类）。
+- 新增 fork 包时同步四件套：子系统页 + `LINK_MAP` 类型分类、组 README（链子系统页）、`TOOL_PACKAGES`（若是工具包）、以及 catalog 类生成器重跑。
+- 行尾：仓库规范是 LF。用 PowerShell `Set-Content` 或其它默认写 CRLF 的工具改文档后，直接读工作区字节的门禁会看到漂移而 git 看不到；改完这类文件顺手核一次行尾。
 - fork 的 CI 不跑这些门禁，别把「CI 绿了」当成门禁通过。

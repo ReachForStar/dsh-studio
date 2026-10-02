@@ -359,3 +359,37 @@
 - `stack.mjs` 的网关默认目录改为 `deploy/a2a/gateway`（`A2A_BRIDGE_DIR` 仍可指向其它检出）；`node_modules/`、`dist/`、`*.tsbuildinfo` 由该目录自己的 `.gitignore` 忽略。
 - 自包含验证：在该目录 `npm ci`（141 包）+ `npm run build`（`tsc -b`）通过；`stack:up` 从仓库内路径拉起三台网关（进程命令行与 agent card 200 均已核对）；`node cli/dispatch.mjs --to opencode --skill analysis --input "只回复两字：自洽" --mode direct` 返回 `TASK_STATE_COMPLETED`，结果文本为预期值。
 - 门禁：`test:docs` 20/20（translation pairing 1051 对）。
+
+## [2026-10-02] query | 星域预设入口与普通消息失败排查
+
+- 核对当前预设位于 `packages/bundle/web-app/presets/`；星域根据已配置对等端决定 `local`/`a2a`，显式席位模式优先，随包配置没有远端对等端。
+- 核对启明入口原先被入站 `a2a-host` 状态隐藏，该条件与本地席位的运行前置不符；客户端编辑已完成，行为测试待验证。
+- 两个真实启明会话已进入父代理模型请求，随后以 `PI_AI_ERROR` 结束且没有工具调用；同日 `standard` 也有相同错误，上游失败细节与恢复验证待完成。
+- 更新[星域模块页](entities/xingchen-multi-agent.md)，新增[可用性排查页](queries/xingchen-usability.md)，同步索引；排查页保持 `draft`，不宣称修复验证通过。
+
+## [2026-10-02] query | 确认启明失败模型路由与早期席位决策状态
+
+- 两个真实启明会话均请求 `amax/c-y2/gpt-6-sol`，各三次零用量失败；同日 `standard` 相同路由失败，改用 `amax/deepseek-flash` 后完成多轮。
+- 用户 Web profile 的模型默认值已为 `amax/deepseek-flash`；现有会话模型选择与真实恢复请求仍待核验，不能将再次修改默认值写成修复结果。
+- 更新[可用性排查页](queries/xingchen-usability.md)，将[早期外部席位决策](decisions/2026-09-19-xingchen-external-specialist-seats.md)标为 `superseded` 并链接当前本地/A2A 席位说明，保留原始历史正文。
+
+## [2026-10-02] query | 验证启明可用模型路由
+
+- 真实 Cordis/LLM 运行时读取用户配置，以 `amax/deepseek-flash` 发送「只回复 OK」，收到 `OK` 且 `finish.reason.kind=stop`；耗时 `1075ms`，输入 `33` token、输出 `12` token。
+- 将结果补入[可用性排查页](queries/xingchen-usability.md)；现有启明会话的正式模型选择与完整交互仍待验证，页面保持 `draft`。
+
+## [2026-10-02] fix | 星域预设入口可见性与连带缺陷修复
+
+- 预设可用性：删除 `ui-agent-preset` 中按入站 `a2a-host` 状态隐藏 `xingchen-qiming` 的筛选（选择器、管理页、会话座椅三个入口），以及它带来的 `ui-a2a-status` 依赖、tsconfig 引用与 `entryHidden` 文案；本机 `local` 席位不依赖入站监听。新增回归用例断言没有 `a2aStatus` 服务时仍提供该预设。
+- HTTP 桥接：`packages/client/connection/src/http-bridge.ts` 的背压等待改用贯穿响应生命周期的单个 `on('drain')` 监听器（压缩中间件不转发 `res.off`，`once('drain')` 的自动移除失效会按事件泄漏监听器），`http-bridge.host.spec.ts` 相应断言常驻监听器为 1。
+- 画布：导出按钮在 Excalidraw API 未就绪时报可读错误并禁用，新增 `excalidraw.exporting` 与 `excalidraw.canvasNotReady` 文案；删除工具结果到达即切到画布标签页的副作用，改为只由用户点击触发。
+- `standard` 预设补齐 `tool-excalidraw` 行与人设中的画布工具说明，与 `xingchen-qiming` 一致。
+- 模型结论：两个失败启明会话的请求头记录 `amax/c-y2/gpt-6-sol`，失败发生在父代理模型请求阶段且没有 `tool/call`；全局默认值不会改写既有会话的模型选择，改用新模型需经 `session/selectModel`。
+- 验证：`ui-agent-preset` 130 项、`http-bridge.host.spec.ts` 与 `ui-polish` 接线测试通过；`typecheck` 两面通过；真实 `amax/deepseek-flash` 请求返回 `OK`。
+- 沉淀：补齐[可用性排查页](queries/xingchen-usability.md)的根因、连带修复与验证小节并转 `active`，同步索引与本日志。
+
+## [2026-10-02] query | 行尾漂移与 README 门禁复检
+
+- 工作区有 42 个受控文本文件仍为 CRLF（`* text=auto eol=lf` 归一化在提交侧掩盖了它），而 `verify-package-readme-model-experience` 与 `doc-standard.spec.ts` 直接读工作区字节，报出 `"## Model Experience\r"`、README 无 frontmatter 等假象。清点与归一脚本与结论见[门禁红项页](queries/fork-gate-debt.md)。
+- `packages/a2a/a2a-status/README.md` 与 `.zh.md` 改动后补记配对（`verify-translation-pairing --write`），新增 `packages/a2a/a2a-status/README.i18n.yaml`。
+- 复检 `pnpm run test:docs` 剩余 8 门失败：均为既有 fork 红项（会话格式 v5 写入器、xingchen README 链接到已迁移的 `packages/preset/agent-presets`、`AGENTS.md` 词数、`ui-a2a-status` 无 README、翻译配对存量、`docs/persistence-changes/historical-formats/v4.md` 的 commit 引用），本轮未新增。

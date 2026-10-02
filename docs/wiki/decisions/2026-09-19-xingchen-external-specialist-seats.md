@@ -3,12 +3,14 @@ title: 星域专家席经 A2A 抵达（2026-09-19）
 type: decision
 tags: [星域, 多智能体, a2a, preset, 角色隔离]
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-10-02
 sources: []
-status: active
+status: superseded
 ---
 
 # 星域专家席经 A2A 抵达（2026-09-19）
+
+当前席位运行方式见[星域多智能体模块页](../entities/xingchen-multi-agent.md#席位运行方式)。本页保留早期外部席位决策；其中「未配置对等端无法使用专家」已被当前 `local` 模式取代，不能作为现有部署的配置要求。
 
 ## 背景（现状与约束）
 

@@ -1,6 +1,64 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/a2a/tool-a2a/README.md
-README.md: 361a19347dfd970e44226d100a44784b6aac5717
-README.zh.md: 48b0b1ae782c59280a8f6d11242b0fc459577504
+/:
+  en: 04bdb60aefe23ace
+  zh: 5e73118ead6ea07c
+/reachforstar-dsh-tool-a2a:
+  en: 180bc4d3d36464c7
+  zh: 708610e659d217cc
+/reachforstar-dsh-tool-a2a/summary:
+  en: ed3b552c3fc15425
+  zh: 21da4b2fb05f5362
+/reachforstar-dsh-tool-a2a/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-tool-a2a/use-this-package:
+  en: a1ce0c96b377654d
+  zh: 373ed49b45a125d4
+/reachforstar-dsh-tool-a2a/use-this-package/when-to-choose-it:
+  en: ba20e758820a8a14
+  zh: 05b3653d66bd7dbd
+/reachforstar-dsh-tool-a2a/use-this-package/minimal-configuration:
+  en: 9faf74f55cc5bd05
+  zh: 587dd779670f821d
+/reachforstar-dsh-tool-a2a/use-this-package/what-each-call-does:
+  en: 7e6ddccf019517ec
+  zh: a17e43a6db895c8c
+/reachforstar-dsh-tool-a2a/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/reachforstar-dsh-tool-a2a/understand-the-implementation/source-map:
+  en: baa7a6b75fe2b9ba
+  zh: b760a7f51a305bb9
+/reachforstar-dsh-tool-a2a/understand-the-implementation/export-shape:
+  en: 743df2e982b0fc0c
+  zh: 86661e3dd4f3ca30
+/reachforstar-dsh-tool-a2a/understand-the-implementation/peers-stay-configuration:
+  en: 15c62e0c46ea99e9
+  zh: 1ae191d220575646
+/reachforstar-dsh-tool-a2a/further-exploration:
+  en: 49ba132928f10ee6
+  zh: e57c0ea1f426cdbf
+/reachforstar-dsh-tool-a2a/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/reachforstar-dsh-tool-a2a/model-experience/tools:
+  en: 72ee1234c12b966a
+  zh: e5bbfa1985c64fca
+/reachforstar-dsh-tool-a2a/model-experience/tools/what-the-model-sees:
+  en: 7c741b89aa0ac8f7
+  zh: 98393284a83c9857
+/reachforstar-dsh-tool-a2a/model-experience/tools/token-effect:
+  en: 0b1c90f260741402
+  zh: 2bb9d474dadb80aa
+/reachforstar-dsh-tool-a2a/model-experience/tools/kv-cache-effect:
+  en: 5cd2f04c1f9a7056
+  zh: 4e7fe70b4e8dc22f
+/reachforstar-dsh-tool-a2a/known-limitations-and-deferred-work:
+  en: 6a2f29664285dbfc
+  zh: 90c9e18dbf14189f
+/reachforstar-dsh-tool-a2a/known-limitations-and-deferred-work/dev-note:
+  en: 5f7f200a1249dd88
+  zh: b9bbc2af9210e5fa

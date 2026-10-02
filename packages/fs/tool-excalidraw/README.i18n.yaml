@@ -1,6 +1,61 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fs/tool-excalidraw/README.md
-README.md: 0a7f1d796889aee4b5919ea9d4fb608d6b56b9d5
-README.zh.md: 7ade6d4f41f0cbe9ef705c5b3c6059aecf074e39
+/:
+  en: 906a36446abc7f21
+  zh: 27e102c795b0c633
+/reachforstar-dsh-tool-excalidraw:
+  en: f03d73d931c0ddd6
+  zh: a23201ec32d4919f
+/reachforstar-dsh-tool-excalidraw/summary:
+  en: cfa53565727eb20a
+  zh: 937e7d188f8d9669
+/reachforstar-dsh-tool-excalidraw/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-tool-excalidraw/use-this-package:
+  en: 3150f39e678ba0ed
+  zh: b25b9ae6bb8a6540
+/reachforstar-dsh-tool-excalidraw/use-this-package/when-to-choose-it:
+  en: 6be9fa4003a0f268
+  zh: c980964db0a1e7a6
+/reachforstar-dsh-tool-excalidraw/use-this-package/minimal-configuration:
+  en: 0dc533465fa6857e
+  zh: 5f1f8b9b838fdc96
+/reachforstar-dsh-tool-excalidraw/scene-tools:
+  en: bb83897160ad933b
+  zh: ca2a7f0276cbbf5b
+/reachforstar-dsh-tool-excalidraw/scene-file:
+  en: 7f07fd30408e2ba6
+  zh: 760feae8ffa848a0
+/reachforstar-dsh-tool-excalidraw/security:
+  en: b6d5c7cf327ffb6e
+  zh: 9f2fdd1179292e17
+/reachforstar-dsh-tool-excalidraw/understand-the-implementation:
+  en: 87c618984ec1cd56
+  zh: ce4d408f9bc04a33
+/reachforstar-dsh-tool-excalidraw/further-exploration:
+  en: a26ea669e5e81e58
+  zh: 9f35379863821549
+/reachforstar-dsh-tool-excalidraw/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/reachforstar-dsh-tool-excalidraw/model-experience/tool-schemas:
+  en: 3039bc5e7a796b21
+  zh: 3039bc5e7a796b21
+/reachforstar-dsh-tool-excalidraw/model-experience/tool-schemas/what-the-model-sees:
+  en: ae5ae5e7c604605d
+  zh: 77267ae103eec979
+/reachforstar-dsh-tool-excalidraw/model-experience/tool-schemas/token-effect:
+  en: 9bb90011ae834187
+  zh: 7dc5d24188345571
+/reachforstar-dsh-tool-excalidraw/model-experience/tool-schemas/kv-cache-effect:
+  en: 231dc555e76f1dad
+  zh: 611984d647cace2d
+/reachforstar-dsh-tool-excalidraw/known-limitations-and-deferred-work:
+  en: a403c7aff3c960b7
+  zh: 743703cc2e05b02b
+/reachforstar-dsh-tool-excalidraw/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8b28a893c997cffb

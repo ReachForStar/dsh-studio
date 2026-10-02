@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for xingchen.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/xingchen.md
-xingchen.md: 98da7031d9c2c03ce8caf4dcdebea33d3b298c2b
-xingchen.zh.md: 917b010a532ed19ba0fa85ca80d86a1661c536c8
+/xingchen-star-domain-routing:
+  en: ae1e34c84709c234
+  zh: 96a9878a927ffb5e
+/xingchen-star-domain-routing/roles-and-prompt-isolation:
+  en: e6318ee93925d60d
+  zh: 6f9033602d55742f
+/xingchen-star-domain-routing/routing:
+  en: b4ed1d512ddce0fe
+  zh: a78668f7a52e2dff
+/xingchen-star-domain-routing/session-metadata:
+  en: b19bae599868a7e6
+  zh: 6000c3efb5212ee9
+/xingchen-star-domain-routing/bundled-skills:
+  en: 44d0d83cd4f72d92
+  zh: cba010cd49eac886
+/xingchen-star-domain-routing/configuration:
+  en: fcfe5b3f1f5fbbc0
+  zh: 47a77ddb00e9f653
+/xingchen-star-domain-routing/related:
+  en: 02044e6ab502e337
+  zh: 1c7459da87c01123

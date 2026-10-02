@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-workspace-scoped-stats-card.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-17-workspace-scoped-stats-card.md
-2026-09-17-workspace-scoped-stats-card.md: c4a38b8f79f1e602eb3b1803747d68d1bef1e7d5
-2026-09-17-workspace-scoped-stats-card.zh.md: 98639cce37c968ed04758d59a7c23c901439167b
+/agent-note-the-stats-float-reports-its-workspace:
+  en: 399087362f98a249
+  zh: 8421bdaf771168c4
+/agent-note-the-stats-float-reports-its-workspace/problem:
+  en: 2d8deab12a8035cd
+  zh: 4221872500654b3d
+/agent-note-the-stats-float-reports-its-workspace/decision:
+  en: c7747700fd70dbfb
+  zh: 4b09505e6010381d
+/agent-note-the-stats-float-reports-its-workspace/alternatives-considered:
+  en: a37eb7476a70974d
+  zh: 93733674acd0766a
+/agent-note-the-stats-float-reports-its-workspace/consequences:
+  en: 9c1d585372e277e8
+  zh: ff7941f4bf750f17
+/agent-note-the-stats-float-reports-its-workspace/presentation-after-the-fact:
+  en: 74549ac81b1cefef
+  zh: 3f0a39b02bffbe07

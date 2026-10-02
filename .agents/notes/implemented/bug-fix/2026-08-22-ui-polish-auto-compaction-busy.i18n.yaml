@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-22-ui-polish-auto-compaction-busy.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-22-ui-polish-auto-compaction-busy.md
-2026-08-22-ui-polish-auto-compaction-busy.md: ee98971fa7305278293f8029a4f9f165bb001ccc
-2026-08-22-ui-polish-auto-compaction-busy.zh.md: 65f45f73fa20219a8386375c58c5d993c7c9a706
+/agent-note-fix-ui-polish-auto-compaction-calling-the-idle-only-manual-api-mid-turn:
+  en: 766234266227b5a8
+  zh: 565c6774d13c9331
+/agent-note-fix-ui-polish-auto-compaction-calling-the-idle-only-manual-api-mid-turn/problem:
+  en: 45d0918f289dee91
+  zh: e815b90c337d9529
+/agent-note-fix-ui-polish-auto-compaction-calling-the-idle-only-manual-api-mid-turn/decision:
+  en: d27272c25d44b27a
+  zh: 7e5477e2e00340d7
+/agent-note-fix-ui-polish-auto-compaction-calling-the-idle-only-manual-api-mid-turn/alternatives-considered:
+  en: 5334a2178058dd69
+  zh: 3d440c9ee30057ab
+/agent-note-fix-ui-polish-auto-compaction-calling-the-idle-only-manual-api-mid-turn/testing:
+  en: 5e9e849c55744e06
+  zh: ad18dfe3a875bca7
+/agent-note-fix-ui-polish-auto-compaction-calling-the-idle-only-manual-api-mid-turn/consequences:
+  en: 5f0be6023a9238f8
+  zh: 9ca54090807560ff

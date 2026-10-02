@@ -1,6 +1,70 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/core/pi-agent-loop/README.md
-README.md: d47c7bd802afdf342ce13973d6e5c4c33c601607
-README.zh.md: 4ebe6d2e79c9cc388c3b38e78674f5a2df55aa41
+/:
+  en: 0dc9d6e1a405d259
+  zh: 167fc67eb4d28924
+/deepseek-ai-dsh-pi-agent-loop:
+  en: a4028cbc8ec61264
+  zh: 1ab95764c0a416e4
+/deepseek-ai-dsh-pi-agent-loop/summary:
+  en: d347b9a261e5c947
+  zh: cf2963db4fd02510
+/deepseek-ai-dsh-pi-agent-loop/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 3a2f21ff0dc3420d
+/deepseek-ai-dsh-pi-agent-loop/use-this-package:
+  en: 6f06b601d9a8eeaa
+  zh: 6c33f7f3e02d222e
+/deepseek-ai-dsh-pi-agent-loop/use-this-package/when-to-choose-it:
+  en: 03beefc2388401de
+  zh: a869871f503e71fb
+/deepseek-ai-dsh-pi-agent-loop/use-this-package/minimal-configuration:
+  en: 195ab9725418b35c
+  zh: 4f3239291050d2b9
+/deepseek-ai-dsh-pi-agent-loop/understand-the-implementation:
+  en: 8c65e9e18ad3f8e0
+  zh: 76e84f7b0b82a918
+/deepseek-ai-dsh-pi-agent-loop/understand-the-implementation/session-and-event-ownership:
+  en: c2d100d9565b54be
+  zh: 323111c8c4f9f0b0
+/deepseek-ai-dsh-pi-agent-loop/understand-the-implementation/tool-sharing:
+  en: d7574fef6bdc8d22
+  zh: 330bf9d7ac45d3d4
+/deepseek-ai-dsh-pi-agent-loop/further-exploration:
+  en: d6d8798848813512
+  zh: 7c98d78b1d37fe71
+/deepseek-ai-dsh-pi-agent-loop/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-pi-agent-loop/model-experience/session-start:
+  en: 77954a3564312383
+  zh: 5559b868f3537bcb
+/deepseek-ai-dsh-pi-agent-loop/model-experience/session-start/what-the-model-sees:
+  en: 564e0a2e2acec601
+  zh: b6040fa109667754
+/deepseek-ai-dsh-pi-agent-loop/model-experience/session-start/token-effect:
+  en: 16440bc420ac55f9
+  zh: fbdf684518b9a0a6
+/deepseek-ai-dsh-pi-agent-loop/model-experience/session-start/kv-cache-effect:
+  en: ce08edd10513b01b
+  zh: a795ef422d9aa79c
+/deepseek-ai-dsh-pi-agent-loop/model-experience/tool-call:
+  en: 4e256b488dbea1ba
+  zh: d55e3cb443e6d534
+/deepseek-ai-dsh-pi-agent-loop/model-experience/tool-call/what-the-model-sees:
+  en: 66d646e628d7e549
+  zh: 5e2c2216d6b6ff29
+/deepseek-ai-dsh-pi-agent-loop/model-experience/tool-call/token-effect:
+  en: 0cfd3a5c8207d17b
+  zh: 2b83b786c2a1b664
+/deepseek-ai-dsh-pi-agent-loop/model-experience/tool-call/kv-cache-effect:
+  en: 4cffc956eb722c6e
+  zh: 695e060d7d73602e
+/deepseek-ai-dsh-pi-agent-loop/known-limitations-and-deferred-work:
+  en: f47c6f3887159d5b
+  zh: 8953e29d0cd224d4
+/deepseek-ai-dsh-pi-agent-loop/known-limitations-and-deferred-work/dev-note:
+  en: 50183b8fb8c53a8a
+  zh: 87d74eb97e9cc044

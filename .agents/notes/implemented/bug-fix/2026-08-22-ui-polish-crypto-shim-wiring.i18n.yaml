@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-22-ui-polish-crypto-shim-wiring.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-22-ui-polish-crypto-shim-wiring.md
-2026-08-22-ui-polish-crypto-shim-wiring.md: f4605b463c6e9fa878f8380191c719a8f8868f23
-2026-08-22-ui-polish-crypto-shim-wiring.zh.md: b3dcab0bf802769f91cce4e503f4776997699653
+/agent-note-ui-polish-crypto-shim:
+  en: bd8d286a6e1bb4f5
+  zh: 18dab15492e9d557
+/agent-note-ui-polish-crypto-shim/problem:
+  en: b9e74c25f60dc344
+  zh: c5110948cf60f003
+/agent-note-ui-polish-crypto-shim/decision:
+  en: 8c6d5da966a2f2a0
+  zh: 4e8dec2db7ae203e
+/agent-note-ui-polish-crypto-shim/alternatives-considered:
+  en: f70c3f8ccfdebeea
+  zh: a0485437cc8f02e0
+/agent-note-ui-polish-crypto-shim/consequences:
+  en: d769731e83b9b0ed
+  zh: d6160491903237e2

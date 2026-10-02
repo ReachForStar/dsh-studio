@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-ssh/README.md
-README.md: 550c4ee5182bb2e616ea7a71ae9f7234776b66f5
-README.zh.md: 8f69979cf21a5a1f9a8254f0144c274ae2ca0685
+/:
+  en: ba9123df91ecb4ee
+  zh: cf97ab9a0d60e405
+/reachforstar-dsh-client-ui-ssh:
+  en: f8b07971e0f5a260
+  zh: a7cc3bf2338861c4
+/reachforstar-dsh-client-ui-ssh/summary:
+  en: 0e9868294943f4c9
+  zh: c1f3c69b2566f424
+/reachforstar-dsh-client-ui-ssh/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-client-ui-ssh/use-this-package:
+  en: 4036d3691d5d36cc
+  zh: f17799c4990c439b
+/reachforstar-dsh-client-ui-ssh/use-this-package/when-to-choose-it:
+  en: 5dd4278eedf8e2cc
+  zh: 74a0cc9f95a33b84
+/reachforstar-dsh-client-ui-ssh/use-this-package/minimal-configuration:
+  en: fc608d3830a3a064
+  zh: d1fd90bfb7ffa466
+/reachforstar-dsh-client-ui-ssh/understand-the-implementation:
+  en: c7338c7937180454
+  zh: 72cff13b71626d47
+/reachforstar-dsh-client-ui-ssh/further-exploration:
+  en: dfb4888848747e78
+  zh: 3e66b31d5e1bdfe8
+/reachforstar-dsh-client-ui-ssh/model-experience:
+  en: 89cf152e47425681
+  zh: 022e75c2d17dd732
+/reachforstar-dsh-client-ui-ssh/model-experience/kv-cache-effect:
+  en: 4f0eadf94828e66e
+  zh: 97d3eb3e79199354
+/reachforstar-dsh-client-ui-ssh/known-limitations-and-deferred-work:
+  en: ad0aa607fc4f4c27
+  zh: e8e7c86466da6965
+/reachforstar-dsh-client-ui-ssh/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8b28a893c997cffb

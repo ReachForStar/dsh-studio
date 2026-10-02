@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for ssh-sftp.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/ssh-sftp.md
-ssh-sftp.md: 671ec50fbecf930226d3b60ebf4d621129263ec4
-ssh-sftp.zh.md: 7e93d3ae6821841b2f270096fc7f237b0f9251f0
+/ssh-sftp:
+  en: 1ae335ea2338f276
+  zh: 3da0200b95b463b1
+/ssh-sftp/definition-registry:
+  en: 07e9b5c6e550256b
+  zh: 0b8ee0e75b4b9922
+/ssh-sftp/connection-handles:
+  en: 764c5720d7be9c56
+  zh: ebd7477f89f3814a
+/ssh-sftp/streaming-exec-sessions:
+  en: 5c130515c8ca296e
+  zh: a290749147f9ad04
+/ssh-sftp/request-vs-spec-the-resolveexec-split:
+  en: 04e6045f3eac44fb
+  zh: a30d18071d59c41a
+/ssh-sftp/host-key-verification:
+  en: 9c2a7dfd3ce03aa3
+  zh: 14a1ac6efb7ce23e
+/ssh-sftp/error-taxonomy:
+  en: d03dc0c9790e2c76
+  zh: 735b33dac94d449d

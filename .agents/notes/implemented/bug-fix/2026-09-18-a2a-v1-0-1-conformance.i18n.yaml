@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-a2a-v1-0-1-conformance.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-18-a2a-v1-0-1-conformance.md
-2026-09-18-a2a-v1-0-1-conformance.md: c4225737e4df9bf7956d89682ee45710ba8f09ab
-2026-09-18-a2a-v1-0-1-conformance.zh.md: 9df1d547d6ae9430ee09627678e849581121197f
+/agent-note-bring-the-a2a-endpoint-to-v1-0-1-must-conformance:
+  en: 1c1147ff5d8d1722
+  zh: bc535c651d4ff594
+/agent-note-bring-the-a2a-endpoint-to-v1-0-1-must-conformance/problem:
+  en: 5858442b4c032203
+  zh: 0c03267cbfa27804
+/agent-note-bring-the-a2a-endpoint-to-v1-0-1-must-conformance/decision:
+  en: 73381dfa65417ed5
+  zh: 4f371b46cc3de594
+/agent-note-bring-the-a2a-endpoint-to-v1-0-1-must-conformance/alternatives-considered:
+  en: 983d626a3abd6d13
+  zh: db1d921479b594e2
+/agent-note-bring-the-a2a-endpoint-to-v1-0-1-must-conformance/consequences:
+  en: 2943b793b072fb18
+  zh: 27de774985ad5cc8

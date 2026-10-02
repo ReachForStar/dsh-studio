@@ -1,6 +1,61 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-polish/README.md
-README.md: 19673e508e842d981edefd07e30592f843e5be33
-README.zh.md: 5ba58f2a085b90a51d2bc7e063658546ecfbc58a
+/:
+  en: f440e968750c8755
+  zh: bf2229b86e5ba59e
+/reachforstar-dsh-client-ui-polish:
+  en: 03884a3b304bf8f7
+  zh: ac9e507decf25703
+/reachforstar-dsh-client-ui-polish/summary:
+  en: 2dab4cf1c6c8723d
+  zh: 1651c1e1854fafeb
+/reachforstar-dsh-client-ui-polish/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-client-ui-polish/use-this-package:
+  en: 95ee31921d5b8dbb
+  zh: ee75c4d1c7fa78f9
+/reachforstar-dsh-client-ui-polish/use-this-package/when-to-choose-it:
+  en: 944ecdf195346ab1
+  zh: 02e85106da512198
+/reachforstar-dsh-client-ui-polish/use-this-package/minimal-configuration:
+  en: d4049ba40a0f56e6
+  zh: a1365f3381a0f19d
+/reachforstar-dsh-client-ui-polish/features:
+  en: 4a2cb11e21621799
+  zh: 33159618d36388d3
+/reachforstar-dsh-client-ui-polish/understand-the-implementation:
+  en: aedd85ae40577568
+  zh: ac5b600cdf7f5677
+/reachforstar-dsh-client-ui-polish/further-exploration:
+  en: 7fc48273b1e1ec87
+  zh: dfa9cdcfd18c184b
+/reachforstar-dsh-client-ui-polish/installation:
+  en: a1f664b180842ee8
+  zh: e7a5f44f4148962d
+/reachforstar-dsh-client-ui-polish/settings:
+  en: 687ac9db2db10819
+  zh: 1fe68524dcf11b5b
+/reachforstar-dsh-client-ui-polish/model-rate-card:
+  en: 860d87e58beb7c1e
+  zh: e105f67816dc67ae
+/reachforstar-dsh-client-ui-polish/host-routes:
+  en: 4b1d20cb249d8396
+  zh: 5233f2555ebd1aa1
+/reachforstar-dsh-client-ui-polish/slots:
+  en: b93898fcece9ce09
+  zh: 1be00fabd2f30bd5
+/reachforstar-dsh-client-ui-polish/model-experience:
+  en: 5f6a72beb1ec6b6c
+  zh: 612c6cfe7a1b868c
+/reachforstar-dsh-client-ui-polish/model-experience/kv-cache-effect:
+  en: 4f0eadf94828e66e
+  zh: 97d3eb3e79199354
+/reachforstar-dsh-client-ui-polish/known-limitations-and-deferred-work:
+  en: d7c552072c5400a1
+  zh: 91e03e6df1a0434e
+/reachforstar-dsh-client-ui-polish/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8b28a893c997cffb

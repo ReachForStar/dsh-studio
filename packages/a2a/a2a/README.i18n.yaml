@@ -1,6 +1,52 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/a2a/a2a/README.md
-README.md: 22fd4111b4199e233144d98e691af8b87e586868
-README.zh.md: 6744d0fb169b6365f9618b6f4ef4facba1f8b138
+/:
+  en: b2f64e6934dc4ee1
+  zh: 4ae297c98dc8052c
+/reachforstar-dsh-a2a:
+  en: bbe2fb250acc1d0a
+  zh: 5d185b7b25ede5fa
+/reachforstar-dsh-a2a/summary:
+  en: e379be9da8b0072c
+  zh: a2aa07c86025aa7f
+/reachforstar-dsh-a2a/table-of-contents:
+  en: 80b31a934611cb4a
+  zh: 05f3f7f9cb2fd881
+/reachforstar-dsh-a2a/use-this-package:
+  en: cfcca4ccd7fba04a
+  zh: 3e978dfc63af5f3f
+/reachforstar-dsh-a2a/use-this-package/when-to-choose-it:
+  en: 932b3ce06aa66be0
+  zh: c403f3fc5c186500
+/reachforstar-dsh-a2a/use-this-package/minimal-configuration:
+  en: bd2d9acf62759c20
+  zh: ddf3894c9b76bc07
+/reachforstar-dsh-a2a/use-this-package/bridge-deployment:
+  en: 70462f104e817d8c
+  zh: 5892554ac9a4c24d
+/reachforstar-dsh-a2a/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/reachforstar-dsh-a2a/understand-the-implementation/source-map:
+  en: 4f8dec4d9d7b01ed
+  zh: 5c1c5048e7b8e04a
+/reachforstar-dsh-a2a/understand-the-implementation/export-shape:
+  en: 0bd8d32448fd2cc2
+  zh: 3862b00449f9a496
+/reachforstar-dsh-a2a/understand-the-implementation/protocol-surface:
+  en: 7da364f3afdaf342
+  zh: adb922d58e4bdd96
+/reachforstar-dsh-a2a/understand-the-implementation/task-identity:
+  en: 82a75960b34d65bb
+  zh: ca1e7f3451712755
+/reachforstar-dsh-a2a/further-exploration:
+  en: 0b8f99b6e8544cea
+  zh: 57d8ea37389d3bc9
+/reachforstar-dsh-a2a/known-limitations-and-deferred-work:
+  en: 3873b797cc28b4e6
+  zh: 7de537420a24af66
+/reachforstar-dsh-a2a/known-limitations-and-deferred-work/dev-note:
+  en: 874a09933de5edc9
+  zh: 52ee33c24a68ac0b

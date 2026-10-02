@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-office-document-editing.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-17-office-document-editing.md
-2026-09-17-office-document-editing.md: 2fd9539ebd7d9b5956a56e80833179b31bc23df2
-2026-09-17-office-document-editing.zh.md: 753205331d398c49319efb0a1329058ef67bffd6
+/agent-note-edit-word-and-powerpoint-documents-where-they-are-previewed:
+  en: 6ae13fa232201e2b
+  zh: 22fee915d2da0bdb
+/agent-note-edit-word-and-powerpoint-documents-where-they-are-previewed/problem:
+  en: 5c695f713e4c6d37
+  zh: 48a7d00c6787f8e7
+/agent-note-edit-word-and-powerpoint-documents-where-they-are-previewed/decision:
+  en: 0a0c21c267dbc9fe
+  zh: 2fc04a3964a87eda
+/agent-note-edit-word-and-powerpoint-documents-where-they-are-previewed/alternatives-considered:
+  en: de0936ccfcdc875b
+  zh: e7b799975bfb3794
+/agent-note-edit-word-and-powerpoint-documents-where-they-are-previewed/consequences:
+  en: cab88d17c0c93b28
+  zh: 4f573a73a223c256

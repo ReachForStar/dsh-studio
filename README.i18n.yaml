@@ -3,8 +3,23 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
 /deepseek-harness:
-  en: f68c4f080ce55ff2
-  zh: 88a76d7f7f0b260e
+  en: 3718c67949eb9e3f
+  zh: 1393949817a0fefb
+/deepseek-harness/customizations-over-the-official-release:
+  en: 682b4620a1806d7c
+  zh: f422d63296a797d7
+/deepseek-harness/customizations-over-the-official-release/star-domain-multi-agent:
+  en: 152cdf9bda1b9908
+  zh: 954406f7d233a2d3
+/deepseek-harness/customizations-over-the-official-release/pi-backends:
+  en: 5dbce748881e7766
+  zh: cab765f572f0e1db
+/deepseek-harness/customizations-over-the-official-release/web-gui-workspace-and-tools:
+  en: f6bc7ee61bc7742b
+  zh: 25f0b8b65a36db26
+/deepseek-harness/key-features:
+  en: 3f79b90b458e5f4a
+  zh: b57d3c9131a114f3
 /deepseek-harness/developer-preview:
   en: 4ef4d8a71ac143f0
   zh: 1bfc3149ba8e5543
@@ -12,11 +27,11 @@
   en: 4e0248e4c6474fc6
   zh: eb2fb8d78c7d6bc0
 /deepseek-harness/run/run-from-npm:
-  en: e22005cd42e6cbad
-  zh: 0f536f4208df1d60
+  en: 762549237a3eabbc
+  zh: 2632b1461e214d55
 /deepseek-harness/run/run-from-source:
-  en: 819e3f7c144d0d64
-  zh: de815f040975dba7
+  en: 97e2a8ce4208ee6c
+  zh: 34cd3474b0b08089
 /deepseek-harness/community-and-support:
   en: 20acf6451fdc869b
   zh: d06246dd019ecef7

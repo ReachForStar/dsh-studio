@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-terminal-releases-ssh-connection.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-17-terminal-releases-ssh-connection.md
-2026-09-17-terminal-releases-ssh-connection.md: 5d2950725e7c67b795e7a74c70d8e74679c9e6a6
-2026-09-17-terminal-releases-ssh-connection.zh.md: f9296b9b07486f7e4feb69113ae8e7c0e163ba35
+/agent-note-a-closed-terminal-releases-the-ssh-connection:
+  en: e8f18c0643f7a922
+  zh: 6ef4e88e6342fe2c
+/agent-note-a-closed-terminal-releases-the-ssh-connection/problem:
+  en: 5baeef19ac9b5587
+  zh: 5a85f75705765d59
+/agent-note-a-closed-terminal-releases-the-ssh-connection/decision:
+  en: b12420cdb9613e33
+  zh: 80996c56066f74c1
+/agent-note-a-closed-terminal-releases-the-ssh-connection/alternatives-considered:
+  en: b31a9a9fee0312a5
+  zh: 66cd09cf07bcb6e6
+/agent-note-a-closed-terminal-releases-the-ssh-connection/consequences:
+  en: 1ae3a9616f8ec7ec
+  zh: d5ff75be6f4d1adf

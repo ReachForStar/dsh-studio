@@ -1,6 +1,28 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-15-pi-subagent-backend.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-15-pi-subagent-backend.md
-2026-08-15-pi-subagent-backend.md: d3b5f61381b07cdf9a4d4018b92939eb05ab7b1a
-2026-08-15-pi-subagent-backend.zh.md: f4c2fbff087860deac7a7e44803137af56486171
+/agent-note-pi-subagent-backend:
+  en: 9792d1bad69370b5
+  zh: 348e5efb71a49228
+/agent-note-pi-subagent-backend/problem:
+  en: bfd3239e0cce28c9
+  zh: 982efdeb4a0bc5ff
+/agent-note-pi-subagent-backend/decision:
+  en: 1353738f180b4f6e
+  zh: d65584050f9f47db
+/agent-note-pi-subagent-backend/alternatives-considered:
+  en: 6119e2aff3b6be5a
+  zh: e01a6c669a9ec6aa
+/agent-note-pi-subagent-backend/alternatives-considered/print-mode-instead-of-rpc-mode:
+  en: 135c3d6974770d46
+  zh: 5cd6f4f12e53f7fe
+/agent-note-pi-subagent-backend/alternatives-considered/driving-pi-through-the-third-party-acp-adapter:
+  en: 72752c3b77bbfb11
+  zh: 59283e7e2f8293aa
+/agent-note-pi-subagent-backend/alternatives-considered/building-dsh-mcp-server-first-and-connecting-pi-over-mcp:
+  en: 71935acd85bb2218
+  zh: ef25b14964db59f9
+/agent-note-pi-subagent-backend/consequences:
+  en: 542457b9e8bff98b
+  zh: 27640d836d937a6d

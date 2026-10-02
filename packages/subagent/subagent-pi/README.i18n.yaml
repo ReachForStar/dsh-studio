@@ -1,6 +1,76 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/subagent/subagent-pi/README.md
-README.md: 439440ab52ca8d97277617f30dc57859abfcc13c
-README.zh.md: f4216521a76ed2e53bde981f2261560d26d68ae8
+/:
+  en: 3d3ab819642a11a0
+  zh: 1e7a58d35a47b496
+/reachforstar-dsh-subagent-pi:
+  en: aa5fe84f97414754
+  zh: 1e80489a6cdecf4c
+/reachforstar-dsh-subagent-pi/summary:
+  en: 9df5f755a4210ed1
+  zh: 1ce36be6eca26bc3
+/reachforstar-dsh-subagent-pi/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 17ef51fee7d318d3
+/reachforstar-dsh-subagent-pi/use-this-package:
+  en: bb29b822e971da5a
+  zh: 8b58bcbda276eac7
+/reachforstar-dsh-subagent-pi/use-this-package/when-to-choose-it:
+  en: 0a451ade6e311ab4
+  zh: de54418c7a16ac5a
+/reachforstar-dsh-subagent-pi/use-this-package/minimal-configuration:
+  en: d6c24479913fc24c
+  zh: 5dec6fcf4e7eaa1d
+/reachforstar-dsh-subagent-pi/understand-the-implementation:
+  en: 2205680ca2baa844
+  zh: 1ff0fb83825fc0af
+/reachforstar-dsh-subagent-pi/further-exploration:
+  en: 121b0fd7f3b8c2a6
+  zh: 7eaf7363e32b9fe1
+/reachforstar-dsh-subagent-pi/start-and-ownership:
+  en: b32d74c254797bcd
+  zh: c0682d90837a1670
+/reachforstar-dsh-subagent-pi/capabilities-and-context:
+  en: 63769c9249844719
+  zh: d7923ee6c8b783b1
+/reachforstar-dsh-subagent-pi/configuration:
+  en: 43df669d0f2423bd
+  zh: 793a3d5923d526be
+/reachforstar-dsh-subagent-pi/product-compatibility-and-evidence:
+  en: 132637e6492abd90
+  zh: a48b2521a22a1bef
+/reachforstar-dsh-subagent-pi/model-experience:
+  en: 215e7ba838619b7b
+  zh: 215e7ba838619b7b
+/reachforstar-dsh-subagent-pi/model-experience/child-request:
+  en: 1796fa78833bfc2b
+  zh: b78af12284632249
+/reachforstar-dsh-subagent-pi/model-experience/child-request/what-the-model-sees:
+  en: da17b3872b34e7b0
+  zh: accfc05caa33063c
+/reachforstar-dsh-subagent-pi/model-experience/child-request/token-effect:
+  en: c4a9d29f754e1bf9
+  zh: 1180e7d0e9f95cfb
+/reachforstar-dsh-subagent-pi/model-experience/child-request/kv-cache-effect:
+  en: 65d5bfcbaadec38a
+  zh: de6b8a6c17e6373c
+/reachforstar-dsh-subagent-pi/model-experience/parent-tool-result-indirectly:
+  en: 75d061c2151624a7
+  zh: 4277fa3ae7b0ca1f
+/reachforstar-dsh-subagent-pi/model-experience/parent-tool-result-indirectly/what-the-model-sees:
+  en: eb4638509b850eaa
+  zh: f71b083728823117
+/reachforstar-dsh-subagent-pi/model-experience/parent-tool-result-indirectly/token-effect:
+  en: 1b9f1d410261a1ab
+  zh: fb7e5fd10adfb33a
+/reachforstar-dsh-subagent-pi/model-experience/parent-tool-result-indirectly/kv-cache-effect:
+  en: 14b2dec430b56dca
+  zh: df9bc6b1a2321afd
+/reachforstar-dsh-subagent-pi/known-limitations-and-deferred-work:
+  en: 3e9d54745e48746d
+  zh: 6fb41e694284ce29
+/reachforstar-dsh-subagent-pi/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8b28a893c997cffb

@@ -1,6 +1,49 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/remote/ssh-local/README.md
-README.md: b0fbf46fae449887f79048c7150e047fbfca9370
-README.zh.md: 47442aeb65b49aad27775d139a33ca2ba2362038
+/:
+  en: 425bea1afc1f0d33
+  zh: fef321c7402d01af
+/reachforstar-dsh-ssh-local:
+  en: 50b2667b3e28f03b
+  zh: f73ae81790c5a6fd
+/reachforstar-dsh-ssh-local/summary:
+  en: 534a3a7648a3aa4a
+  zh: 044ecc6dd52a3f3e
+/reachforstar-dsh-ssh-local/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-ssh-local/use-this-package:
+  en: 5ed66010b3731e05
+  zh: 4236051da7088009
+/reachforstar-dsh-ssh-local/use-this-package/when-to-choose-it:
+  en: 25f33ac28c092555
+  zh: 330da181136e49d8
+/reachforstar-dsh-ssh-local/use-this-package/minimal-configuration:
+  en: 871f7b2d5cd9f3bf
+  zh: 804f898bfbe1f70b
+/reachforstar-dsh-ssh-local/understand-the-implementation:
+  en: 65d563329e680e01
+  zh: 3e6e92da1c8b7ea6
+/reachforstar-dsh-ssh-local/further-exploration:
+  en: e46da11c64c1a9a5
+  zh: 803ebebe6d37469d
+/reachforstar-dsh-ssh-local/config:
+  en: 606c5d3b57ffd1dd
+  zh: 2d7d5609a9ed3cc3
+/reachforstar-dsh-ssh-local/behavior:
+  en: a713d70ff98d477c
+  zh: c407a28bf4dee862
+/reachforstar-dsh-ssh-local/model-experience:
+  en: b7116ca01a11b90c
+  zh: 992a5386f1f9208f
+/reachforstar-dsh-ssh-local/model-experience/kv-cache-effect:
+  en: e584f58286a5b574
+  zh: 23a2a73cbf9e36ef
+/reachforstar-dsh-ssh-local/known-limitations-and-deferred-work:
+  en: 0729257576929f5d
+  zh: 6aaca40aef5f575e
+/reachforstar-dsh-ssh-local/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8b28a893c997cffb

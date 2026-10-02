@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/remote/README.md
-README.md: 178fcd6919a0473b2bc9962b9357b8436d2889ca
-README.zh.md: ac6b0b6df1204f011f22962d82ce5f9e9c86ad7e
+/:
+  en: 084147e2a08516e5
+  zh: a23232f5bbc916c1
+/remote-ssh-sftp-capability-family:
+  en: d3fdcab7fa7bb97f
+  zh: 429a1f1ab26f8a36
+/remote-ssh-sftp-capability-family/summary:
+  en: 1f98c114e0ea4468
+  zh: 6787e70225baa76b
+/remote-ssh-sftp-capability-family/table-of-contents:
+  en: a3ea23e312d29505
+  zh: 66d2b6bb018db7f2
+/remote-ssh-sftp-capability-family/packages:
+  en: 02b4bd71bac4f77a
+  zh: 29972273374b8e95
+/remote-ssh-sftp-capability-family/security-posture:
+  en: f9824861dc4b769c
+  zh: 9103b0c8bc25c2aa

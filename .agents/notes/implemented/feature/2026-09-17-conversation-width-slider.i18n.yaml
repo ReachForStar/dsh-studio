@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-conversation-width-slider.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-17-conversation-width-slider.md
-2026-09-17-conversation-width-slider.md: 0e0197665fdbf7c65b30a72bbd40e735b3aa97cc
-2026-09-17-conversation-width-slider.zh.md: e707b07fea3190fd464259c4b7a3bc5bf63e86f9
+/agent-note-choose-the-conversation-width-with-a-slider:
+  en: 4300c14ae20a426e
+  zh: 0634f5cbb61f74a1
+/agent-note-choose-the-conversation-width-with-a-slider/problem:
+  en: f721ad9dfca13ffe
+  zh: 3f382f08ea05d2ac
+/agent-note-choose-the-conversation-width-with-a-slider/decision:
+  en: d4342126c08aa66a
+  zh: e65fa9c32a82dfa2
+/agent-note-choose-the-conversation-width-with-a-slider/alternatives-considered:
+  en: 1c4f60a2cb6a990f
+  zh: 825abeff296f9030
+/agent-note-choose-the-conversation-width-with-a-slider/consequences:
+  en: ab73dcc6aa4e91fb
+  zh: ebffde15522322d8

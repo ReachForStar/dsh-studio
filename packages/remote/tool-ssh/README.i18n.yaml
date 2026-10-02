@@ -1,6 +1,55 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/remote/tool-ssh/README.md
-README.md: 2dfe99b8f8927639af98d72aa9a393796981f189
-README.zh.md: 3cbe04409c2c4578764b01d7e2c0713aa4470af8
+/:
+  en: 1b466ecd3b0052f0
+  zh: bba8b7584921480a
+/reachforstar-dsh-tool-ssh:
+  en: 7a7df00648b364ef
+  zh: da7839d907f3486c
+/reachforstar-dsh-tool-ssh/summary:
+  en: 5838636d88bc9598
+  zh: 7717777533bab730
+/reachforstar-dsh-tool-ssh/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-tool-ssh/use-this-package:
+  en: 1f2b257c307797e3
+  zh: 87da89ba4e5747db
+/reachforstar-dsh-tool-ssh/use-this-package/when-to-choose-it:
+  en: aac4e721b480ff15
+  zh: 80f2ba9e4894787c
+/reachforstar-dsh-tool-ssh/use-this-package/minimal-configuration:
+  en: b2107e4a73cd3cf0
+  zh: d0e87baec4b1f575
+/reachforstar-dsh-tool-ssh/understand-the-implementation:
+  en: a137c8b46d6d66bf
+  zh: 832b7c80d92179e9
+/reachforstar-dsh-tool-ssh/further-exploration:
+  en: 9d7af4d80179f366
+  zh: a50d65f64bcbe042
+/reachforstar-dsh-tool-ssh/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/reachforstar-dsh-tool-ssh/model-experience/request-context-and-condition:
+  en: cd8530c72534ee6b
+  zh: 16dbf6046e7e51fd
+/reachforstar-dsh-tool-ssh/model-experience/request-context-and-condition/what-the-model-sees:
+  en: 08dd65b70d128748
+  zh: 62ea0107694c01d8
+/reachforstar-dsh-tool-ssh/model-experience/request-context-and-condition/what-the-model-sees/verbatim-text-for-this-field-when-needed:
+  en: efa45d5438560dbd
+  zh: 4449253503ca55a5
+/reachforstar-dsh-tool-ssh/model-experience/request-context-and-condition/token-effect:
+  en: 4d82b19f42e69c94
+  zh: 6e584bc2918fba84
+/reachforstar-dsh-tool-ssh/model-experience/request-context-and-condition/kv-cache-effect:
+  en: a6e82ea86fac9742
+  zh: a0ba4e650e30f7a7
+/reachforstar-dsh-tool-ssh/known-limitations-and-deferred-work:
+  en: 06c4155a1f56adf3
+  zh: d63ff2c5f32f4b14
+/reachforstar-dsh-tool-ssh/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8b28a893c997cffb

@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-19-runtime-export-classification.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-19-runtime-export-classification.md
-2026-09-19-runtime-export-classification.md: 716bf1932f7844938d83124b3fc2251a37ad4067
-2026-09-19-runtime-export-classification.zh.md: a2f510351abd64898d320a07238c906af2410e51
+/agent-note-classify-duplicate-safe-cross-package-runtime-exports:
+  en: f0ff5c3cfbc21f4f
+  zh: d4d313d15789b08d
+/agent-note-classify-duplicate-safe-cross-package-runtime-exports/problem:
+  en: 0af608689e89f1c3
+  zh: c0b109a1d97fa401
+/agent-note-classify-duplicate-safe-cross-package-runtime-exports/decision:
+  en: d17a35175b609ef8
+  zh: 71cdd4706bf0d718
+/agent-note-classify-duplicate-safe-cross-package-runtime-exports/alternatives-considered:
+  en: 1014c3982ae75ecd
+  zh: 8ff1744f0eb8654e
+/agent-note-classify-duplicate-safe-cross-package-runtime-exports/consequences:
+  en: ac250c2d9150f5a4
+  zh: 6e71506b05e7ee97

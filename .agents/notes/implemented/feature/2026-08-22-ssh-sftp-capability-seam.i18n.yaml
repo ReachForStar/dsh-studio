@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-22-ssh-sftp-capability-seam.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-22-ssh-sftp-capability-seam.md
-2026-08-22-ssh-sftp-capability-seam.md: fe1e2ec5a3979f75824c4a2358148113ad028b4a
-2026-08-22-ssh-sftp-capability-seam.zh.md: 721bfdc6b39281f994dab091d87bff3bc1596b72
+/agent-note-ssh-sftp-capability-seam:
+  en: 9e18924db8ea3b37
+  zh: 91e310ff16e8e0d6
+/agent-note-ssh-sftp-capability-seam/problem:
+  en: 0aee79b21d6ad990
+  zh: 284e4da961380491
+/agent-note-ssh-sftp-capability-seam/decision:
+  en: 131bbfd9bc4d07be
+  zh: 23dc1cafca6fe1dd
+/agent-note-ssh-sftp-capability-seam/security-posture:
+  en: 80db7fd1dce4226c
+  zh: fffe44a1c1a5c93b
+/agent-note-ssh-sftp-capability-seam/alternatives-considered:
+  en: 7bacacf31315f261
+  zh: ec813ce72e75628d
+/agent-note-ssh-sftp-capability-seam/consequences:
+  en: e72f2f124f749aa0
+  zh: 8f2721d082d794a1
+/agent-note-ssh-sftp-capability-seam/testing:
+  en: c713f4909d26f45c
+  zh: 611a1e955d27d5da

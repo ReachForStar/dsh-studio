@@ -1,6 +1,40 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/remote/subprocess-sftp/README.md
-README.md: 70e7b114948c9bd9cc728acac5dfbfd0931b267a
-README.zh.md: 2c007a1aa6c453059eae08cb417306ed147c97cc
+/:
+  en: 042535fc4a6da7bd
+  zh: ba971d45044dd431
+/reachforstar-dsh-subprocess-sftp:
+  en: 74fdf8b1eed8c2c0
+  zh: 9cd117bedca24f9d
+/reachforstar-dsh-subprocess-sftp/summary:
+  en: bb3c6dd40993f2c7
+  zh: a0058439c16f6b00
+/reachforstar-dsh-subprocess-sftp/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-subprocess-sftp/use-this-package:
+  en: 6858097b5f99a558
+  zh: 85535602ea25a4da
+/reachforstar-dsh-subprocess-sftp/use-this-package/when-to-choose-it:
+  en: 7bdb9db5dfb45f10
+  zh: 4e3d848f2fc7b7f3
+/reachforstar-dsh-subprocess-sftp/understand-the-implementation:
+  en: 3c125963c3d67fbe
+  zh: 98abc5c31753500a
+/reachforstar-dsh-subprocess-sftp/further-exploration:
+  en: 53d44a26d126da33
+  zh: e66d10a4dd44a205
+/reachforstar-dsh-subprocess-sftp/model-experience:
+  en: a447da5504a4aea5
+  zh: dc1254b80246cece
+/reachforstar-dsh-subprocess-sftp/model-experience/kv-cache-effect:
+  en: 21f304c66e5ba98b
+  zh: b2de5d3c79472b19
+/reachforstar-dsh-subprocess-sftp/known-limitations-and-deferred-work:
+  en: e747a6adca74d6b9
+  zh: e1a70ca0c580756e
+/reachforstar-dsh-subprocess-sftp/known-limitations-and-deferred-work/dev-note:
+  en: 5358d90289ccff6f
+  zh: 4ccc027d42d29c73

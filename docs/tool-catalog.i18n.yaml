@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 167287d095eee2f5
-  zh: 18720d5e81379d2f
+  en: b835b33684f4e07d
+  zh: 4a035967dca754d9
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -93,8 +93,47 @@
   en: 594e5b42047969cc
   zh: 72189ca21345c210
 /tool-schema-catalog/deepseek-ai-dsh-tool-cordis/cordis-inspect-query:
-  en: 42a647ba98527f9e
-  zh: c53ade6a47ea523f
+  en: 02d2b47db3a7d150
+  zh: 605f1b90a60ea5a3
+/tool-schema-catalog/reachforstar-dsh-tool-ssh:
+  en: 337b0058c2a92239
+  zh: 337b0058c2a92239
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-list:
+  en: 657b667432b173fc
+  zh: 657b667432b173fc
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-mkdir:
+  en: 5832e7a25161c138
+  zh: 5832e7a25161c138
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-read:
+  en: 375978f6c905b429
+  zh: 375978f6c905b429
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-rename:
+  en: 5e7b9cd62ecc76b1
+  zh: 5e7b9cd62ecc76b1
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-rm:
+  en: 300d99cd32340052
+  zh: 300d99cd32340052
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-stat:
+  en: 452e126074149a54
+  zh: 452e126074149a54
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-write:
+  en: d8abaf0e89e52892
+  zh: d8abaf0e89e52892
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-connect:
+  en: 874f08bad8059979
+  zh: 874f08bad8059979
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-connections:
+  en: cb3e5706d05d559b
+  zh: cb3e5706d05d559b
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-disconnect:
+  en: fc83c860af4b4f20
+  zh: fc83c860af4b4f20
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-exec:
+  en: b447fa1ce9e143c3
+  zh: b447fa1ce9e143c3
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-test:
+  en: 22be175096446d1b
+  zh: 22be175096446d1b
 /tool-schema-catalog/deepseek-ai-dsh-tool-bash-persistent:
   en: bdd9e88c49029e05
   zh: bdd9e88c49029e05
@@ -111,8 +150,32 @@
   en: 591f6e54dbbc38fe
   zh: 591f6e54dbbc38fe
 /tool-schema-catalog/deepseek-ai-dsh-tool-str-replace-editor/str-replace-editor:
-  en: 3d11196a13e69228
-  zh: 56019c74cf0633cd
+  en: 0183f53034771892
+  zh: 1d9c519818e9c935
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw:
+  en: 37cc604a46a408a1
+  zh: 37cc604a46a408a1
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-draw:
+  en: a2f88f99e830562e
+  zh: a2f88f99e830562e
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-export:
+  en: 67605ac51cb8559b
+  zh: 67605ac51cb8559b
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-read:
+  en: 19f3e1c323b5371b
+  zh: 19f3e1c323b5371b
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-write:
+  en: 8e35eadfbfce0a3b
+  zh: 8e35eadfbfce0a3b
+/tool-schema-catalog/reachforstar-dsh-tool-a2a:
+  en: 934cd98fc1da38cc
+  zh: 934cd98fc1da38cc
+/tool-schema-catalog/reachforstar-dsh-tool-a2a/a2a-peers:
+  en: f6102c9fce7264b1
+  zh: 786f1a05dbb594e3
+/tool-schema-catalog/reachforstar-dsh-tool-a2a/a2a-send:
+  en: 8e6abedeafa55039
+  zh: e4c135b9ff9acbe9
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs:
   en: 07d595ce1f1a5184
   zh: 07d595ce1f1a5184

@@ -23,12 +23,15 @@
 /filesystem/observed-file-state-policy-plugin:
   en: 93e8d93a5049b67f
   zh: b50db8c745baa5fe
+/filesystem/removal-provider-contract:
+  en: a554e87403f6b44e
+  zh: d874ed1a6f3c997b
 /filesystem/error-taxonomy-provider-contract:
-  en: 0785de8395fef24f
-  zh: 0fc173dff1fe4658
+  en: 2bc6b2c398c457a0
+  zh: c6d89d58ed256048
 /filesystem/no-timeouts-on-file-io:
   en: ae18af906f3f7e50
   zh: 24a1aa6f903fe08d
 /filesystem/the-service-and-the-plugin:
-  en: 6dcd1f39906d785e
-  zh: e2b4b104bad31144
+  en: 9089339059f1e74b
+  zh: 04cbeb84daabb600

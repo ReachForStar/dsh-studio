@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-24-ssh-pty-streaming-sftp.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-24-ssh-pty-streaming-sftp.md
-2026-08-24-ssh-pty-streaming-sftp.md: 9466c18880d80bb3c9fc3acb99fd48f16387d932
-2026-08-24-ssh-pty-streaming-sftp.zh.md: f9348905df5807ce6ae2feaeaaad095b8dc79a75
+/agent-note-ssh-pty-and-streaming-sftp:
+  en: d179546e3718ad0c
+  zh: a3675ec1666fa975
+/agent-note-ssh-pty-and-streaming-sftp/problem:
+  en: 09c723090b75bf4e
+  zh: d32bc0a65b5ab1f1
+/agent-note-ssh-pty-and-streaming-sftp/decision:
+  en: 62444a1fdc767274
+  zh: c2a4abd569e9cd52
+/agent-note-ssh-pty-and-streaming-sftp/alternatives-considered:
+  en: 2e344622e465417f
+  zh: 6cc0c4dcb22389a2
+/agent-note-ssh-pty-and-streaming-sftp/consequences:
+  en: e66a325e08acb378
+  zh: 938eda2a1d37fb4e
+/agent-note-ssh-pty-and-streaming-sftp/testing:
+  en: 4d4a02222e835ce1
+  zh: 8f6ae226efaeb4e4

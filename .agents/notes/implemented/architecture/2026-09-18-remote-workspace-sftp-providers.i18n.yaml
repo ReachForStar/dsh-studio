@@ -1,6 +1,34 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-remote-workspace-sftp-providers.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-18-remote-workspace-sftp-providers.md
-2026-09-18-remote-workspace-sftp-providers.md: 91f2c439c89892a48649a3a7434a71712eb3b3d8
-2026-09-18-remote-workspace-sftp-providers.zh.md: 0d50669a0a8ba632bc0378add4f926ca287d9dd2
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam:
+  en: ab61d81f2b38d794
+  zh: 3b003a3e40f775ad
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/problem:
+  en: 760501d987904b1f
+  zh: 666e10bad0c1b2f9
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/decision:
+  en: 3bb8524dbb596630
+  zh: 906adc51d27ff2c4
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/decision/seam-vocabulary-added:
+  en: c990a616156578f4
+  zh: 66b564a0c7c646aa
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/decision/filesystem-semantics:
+  en: 99257bd618152015
+  zh: c293437e1951603b
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/decision/subprocess-semantics:
+  en: 5141db301ad854b1
+  zh: d5f777fcec818b84
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/decision/local-provider-fixes-carried-by-this-change:
+  en: c132fec44fdb85ee
+  zh: a7505b3ddd478ce1
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/alternatives-considered:
+  en: 2ab3726ac1b942c8
+  zh: 0e6be83e3e12b818
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/consequences:
+  en: 9bb02d377b5ae395
+  zh: 9fb8e5d4825d0240
+/agent-note-remote-workspace-providers-over-the-fork-ssh-seam/testing:
+  en: 5baa3e62b916d052
+  zh: 16ae39efd73a3903

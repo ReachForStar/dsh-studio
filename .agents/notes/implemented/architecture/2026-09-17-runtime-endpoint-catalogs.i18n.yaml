@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-runtime-endpoint-catalogs.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-17-runtime-endpoint-catalogs.md
-2026-09-17-runtime-endpoint-catalogs.md: 2e6430ffee18f5f453958784d815c122fff1ed31
-2026-09-17-runtime-endpoint-catalogs.zh.md: d7ddaf96248fb7e3d04d3ee8457584232631d2ea
+/agent-note-runtime-endpoint-catalogs:
+  en: 15a6a0cf80118006
+  zh: 930b1747656b9662
+/agent-note-runtime-endpoint-catalogs/problem:
+  en: 1ab472600b8b3d1c
+  zh: cd51bedcf459180e
+/agent-note-runtime-endpoint-catalogs/decision:
+  en: 9f6a8c4a8478bf4a
+  zh: ce30119b32e38923
+/agent-note-runtime-endpoint-catalogs/alternatives-considered:
+  en: ae1e4a72c9be479d
+  zh: 3374dbd077f9223d
+/agent-note-runtime-endpoint-catalogs/consequences:
+  en: d35f362f3db48d2e
+  zh: 48cf313b70c0ab4f

@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-workspace-file-editing.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-17-workspace-file-editing.md
-2026-09-17-workspace-file-editing.md: 75e606f6deecb8ae9662d55dfbdf62816933bcc1
-2026-09-17-workspace-file-editing.zh.md: e0f5975a6ed2633991463c93cbcf059ab3678e48
+/agent-note-edit-a-workspace-file-from-the-document-preview:
+  en: e31914dda39364c5
+  zh: dc8f0df5826b836d
+/agent-note-edit-a-workspace-file-from-the-document-preview/problem:
+  en: 6f94f0c15909ae96
+  zh: 929815870d673051
+/agent-note-edit-a-workspace-file-from-the-document-preview/decision:
+  en: 2de4f2122ea262c8
+  zh: 20fb8e72503155d6
+/agent-note-edit-a-workspace-file-from-the-document-preview/alternatives-considered:
+  en: a6c1e7d664053a9c
+  zh: e2086027156c511a
+/agent-note-edit-a-workspace-file-from-the-document-preview/consequences:
+  en: 1eb26edfec604dfc
+  zh: 526f70ae84b3247c

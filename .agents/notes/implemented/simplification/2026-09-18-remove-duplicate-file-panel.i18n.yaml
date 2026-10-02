@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-remove-duplicate-file-panel.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-09-18-remove-duplicate-file-panel.md
-2026-09-18-remove-duplicate-file-panel.md: 7bba683ff2d3bc4cbac244501a2277ac19ed5f2e
-2026-09-18-remove-duplicate-file-panel.zh.md: 16aec34a72cfadea6982711712b9e36f956b87d0
+/agent-note-remove-the-duplicate-file-panel:
+  en: 5c46f2f745fb0d41
+  zh: 8df599de2105638d
+/agent-note-remove-the-duplicate-file-panel/problem:
+  en: c8bece07cf2ea6e1
+  zh: 2aab684d709b41c2
+/agent-note-remove-the-duplicate-file-panel/decision:
+  en: 80f0497f32a64d72
+  zh: c71b6c5bea472742
+/agent-note-remove-the-duplicate-file-panel/alternatives-considered:
+  en: 10ffa2f2ef897a36
+  zh: 7a1ded7008256e9a
+/agent-note-remove-the-duplicate-file-panel/consequences:
+  en: 7288371c40cce734
+  zh: 513b7afce8c7f435
+/agent-note-remove-the-duplicate-file-panel/testing:
+  en: 11b9d4bc778a0272
+  zh: acbff10079f18531

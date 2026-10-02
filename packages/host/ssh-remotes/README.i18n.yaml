@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/host/ssh-remotes/README.md
-README.md: ce7e0aba1f6b503126d960a7b67a2fcd2db307a4
-README.zh.md: c28e8cf47026e31be63b937ad5b49ea04af011e9
+/:
+  en: 9176eda22a465851
+  zh: ed7f726c3e64e8f1
+/reachforstar-dsh-host-ssh-remotes:
+  en: fb46e9316c66e73d
+  zh: 0f860d1b6ea8997b
+/reachforstar-dsh-host-ssh-remotes/summary:
+  en: 72a71f7c6a3e7512
+  zh: 26bd8d14978f269d
+/reachforstar-dsh-host-ssh-remotes/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-host-ssh-remotes/use-this-package:
+  en: 3890d35eaf1f1c0c
+  zh: 06dc54ef1f2ed6d7
+/reachforstar-dsh-host-ssh-remotes/use-this-package/when-to-choose-it:
+  en: e63de24ac5e9a88c
+  zh: 23c89329bbc5cfc7
+/reachforstar-dsh-host-ssh-remotes/use-this-package/minimal-configuration:
+  en: 8d85c03c3a8341b5
+  zh: b3de41202895a33c
+/reachforstar-dsh-host-ssh-remotes/understand-the-implementation:
+  en: f457824c7f78b5dc
+  zh: 3e9dcb8e598a34fe
+/reachforstar-dsh-host-ssh-remotes/further-exploration:
+  en: d8e4221c4fcc6f2e
+  zh: ba115eafa0c80b4e
+/reachforstar-dsh-host-ssh-remotes/model-experience:
+  en: 0b7e405464ae172b
+  zh: 3c997c9cdec4e032
+/reachforstar-dsh-host-ssh-remotes/model-experience/kv-cache-effect:
+  en: 94c361de8bed4bb1
+  zh: 012e7ed54b1297bd
+/reachforstar-dsh-host-ssh-remotes/known-limitations-and-deferred-work:
+  en: 8ee93b0de1faaf8f
+  zh: d262ab8a8f2f6bce
+/reachforstar-dsh-host-ssh-remotes/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8b28a893c997cffb

@@ -1,6 +1,49 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/remote/ssh/README.md
-README.md: e2aa9fb6043e0a54bc024e66475764f35ed851e6
-README.zh.md: 0a48530dae694efe7c8a25c2f1f795873ef64913
+/:
+  en: e80aeff6e5a006be
+  zh: 8efc414db8224c9e
+/reachforstar-dsh-ssh:
+  en: 647c69ae450c1df8
+  zh: 25a7479cbe97ffa8
+/reachforstar-dsh-ssh/summary:
+  en: 5bd1877e4f04614f
+  zh: 56afde64cb4e428b
+/reachforstar-dsh-ssh/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-ssh/use-this-package:
+  en: f28a025944210f99
+  zh: 0f607d8107f80309
+/reachforstar-dsh-ssh/use-this-package/when-to-choose-it:
+  en: 69b095c9c946a9b1
+  zh: 1f7f46cda4ed16b0
+/reachforstar-dsh-ssh/use-this-package/minimal-configuration:
+  en: e0362210a18230e1
+  zh: 23dec533ff0a141c
+/reachforstar-dsh-ssh/understand-the-implementation:
+  en: 8b3e6a619ecde25a
+  zh: b14e5b0c03262bd6
+/reachforstar-dsh-ssh/further-exploration:
+  en: 6ce2e6181bee6ad8
+  zh: 1ff73d8f6de66667
+/reachforstar-dsh-ssh/service:
+  en: 5adc4e5bd6552391
+  zh: cd28afd114717e2a
+/reachforstar-dsh-ssh/errors:
+  en: 8e757b748668bdd5
+  zh: f8aab2d2746d04dd
+/reachforstar-dsh-ssh/model-experience:
+  en: f483846c53d22837
+  zh: e401e23bb15aaf3d
+/reachforstar-dsh-ssh/model-experience/kv-cache-effect:
+  en: e584f58286a5b574
+  zh: 23a2a73cbf9e36ef
+/reachforstar-dsh-ssh/known-limitations-and-deferred-work:
+  en: 138107f63fb4912b
+  zh: 8928b62e5e7de06d
+/reachforstar-dsh-ssh/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8b28a893c997cffb

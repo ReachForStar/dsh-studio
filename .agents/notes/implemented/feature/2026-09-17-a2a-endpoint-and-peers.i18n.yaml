@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-a2a-endpoint-and-peers.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-17-a2a-endpoint-and-peers.md
-2026-09-17-a2a-endpoint-and-peers.md: 3f1980099180cf51af02006ff9396e8c8b11ca3e
-2026-09-17-a2a-endpoint-and-peers.zh.md: 1fa59f50bb27c966de718ebbd231b4548fd17ab5
+/agent-note-serve-a2a-over-node-http-and-keep-peers-in-configuration:
+  en: 3b12c94761dd7211
+  zh: edef35f1f416d621
+/agent-note-serve-a2a-over-node-http-and-keep-peers-in-configuration/problem:
+  en: d98325cdbe067bf8
+  zh: 9c77c182192f1a5e
+/agent-note-serve-a2a-over-node-http-and-keep-peers-in-configuration/decision:
+  en: b4398321421de3a6
+  zh: 527210fa8a97e1a0
+/agent-note-serve-a2a-over-node-http-and-keep-peers-in-configuration/alternatives-considered:
+  en: fd06e1ba02bcb033
+  zh: b5621fe2876d3268
+/agent-note-serve-a2a-over-node-http-and-keep-peers-in-configuration/consequences:
+  en: bf55ae6561b6baef
+  zh: 4c32fce311f4f4b1

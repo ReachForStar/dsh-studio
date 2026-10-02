@@ -1497,7 +1497,27 @@ Send one message to a remote A2A agent and return its answer. Address a peer by 
     },
     "message": {
       "type": "string",
-      "description": "The message to send, as a self-contained request the peer can act on."
+      "description": "The task text, as a self-contained request the peer can act on."
+    },
+    "skill": {
+      "type": "string",
+      "description": "Skill the peer works under, from `a2a_peers`; omit to use the peer default."
+    },
+    "workspace": {
+      "type": "string",
+      "description": "Directory the peer runs in, when it should not use its own default."
+    },
+    "mode": {
+      "type": "string",
+      "description": "Channel: \"direct\" waits for the answer, \"bus\" publishes and returns early.",
+      "enum": [
+        "direct",
+        "bus"
+      ]
+    },
+    "wait": {
+      "type": "boolean",
+      "description": "On \"bus\", wait for the task to finish before returning."
     },
     "contextId": {
       "type": "string",

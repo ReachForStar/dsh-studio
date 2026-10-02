@@ -3,23 +3,32 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/a2a/a2a-status/README.md
 /:
-  en: 0a8863e17b859319
-  zh: 0587579d62f80a65
+  en: a45e8f8cad0ad24d
+  zh: a8740c4ce789bdec
 /reachforstar-dsh-a2a-status:
   en: 0259a4d40872137a
   zh: 81b8d47d149cd92d
 /reachforstar-dsh-a2a-status/summary:
   en: ba0142a551f417e4
-  zh: b71646210f75fe85
+  zh: a65aeaf49068f863
+/reachforstar-dsh-a2a-status/table-of-contents:
+  en: 4e53164159b5ce41
+  zh: 89582dc0294d0776
 /reachforstar-dsh-a2a-status/use-this-package:
   en: a0699edb49bb84be
-  zh: 91f68d4cbf585f4b
+  zh: cae4f74382055cc2
 /reachforstar-dsh-a2a-status/use-this-package/minimal-configuration:
-  en: ac29d56a216ce753
-  zh: 6b0598ad2197f3de
+  en: 81ae54672ee4b500
+  zh: 66d099aa3e898f38
 /reachforstar-dsh-a2a-status/model-experience:
-  en: b43e5bf416fc6761
-  zh: 9cfd6b9efecd47fe
+  en: 27f774cb1743c1bb
+  zh: 74afe58918800da7
+/reachforstar-dsh-a2a-status/model-experience/kv-cache-effect:
+  en: 135c8a8e4db3efa8
+  zh: 22a7663d617f990b
 /reachforstar-dsh-a2a-status/known-limitations-and-deferred-work:
-  en: e460cc828ccbb99b
-  zh: b2c935418aaab8bd
+  en: 7491015d01ff2db0
+  zh: d6cf0add26fa5ea9
+/reachforstar-dsh-a2a-status/known-limitations-and-deferred-work/dev-note:
+  en: a83b7d1e4ac22b26
+  zh: 8ed606d808b592bd

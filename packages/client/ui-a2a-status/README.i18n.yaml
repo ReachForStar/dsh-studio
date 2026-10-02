@@ -1,0 +1,34 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-a2a-status/README.md
+/:
+  en: 7260470fb048bdd8
+  zh: 6f112522a8dfda37
+/reachforstar-dsh-client-ui-a2a-status:
+  en: 7dc49c73b9f543d6
+  zh: 2f99c541db52bb41
+/reachforstar-dsh-client-ui-a2a-status/summary:
+  en: cfee771fdc1ab59c
+  zh: eacf2c094d381374
+/reachforstar-dsh-client-ui-a2a-status/table-of-contents:
+  en: 4e53164159b5ce41
+  zh: 89582dc0294d0776
+/reachforstar-dsh-client-ui-a2a-status/use-this-package:
+  en: 33ba71ed124794a5
+  zh: 0ebfe7ab15fde0cd
+/reachforstar-dsh-client-ui-a2a-status/use-this-package/minimal-configuration:
+  en: 4124e30433ed34a8
+  zh: 32ebeca960e4d253
+/reachforstar-dsh-client-ui-a2a-status/model-experience:
+  en: 96e1c06e5f7931ac
+  zh: 0c6c78bf60670a2d
+/reachforstar-dsh-client-ui-a2a-status/model-experience/kv-cache-effect:
+  en: 135c8a8e4db3efa8
+  zh: 22a7663d617f990b
+/reachforstar-dsh-client-ui-a2a-status/known-limitations-and-deferred-work:
+  en: 2e716392186931b4
+  zh: 9eb9a6d9f064606b
+/reachforstar-dsh-client-ui-a2a-status/known-limitations-and-deferred-work/dev-note:
+  en: 339fd29a75413a8a
+  zh: 6a365c723946b8bb

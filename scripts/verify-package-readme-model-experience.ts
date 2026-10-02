@@ -80,6 +80,8 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/remote/fs-sftp': { kind: 'indirect', reason: 'The remote filesystem delegates model rendering to the existing filesystem consumers.' },
   'packages/remote/subprocess-sftp': { kind: 'indirect', reason: 'The remote process provider delegates model rendering to Bash, terminal, LSP and ptc-runtime consumers.' },
   'packages/host/ssh-remotes': { kind: 'none', reason: 'Host Remote gateway for the browser; registers nothing model-facing.' },
+  'packages/a2a/a2a-status': { kind: 'none', reason: 'Host Remote gateway for the browser; it reports listener and broker reachability and registers nothing model-facing.' },
+  'packages/client/ui-a2a-status': { kind: 'none', reason: 'Browser-side Settings section over the a2a Remote; registers nothing model-facing.' },
   'packages/client/ui-ssh': { kind: 'none', reason: 'Browser-side settings page over the ssh Remote; registers nothing model-facing.' },
   'packages/shell/shell-env': { kind: 'indirect', reason: 'The env service exposes managed DSH_* facts through the shell tools (dsh-tool-bash/dsh-tool-pwsh); it registers no prompt or schema of its own.' },
   'packages/shell/bash-local': { kind: 'indirect', reason: 'The executor backend delegates model rendering to dsh-tool-bash.' },

@@ -300,3 +300,79 @@
   opacity: 0.5;
   cursor: default;
 }
+/* Inline mkdir/rename dialog: a single-row form below the SFTP header. */
+.dialog {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 6px 0;
+}
+
+.dialogInput {
+  flex: 1;
+  max-width: 240px;
+  padding: 4px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+}
+
+.dialogInput:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -1px;
+}
+
+/* Armed delete button: the second click confirms a recursive removal. */
+.actionBtn.danger {
+  border-color: var(--dsw-alias-error);
+  color: var(--dsw-alias-error);
+}
+
+.actionBtn.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-error) 12%, transparent);
+  color: var(--dsw-alias-error);
+}
+
+/* Inline file-detail card: metadata read from sftpStat. */
+.detailCard {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detailTitle {
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.detailRow {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.detailRow > span:first-child {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.detailRow > span:last-child {
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+  font-family: var(--dsw-font-mono);
+}

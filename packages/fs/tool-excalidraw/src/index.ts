@@ -47,6 +47,8 @@ const READ_FULL_JSON_MAX_BYTES = 128 * 1024
 const WRITE_SCENE_MAX_BYTES = 1024 * 1024
 /** Cap for the number of elements a single draw call may add. */
 const DRAW_MAX_ELEMENTS = 256
+/** Upper bound on the preview SVG embedded in `tool/result.meta` (64 KiB). */
+const PREVIEW_SVG_MAX_BYTES = 64 * 1024
 
 /** Scene summary shape returned to the model. */
 interface SceneSummary {
@@ -496,6 +498,32 @@ function xmlText(value: string): string {
 }
 
 /**
+ * Read the canvas background color from an `appState` object, mapping the
+ * Excalidraw "transparent" sentinel and empty strings to null so `sceneToSvg`
+ * omits the backdrop rect.
+ * @param appState - the scene's `appState` object (may be empty).
+ * @returns the background color, or null for a transparent canvas.
+ */
+function backgroundOf(appState: Record<string, unknown>): string | null {
+  const color = typeof appState['viewBackgroundColor'] === 'string' ? appState['viewBackgroundColor'] : ''
+  return color.length === 0 || color === 'transparent' ? null : color
+}
+
+/**
+ * Build the preview SVG for a scene, returning undefined when the scene is
+ * empty or the rendered SVG exceeds {@link PREVIEW_SVG_MAX_BYTES} so the
+ * `tool/result.meta` payload stays bounded.
+ * @param elements - the scene's element objects.
+ * @param appState - the scene's `appState` object (may be empty).
+ * @returns the SVG document, or undefined when no preview is emitted.
+ */
+function previewSvgOf(elements: readonly unknown[], appState: Record<string, unknown>): string | undefined {
+  if (elements.length === 0) return undefined
+  const svg = sceneToSvg(elements, backgroundOf(appState))
+  return svg.length <= PREVIEW_SVG_MAX_BYTES ? svg : undefined
+}
+
+/**
  * Register the four Excalidraw scene tools into the composed tool registry.
  * @param ctx - Host context with the tools and workspaceRegistry services.
  */
@@ -636,11 +664,13 @@ export function apply(ctx: Context): void {
             ok: { type: 'boolean', required: true },
             cwd: { type: 'string', required: true, description: 'Workspace directory owning the scene.' },
             elementCount: { type: 'integer', required: true },
+            previewSvg: { type: 'string', description: 'SVG preview of the current scene for UI display.' },
           },
         },
         render: (_args, value) => {
           return [{ type: 'text', text: `Excalidraw scene saved: ${value['elementCount']} elements.` }]
         },
+        presentationMeta: (_args, value) => ({ previewSvg: value['previewSvg'] ?? null }),
       },
       execute: async (args, exec) => {
         const location = sceneLocation(ctx, exec)
@@ -674,7 +704,19 @@ export function apply(ctx: Context): void {
         await mkdir(dirname(location.path), { recursive: true })
         await writeFile(location.path, JSON.stringify(repaired), 'utf8')
         const repairedRecord = repaired as Record<string, unknown>
-        return { ok: true, cwd: location.workspace, elementCount: (repairedRecord['elements'] as unknown[]).length }
+        const repairedElements = repairedRecord['elements'] as unknown[]
+        const repairedAppState = (typeof repairedRecord['appState'] === 'object' && repairedRecord['appState'] !== null)
+          ? repairedRecord['appState'] as Record<string, unknown>
+          : {}
+        const result: {
+          ok: boolean
+          cwd: string
+          elementCount: number
+          previewSvg?: string
+        } = { ok: true, cwd: location.workspace, elementCount: repairedElements.length }
+        const previewSvg = previewSvgOf(repairedElements, repairedAppState)
+        if (previewSvg !== undefined) result['previewSvg'] = previewSvg
+        return result
       },
       presentCall: args => ({
         card: 'generic',
@@ -733,11 +775,13 @@ export function apply(ctx: Context): void {
             added: { type: 'integer', required: true, description: 'Number of shapes added.' },
             totalElements: { type: 'integer', required: true, description: 'Total elements after the draw.' },
             skipped: { type: 'integer', required: true, description: 'Shapes dropped for an unsupported type.' },
+            previewSvg: { type: 'string', description: 'SVG preview of the current scene for UI display.' },
           },
         },
         render: (_args, value) => {
           return [{ type: 'text', text: `Drew ${value['added']} shapes on the canvas (${value['totalElements']} total).` }]
         },
+        presentationMeta: (_args, value) => ({ previewSvg: value['previewSvg'] ?? null }),
       },
       execute: async (args, exec) => {
         const location = sceneLocation(ctx, exec)
@@ -803,7 +847,17 @@ export function apply(ctx: Context): void {
         const elements = action === 'replace' ? built : [...existing, ...built]
         await mkdir(dirname(location.path), { recursive: true })
         await writeFile(location.path, JSON.stringify({ elements, appState }), 'utf8')
-        return { ok: true, cwd: location.workspace, added: built.length, totalElements: elements.length, skipped }
+        const result: {
+          ok: boolean
+          cwd: string
+          added: number
+          totalElements: number
+          skipped: number
+          previewSvg?: string
+        } = { ok: true, cwd: location.workspace, added: built.length, totalElements: elements.length, skipped }
+        const previewSvg = previewSvgOf(elements, appState)
+        if (previewSvg !== undefined) result['previewSvg'] = previewSvg
+        return result
       },
       presentCall: args => ({
         card: 'generic',

@@ -36,6 +36,7 @@ import { StatsFloat } from './StatsFloat.tsx'
 import { GitPanel } from './GitPanel.tsx'
 import { LatexPanel } from './LatexPanel.tsx'
 import { ExcalidrawPanel } from './ExcalidrawPanel.tsx'
+import { ExcalidrawToolView } from './ExcalidrawToolView.tsx'
 import { SshPanel, type SshPanelInjected, type SshPanelRpcResult } from './SshPanel.tsx'
 import { en, zh, type PolishKey } from './locales.ts'
 
@@ -249,8 +250,10 @@ export function apply(ctx: ClientContext): void {
                         ? await ctx.remote.ssh.sftpRemove(payload as never, signal)
                         : method === 'ssh.sftp.rename'
                           ? await ctx.remote.ssh.sftpRename(payload as never, signal)
-                          : undefined
-    if (result === undefined) throw new Error(`SSH 面板不支持 Remote 方法 ${method}`)
+                          : method === 'ssh.sftp.stat'
+                            ? await ctx.remote.ssh.sftpStat(payload as never, signal)
+                            : undefined
+    if (result === undefined) throw new Error(t('ssh.unsupportedMethod', { method }))
     return result.ok
       ? { ok: true, value: result.value }
       : { ok: false, error: { message: `${result.error.code}: ${result.error.message}` } }
@@ -313,5 +316,24 @@ export function apply(ctx: ClientContext): void {
         subscribeHostFrames: subscribeSshFrames,
       }),
     }, SshPanel)
+  })
+
+  // Excalidraw tool call cards: register a dedicated toolview for each of the
+  // three model-facing tools so the card carries an "Open in canvas" button,
+  // an inline SVG thumbnail of the resulting scene, and auto-switches to the
+  // canvas tab when a live result arrives.
+  ctx.slots.inject('tool.call.toolview', function* () {
+    yield ctx.slots.register(
+      { name: 'tool.call.toolview', key: 'excalidraw_draw', locale: NS },
+      ExcalidrawToolView,
+    )
+    yield ctx.slots.register(
+      { name: 'tool.call.toolview', key: 'excalidraw_write', locale: NS },
+      ExcalidrawToolView,
+    )
+    yield ctx.slots.register(
+      { name: 'tool.call.toolview', key: 'excalidraw_export', locale: NS },
+      ExcalidrawToolView,
+    )
   })
 }

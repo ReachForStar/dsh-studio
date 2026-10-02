@@ -20,6 +20,20 @@ import '@xterm/xterm/css/xterm.css'
 import type { PropsRuntime, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import css from './SshPanel.module.css'
 
+/** DSH body attribute the theme presenter toggles for the dark palette. */
+const DARK_ATTRIBUTE = 'data-ds-dark-theme'
+
+/** xterm dark palette (Catppuccin Mocha), applied while DSH is in dark mode. */
+const DARK_THEME = { background: '#1e1e2e', foreground: '#cdd6f4', cursor: '#f5e0dc' }
+
+/** xterm light palette (Catppuccin Latte), applied while DSH is in light mode. */
+const LIGHT_THEME = { background: '#eff1f5', foreground: '#4c4f69', cursor: '#dc8a78' }
+
+/** Resolve the xterm palette for the current DSH color mode. */
+function resolveTheme(): { background: string; foreground: string; cursor: string } {
+  return document.body.hasAttribute(DARK_ATTRIBUTE) ? DARK_THEME : LIGHT_THEME
+}
+
 /** One SSH Remote call result consumed by the panel. */
 export interface SshPanelRpcResult {
   ok: boolean
@@ -244,6 +258,13 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
   const [busyAction, setBusyAction] = useState<number | null>(null)
   const [connectionsLoaded, setConnectionsLoaded] = useState(false)
   const [filterText, setFilterText] = useState('')
+  const [mkdirOpen, setMkdirOpen] = useState(false)
+  const [mkdirName, setMkdirName] = useState('')
+  const [renameTarget, setRenameTarget] = useState<SftpEntryView | null>(null)
+  const [renameName, setRenameName] = useState('')
+  const [confirmRemovePath, setConfirmRemovePath] = useState<string | null>(null)
+  const [detailEntry, setDetailEntry] = useState<SftpEntryView | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -506,7 +527,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       cursorBlink: true,
       fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace",
       fontSize: 14,
-      theme: { background: '#1e1e2e', foreground: '#cdd6f4', cursor: '#f5e0dc' },
+      theme: resolveTheme(),
       convertEol: false,
     })
     const fit = new FitAddon()
@@ -571,6 +592,21 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     }
   }, [ptyOpen, terminalEl, listDir, homeDir, probeCwd, injectCwdHook])
 
+  // Repaint the xterm palette when the DSH color mode flips while the terminal
+  // is open. The terminal is created with the current mode's theme; this
+  // observer only fires on a live mode change, so a closed terminal (termRef
+  // null) or an untouched body, including the jsdom test fixture, is skipped.
+  useEffect(() => {
+    const apply = (): void => {
+      const term = termRef.current
+      if (term === null) return
+      term.options.theme = resolveTheme()
+    }
+    const observer = new MutationObserver(apply)
+    observer.observe(document.body, { attributes: true, attributeFilter: [DARK_ATTRIBUTE] })
+    return () => { observer.disconnect() }
+  }, [])
+
   // Clean up the PTY on unmount.
   useEffect(() => {
     return () => {
@@ -608,7 +644,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       const response = await fetch(url)
       if (!response.ok) {
         const text = await response.text()
-        throw new Error(`下载失败 (${response.status}): ${text}`)
+        throw new Error(t('ssh.downloadFailed', { status: String(response.status), error: text }))
       }
       const blob = await response.blob()
       const a = document.createElement('a')
@@ -625,7 +661,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     } finally {
       setDownloading(null)
     }
-  }, [selectedConn])
+  }, [selectedConn, t])
 
   // SFTP: upload via file input (carrier POST, raw file body).
   const handleUploadClick = useCallback(() => {
@@ -670,25 +706,34 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     input.click()
   }, [selectedConn, listDir])
 
-  // SFTP: mkdir.
+  // SFTP: mkdir — open an inline dialog; the actual call runs in submitMkdir.
   const handleMkdir = useCallback(() => {
-    const name = window.prompt(t('ssh.mkdirPrompt'))
-    if (name === null || name.trim() === '') return
-    const path = joinPath(sftpPath, name.trim())
+    setMkdirName('')
+    setMkdirOpen(true)
+  }, [])
+
+  const submitMkdir = useCallback(() => {
+    const name = mkdirName.trim()
+    if (name === '' || !selectedConn) return
+    const path = joinPath(sftpPath, name)
+    setMkdirOpen(false)
+    setMkdirName('')
     void (async () => {
       setSftpError(null)
       try {
-        // 面板接受 `a/b/c` 这样的多级名称，父目录缺失时须由远端一并创建。
+        // The panel accepts multi-segment names like `a/b/c`; the remote end
+        // creates missing parents when `recursive` is set.
         const result = await rpc('ssh.sftp.mkdir', { connectionId: selectedConn, path, recursive: true })
         if (result.ok) { void listDir(sftpPath) }
-        else { setSftpError(result.error?.message ?? '创建目录失败') }
+        else { setSftpError(result.error?.message ?? t('ssh.mkdirFailed', { error: '' })) }
       } catch (error) {
         setSftpError(error instanceof Error ? error.message : String(error))
       }
     })()
-  }, [selectedConn, sftpPath, listDir, t])
+  }, [mkdirName, selectedConn, sftpPath, listDir, t])
 
-  // SFTP: remove (recursive for directories).
+  // SFTP: remove (recursive for directories). The actual deletion runs here;
+  // handleRemoveClick gates it behind a two-step confirm.
   const removeEntry = useCallback(async (entry: SftpEntryView) => {
     if (!selectedConn) return
     setBusyAction(nextActionId())
@@ -699,31 +744,72 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         connectionId: selectedConn, path: entry.path, recursive,
       })
       if (result.ok) { void listDir(sftpPath) }
-      else { setSftpError(result.error?.message ?? `删除失败: ${entry.name}`) }
+      else { setSftpError(result.error?.message ?? t('ssh.removeFailed', { error: entry.name })) }
     } catch (error) {
       setSftpError(error instanceof Error ? error.message : String(error))
     } finally {
       setBusyAction(null)
     }
-  }, [selectedConn, sftpPath, listDir])
-
-  // SFTP: rename.
-  const renameEntry = useCallback(async (entry: SftpEntryView) => {
-    if (!selectedConn) return
-    const newName = window.prompt(t('ssh.renamePrompt'), entry.name)
-    if (newName === null || newName === entry.name || newName.trim() === '') return
-    const toPath = joinPath(parentOf(entry.path), newName.trim())
-    setSftpError(null)
-    try {
-      const result = await rpc('ssh.sftp.rename', {
-        connectionId: selectedConn, path: entry.path, toPath,
-      })
-      if (result.ok) { void listDir(sftpPath) }
-      else { setSftpError(result.error?.message ?? `重命名失败: ${entry.name}`) }
-    } catch (error) {
-      setSftpError(error instanceof Error ? error.message : String(error))
-    }
   }, [selectedConn, sftpPath, listDir, t])
+
+  // Two-step delete: the first click arms the confirm state for that row; a
+  // second click on the same row runs the removal. Any other interaction
+  // (a different row, navigation, or opening a dialog) clears the armed row.
+  const handleRemoveClick = useCallback((entry: SftpEntryView) => {
+    if (confirmRemovePath === entry.path) {
+      setConfirmRemovePath(null)
+      void removeEntry(entry)
+    } else {
+      setConfirmRemovePath(entry.path)
+    }
+  }, [confirmRemovePath, removeEntry])
+
+  // SFTP: rename — open an inline dialog seeded with the current name.
+  const renameEntry = useCallback((entry: SftpEntryView) => {
+    setRenameTarget(entry)
+    setRenameName(entry.name)
+  }, [])
+
+  const submitRename = useCallback(() => {
+    const target = renameTarget
+    const newName = renameName.trim()
+    if (target === null || newName === '' || newName === target.name || !selectedConn) return
+    const toPath = joinPath(parentOf(target.path), newName)
+    setRenameTarget(null)
+    setRenameName('')
+    setSftpError(null)
+    void (async () => {
+      try {
+        const result = await rpc('ssh.sftp.rename', {
+          connectionId: selectedConn, path: target.path, toPath,
+        })
+        if (result.ok) { void listDir(sftpPath) }
+        else { setSftpError(result.error?.message ?? t('ssh.renameFailed', { error: target.name })) }
+      } catch (error) {
+        setSftpError(error instanceof Error ? error.message : String(error))
+      }
+    })()
+  }, [renameTarget, renameName, selectedConn, sftpPath, listDir, t])
+
+  // SFTP: fetch fresh metadata for one entry via the sftpStat Remote and show
+  // it in an inline detail card. The list entry is shown immediately and
+  // refined once the stat round-trip resolves.
+  const showDetail = useCallback(async (entry: SftpEntryView) => {
+    if (!selectedConn) return
+    setDetailEntry(entry)
+    setDetailLoading(true)
+    try {
+      const result = await rpc('ssh.sftp.stat', { connectionId: selectedConn, path: entry.path })
+      if (result.ok) {
+        const value = result.value as { entry: SftpEntryView } | undefined
+        if (value?.entry !== undefined) setDetailEntry(value.entry)
+      }
+    } catch {
+      // Keep the list entry's metadata on a stat failure.
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [selectedConn, rpc])
 
   return (
     <div className={css.view} data-ui-polish-ssh="">
@@ -828,6 +914,66 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
             </button>
           </div>
         </div>
+        {mkdirOpen && (
+          <form
+            className={css.dialog}
+            onSubmit={(e) => { e.preventDefault(); submitMkdir() }}
+          >
+            <input
+              className={css.dialogInput}
+              autoFocus
+              value={mkdirName}
+              placeholder={t('ssh.mkdirPrompt')}
+              onChange={(e) => { setMkdirName(e.target.value) }}
+            />
+            <button type="submit" className={css.button}>{t('ssh.confirm')}</button>
+            <button
+              type="button"
+              className={css.button}
+              onClick={() => { setMkdirOpen(false); setMkdirName('') }}
+            >
+              {t('ssh.cancel')}
+            </button>
+          </form>
+        )}
+        {renameTarget !== null && (
+          <form
+            className={css.dialog}
+            onSubmit={(e) => { e.preventDefault(); submitRename() }}
+          >
+            <input
+              className={css.dialogInput}
+              autoFocus
+              value={renameName}
+              placeholder={t('ssh.renamePrompt')}
+              onChange={(e) => { setRenameName(e.target.value) }}
+            />
+            <button type="submit" className={css.button}>{t('ssh.confirm')}</button>
+            <button
+              type="button"
+              className={css.button}
+              onClick={() => { setRenameTarget(null); setRenameName('') }}
+            >
+              {t('ssh.cancel')}
+            </button>
+          </form>
+        )}
+        {detailEntry !== null && (
+          <div className={css.detailCard}>
+            <div className={css.detailHeader}>
+              <span className={css.detailTitle}>{t('ssh.detailTitle')}</span>
+              <button className={css.actionBtn} onClick={() => { setDetailEntry(null) }}>
+                {t('ssh.detailClose')}
+              </button>
+            </div>
+            <div className={css.detailRow}><span>{t('ssh.name')}</span><span>{detailEntry.name}</span></div>
+            <div className={css.detailRow}><span>{t('ssh.type')}</span><span>{detailEntry.type}</span></div>
+            <div className={css.detailRow}><span>{t('ssh.size')}</span><span>{detailEntry.type === 'file' ? formatSize(detailEntry.size) : '—'}</span></div>
+            <div className={css.detailRow}><span>{t('ssh.modified')}</span><span>{new Date(detailEntry.mtime).toLocaleString()}</span></div>
+            <div className={css.detailRow}><span>{t('ssh.detailPath')}</span><span>{detailEntry.path}</span></div>
+            {detailLoading && <div className={css.loading}>{t('ssh.loading')}</div>}
+          </div>
+        )}
         {sftpError && <div className={css.error}>{sftpError}</div>}
         {!ptyOpen && <div className={css.hint}>{t('ssh.needsTerminal')}</div>}
         {ptyOpen && sftpLoading && <div className={css.loading}>{t('ssh.loading')}</div>}
@@ -871,11 +1017,18 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
                           {downloading === entry.name ? t('ssh.downloading') : t('ssh.download')}
                         </button>
                       )}
-                      <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void renameEntry(entry) }}>
+                      <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { renameEntry(entry) }}>
                         {t('ssh.rename')}
                       </button>
-                      <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void removeEntry(entry) }}>
-                        {t('ssh.remove')}
+                      <button
+                        className={`${css.actionBtn}${confirmRemovePath === entry.path ? ` ${css.danger}` : ''}`}
+                        disabled={busyAction !== null}
+                        onClick={() => { handleRemoveClick(entry) }}
+                      >
+                        {confirmRemovePath === entry.path ? t('ssh.confirmRemove') : t('ssh.remove')}
+                      </button>
+                      <button className={css.actionBtn} disabled={busyAction !== null} onClick={() => { void showDetail(entry) }}>
+                        {t('ssh.details')}
                       </button>
                     </td>
                   </tr>

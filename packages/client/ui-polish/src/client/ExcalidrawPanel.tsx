@@ -297,6 +297,42 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
     }
   }, [exporting])
 
+  // Export the canvas as an SVG download (vector source, no background option).
+  const exportSvg = useCallback(async (): Promise<void> => {
+    const api = apiRef.current
+    if (api === null || exporting) return
+    setExporting(true)
+    setError(null)
+    try {
+      const elements = api.getSceneElements()
+      const appState = api.getAppState() as Record<string, unknown>
+      /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-call, typescript/no-unsafe-argument --
+       * excalidraw's appState is a loose record by design */
+      const { exportToSvg } = await import('@excalidraw/excalidraw')
+      const svg = await exportToSvg({
+        elements,
+        appState: appState as never,
+        files: api.getFiles() as never,
+        exportPadding: 10,
+      })
+      const source = new XMLSerializer().serializeToString(svg)
+      const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      const name = typeof api.getName() === 'string' && api.getName().length > 0 ? api.getName() : 'canvas'
+      anchor.href = url
+      anchor.download = `${name}.svg`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => { URL.revokeObjectURL(url) }, 2000)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setExporting(false)
+    }
+  }, [exporting])
+
   return (
     <div className={css.view} data-ui-polish-excalidraw="">
       <div className={css.toolbar}>
@@ -310,6 +346,13 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
             onClick={() => { void exportPng() }}
           >
             {t('excalidraw.export')}
+          </button>
+          <button
+            type="button" className={css.export}
+            disabled={exporting || cwd === undefined}
+            onClick={() => { void exportSvg() }}
+          >
+            {t('excalidraw.exportSvg')}
           </button>
         </span>
       </div>

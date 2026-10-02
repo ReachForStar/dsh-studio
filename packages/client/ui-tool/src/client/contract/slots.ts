@@ -92,6 +92,8 @@ export interface ToolCallCommonProps {
   loadImage: MessageImageLoader
   /** Inspect this call in the trajectory view when available. */
   inspect?: (() => void) | undefined
+  /** Activate a conversation view tab by id, optionally focusing an element. */
+  openView?: ((view: string, focus?: string) => void) | undefined
 }
 
 /** Stage-specific tool data; only start/result expose the dispatched call material. */

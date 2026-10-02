@@ -16,9 +16,8 @@ export const DEFAULT_MAX_REQUEST_BODY_BYTES = 300 * 1024 * 1024
 interface BridgeServerResponse {
   readonly destroyed: boolean
   readonly writableEnded: boolean
-  on(event: 'close', listener: () => void): this
+  on(event: 'close' | 'drain', listener: () => void): this
   off(event: 'close' | 'drain', listener: () => void): this
-  once(event: 'close' | 'drain', listener: () => void): this
   writeHead(statusCode: number, headers?: Record<string, string>): unknown
   write(chunk: Uint8Array): boolean
   end(): unknown
@@ -100,22 +99,37 @@ export async function bridge(
     if (requestUnread) req.destroy()
     return
   }
+  // One persistent drain listener reused across all backpressure events. The
+  // compression middleware forwards res.on('drain') to an internal gzip stream
+  // but does not forward res.off, so once('drain') auto-removal breaks and
+  // leaks a listener per event. A single on('drain') stays under the limit.
+  // 'close' is not forwarded by compression, so on/off work normally for it.
+  let pendingDrain: (() => void) | null = null
+  res.on('drain', () => {
+    const settle = pendingDrain
+    if (settle !== null) {
+      pendingDrain = null
+      settle()
+    }
+  })
   for await (const chunk of response.body) {
     // Drain without writing after disconnect: cancelling Node multipart bodies
     // can race their producer and reject with ERR_INVALID_STATE.
     if (abort.signal.aborted) continue
-    // Backpressure: a false return means the socket buffer is full — wait for drain
-    // instead of buffering unboundedly (slow or suspended consumers). 'close' also
-    // resolves so a mid-wait disconnect cannot park this loop forever.
+    // Backpressure: a false return means the socket buffer is full — wait for
+    // drain instead of buffering unboundedly (slow or suspended consumers).
+    // 'close' resolves too so a mid-wait disconnect cannot park this loop.
     if (!res.write(chunk) && !res.destroyed) {
       await new Promise<void>((resolve) => {
-        const done = (): void => {
-          res.off('drain', done)
-          res.off('close', done)
+        const onClose = (): void => {
+          pendingDrain = null
           resolve()
         }
-        res.once('drain', done)
-        res.once('close', done)
+        pendingDrain = () => {
+          res.off('close', onClose)
+          resolve()
+        }
+        res.on('close', onClose)
       })
     }
   }

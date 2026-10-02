@@ -106,7 +106,9 @@ describe('HTTP bridge abort', () => {
     try {
       await expect.poll(() => settled).toBe(true)
       expect(writes).toBe(1)
-      expect(response.listenerCount('drain')).toBe(0)
+      // One persistent drain listener remains for the response lifecycle;
+      // it is a no-op once the write loop has settled.
+      expect(response.listenerCount('drain')).toBe(1)
     } finally {
       // Release a regressed bridge parked after the one close event.
       cleaningUp = true

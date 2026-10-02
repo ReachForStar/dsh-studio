@@ -1,6 +1,46 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/a2a/a2a-host/README.md
-README.md: b2e28d3a066b4cde1787d9f8938483f10ec4b08e
-README.zh.md: b3bf1c22e41c43d7931f9bc66167ad3170a794a7
+/:
+  en: 3f9f92e2c7876198
+  zh: df96748841bcc229
+/reachforstar-dsh-a2a-host:
+  en: f4ffd3a2f3ddd53e
+  zh: b74bccaff25e2cb7
+/reachforstar-dsh-a2a-host/summary:
+  en: c02e85fd8d7b053b
+  zh: 74b7ab056d728527
+/reachforstar-dsh-a2a-host/table-of-contents:
+  en: 80b31a934611cb4a
+  zh: 05f3f7f9cb2fd881
+/reachforstar-dsh-a2a-host/use-this-package:
+  en: f0df441989a99a63
+  zh: 101d1f252c414ef2
+/reachforstar-dsh-a2a-host/use-this-package/when-to-choose-it:
+  en: ba27bb7845932404
+  zh: ab565dff21d5340e
+/reachforstar-dsh-a2a-host/use-this-package/minimal-configuration:
+  en: 19c3794d0e1aa10d
+  zh: 846117388353f438
+/reachforstar-dsh-a2a-host/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/reachforstar-dsh-a2a-host/understand-the-implementation/source-map:
+  en: e5ef23c30a04803d
+  zh: 2d6bff08fb6daf76
+/reachforstar-dsh-a2a-host/understand-the-implementation/export-shape:
+  en: 0bd8d32448fd2cc2
+  zh: 3862b00449f9a496
+/reachforstar-dsh-a2a-host/understand-the-implementation/turn-mechanics:
+  en: 21192cde994058a0
+  zh: 970cea87576923ea
+/reachforstar-dsh-a2a-host/further-exploration:
+  en: 9addb976421ab848
+  zh: 8c91368cd7236f05
+/reachforstar-dsh-a2a-host/known-limitations-and-deferred-work:
+  en: 7efd4d61a608801f
+  zh: 3271361a439f7464
+/reachforstar-dsh-a2a-host/known-limitations-and-deferred-work/dev-note:
+  en: 47b51c8820934486
+  zh: af771134a19e69d2

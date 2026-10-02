@@ -1,6 +1,7 @@
 import { createServer } from 'node:net'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { createA2AServer, TaskStore } from '@reachforstar/dsh-a2a'
 import type { A2AServer, AgentCard, AgentSkill } from '@reachforstar/dsh-a2a'
 import { buildAgentCard, DEFAULT_SKILL } from './card.ts'
@@ -40,6 +41,8 @@ export interface Config {
   port?: number
   /** Value calls must carry in `X-Api-Key`; empty serves unauthenticated. */
   apiKey?: string
+  /** Credential reference (environment-variable name) resolved through `ctx.credentials` per bind. */
+  apiKeyEnv?: string
   /** Endpoint peers are told to call, when it differs from host and port. */
   url?: string
   /** Working directory sessions start in; the host default when absent. */
@@ -68,6 +71,7 @@ export const Config: z<Config> = z.object({
   host: z.string().default('127.0.0.1'),
   port: z.natural().default(9310),
   apiKey: z.string().default(''),
+  apiKeyEnv: z.string().role('credential-ref'),
   url: z.string(),
   cwd: z.string(),
   agentPreset: z.string(),
@@ -136,7 +140,7 @@ export class A2AHostService extends Service {
         ? {} : { documentationUrl: card.documentationUrl },
       url: config.url ?? `http://${config.host ?? '127.0.0.1'}:${String(config.port ?? 9310)}/`,
       skills: card.skills ?? [DEFAULT_SKILL],
-      authenticated: (config.apiKey ?? '').length > 0,
+      authenticated: (config.apiKey ?? '').length > 0 || (config.apiKeyEnv ?? '').length > 0,
     })
   }
 
@@ -154,6 +158,31 @@ export class A2AHostService extends Service {
    */
   async [Service.init](): Promise<void> {
     await this.start()
+  }
+
+  /**
+   * The key this listener enforces, from the literal value or the named credential.
+   *
+   * A credential reference is resolved once per bind, so a rotated secret
+   * reaches the next mount without any plugin-specific wiring; the literal
+   * `apiKey` stays for deployments that compose the value directly.
+   * @returns the key to require, empty when this deployment configured none.
+   */
+  private async resolveApiKey(): Promise<string> {
+    if (this.config.apiKey !== undefined && this.config.apiKey.length > 0) return this.config.apiKey
+    const name = this.config.apiKeyEnv
+    if (name === undefined || name.length === 0) return ''
+    const credentials = this.ctx.get('credentials')
+    if (credentials === undefined) {
+      this.ctx.logger.warn(`a2a-host: apiKeyEnv "${name}" is set but no credentials service is mounted; serving without authentication`)
+      return ''
+    }
+    const record = await credentials.resolve(credentialRef(name))
+    if (record === undefined) {
+      this.ctx.logger.warn(`a2a-host: credential "${name}" is not set; serving without authentication`)
+      return ''
+    }
+    return record.value
   }
 
   /**
@@ -175,11 +204,19 @@ export class A2AHostService extends Service {
         this.ctx.logger.warn(`${message}: ${error instanceof Error ? error.message : String(error)}`)
       },
     })
+    const apiKey = await this.resolveApiKey()
+    // The card advertises authentication from the resolved key rather than the
+    // intent to configure one: a missing credential would otherwise promise
+    // peers a check this listener does not enforce.
+    if (apiKey.length === 0) {
+      delete this.card.securitySchemes
+      delete this.card.securityRequirements
+    }
     const server = createA2AServer({
       card: this.card,
       executor,
       store: this.store,
-      apiKey: this.config.apiKey ?? '',
+      apiKey,
       port: this.config.port ?? 9310,
       host: this.config.host ?? '127.0.0.1',
       onError: (message, error) => {
@@ -225,7 +262,7 @@ export class A2AHostService extends Service {
  * 检测与实际 listen 之间有竞态，但同一进程内足够避免重复启动。
  */
 async function isPortInUse(host: string, port: number): Promise<boolean> {
-  return new Promise<boolean>(resolve => {
+  return new Promise<boolean>((resolve) => {
     const probe = createServer()
     probe.once('error', () => resolve(true))
     probe.listen(port, host, () => probe.close(() => resolve(false)))

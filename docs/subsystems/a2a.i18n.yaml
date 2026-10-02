@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for a2a.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/a2a.md
-a2a.md: 7237cbd4f13de46261b9a2b274f7f2e461b13a7a
-a2a.zh.md: 68d4dc6d44065a937ff53f2ab0af8a6075d25c75
+/a2a-agent-to-agent:
+  en: 0095d7844aaff3ff
+  zh: ba4965aaa2750273
+/a2a-agent-to-agent/peers-are-configuration-not-model-input:
+  en: b3a1853a79bd663b
+  zh: 9ab2b608ab9397e0
+/a2a-agent-to-agent/server-half:
+  en: 69ce8d895fdd2c79
+  zh: 88bfa57b73fa92d2
+/a2a-agent-to-agent/task-and-session-identity:
+  en: c431c63aa3a8dff2
+  zh: 4dc3bb5cd66f604b
+/a2a-agent-to-agent/durability:
+  en: c07512e5beb0275b
+  zh: def7a0d7a7a58539
+/a2a-agent-to-agent/configuration:
+  en: 52c81e7255cbdd32
+  zh: acc57e7504fb4354
+/a2a-agent-to-agent/related:
+  en: b2af1e8daece6397
+  zh: fd1e1ed6caa30aa9

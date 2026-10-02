@@ -26,9 +26,20 @@ function sessionController(): SessionControllerStub {
   }
 }
 
-async function host(config: Parameters<typeof apply>[1]): Promise<{ ctx: Context; service: A2AHostService }> {
+async function host(
+  config: Parameters<typeof apply>[1],
+  options: { credentials?: Record<string, string> } = {},
+): Promise<{ ctx: Context; service: A2AHostService }> {
   const ctx = new Context()
   ctx.provide('sessionController', sessionController() as never)
+  if (options.credentials !== undefined) {
+    const values = options.credentials
+    ctx.provide('credentials', {
+      resolve: (ref: string) => Promise.resolve(values[ref] === undefined
+        ? undefined
+        : { value: values[ref], source: 'environment' }),
+    } as never)
+  }
   const fiber = ctx.plugin({ apply, inject: ['sessionController'] }, config)
   await fiber.await()
   disposers.push(async () => { await fiber.dispose() })
@@ -68,6 +79,49 @@ describe('A2AHostService', () => {
       body: JSON.stringify({ jsonrpc: '2.0', id: '1', method: 'ListTasks', params: {} }),
     })
     expect(rejected.status).toBe(401)
+  })
+
+  it('配置了 apiKeyEnv 时经凭据解析生效，并把它写进卡片', async () => {
+    const { service } = await host({ port: 0, apiKeyEnv: 'DSH_A2A_API_KEY' }, {
+      credentials: { DSH_A2A_API_KEY: 'secret-from-credential' },
+    })
+    const card = await (await fetch(`${service.url}.well-known/agent-card.json`)).json() as AgentCard
+    expect(card.securityRequirements).toEqual([{ schemes: { apiKey: { list: [] } } }])
+    const rejected = await fetch(service.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: '1', method: 'ListTasks', params: {} }),
+    })
+    expect(rejected.status).toBe(401)
+    const accepted = await fetch(service.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Api-Key': 'secret-from-credential' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: '1', method: 'ListTasks', params: {} }),
+    })
+    expect(accepted.status).toBe(200)
+  })
+
+  it('声明的凭据解析不出来时按未认证服务，卡片也不再声称需要鉴权', async () => {
+    const { service } = await host({ port: 0, apiKeyEnv: 'DSH_A2A_API_KEY' }, { credentials: {} })
+    const card = await (await fetch(`${service.url}.well-known/agent-card.json`)).json() as AgentCard
+    expect(card.securityRequirements).toBeUndefined()
+    const accepted = await fetch(service.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: '1', method: 'ListTasks', params: {} }),
+    })
+    expect(accepted.status).toBe(200)
+  })
+
+  it('没有挂载凭据服务时同样按未认证服务', async () => {
+    const { service } = await host({ port: 0, apiKeyEnv: 'DSH_A2A_API_KEY' })
+    expect(service.card.securitySchemes).toBeUndefined()
+    const accepted = await fetch(service.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: '1', method: 'ListTasks', params: {} }),
+    })
+    expect(accepted.status).toBe(200)
   })
 
   it('自带卡片身份可覆盖，卸载后停止监听', async () => {

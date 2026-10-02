@@ -12,7 +12,7 @@ A peer is a name configured on `dsh-a2a` (URL, optional `apiKey` sent as `X-Api-
 
 ## Server half
 
-`ctx.a2aHost` binds its own listener (loopback by default) and answers `POST /` with `SendMessage`, `SendStreamingMessage`, `GetTask`, `ListTasks`, `CancelTask`, `SubscribeToTask`, and `GetExtendedAgentCard`; the four push-notification methods answer `-32003 PUSH_NOTIFICATION_NOT_SUPPORTED` rather than pretending. Messages addressed to terminal tasks and subscriptions to terminal tasks are refused with `-32004`, cancellation of a terminal task with `-32002`, and `GetExtendedAgentCard` answers `-32004` because the card declares no `extendedAgentCard`. Calls must carry `A2A-Version: 1.0`; an absent or empty header is 0.3 as the protocol assumes, and the server answers it with `-32009`. `GET /.well-known/agent-card.json` serves the advertised card and `GET /health` the liveness answer. A separate listener, not a prefix of the browser server, because peers discover it by `origin + /.well-known/agent-card.json`. Bodies are capped at 1 MiB, and a configured `apiKey` rejects a call without a matching `X-Api-Key` with `-32000`.
+`ctx.a2aHost` binds its own listener (loopback by default) and answers `POST /` with `SendMessage`, `SendStreamingMessage`, `GetTask`, `ListTasks`, `CancelTask`, `SubscribeToTask`, and `GetExtendedAgentCard`; the four push-notification methods answer `-32003 PUSH_NOTIFICATION_NOT_SUPPORTED` rather than pretending. Messages addressed to terminal tasks and subscriptions to terminal tasks are refused with `-32004`, cancellation of a terminal task with `-32002`, and `GetExtendedAgentCard` answers `-32004` because the card declares no `extendedAgentCard`. Calls must carry `A2A-Version: 1.0`; an absent or empty header is 0.3 as the protocol assumes, and the server answers it with `-32009`. `GET /.well-known/agent-card.json` serves the advertised card and `GET /health` the liveness answer. A separate listener, not a prefix of the browser server, because peers discover it by `origin + /.well-known/agent-card.json`. Bodies are capped at 1 MiB, and a configured API key rejects a call without a matching `X-Api-Key` with `-32000`.
 
 ## Task and session identity
 
@@ -34,13 +34,13 @@ Tasks live in a bounded in-memory store for the life of the process, with termin
 - name: '@reachforstar/dsh-a2a-host'
   config:
     port: 9310
-    apiKey: '${DSH_A2A_API_KEY}'
+    apiKeyEnv: DSH_A2A_API_KEY
     card:
       name: 'dsh-studio'
       description: 'DeepSeek Harness agent sessions'
 ```
 
-Peer `url` is required; the rest default to unset (`cardPath` falls back to `/.well-known/agent-card.json`). The host endpoint's port, bind host, `apiKey`, and the card's identity are configuration, so a deployment that only calls outward mounts `dsh-a2a` without `dsh-a2a-host`.
+Peer `url` is required; the rest default to unset (`cardPath` falls back to `/.well-known/agent-card.json`). The host endpoint's port, bind host, `apiKeyEnv` (or literal `apiKey`), and the card's identity are configuration, so a deployment that only calls outward mounts `dsh-a2a` without `dsh-a2a-host`.
 
 ## Related
 

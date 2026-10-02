@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-a2a-host` is the listener half a deployment mounts: it builds the agent card, binds an HTTP endpoint (loopback by default), authenticates callers when an `apiKey` is configured, and answers A2A requests by driving a harness session through `DshA2AExecutor`. A peer that sends a message with a `contextId` reaches the session of that id, so the peer resumes work where it left off rather than starting a new one. The endpoint is a separate listener, not a prefix of the browser server, because peers discover it by `origin + /.well-known/agent-card.json`.
+`dsh-a2a-host` is the listener half a deployment mounts: it builds the agent card, binds an HTTP endpoint (loopback by default), authenticates callers when an API key is configured, and answers A2A requests by driving a harness session through `DshA2AExecutor`. A peer that sends a message with a `contextId` reaches the session of that id, so the peer resumes work where it left off rather than starting a new one. The endpoint is a separate listener, not a prefix of the browser server, because peers discover it by `origin + /.well-known/agent-card.json`.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ Mount it in a profile that already mounts the session controller. The port, host
 
 ### When to choose it
 
-Choose it when this deployment should be reachable as an A2A agent. A deployment that only calls outward needs [`dsh-a2a`](../a2a/README.md) alone. Because the endpoint is trusted to name sessions, bind it to loopback or behind a gateway, and set `apiKey` whenever anything else can reach it.
+Choose it when this deployment should be reachable as an A2A agent. A deployment that only calls outward needs [`dsh-a2a`](../a2a/README.md) alone. Because the endpoint is trusted to name sessions, bind it to loopback or behind a gateway, and set `apiKeyEnv` (or a literal `apiKey`) whenever anything else can reach it.
 
 ### Minimal configuration
 
@@ -36,7 +36,7 @@ Choose it when this deployment should be reachable as an A2A agent. A deployment
 - name: '@reachforstar/dsh-a2a-host'
   config:
     port: 9310
-    apiKey: '${DSH_A2A_API_KEY}'
+    apiKeyEnv: DSH_A2A_API_KEY
     card:
       name: 'dsh-studio'
       description: 'DeepSeek Harness agent sessions'
@@ -46,7 +46,8 @@ Choose it when this deployment should be reachable as an A2A agent. A deployment
 |---|---|---|
 | `host` | `127.0.0.1` | Interface to bind |
 | `port` | `9310` | Port; `0` takes an OS-assigned port and rewrites the card's interface URL |
-| `apiKey` | unset | When set, requests must carry a matching `X-Api-Key` |
+| `apiKey` | unset | Literal value requests must carry in `X-Api-Key` |
+| `apiKeyEnv` | unset | Credential reference resolved through `ctx.credentials` at bind; the resolved value is what `X-Api-Key` must match |
 | `url` | derived from host and port | Endpoint the card advertises; set it when a proxy fronts the listener |
 | `cwd` | unset | Working directory for sessions the endpoint drives |
 | `agentPreset` | unset | Agent preset those sessions run with |

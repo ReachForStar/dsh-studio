@@ -341,13 +341,14 @@
 
     # Publishes this app's sessions to remote A2A agents on its own loopback
     # port: the agent card sits at /.well-known/agent-card.json and tasks are
-    # driven over JSON-RPC with SSE streaming. Set DSH_A2A_API_KEY to require
-    # `X-Api-Key` from peers; without it, only loopback callers get in.
+    # driven over JSON-RPC with SSE streaming. `apiKeyEnv` names the credential
+    # peers must present as `X-Api-Key`; the adapter resolves it through
+    # ctx.credentials, and an unset credential serves without authentication.
     - id: a2a-host
       name: '@reachforstar/dsh-a2a-host'
       config:
         port: !!js Number(process.env.DSH_A2A_PORT ?? 9310)
-        apiKey: !!js process.env.DSH_A2A_API_KEY
+        apiKeyEnv: DSH_A2A_API_KEY
 
     # a2a 服务状态查询网关：暴露 a2a-host 监听状态和 Kafka 可达性，供前端
     # 状态指示器和 a2a 入口显隐消费。a2a-host 缺失时报告未运行。

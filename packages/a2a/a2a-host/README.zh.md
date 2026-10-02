@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-a2a-host` 是部署挂载的监听器一半：它构建 agent card、绑定 HTTP 端点（默认回环）、在配置了 `apiKey` 时校验调用方，并通过 `DshA2AExecutor` 驱动 harness 会话以回答 A2A 请求。带 `contextId` 发消息的对等端会命中该 id 的会话，于是它续上先前的工作而不是另开一个。端点自带独立监听器、不挂在浏览器服务的前缀下，因为对等端按 `origin + /.well-known/agent-card.json` 发现它。
+`dsh-a2a-host` 是部署挂载的监听器一半：它构建 agent card、绑定 HTTP 端点（默认回环）、在配置了 API 密钥时校验调用方，并通过 `DshA2AExecutor` 驱动 harness 会话以回答 A2A 请求。带 `contextId` 发消息的对等端会命中该 id 的会话，于是它续上先前的工作而不是另开一个。端点自带独立监听器、不挂在浏览器服务的前缀下，因为对等端按 `origin + /.well-known/agent-card.json` 发现它。
 
 ## 目录
 
@@ -28,7 +28,7 @@ kind: "package-reference"
 
 ### 何时选用
 
-需要本部署作为 A2A agent 被访问时选它。只对外调用的部署单挂 [`dsh-a2a`](../a2a/README.zh.md) 即可。由于端点被信任去点名会话，应绑定回环或置于网关之后，并在任何其他方可达时设置 `apiKey`。
+需要本部署作为 A2A agent 被访问时选它。只对外调用的部署单挂 [`dsh-a2a`](../a2a/README.zh.md) 即可。由于端点被信任去点名会话，应绑定回环或置于网关之后，并在任何其他方可达时设置 `apiKeyEnv`（或字面量 `apiKey`）。
 
 ### 最小配置
 
@@ -36,7 +36,7 @@ kind: "package-reference"
 - name: '@reachforstar/dsh-a2a-host'
   config:
     port: 9310
-    apiKey: '${DSH_A2A_API_KEY}'
+    apiKeyEnv: DSH_A2A_API_KEY
     card:
       name: 'dsh-studio'
       description: 'DeepSeek Harness agent sessions'
@@ -46,7 +46,8 @@ kind: "package-reference"
 |---|---|---|
 | `host` | `127.0.0.1` | 绑定网卡 |
 | `port` | `9310` | 端口；`0` 由系统分配并回写卡片的接口 URL |
-| `apiKey` | 无 | 设置后请求必须携带匹配的 `X-Api-Key` |
+| `apiKey` | 无 | 请求必须携带的字面量 `X-Api-Key` |
+| `apiKeyEnv` | 无 | 绑定前经 `ctx.credentials` 解析的凭据引用；解析结果即 `X-Api-Key` 必须匹配的值 |
 | `url` | 由主机与端口推导 | 卡片对外宣称的端点；有代理前置时显式设置 |
 | `cwd` | 无 | 端点驱动会话的工作目录 |
 | `agentPreset` | 无 | 这些会话使用的 agent preset |

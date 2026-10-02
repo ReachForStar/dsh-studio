@@ -34,13 +34,13 @@ peer 是配置在 `dsh-a2a` 上的名字（URL、可选的 `apiKey`（以 `X-Api
 - name: '@reachforstar/dsh-a2a-host'
   config:
     port: 9310
-    apiKey: '${DSH_A2A_API_KEY}'
+    apiKeyEnv: DSH_A2A_API_KEY
     card:
       name: 'dsh-studio'
       description: 'DeepSeek Harness agent sessions'
 ```
 
-peer 的 `url` 必填，其余默认未设置（`cardPath` 回落到 `/.well-known/agent-card.json`）。监听端的端口、绑定地址、`apiKey` 与 card 身份都是配置；只向外调用的部署挂 `dsh-a2a` 即可，不必挂 `dsh-a2a-host`。
+peer 的 `url` 必填，其余默认未设置（`cardPath` 回落到 `/.well-known/agent-card.json`）。监听端的端口、绑定地址、`apiKeyEnv`（或字面量 `apiKey`）与 card 身份都是配置；只向外调用的部署挂 `dsh-a2a` 即可，不必挂 `dsh-a2a-host`。
 
 ## 相关
 

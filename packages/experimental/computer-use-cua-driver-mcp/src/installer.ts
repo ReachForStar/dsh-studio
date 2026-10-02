@@ -80,11 +80,11 @@ export function runInstall(): ReadableStream<Uint8Array> {
         const isWindows = process.platform === 'win32'
         const child = isWindows
           ? spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', scriptContent], {
-              stdio: ['ignore', 'pipe', 'pipe'],
-            })
+            stdio: ['ignore', 'pipe', 'pipe'],
+          })
           : spawn('bash', ['-c', scriptContent], {
-              stdio: ['ignore', 'pipe', 'pipe'],
-            })
+            stdio: ['ignore', 'pipe', 'pipe'],
+          })
 
         const lineBuffer: string[] = []
         const flushLines = (source: Buffer, stream: 'stdout' | 'stderr'): void => {

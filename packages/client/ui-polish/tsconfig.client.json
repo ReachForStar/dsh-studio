@@ -34,7 +34,7 @@
       "path": "../ui-chat/tsconfig.client.json"
     },
     {
-      "path": "../ui-tool/tsconfig.client.json"
+      "path": "../ui-tool"
     },
     {
       "path": "../ui-workspace"

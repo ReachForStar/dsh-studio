@@ -116,15 +116,15 @@ If a required `gh`, `pnpm`, build, test, or generator command fails because the 
 Before pushing, follow [dsh-pre-push-checks](.agents/skills/dsh-pre-push-checks/SKILL.md); report only commands run. After `gh stack sync`, validate immediately; do not merge before checks pass.
 
 - Match evidence to the surface: focused behavior tests, model/user-output snapshots, `doc-sync` for docs, built smokes for published paths, and real-API e2e for providers.
-- Never default to the full suite or repeat a passing check for commit or push. **This fork runs no CI over the harness packages** — upstream's `ci.yml`, `ci-master.yml`, `e2e.yml`, and `sandbox.yml` are removed, and the remaining workflows cover only `native/**` plus PR preview and issue/approval policy — so local evidence is the only evidence: rehearse the full local approximation before pushing a change that no narrower check covers.
+- Never default to the full suite or repeat a passing check for commit or push. **This fork runs no CI over the harness packages**, so rehearse the full local approximation for any change no narrower check covers ([why](.agents/skills/dsh-pre-push-checks/SKILL.md)).
 - `test:coverage`, not `test`, is the coverage gate ([why](docs/testing.md)).
-- **Web browser automation and GIF recording:** launch with `pnpm dsh web --patch apps/web/tests/pin-browse-picker.overlay.yml` to use the [in-page directory picker](apps/web/tests/pin-browse-picker.overlay.yml); omit this override only when testing native picker behavior explicitly.
+- **Web browser automation and GIF recording:** launch with `pnpm dsh web --patch apps/web/tests/pin-browse-picker.overlay.yml` for the in-page directory picker; omit it only to test the native picker.
 
 ## Secrets / .env
 
 Windows packaging/signing: [required reading](apps/desktop/README.md#windows-ev-signing).
 
-Real-API tests/demos read `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`, and root `.env`. cordis.yml allows `!!js` (never `!js`) under plugin `config` and entry `disabled`; other metadata stays literal, so conditional composition also uses overlays ([primer](docs/cordis-primer.md#loader-configuration)). Never commit credentials. CI e2e skips without a key; [testing.md](docs/testing.md) owns key policy.
+Real-API tests/demos read `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`, and root `.env`. cordis.yml allows `!!js` (never `!js`) under plugin `config` and entry `disabled`; other metadata stays literal, so conditional composition also uses overlays ([primer](docs/cordis-primer.md#loader-configuration)). Never commit credentials. E2E tests skip without a key; [testing.md](docs/testing.md) owns key policy.
 
 ## Conventions
 

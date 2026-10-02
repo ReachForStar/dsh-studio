@@ -299,7 +299,7 @@
 ## [2026-09-20] feat | 星域「会话流」3D 视图（three.js）+ 视图默认与透明范围
 
 - 需求：启明与全部非启明预设默认以「会话流」3D 呈现；启明前放「人」节点；技能/MCP 工具/斜杠命令/子代理等活动都进图；形象中国风；页面除画布面板外透明。
-- 新增 `packages/client/ui-polish/src/client/flow/`：`flow-graph.ts`（活动→图纯映射 + `flowViewDefinition`，`isActive: nodes.length > 1`）、`flow-definition.ts`（单个事件 Definition 折叠 `user/message`、`tool/call`+`tool/result`、`command/run`+`command/done`、`xingchen/dispatch-progress`、`assistant/message`）、`FlowView.tsx`（three.js：宫灯=启明、印章=席位、案几=人、浮珠=工具；环形布局、光带连线、缓慢摆动、画布透明、附无障碍文本摘要）。
+- 新增 `packages/client/ui-polish/src/client/` 下的 `flow/` 目录（后已删除）：`flow-graph.ts`（活动→图纯映射 + `flowViewDefinition`，`isActive: nodes.length > 1`）、`flow-definition.ts`（单个事件 Definition 折叠 `user/message`、`tool/call`+`tool/result`、`command/run`+`command/done`、`xingchen/dispatch-progress`、`assistant/message`）、`FlowView.tsx`（three.js：宫灯=启明、印章=席位、案几=人、浮珠=工具；环形布局、光带连线、缓慢摆动、画布透明、附无障碍文本摘要）。
 - 接线：`ctx.uiConversation.events.register` + `views.register({target:'flow'})` + `conversation.view` 槽条目（id `flow`，order 5）+ `inject` 增 `uiConversation`；`view-selection.ts` 回退链改为「偏好 → `flow` → `chat`」。
 - 已核实的事实：MCP 工具名形如 `mcp__<server>__<tool>`；技能调用是名为 `skill` 的工具（参数 `{"name"}`）；`tool/result` 不带工具名，须由配对的 `tool/call` 提供；命令→席位映射在 `packages/xingchen/xingchen/src/route.ts`（review→天权、bug→瑶光、planning→天梁）。
 - 实测（重建客户端与前端产物后）：`会话流` 为默认激活视图，WebGL2 画布 1388×766 已挂载，无障碍摘要「会话流：5 个活动节点——天梁、天梁、天梁、天梁、人」，控制台无 error/warn。测试：ui-polish + ui-conversation 565、ui-trajectory 185 全绿。
@@ -393,3 +393,15 @@
 - 工作区有 42 个受控文本文件仍为 CRLF（`* text=auto eol=lf` 归一化在提交侧掩盖了它），而 `verify-package-readme-model-experience` 与 `doc-standard.spec.ts` 直接读工作区字节，报出 `"## Model Experience\r"`、README 无 frontmatter 等假象。清点与归一脚本与结论见[门禁红项页](queries/fork-gate-debt.md)。
 - `packages/a2a/a2a-status/README.md` 与 `.zh.md` 改动后补记配对（`verify-translation-pairing --write`），新增 `packages/a2a/a2a-status/README.i18n.yaml`。
 - 复检 `pnpm run test:docs` 剩余 8 门失败：均为既有 fork 红项（会话格式 v5 写入器、xingchen README 链接到已迁移的 `packages/preset/agent-presets`、`AGENTS.md` 词数、`ui-a2a-status` 无 README、翻译配对存量、`docs/persistence-changes/historical-formats/v4.md` 的 commit 引用），本轮未新增。
+
+## [2026-10-02] fix | 清偿六项文档门禁红项
+
+- 会话持久化：`docs/persistence-catalog.*`、`docs/persistence-schema.json`、`packages/core/session/src/known-event-types.ts` 停在旧写入器版本（`SessionHeader.version` 不是字面量 5），跑 `gen-persistence-catalog` 后 `verify-persistence-formats --write` 刷新历史格式索引，补齐 v4 条目与 v5 当前行。
+- 链接：`.agents/notes/implemented/testing/2026-09-27-web-lane-assertions-name-their-input-state.*` 指向本 fork 已删除的 `.github/workflows/ci.yml`，改为纯文本引用并注明上游工作流；星域 README 的预设链接从已迁走的 `packages/preset/agent-presets` 改指 `packages/bundle/web-app`，两组配对重记。
+- 词数：`AGENTS.md` 1990 → 1957（上限 1960）。压缩的是 fork 自己的 CI 说明（细节已在 `dsh-pre-push-checks` skill），并把「CI e2e」改正为「E2E tests」。
+- README：`packages/a2a/a2a-status` 补 ToC 与 Dev Note、Model Experience 改规范短句；`packages/client/ui-a2a-status` 新建中英 README 对（含 Dev Note 说明 Host 网关与浏览器半的拆分）；两者在 `SENTENCE_MODEL_EXPERIENCE` 登记。
+- 槽报告：`gen-client-catalog.ts` 的 `MAX_ENTRY_LINES` 120 → 128，注释写明实测 124 行的来源（fork 新增 3 个 Excalidraw toolview 注册者与 1 个 owner 成员）；重建 `slot-catalog.ts`。
+- 提交引用：`docs/persistence-changes/historical-formats/v4.{md,zh.md}` 正文的裸提交哈希改为只引用 `dsh-session-v4` 标记。
+- 顺带：`verify-package-paths` 报 `docs/wiki/log.md` 引用了已删除的 `flow/` 子目录（在 `packages/client/ui-polish/src/client/` 下），改写为仍存在的父目录并注明已删除；`doc-typecheck` 报 `queries/tool-scheduler-symbol-duplication.md` 的片段式 `ts` 块编译不过，改为 `ts ignore-check`（源码摘录的正确形态）。
+- 验证：`test:docs` 20 通过 / 1 失败（仅剩翻译配对存量 83 文件 282 条）；`typecheck` 两面通过；`packages/core/session` 与 `cordis-client-runner` 共 676 项测试通过。
+- 盘点：`doc-sync` 43 门仍红 10 项，分「跑生成器即绿」（doc graphs / config catalog / plugin packages / tsconfig paths）、「机械但有内容判断」（export jsdoc 21 处、`ctx.a2aStatus` 未分类）、「需决策」（持久化联合变体需 v5→v6、翻译配对逐对补齐、a2a-host 内联凭据、网站构建），明细见[门禁红项页](queries/fork-gate-debt.md)。

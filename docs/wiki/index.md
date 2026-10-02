@@ -48,7 +48,7 @@ updated: 2026-10-02
 - [实验能力试验 profile（web-lab）与上游实验插件启用情况](queries/web-lab-profile-and-experimental-plugins.md) — Browser Use / Computer Use / Auto review / 远端工作区各自的前置、验证结果与边界，含 patch 替换语义与 Web 工作区路径校验两个踩坑。
 - [pi 后端实现历程与去重/持久化修复（2026-09-05）](queries/pi-backend-implementation.md) — 四个实现阶段与两个用户可见缺陷的根因。
 - [A2A v1.0.1 符合性缺口清单（已修）](queries/a2a-v1.0.1-conformance-gaps.md) — 按规范原文逐条核对出的 7 处 MUST 级偏离（推送错误码、扩展卡能力、终态任务三处行为、`A2A-Version` 头、contextId/taskId 校验）与 4 处细节（列表排序、artifacts 省略、游标分页、historyLength），2026-09-18 已全部修复，含修法、错误码映射与复现命令。
-- [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率五类红项的现象、归属与修复方向（fork CI 不跑这些门禁）。
+- [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率红项的现象、归属与修复方向；2026-10-02 清完八项（持久化目录、失效链接、AGENTS 词数、两个 README、槽报告上限、v4 提交引用、知识库路径与代码块）后余 10 项，按「跑生成器即绿 / 机械但有内容判断 / 需决策」分类（fork CI 不跑这些门禁）。
 - [CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md) — ui-polish 内嵌 Excalidraw 后 CJS 构建提升共享 `client.rolldown-runtime.js`，prologue 同步 require 模块表答不了；combo 携带同步闭包 + 相对 chunk 解析的修法与验证。
 - [Git/LaTeX 面板重写的缺陷与修复（2026-09-19）](queries/ui-polish-git-latex-defects.md) — 六个缺陷：加载中误报合并、嵌套仓库合并状态读错仓库、多仓库 cwd 回落、LaTeX 读写路径基准、空文件写入被拒、AI 写作默认 provider 空结果。
 - [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。

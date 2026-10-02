@@ -27,7 +27,7 @@ turn/end   {"turn":2,"reason":{"kind":"error","error":{"message":"Cannot read pr
 
 崩点在 `packages/core/agent-loop/src/tool-calls.ts:170`：
 
-```ts
+```ts ignore-check
 const prepared = await ctx.tools[TOOL_RUNTIME_SCHEDULER].prepare(call.exec)
 ```
 

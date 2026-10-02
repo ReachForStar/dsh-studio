@@ -12,7 +12,9 @@
             name: '@deepseek-ai/dsh-persona'
             config:
               suffix: Your working directory is {{cwd}}.
-              prefix: You are a coding agent powered by the {{model}} model.
+              prefix: >-
+                You are a coding agent powered by the {{model}} model.
+                When the user asks to draw a diagram, flowchart, geometry figure, or any visual on a canvas, call `excalidraw_draw` to render shapes on the workspace whiteboard; use `excalidraw_read` to inspect it and `excalidraw_export` to save an SVG.
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:
@@ -29,6 +31,11 @@
             name: '@deepseek-ai/dsh-tool-fs-search'
             config:
               sampleOverCapGlobResults: false
+          # Excalidraw whiteboard scene tools: read/write/draw/export the
+          # workspace scene file that the web canvas tab renders
+          # (`<workspace>/.dsh/excalidraw/`).
+          - id: tool-excalidraw
+            name: '@reachforstar/dsh-tool-excalidraw'
           - id: tool-jobs
             name: '@deepseek-ai/dsh-tool-jobs'
           - id: skill-filesystem

@@ -27,6 +27,8 @@ export const zh = {
   'excalidraw.saving': '保存中…',
   'excalidraw.export': '导出 PNG',
   'excalidraw.exportSvg': '导出 SVG',
+  'excalidraw.exporting': '导出中…',
+  'excalidraw.canvasNotReady': '画布尚未就绪，请稍候再试',
   // Excalidraw tool call card.
   'excalidraw.openInCanvas': '在画板中查看',
   'excalidraw.drawTitle': '画图',
@@ -277,6 +279,8 @@ export const en = {
   'excalidraw.saving': 'Saving…',
   'excalidraw.export': 'Export PNG',
   'excalidraw.exportSvg': 'Export SVG',
+  'excalidraw.exporting': 'Exporting…',
+  'excalidraw.canvasNotReady': 'Canvas not ready, please try again shortly',
   // Excalidraw tool call card.
   'excalidraw.openInCanvas': 'Open in canvas',
   'excalidraw.drawTitle': 'Draw',

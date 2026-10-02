@@ -1,9 +1,8 @@
 // Excalidraw tool call view: a dedicated card for `excalidraw_draw` /
 // `excalidraw_write` / `excalidraw_export` that renders an "Open in canvas"
-// button (form ①), an inline SVG thumbnail of the resulting scene (form ③),
-// and auto-switches to the canvas tab when a live result arrives (form ②).
+// button (form ①) and an inline SVG thumbnail of the resulting scene (form ③).
+// Switching to the canvas tab is user-initiated only (the button), never auto.
 
-import { useEffect, useRef } from 'react'
 import { Button, IconInspectOutlineRegular, TextShimmer } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
@@ -43,29 +42,13 @@ function argsSummary(toolName: string, argsRaw: string): string {
 }
 
 /**
- * Render one Excalidraw tool call as a dedicated card with a canvas-tab action,
- * an optional SVG thumbnail, and a live-result auto-switch side effect.
+ * Render one Excalidraw tool call as a dedicated card with a canvas-tab action
+ * and an optional SVG thumbnail. Switching to the canvas tab is user-initiated.
  * @param props - keyed toolview payload plus the ui-polish locale seat.
  * @returns the dedicated Excalidraw tool card.
  */
 export function ExcalidrawToolView(props: ExcalidrawToolViewProps) {
-  const { phase, block, toolName, openView, useSession, t } = props
-
-  // Form ②: auto-switch to the canvas tab when a live (non-replay) successful
-  // result arrives. `useSession(running)` distinguishes live SSE from replay:
-  // a replayed session is not running, so the side effect is suppressed.
-  // A ref guards dedup so the same callId only triggers once.
-  const running = useSession(s => s.running)
-  const autoSwitchedRef = useRef(false)
-  useEffect(() => {
-    if (phase !== 'result') return
-    if (autoSwitchedRef.current) return
-    if (!running) return
-    if (block.isError) return
-    if (openView === undefined) return
-    autoSwitchedRef.current = true
-    openView(EXCALIDRAW_VIEW, '')
-  }, [phase, block, running, openView])
+  const { phase, block, toolName, openView, t } = props
 
   const titleKey = titleKeyOf(toolName)
   const previewSvg = phase === 'result' ? previewSvgOf(block.meta) : null

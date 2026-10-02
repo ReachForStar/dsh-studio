@@ -125,6 +125,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
   const workspaceItems = useWorkspaces(s => s.items)
   const cwd = workspacePathOf(sessionId, workspaceItems)
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
+  const [apiReady, setApiReady] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const loadedOnce = useRef(false)
@@ -178,6 +179,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
 
   const handleApi = useCallback((api: ExcalidrawImperativeAPI): void => {
     apiRef.current = api
+    setApiReady(true)
     if (!loadedOnce.current && cwd !== undefined) {
       loadedOnce.current = true
       loadScene(api)
@@ -263,7 +265,11 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
   const [exporting, setExporting] = useState(false)
   const exportPng = useCallback(async (): Promise<void> => {
     const api = apiRef.current
-    if (api === null || exporting) return
+    if (api === null) {
+      setError(t('excalidraw.canvasNotReady'))
+      return
+    }
+    if (exporting) return
     setExporting(true)
     setError(null)
     try {
@@ -300,7 +306,11 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
   // Export the canvas as an SVG download (vector source, no background option).
   const exportSvg = useCallback(async (): Promise<void> => {
     const api = apiRef.current
-    if (api === null || exporting) return
+    if (api === null) {
+      setError(t('excalidraw.canvasNotReady'))
+      return
+    }
+    if (exporting) return
     setExporting(true)
     setError(null)
     try {
@@ -342,17 +352,17 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
           {saving && <span className={css.saving}>{t('excalidraw.saving')}</span>}
           <button
             type="button" className={css.export}
-            disabled={exporting || cwd === undefined}
+            disabled={exporting || !apiReady || cwd === undefined}
             onClick={() => { void exportPng() }}
           >
-            {t('excalidraw.export')}
+            {exporting ? t('excalidraw.exporting') : t('excalidraw.export')}
           </button>
           <button
             type="button" className={css.export}
-            disabled={exporting || cwd === undefined}
+            disabled={exporting || !apiReady || cwd === undefined}
             onClick={() => { void exportSvg() }}
           >
-            {t('excalidraw.exportSvg')}
+            {exporting ? t('excalidraw.exporting') : t('excalidraw.exportSvg')}
           </button>
         </span>
       </div>

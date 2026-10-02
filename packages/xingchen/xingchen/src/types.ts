@@ -63,7 +63,10 @@ declare module '@deepseek-ai/dsh-llm' {
      * A message a star-domain seat produced for this Session through A2A. It
      * carries no `provider`/`model` because this Session's model did not produce
      * it — the seat ran its own route, which this log does not own and must not
-     * bill to this Session's model usage.
+     * bill to this Session's model usage. Readers without this plugin preserve
+     * the message, and the kind imposes no validation, replay, or authority
+     * requirement.
+     * @persistenceAttribution
      */
     'a2a-seat': {
       kind: 'a2a-seat'

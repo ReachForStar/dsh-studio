@@ -446,7 +446,7 @@
       "kind": "event",
       "event": "agent/inbox/spliced",
       "surface": false,
-      "digest": "001defffdc0f37623b2bf6148a825330bbb3c27050f5f194ae29afe523fa8ef0",
+      "digest": "5f7f7316a9185af73c9795151689bb140d2d67aae96aab6ecaad0bdea37d0aef",
       "schema": {
         "root": 0,
         "nodes": [
@@ -545,7 +545,9 @@
                   "discriminator": "kind",
                   "unknownKinds": "preserve",
                   "attributionKinds": [
+                    "a2a-seat",
                     "tmux-context",
+                    "ui-polish",
                     "user-question-reply"
                   ]
                 }
@@ -9488,7 +9490,7 @@
       "kind": "event",
       "event": "developer/message",
       "surface": true,
-      "digest": "d772b27f23b36dc76505e9fd0540463c83bc53a1dfd1a228538a0492b02d26e5",
+      "digest": "a7bb0b325b9e6a04523456c8165ba79f2d51a11c9e7ab61b4c9bc200c8424daa",
       "schema": {
         "root": 0,
         "nodes": [
@@ -9592,7 +9594,9 @@
                   "discriminator": "kind",
                   "unknownKinds": "preserve",
                   "attributionKinds": [
+                    "a2a-seat",
                     "tmux-context",
+                    "ui-polish",
                     "user-question-reply"
                   ]
                 }
@@ -14857,7 +14861,7 @@
       "kind": "event",
       "event": "session/title-llm-request",
       "surface": false,
-      "digest": "e82e739c55bcde44d3938faa670f3a10dc18296e3b4058f324ed33df0596763f",
+      "digest": "8d47b5d926eb266a34be08fe620cf94dc7d49023176f24bd34534af5fa674a9a",
       "schema": {
         "root": 0,
         "nodes": [
@@ -15331,7 +15335,9 @@
                   "discriminator": "kind",
                   "unknownKinds": "preserve",
                   "attributionKinds": [
+                    "a2a-seat",
                     "tmux-context",
+                    "ui-polish",
                     "user-question-reply"
                   ]
                 }
@@ -17790,7 +17796,9 @@
                   "discriminator": "kind",
                   "unknownKinds": "preserve",
                   "attributionKinds": [
+                    "a2a-seat",
                     "tmux-context",
+                    "ui-polish",
                     "user-question-reply"
                   ]
                 }
@@ -21937,7 +21945,7 @@
       "kind": "event",
       "event": "user/message",
       "surface": true,
-      "digest": "1eebb8c1998313470a2482f40308ceb3bfd7267baf37dfaa14111e9fac893cde",
+      "digest": "a87dae32f2b6068307639de0340c33b8d25b33e009c21a5e97aed191fb448562",
       "schema": {
         "root": 0,
         "nodes": [
@@ -22011,7 +22019,9 @@
                   "discriminator": "kind",
                   "unknownKinds": "preserve",
                   "attributionKinds": [
+                    "a2a-seat",
                     "tmux-context",
+                    "ui-polish",
                     "user-question-reply"
                   ]
                 }
@@ -25213,11 +25223,6 @@
   ],
   "types": [
     {
-      "digest": "001defffdc0f37623b2bf6148a825330bbb3c27050f5f194ae29afe523fa8ef0",
-      "names": [],
-      "sources": []
-    },
-    {
       "digest": "0082524a1d7e7805687d637687614c0d0132a5ae83595145bed027d1a5f9c704",
       "names": [],
       "sources": []
@@ -25278,6 +25283,11 @@
       "sources": [
         "packages/core/session/src/types.ts:33"
       ]
+    },
+    {
+      "digest": "07ad59bf938ef9372bb388cf429f76930322d678927bb3fa53db7ee25a600b63",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "07e1a58c58b593f507b8e7f25723bb0aa42baae6e00f5ecfddf28cb1e64d3235",
@@ -25683,11 +25693,6 @@
       "sources": []
     },
     {
-      "digest": "1eebb8c1998313470a2482f40308ceb3bfd7267baf37dfaa14111e9fac893cde",
-      "names": [],
-      "sources": []
-    },
-    {
       "digest": "1f0133217eeeffd8d387baf1ec8ed9856e719bcd999dc08e48624cba96d75fd7",
       "names": [],
       "sources": []
@@ -25719,6 +25724,13 @@
       ]
     },
     {
+      "digest": "20a788f77e5c52bd935d6f2ff615e941d4c53de6d5f0f9c62cdc4235985b6ff7",
+      "names": [],
+      "sources": [
+        "packages/core/agent/src/types.ts:96"
+      ]
+    },
+    {
       "digest": "2142e391b9ccb60d487afcf373ce74db98d952f69e8289eddb352a7e16e996c5",
       "names": [],
       "sources": []
@@ -25730,15 +25742,6 @@
       ],
       "sources": [
         "packages/experimental/agent-team/src/types.ts:137"
-      ]
-    },
-    {
-      "digest": "21e4788690110f6fb9f7e861a48d427485e583571b0197898c4f676f11c00f36",
-      "names": [
-        "packages/llm/llm/src/message.ts#Message"
-      ],
-      "sources": [
-        "packages/llm/llm/src/message.ts:210"
       ]
     },
     {
@@ -25892,6 +25895,11 @@
       "sources": [
         "packages/web/web-search-deepseek/src/provider.ts:71"
       ]
+    },
+    {
+      "digest": "2d17e6691eaa02627e38308de94a2efcdd7f8b164a29478d9bc223eac6c554d5",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "2d5ea382db68e6b09c9d926fbce8bcdecc25a547a56d9c1c75f02cc7710efd90",
@@ -26068,13 +26076,6 @@
       "digest": "383cf73ae4748e5beb281ae74857ba1ffb92ae01075b9fbf51af78b666007a8f",
       "names": [],
       "sources": []
-    },
-    {
-      "digest": "3842868149ab81de112454777d94cb1e3941823278d01005b5818689f9430288",
-      "names": [],
-      "sources": [
-        "packages/core/agent/src/types.ts:96"
-      ]
     },
     {
       "digest": "3860b4757d512a2869be833acb0faf834335b1b056bf3f83df5474dce95f8fa6",
@@ -26716,6 +26717,11 @@
       ]
     },
     {
+      "digest": "5f7f7316a9185af73c9795151689bb140d2d67aae96aab6ecaad0bdea37d0aef",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "6085488d223aeffdef51d7ae17655fc26ab22ee13cbed82a50e62e2b6fb5b918",
       "names": [],
       "sources": []
@@ -26726,27 +26732,9 @@
       "sources": []
     },
     {
-      "digest": "614c093697af084fe84b58d062e314cf35fab938a79827efa18f967f23eff263",
-      "names": [
-        "packages/llm/llm/src/message.ts#DeveloperMessage"
-      ],
-      "sources": [
-        "packages/llm/llm/src/message.ts:157"
-      ]
-    },
-    {
       "digest": "616f93a5047de668e1c30d57b1786abd76beeb4123599637ec1dc5290320ede5",
       "names": [],
       "sources": []
-    },
-    {
-      "digest": "624fe2893b7981c041542a7c35ee86acc73fdbabdf4e223abf0bf349d075a1ee",
-      "names": [
-        "packages/llm/llm/src/message.ts#UserMessage"
-      ],
-      "sources": [
-        "packages/llm/llm/src/message.ts:162"
-      ]
     },
     {
       "digest": "6292bcbedaa97feaec5b48a03bb8144b581b93309d9d6c905f26da7a6a7a0a4f",
@@ -26770,6 +26758,13 @@
       ],
       "sources": [
         "packages/subagent/subagent/src/descriptor.ts:72"
+      ]
+    },
+    {
+      "digest": "65350645540f1d311a2284db2b719853430c956ba69c888cb57e60b7502eb665",
+      "names": [],
+      "sources": [
+        "packages/core/session/src/types.ts:328"
       ]
     },
     {
@@ -26996,7 +26991,7 @@
       "digest": "72a89d5f39f0203f5b0f951173c4c8b9d275fcf07fac3540e0840de922ec3926",
       "names": [],
       "sources": [
-        "packages/xingchen/xingchen/src/types.ts:87"
+        "packages/xingchen/xingchen/src/types.ts:90"
       ]
     },
     {
@@ -27316,7 +27311,7 @@
       "digest": "889119cb3d222f022dd97c4fbdac367f0c9afb24fe4cb9791a638f4762c92d34",
       "names": [],
       "sources": [
-        "packages/xingchen/xingchen/src/types.ts:68"
+        "packages/xingchen/xingchen/src/types.ts:71"
       ]
     },
     {
@@ -27374,6 +27369,11 @@
     },
     {
       "digest": "8cdd3fdd295cee53035de16a1b23411716f75e9f994fe9510cac5d7fef605c76",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "8d47b5d926eb266a34be08fe620cf94dc7d49023176f24bd34534af5fa674a9a",
       "names": [],
       "sources": []
     },
@@ -27614,7 +27614,7 @@
       "digest": "9e2f9b061c24d1c62e2b4a02e97dd9021c903604d95203acc60ebc16650f03ef",
       "names": [],
       "sources": [
-        "packages/client/ui-polish/src/index.ts:14"
+        "packages/client/ui-polish/src/index.ts:20"
       ]
     },
     {
@@ -27754,6 +27754,11 @@
       "sources": []
     },
     {
+      "digest": "a7bb0b325b9e6a04523456c8165ba79f2d51a11c9e7ab61b4c9bc200c8424daa",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "a7cf43ce7c2a4c038feed1885cd7a00d5c6ee2d90a7e0d56b46f78a3e1ca327f",
       "names": [],
       "sources": []
@@ -27772,6 +27777,11 @@
       "sources": [
         "packages/interaction/commands/src/types.ts:105"
       ]
+    },
+    {
+      "digest": "a87dae32f2b6068307639de0340c33b8d25b33e009c21a5e97aed191fb448562",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "a8a2b9011fc067862df7ce40748868467e5778283d7ac193c13f77684a914c57",
@@ -27841,13 +27851,6 @@
       "sources": []
     },
     {
-      "digest": "aafe8d0d921674363e12d58b0f10e93f1eb68c601108b9160ad16b026f12ed47",
-      "names": [],
-      "sources": [
-        "packages/core/session/src/types.ts:328"
-      ]
-    },
-    {
       "digest": "ab7ec5f9eb2c6dfacca5da4c37cf7ba85d04172053ee6b1ebf1709ffcd99c1a7",
       "names": [],
       "sources": [
@@ -27897,11 +27900,6 @@
     },
     {
       "digest": "ade057f4fdc387aec6426f48704a1f9359cfc6fee13f27735b07f9b215ec16ca",
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "ae3757b761c8113f018b5ac93be4946f8dbfc154db8fc2c59249907cd027e8b8",
       "names": [],
       "sources": []
     },
@@ -27957,6 +27955,15 @@
       "digest": "b1664fa89f8eab49a14e7e3168d8bc4da4aa9fd76332f6c4a053d839e5276ae7",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "b1bc1ae3b55799d459b5a60410d4e1783a50ed698cde320cc28fea752d2b675f",
+      "names": [
+        "packages/llm/llm/src/message.ts#Message"
+      ],
+      "sources": [
+        "packages/llm/llm/src/message.ts:210"
+      ]
     },
     {
       "digest": "b1ebd5cda47d90d980bb05bffc3f970c51537b9aff15b3bc3d639811727741b1",
@@ -28191,15 +28198,6 @@
       "sources": []
     },
     {
-      "digest": "be9a082ee281c9a58079384334f303bc13a98da8385a1b4a094fdb7a85f0ef5b",
-      "names": [
-        "packages/session/session-title-llm/src/index.ts#SessionTitleLlmRequestEventData"
-      ],
-      "sources": [
-        "packages/session/session-title-llm/src/index.ts:34"
-      ]
-    },
-    {
       "digest": "bf16d2e98a7f13894ded2cffe5ce857bf473954a0e3c0ed9bc7739e2e1c7b78a",
       "names": [],
       "sources": []
@@ -28290,6 +28288,15 @@
       "digest": "c748fb42c80a120038a8c587af80ec39924803c401364db11c8974d5bf6d0262",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "c805803dbd64f4c61d2786491c5c584f602be7f08048e3a905b5a267e0d5989a",
+      "names": [
+        "packages/session/session-title-llm/src/index.ts#SessionTitleLlmRequestEventData"
+      ],
+      "sources": [
+        "packages/session/session-title-llm/src/index.ts:34"
+      ]
     },
     {
       "digest": "c8e6f48878cc2a2f0dc59682280d81f407943fb503f32c64bf9ff3d9393c3eff",
@@ -28397,11 +28404,6 @@
       "sources": []
     },
     {
-      "digest": "d772b27f23b36dc76505e9fd0540463c83bc53a1dfd1a228538a0492b02d26e5",
-      "names": [],
-      "sources": []
-    },
-    {
       "digest": "d85590a5675c6e2fd8164e5792a6cceac714605b8ac228adae5ee668facb1490",
       "names": [],
       "sources": []
@@ -28410,6 +28412,15 @@
       "digest": "d9196086e41e4dd5c2ce87f5c25529c8112a1731d258cf0728747d41a9ee3241",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "d9587d6199f7d0ffb7c770eba683fbabfd18680125f683f2d6983b7e56e06603",
+      "names": [
+        "packages/llm/llm/src/message.ts#DeveloperMessage"
+      ],
+      "sources": [
+        "packages/llm/llm/src/message.ts:157"
+      ]
     },
     {
       "digest": "d9c462b9f62fdd3efc76a44b9524dc8781f6b91cd9c7e584b17d971defafebab",
@@ -28600,6 +28611,15 @@
       ]
     },
     {
+      "digest": "e613e0e2c3541db66a9bc4211a0b0d940e84792bcd767987ce6a2042116af58f",
+      "names": [
+        "packages/llm/llm/src/message.ts#UserMessage"
+      ],
+      "sources": [
+        "packages/llm/llm/src/message.ts:162"
+      ]
+    },
+    {
       "digest": "e6411b09c1d982f789bf741ca74e2bea69df56029847f86a6148e722039ee732",
       "names": [],
       "sources": []
@@ -28632,22 +28652,12 @@
       "sources": []
     },
     {
-      "digest": "e82e739c55bcde44d3938faa670f3a10dc18296e3b4058f324ed33df0596763f",
-      "names": [],
-      "sources": []
-    },
-    {
       "digest": "e8de0f457fed5b9ff94dc4950b59ef75fd8ba8af665cc7899485924a62653367",
       "names": [],
       "sources": []
     },
     {
       "digest": "e95f957154b2b1b58692af53d4131180b6dd19e2264869f876dbaa959991494e",
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "e9bce074a22fcd61548862940f3d3b845172da9c65fb0eb067b233e77f5e156e",
       "names": [],
       "sources": []
     },

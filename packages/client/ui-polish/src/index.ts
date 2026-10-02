@@ -11,6 +11,12 @@ import type {} from '@deepseek-ai/dsh-settings'
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
+    /**
+     * Git commit-message and LaTeX writing requests this package issues on the
+     * user's behalf. Readers preserve the message without the producer, and
+     * the kind imposes no validation, replay, or authority requirement.
+     * @persistenceAttribution
+     */
     'ui-polish': { kind: 'ui-polish' }
   }
 }

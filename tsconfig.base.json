@@ -386,6 +386,10 @@
       "@deepseek-ai/dsh-compaction-image-offload/projection": ["./packages/compaction/compaction-image-offload/src/projection.ts"],
       "@deepseek-ai/dsh-session-format-catalog/message-projections": ["./packages/session/session-format-catalog/src/message-projections.ts"],
       "@deepseek-ai/dsh-native-command/types": ["./packages/util/native-command/src/types.ts"],
+      // react 类型解析（沙箱无法创建 node_modules 符号链接时的回退）
+      "react": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/jsx-runtime.d.ts"],
+      "react/jsx-dev-runtime": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/jsx-dev-runtime.d.ts"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
       "@deepseek-ai/dsh-acp": ["./packages/acp/acp/src"],
       "@deepseek-ai/dsh-acp-app": ["./packages/bundle/acp-app/src"],
@@ -604,12 +608,8 @@
       "@deepseek-ai/dsh-workflow-ptc": ["./packages/workflow/workflow-ptc/src"],
       "@deepseek-ai/dsh-workspace": ["./packages/workspace/workspace/src"],
       "@deepseek-ai/dsh-workspace/invariant": ["./packages/workspace/workspace/src/invariant.ts"],
-      "@deepseek-ai/dsh-workspace-changes": ["./packages/deliverables/workspace-changes/src"],
+      "@deepseek-ai/dsh-workspace-changes": ["./packages/deliverables/workspace-changes/src"]
       // END generated package aliases
-      // react 类型解析（沙箱无法创建 node_modules 符号链接时的回退）
-      "react": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/index.d.ts"],
-      "react/jsx-runtime": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/jsx-runtime.d.ts"],
-      "react/jsx-dev-runtime": ["./node_modules/.pnpm/@types+react@18.3.31/node_modules/@types/react/jsx-dev-runtime.d.ts"]
     }
   }
 }

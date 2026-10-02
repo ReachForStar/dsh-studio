@@ -431,7 +431,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   FileUploadReceiptId: 'attachment.md',
   FileUploadValue: 'attachment.md',
   SessionStartSource: 'core.md',
-  ToolCallId: 'core.md',
+
   SessionLogSnapshot: 'session-query.md',
   SessionSurfaceSnapshot: 'session-query.md',
   ApprovalOutcome: 'approval.md',

@@ -3,7 +3,7 @@ title: fork 自研包的门禁红项清单
 type: query
 tags: [gates, doc-sync, lint, coverage, constraints, fork, 待办]
 created: 2026-09-18
-updated: 2026-10-02
+updated: 2026-10-03
 sources: []
 status: active
 ---
@@ -72,36 +72,22 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 
 附带清掉两项：`verify-package-paths` 报 `docs/wiki/log.md` 引用了已删除的 `flow/` 子目录（在 `packages/client/ui-polish/src/client/` 下），改写成指向仍存在的父目录并注明该目录后已删除；`doc-typecheck` 报 `queries/tool-scheduler-symbol-duplication.md` 的片段式 `ts` 代码块编译不过，该块是源码摘录，改为 `ts ignore-check`（门禁本就为这类草图设有 50% 上限，现为 84 编译 / 78 忽略）。
 
-## doc-sync 剩余红项（2026-10-02 盘点，共 10 项）
+## doc-sync 全部清偿（2026-10-03）
 
-`pnpm run doc-sync` 覆盖 43 个门禁，上表清完后仍红 11 项，按性质分三类（`pnpm run test:docs` 这类 doc-quick 聚合只覆盖其中一部分，所以先前没有全部暴露）：
+上一节列出的 10 项已全部修完，`pnpm run doc-sync` 现为 42 通过 / 1 失败，唯一失败项是本机环境而非仓库问题（见末条）。
 
-**一、跑生成器即绿（4 项，机械）**
+| 项 | 修法 |
+| --- | --- |
+| `verify-doc-graphs`、`verify-config-catalog`、`verify-plugin-packages`、`verify-tsconfig-paths` | 跑对应 `gen-*` 生成器并提交产物。**`gen-tsconfig-paths` 的坑**：它假定生成区是 `paths` 的最后一项（末尾不加逗号），而 fork 把 react 回退别名写在 `// END generated package aliases` 之后，跑一次就掉逗号、把 `tsconfig.base.json` 变成非法 JSON，后续 10 多个门禁一起崩。修法是把 react 别名移到 `// BEGIN` 之前，让生成区重新收尾 |
+| `verify-export-jsdoc`（21 处） | 给 5 个源文件的导出函数补 `@param` / `@returns`；两个报错文件是 `packages/*/src/oxlint-contract-*.ts`，属 lint 契约测试被中断后留下的残留（`.gitignore` 已忽略），直接删文件而非补文档 |
+| `verify-cordis-catalog` | `ctx.a2aStatus` 写进 `SERVICE_WALK_EXEMPTIONS`，标明由 `packages/client/ui-a2a-status/README.md` 拥有 API |
+| `verify-persistence-changes` | 会话格式仍为 V5：v4→v5 换代早已实施但缺持久化确认记录，补记 `docs/persistence-changes/2026-10-03-session-format-v5.md`（version-bump，8 个根）。两个 fork 来源类型补 `@persistenceAttribution` 后由 `union-variants-changed` 改判为 `attribution-only source kind added`。详见[会话格式 v5 落地](session-format-v5-landing.md) |
+| `verify-config-source-ownership` | `dsh-a2a-host` 新增 `apiKeyEnv` 并经 `ctx.credentials` 在绑定前解析，`cordis.patch.yml` 只写变量名；解析不到时告警并按未认证服务，同时从 agent card 撤掉鉴权声明 |
+| `verify-translation-pairing`（83 文件） | 先 `--write --all` 重记 81 条陈旧记录，再用结构签名比对剩下的真实差异：`capability-seams.zh.md` 缺 4 行 fork 服务（`ctx.a2a`/`ctx.a2aHost`/`ctx.xingchen`/`ctx.sshSftp`）与其 mermaid 节点、`tool-catalog.zh.md` 的 `a2a_send` schema 停在旧版。mermaid 与代码块两侧必须逐字一致，已整体复制 |
 
-| 门禁 | 报错 | 动作 |
-| --- | --- | --- |
-| `verify-doc-graphs` | `docs/event-producer-consumer.{md,zh.md}` 过期 | `pnpm run gen-doc-graphs` |
-| `verify-config-catalog` | `docs/config-catalog.{md,zh.md}` 过期 | `pnpm run gen-config-catalog`（中文侧手工补同位置条目） |
-| `verify-plugin-packages` | `packages/preset/agent-preset/skills/cordis-composition-reference/references/packages.md` 过期 | `pnpm run gen-plugin-packages` |
-| `verify-tsconfig-paths` | `tsconfig.base.json` 过期 | `pnpm run gen-tsconfig-paths` |
+## 唯一未绿项：website 构建（本机环境）
 
-**二、机械但有内容判断（2 项）**
-
-- `verify-export-jsdoc`（21 处）：`packages/a2a/a2a-host/src/kafka-detect.ts`、`packages/a2a/a2a/src/server.ts`、`packages/client/ui-a2a-status/src/client/a2a-status-store.ts`、`packages/experimental/computer-use-cua-driver-mcp/src/installer.ts`、`packages/session/session-format-v2-to-v3/src/{payload,validation}.ts` 的导出函数缺 `@param` / `@returns`；另有 `packages/*/src/oxlint-contract-*.ts` 探测文件被扫描（属 lint 契约测试残留）。
-- `verify-cordis-catalog`：`ctx.a2aStatus` 声明在 Context 合并里但没有可渲染投影，需要在 `scripts/gen-cordis-catalog.ts` 的 `SERVICE_PAGE` 里建条目（先让它可渲染）或写进 `SERVICE_WALK_EXEMPTIONS` 并指名文档归属。
-
-**三、需要决策或逐条人工处理（4 项）**
-
-- `verify-persistence-changes`（**需版本决定**）：现在能评估了，报告 `event:user/message.data.source[kind="ui-polish"]` 与 `[kind="a2a-seat"]` 的联合变体变化（分类器要求 bump），以及 `event:xingchen/dispatch-progress` 新增根（同版本允许）。联合变体变化按 `docs/cookbook/reviewing-persistence-type-changes.md` 不能只靠同版本确认记录，得新增一代会话格式（v5→v6）；属产品级持久化决策，未实施。
-- `verify-translation-pairing`（83 个文件 / 282 条）：40 条是旧格式记录（机械），157 条是「某节在确认后变过」（英中）、57 条是「译文未经确认」、28 条是「记录里还在、源文件已无该节」。**不能整体 `--write --all`**：该命令会把当前状态直接记为“已确认”，等于对未处理的译文冒认一致；正确做法是逐对把另一侧补齐后再 `--write <pair>`。
-- `verify-config-source-ownership`：`packages/bundle/web-app/cordis.patch.yml:350` 的 `a2a-host` 仍内联环境变量 `apiKey`，应由适配器经 `ctx.credentials` 与环境快照解析（与 `llm-*` 的 `apiKeyEnv` 同型）。属 A2A 批。
-- `docs:build`（website 构建）：
-
-```
-▲ [WARNING] Unrecognized target environment "es2024" [tsconfig.json]
-```
-
-  失败点在网站构建阶段（后续是 `verify-doc-site-fragments`），尚未定位到具体报错行。
+`pnpm run docs:build` 在本机报 `[vite:esbuild-transpile] remove C:\Users\...\Temp\esbuild-…: Access is denied`：esbuild 无法删除系统临时目录里的中间文件，vite 插件回调因此中断。同一条命令把 `TEMP`/`TMP`/`TMPDIR` 指向仓库内目录即可通过（`build complete` + 5388 条内部片段引用全部解析），说明失败只关乎临时目录权限，与文档内容无关。附带警告 `Unrecognized target environment "es2024"` 来自 esbuild 0.21.5 不认识该 target，不影响产物。上一节 2026-10-02 的日志里同一失败已存在，不是本轮引入。
 
 ## 复发预防
 
@@ -110,3 +96,5 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - 行尾：仓库规范是 LF。用 PowerShell `Set-Content` 或其它默认写 CRLF 的工具改文档后，直接读工作区字节的门禁会看到漂移而 git 看不到；改完这类文件顺手核一次行尾。
 - 知识库页面里的 ```ts 代码块会被 `doc-typecheck` 编译：整段可运行的例子写 ```ts，源码摘录或伪代码写 ```ts ignore-check（该门禁对忽略比例有 50% 上限）。
 - fork 的 CI 不跑这些门禁，别把「CI 绿了」当成门禁通过。
+- `tsconfig.base.json` 的 `paths` 里，手写别名必须写在 `// BEGIN generated package aliases` **之前**：生成器假定自己的区块收尾 `paths`，末尾不写逗号；写在 `END` 之后的条目会让 `gen-tsconfig-paths` 产出非法 JSON。
+- 翻译配对存量较多时先 `verify-translation-pairing --write --all` 重记陈旧记录，再跑一次检查：记录问题会消失，剩下的就是真正的结构差异（表格行列数、链接目标、代码块内容）。mermaid 与代码块要求两侧逐字一致。

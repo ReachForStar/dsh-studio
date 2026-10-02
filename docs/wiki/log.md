@@ -405,3 +405,14 @@
 - 顺带：`verify-package-paths` 报 `docs/wiki/log.md` 引用了已删除的 `flow/` 子目录（在 `packages/client/ui-polish/src/client/` 下），改写为仍存在的父目录并注明已删除；`doc-typecheck` 报 `queries/tool-scheduler-symbol-duplication.md` 的片段式 `ts` 块编译不过，改为 `ts ignore-check`（源码摘录的正确形态）。
 - 验证：`test:docs` 20 通过 / 1 失败（仅剩翻译配对存量 83 文件 282 条）；`typecheck` 两面通过；`packages/core/session` 与 `cordis-client-runner` 共 676 项测试通过。
 - 盘点：`doc-sync` 43 门仍红 10 项，分「跑生成器即绿」（doc graphs / config catalog / plugin packages / tsconfig paths）、「机械但有内容判断」（export jsdoc 21 处、`ctx.a2aStatus` 未分类）、「需决策」（持久化联合变体需 v5→v6、翻译配对逐对补齐、a2a-host 内联凭据、网站构建），明细见[门禁红项页](queries/fork-gate-debt.md)。
+
+## [2026-10-03] fix | 清偿 doc-sync 全部剩余红项
+
+- 生成物：`gen-doc-graphs`、`gen-config-catalog`、`gen-plugin-packages`、`gen-tsconfig-paths` 各跑一次并提交。**踩坑**：`gen-tsconfig-paths` 假定生成区是 `paths` 的最后一项，而 fork 把 react 回退别名写在 END 标记之后，跑一次就掉逗号、把 `tsconfig.base.json` 变成非法 JSON，连带 10 多个门禁一起崩；把 react 别名移到 BEGIN 之前即恢复。
+- 导出 JSDoc：`a2a-host/src/kafka-detect.ts`、`a2a/src/server.ts`、`ui-a2a-status/src/client/a2a-status-store.ts`、`computer-use-cua-driver-mcp/src/installer.ts`、`session-format-v2-to-v3/src/{payload,validation}.ts` 补 `@param`/`@returns`；两个 `packages/*/src/oxlint-contract-*.ts` 是 lint 契约测试中断留下的残留（gitignore 内），删除。
+- 服务分类：`ctx.a2aStatus` 写进 `gen-cordis-catalog.ts` 的 `SERVICE_WALK_EXEMPTIONS`，指名 `ui-a2a-status` README 拥有 API。
+- 持久化：**写入器保持 V5**。v4→v5 换代早已实施但无确认记录，补记 `docs/persistence-changes/2026-10-03-session-format-v5.md`（version-bump，覆盖两个表头、`assistant/peer-message` 根、两个归属型来源类型与 `xingchen/dispatch-progress`，共 8 个根）；两个 fork 来源类型补 `@persistenceAttribution`，分类器由 `union-variants-changed` 改判 `attribution-only source kind added`。
+- a2a-host 凭据：新增 `apiKeyEnv`，绑定前经 `ctx.credentials` 解析；拿不到值时告警并按未认证服务，同时从 agent card 撤掉鉴权声明；`cordis.patch.yml` 由内联 `!!js process.env.DSH_A2A_API_KEY` 改为 `apiKeyEnv: DSH_A2A_API_KEY`，新增 3 个测试。
+- 翻译配对：先 `--write --all` 重记 81 条陈旧记录，再修真实结构差异——`capability-seams.zh.md` 补齐 4 行 fork 服务（`ctx.a2a`/`ctx.a2aHost`/`ctx.xingchen`/`ctx.sshSftp`）、`ctx.subagents` 行的 `subagent-pi`、以及整块 mermaid；`tool-catalog.zh.md` 的 `a2a_send` schema 块替换为当前版本（mermaid 与代码块要求两侧逐字一致）。
+- 顺带：`pnpm install` 把与 manifests 不符的锁文件对齐（HEAD 的 `pnpm-lock.yaml` 完全没有 `dsh-pi-agent-loop` 等条目），`pnpm install --frozen-lockfile` 现可通过。
+- 验证：`pnpm run doc-sync` 42 通过 / 1 失败，唯一失败是 `docs:build`（esbuild 无法删除系统临时目录里的中间文件，把 `TEMP`/`TMP`/`TMPDIR` 指向仓库内目录即通过，属本机环境）；`packages/a2a/a2a-host` 26 项、`packages/session` 与 `packages/core/session` 3587 项测试通过。

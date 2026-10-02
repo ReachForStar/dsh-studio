@@ -31,6 +31,12 @@ status: active
 
 同一条边界反复出现：**迁移层只负责「源代际的声明能否被目标代际无损表达」**，字段级畸形由编解码器/接纳层负责。`deferLoading` 的拒绝、`tool-addition` 的前缀化都是把接纳层职责前移到迁移层，结果把合法历史数据判死。修法是删迁移层的额外拒绝、让目标代际自己的准入说话，并把测试写成「迁移通过 + 编码/接纳拒绝」两段。
 
+## 后续：V5 写入器的持久化确认（2026-10-03）
+
+v4→v5 换代本身早已实施，但一直没有对应的持久化确认记录，`verify-persistence-changes` 因此把自 V4 基线以来的全部差异报成未确认。补记 `docs/persistence-changes/2026-10-03-session-format-v5.md`（`decision: version-bump`，覆盖两个表头、`assistant/peer-message` 根、两个仅作归属标记的用户来源类型与 `xingchen/dispatch-progress` 根，共 8 个根），写入器仍为 V5。
+
+两个 fork 来源类型（`ui-polish`、`a2a-seat`）原先被分类为 `union-variants-changed`（要求 bump），因为它们的 `MessageSourceMap` 条目没有 `@persistenceAttribution`；补上该 JSDoc 标记后分类器改判 `attribution-only source kind added`（同版本允许）。这也是以后新增用户来源类型的必要条件。
+
 ## 遗留（待决策，非本轮引入）
 
 - **fork 自有 v4 会话文件读不出**：`releasedV4SessionFormatCodec`（来自上游 v3→v4）要求生产者拥有的消息源，fork v4 行使用 `{ kind: 'plugin', plugin }` 包装，因此本仓库合并前落盘的 v4 日志无法按 v4 恢复。已在 [docs/persistence-changes/historical-formats/v4.md](../../../docs/persistence-changes/historical-formats/v4.md) 的「Verification and limitations」写明。可选方向：为 fork v4 方言提供宽容的源行接纳，或提供一次性迁移命令把 fork v4 升到 v5。

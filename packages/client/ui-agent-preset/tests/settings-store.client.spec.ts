@@ -115,6 +115,20 @@ describe('the agent-preset roster store', () => {
     expect(controller.store.getSnapshot().options.map(option => option.id)).toEqual(['standard'])
   })
 
+  it('offers a preset whose specialist seats run locally, without an A2A host status', async () => {
+    // The Xingchen preset's seats default to `local` child agents, so an
+    // absent inbound A2A host says nothing about whether it can run. The
+    // roster read is the only input; no a2aStatus service is provided here.
+    const controller = derivedController(fakeApi([
+      { id: 'standard', isDefault: true },
+      { id: 'xingchen-qiming', isDefault: false },
+    ]))
+
+    await controller.load()
+
+    expect(controller.store.getSnapshot().options.map(option => option.id)).toContain('xingchen-qiming')
+  })
+
   it('carries the display metadata a preset published', async () => {
     const controller = derivedController(fakeApi([
       { id: 'standard', isDefault: true, name: '标准模式', description: '完整的编码 agent。' },

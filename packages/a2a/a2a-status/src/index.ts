@@ -1,6 +1,6 @@
 /**
- * Host Remote 网关：查询 a2a-host 监听状态和 Kafka 可达性，供前端状态指示器
- * 和入口显隐消费。a2a-host 是可选服务，未加载时报告 hostRunning: false。
+ * Host Remote 网关：查询 a2a-host 监听状态和 Kafka 可达性，供前端状态指示器消费。
+ * a2a-host 是可选服务，未加载时报告 hostRunning: false。
  * @module @reachforstar/dsh-a2a-status
  */
 
@@ -45,7 +45,7 @@ export class A2AStatusGateway extends TypertRemoteService {
   private async bootstrapKafka(): Promise<void> {
     try {
       this.kafkaState = await ensureKafka({ brokers: DEFAULT_BROKERS })
-    } catch (error) {
+    } catch {
       this.kafkaState = { ready: false, brokers: [...DEFAULT_BROKERS], reason: 'unavailable' }
     }
   }

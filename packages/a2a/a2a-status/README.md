@@ -26,7 +26,7 @@ The gateway reports `hostRunning: false` when a2a-host is absent and `kafkaReady
 
 ## Model Experience
 
-This package has no model-facing surface. The Remote `a2a/status` method returns a status snapshot consumed by the Web client status indicator and entry-visibility logic.
+This package has no model-facing surface. The Remote `a2a/status` method returns a status snapshot consumed by the Web client status indicator.
 
 ## Known Limitations and Deferred Work
 

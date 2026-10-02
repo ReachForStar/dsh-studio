@@ -24,4 +24,4 @@ The group carries the Xingchen (星辰) star-domain routing: one package that tu
 |---|---|---|
 | [`xingchen/`](xingchen/README.md) | Registers the `xingchen_route` delegation tool, the `/review` `/bug` `/planning` commands, the routing prompt section, and the `xingchen` role/stop-reason session projection over configured A2A peers. | `ctx.xingchen` |
 
-The presets that mount it ship with [`@deepseek-ai/dsh-agent-presets`](../preset/agent-presets/README.md): `standard` adds the routing rows to the default composition, and `xingchen-qiming` is the same composition with the 启明 persona.
+The presets that mount it ship with the web application bundle [`@deepseek-ai/dsh-web-app`](../bundle/web-app/README.md): the shipped `standard` preset adds the routing rows to the default composition, and `xingchen-qiming` is the same composition with the 启明 persona.

@@ -1,6 +1,6 @@
 /**
  * a2a 服务状态 store：查询 a2a/status Remote，维护状态快照，供设置页
- * 指示器和入口显隐消费。通过 ctx.provide('a2aStatus', store) 暴露给其他包。
+ * 指示器消费。通过 ctx.provide('a2aStatus', store) 暴露查询状态。
  */
 
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -15,7 +15,7 @@ export interface A2aStatusRemoteFace {
 /** 状态快照。 */
 export interface A2aStatusState {
   status: 'idle' | 'loading' | 'ready' | 'error'
-  /** a2a 服务是否可用（a2a-host 已运行）；入口显隐以此为准。 */
+  /** a2a-host 是否已运行；查询失败时为 false。 */
   available: boolean
   hostRunning: boolean
   hostPort: number
@@ -45,7 +45,7 @@ export function messageOf(error: unknown): string {
 }
 
 /**
- * a2a 服务状态控制器：查询 Remote，维护快照，供设置页和入口显隐消费。
+ * a2a 服务状态控制器：查询 Remote，维护快照，供设置页状态指示器消费。
  * 通过 ctx.provide 暴露后，其他包用 ctx.get('a2aStatus') 可选拿。
  */
 export class A2aStatusStore {

@@ -25,7 +25,7 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount it in an agent preset; mounting it in a host composition instead would register the tool, commands, and prompt section once for the whole process, and the projection is per session. `packages/preset/agent-presets/presets/standard/agent.cordis.yml` mounts the package, and `xingchen-qiming` is the same composition with the 启明 persona.
+Mount it in an agent preset; mounting it in a host composition instead would register the tool, commands, and prompt section once for the whole process, and the projection is per session. `packages/bundle/web-app/presets/standard.patch.yml` mounts the package, and `xingchen-qiming` is the same composition with the 启明 persona.
 
 ### When to choose it
 
@@ -83,7 +83,7 @@ The `./skills` entry registers three bundled skills into the session's catalog: 
 
 - [Xingchen subsystem page](../../../docs/subsystems/xingchen.md) — the generated `ctx.xingchen` API beside the role and projection description.
 - [A2A stack](../../a2a/README.md) — the peer seam this package dispatches through.
-- [Agent presets](../../preset/agent-presets/README.md) — how `xingchen-qiming` and `standard` compose this package.
+- [Web application bundle](../../bundle/web-app/README.md) — the shipped `xingchen-qiming` and `standard` presets that compose this package.
 
 ## Model Experience
 

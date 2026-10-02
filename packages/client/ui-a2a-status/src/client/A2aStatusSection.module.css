@@ -49,8 +49,3 @@
 .grid dd[data-kafka-ready="false"] {
   color: var(--dsw-danger, #dc2626);
 }
-
-.notice {
-  color: var(--dsw-warning, #d97706);
-  margin: 0;
-}

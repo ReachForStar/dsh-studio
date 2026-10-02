@@ -1,6 +1,67 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/xingchen/xingchen/README.md
-README.md: 6ff2a1c93d86004290ceb7a628847bfb4090a923
-README.zh.md: 721e74a67bf9502ddfb332b01f6cc257cb8d7c6f
+/:
+  en: 719be78016a78ca0
+  zh: 1ebd2e7b1ad0e729
+/reachforstar-dsh-xingchen:
+  en: 695a90bd85f32d92
+  zh: 606ffc9b4fec484b
+/reachforstar-dsh-xingchen/summary:
+  en: ab8bdbe77734abad
+  zh: 5b6967e3af7644c2
+/reachforstar-dsh-xingchen/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/reachforstar-dsh-xingchen/use-this-package:
+  en: bb4879fa78a8cad5
+  zh: a2aa6a2a09b38955
+/reachforstar-dsh-xingchen/use-this-package/when-to-choose-it:
+  en: 6f3202948d6d382f
+  zh: 6c3b8dc629468651
+/reachforstar-dsh-xingchen/use-this-package/minimal-configuration:
+  en: 60dd2c4e77991982
+  zh: 1593cb95c1ef20b2
+/reachforstar-dsh-xingchen/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/reachforstar-dsh-xingchen/understand-the-implementation/source-map:
+  en: 3ee9d28546edb5d7
+  zh: 6c70a83076bfe82d
+/reachforstar-dsh-xingchen/understand-the-implementation/export-shape:
+  en: 203ee7441ddade82
+  zh: bcff63446b60182a
+/reachforstar-dsh-xingchen/understand-the-implementation/dispatch-and-continuity:
+  en: 39afe29b50043b81
+  zh: 4503ae4568e304b2
+/reachforstar-dsh-xingchen/understand-the-implementation/session-projection:
+  en: 4d54883e46ea381d
+  zh: 1d69efd94499dd47
+/reachforstar-dsh-xingchen/understand-the-implementation/bundled-skills:
+  en: 74441b372133cb3f
+  zh: 74b36d9e4d813532
+/reachforstar-dsh-xingchen/further-exploration:
+  en: f6819532e451644d
+  zh: 17e8165072964489
+/reachforstar-dsh-xingchen/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/reachforstar-dsh-xingchen/model-experience/request-context-and-condition:
+  en: cd8530c72534ee6b
+  zh: 16dbf6046e7e51fd
+/reachforstar-dsh-xingchen/model-experience/request-context-and-condition/what-the-model-sees:
+  en: 3e219f3e2f02e400
+  zh: 82f90f8ad3feadfa
+/reachforstar-dsh-xingchen/model-experience/request-context-and-condition/token-effect:
+  en: 878997ba3eecaa80
+  zh: d5da91dccbb437ae
+/reachforstar-dsh-xingchen/model-experience/request-context-and-condition/kv-cache-effect:
+  en: d260a62074874889
+  zh: fc8a647291f52ca8
+/reachforstar-dsh-xingchen/known-limitations-and-deferred-work:
+  en: a78ef4d3cdbc9d97
+  zh: e081e30eac3f80ef
+/reachforstar-dsh-xingchen/known-limitations-and-deferred-work/dev-note:
+  en: 86df0a60503870fa
+  zh: 8273eafdd930cac8

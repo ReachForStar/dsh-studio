@@ -45,12 +45,9 @@ export function A2aStatusSection({ controller, useSnapshot, t }: A2aStatusSectio
           <dd data-kafka-phase={state.kafkaPhase}>
             {state.kafkaPhase === 'starting' ? t('kafkaStarting')
               : state.kafkaPhase === 'ready' ? t('kafkaReady')
-              : t('kafkaUnavailable')}
+                : t('kafkaUnavailable')}
           </dd>
         </dl>
-      ) : null}
-      {state.status === 'ready' && !state.available ? (
-        <p className={css.notice} role="status">{t('entryHidden')}</p>
       ) : null}
     </div>
   )

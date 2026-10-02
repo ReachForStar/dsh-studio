@@ -55,9 +55,6 @@
     },
     {
       "path": "../../util/values"
-    },
-    {
-      "path": "../ui-a2a-status"
     }
   ]
 }

@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在代理预设里挂载；挂在宿主组合里会让工具、命令与提示词段落整个进程只注册一次，而投影是按会话的。`packages/preset/agent-presets/presets/standard/agent.cordis.yml` 挂载了本包，`xingchen-qiming` 是同一套组合但人设换成启明。
+在代理预设里挂载；挂在宿主组合里会让工具、命令与提示词段落整个进程只注册一次，而投影是按会话的。`packages/bundle/web-app/presets/standard.patch.yml` 挂载了本包，`xingchen-qiming` 是同一套组合但人设换成启明。
 
 ### 何时选用
 
@@ -85,7 +85,7 @@ kind: "package-reference"
 
 - [星域子系统页](../../../docs/subsystems/xingchen.zh.md) —— 角色与投影说明旁的生成式 `ctx.xingchen` API。
 - [A2A 栈](../../a2a/README.zh.md) —— 本包派发所经的对等端接缝。
-- [代理预设](../../preset/agent-presets/README.zh.md) —— `xingchen-qiming` 与 `standard` 如何组合本包。
+- [Web 应用组合包](../../bundle/web-app/README.zh.md) —— 组合本包的随包预设 `xingchen-qiming` 与 `standard`。
 
 <a id="model-experience"></a>
 ## 模型体验

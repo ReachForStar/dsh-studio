@@ -24,4 +24,4 @@ kind: "package-group"
 |---|---|---|
 | [`xingchen/`](xingchen/README.zh.md) | 在已配置的 A2A 对等端之上注册 `xingchen_route` 委派工具、`/review` `/bug` `/planning` 命令、路由提示词段落，以及 `xingchen` 角色/终止原因会话投影。 | `ctx.xingchen` |
 
-挂载它的预设随 [`@deepseek-ai/dsh-agent-presets`](../preset/agent-presets/README.zh.md) 发布：`standard` 把路由行加进默认组合，`xingchen-qiming` 是同一套组合但人设换成启明。
+挂载它的预设随 Web 应用组合包 [`@deepseek-ai/dsh-web-app`](../bundle/web-app/README.zh.md) 发布：随包 `standard` 预设把路由行加进默认组合，`xingchen-qiming` 是同一套组合但人设换成启明。

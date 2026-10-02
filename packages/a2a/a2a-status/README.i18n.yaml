@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/a2a/a2a-status/README.md
+/:
+  en: 0a8863e17b859319
+  zh: 0587579d62f80a65
+/reachforstar-dsh-a2a-status:
+  en: 0259a4d40872137a
+  zh: 81b8d47d149cd92d
+/reachforstar-dsh-a2a-status/summary:
+  en: ba0142a551f417e4
+  zh: b71646210f75fe85
+/reachforstar-dsh-a2a-status/use-this-package:
+  en: a0699edb49bb84be
+  zh: 91f68d4cbf585f4b
+/reachforstar-dsh-a2a-status/use-this-package/minimal-configuration:
+  en: ac29d56a216ce753
+  zh: 6b0598ad2197f3de
+/reachforstar-dsh-a2a-status/model-experience:
+  en: b43e5bf416fc6761
+  zh: 9cfd6b9efecd47fe
+/reachforstar-dsh-a2a-status/known-limitations-and-deferred-work:
+  en: e460cc828ccbb99b
+  zh: b2c935418aaab8bd

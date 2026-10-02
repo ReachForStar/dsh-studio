@@ -1,6 +1,6 @@
 /**
  * a2a 服务状态指示器，浏览器半：注册设置页状态指示器，并通过
- * ctx.provide('a2aStatus') 暴露状态 store，供其他包控制 a2a 入口显隐。
+ * ctx.provide('a2aStatus') 暴露 A2A 主机和 Kafka 的查询状态。
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'

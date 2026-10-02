@@ -26,7 +26,7 @@ a2a-host 缺失时报告 `hostRunning: false`，无 broker 可达时报告 `kafk
 
 ## 模型体验
 
-本包无模型可见面。Remote `a2a/status` 方法返回状态快照，供 Web 客户端状态指示器和入口显隐逻辑消费。
+本包无模型可见面。Remote `a2a/status` 方法返回状态快照，供 Web 客户端状态指示器消费。
 
 ## 已知限制与待办
 

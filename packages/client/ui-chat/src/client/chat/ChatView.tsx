@@ -211,12 +211,6 @@ export function ChatView({
     [loadImage, renderSlot],
   )
 
-  // Adapt the conversation view's required-focus openView to the optional-focus
-  // signature chat nodes and tool views consume.
-  const threadOpenView = useMemo(
-    () => (view: string, focus?: string) => openView(view, focus ?? ''),
-    [openView],
-  )
 
   const firstKey = order[0]
   const firstSeq = firstKey === undefined ? null : nodeStore.get(firstKey)?.anchorSeq ?? null
@@ -276,7 +270,7 @@ export function ChatView({
                 openFile={requestOpenFile}
                 openSkill={openSkill}
                 inspectCall={inspectCall}
-                openView={threadOpenView}
+                openView={openView}
                 forkAt={forkAt}
                 loadImage={loadImage}
                 renderMessageImages={renderMessageImages}

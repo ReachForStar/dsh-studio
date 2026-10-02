@@ -64,7 +64,7 @@ export function ExcalidrawToolView(props: ExcalidrawToolViewProps) {
     if (block.isError) return
     if (openView === undefined) return
     autoSwitchedRef.current = true
-    openView(EXCALIDRAW_VIEW)
+    openView(EXCALIDRAW_VIEW, '')
   }, [phase, block, running, openView])
 
   const titleKey = titleKeyOf(toolName)
@@ -95,7 +95,7 @@ export function ExcalidrawToolView(props: ExcalidrawToolViewProps) {
           </TextShimmer>
         </div>
         <div className={css.actions}>
-          <Button variant="outline" onClick={() => openView?.(EXCALIDRAW_VIEW)}>
+          <Button variant="outline" onClick={() => openView?.(EXCALIDRAW_VIEW, '')}>
             {t('excalidraw.openInCanvas')}
           </Button>
         </div>
@@ -120,7 +120,7 @@ export function ExcalidrawToolView(props: ExcalidrawToolViewProps) {
         />
       )}
       <div className={css.actions}>
-        <Button variant="outline" onClick={() => openView?.(EXCALIDRAW_VIEW)}>
+        <Button variant="outline" onClick={() => openView?.(EXCALIDRAW_VIEW, '')}>
           {t('excalidraw.openInCanvas')}
         </Button>
       </div>

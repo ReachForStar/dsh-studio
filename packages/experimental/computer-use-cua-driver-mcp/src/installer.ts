@@ -15,7 +15,11 @@ function installScriptName(): string {
   return process.platform === 'win32' ? 'install.ps1' : 'install.sh'
 }
 
-/** Check whether a command is available in PATH and optionally capture its version. */
+/**
+ * Check whether a command is available in PATH and optionally capture its version.
+ * @param command - Executable to invoke with `--version`.
+ * @returns Whether it exited 0, plus the version it reported when it did.
+ */
 export async function checkDriver(command: string): Promise<{ installed: boolean; version: string | null }> {
   return new Promise((resolve) => {
     const child = spawn(command, ['--version'], {
@@ -38,7 +42,10 @@ export async function checkDriver(command: string): Promise<{ installed: boolean
   })
 }
 
-/** Platform descriptor for error messages and logging. */
+/**
+ * Platform descriptor for error messages and logging.
+ * @returns The platform and architecture pair, such as `win32-x64`.
+ */
 export function platformDescriptor(): string {
   return `${platform()}-${arch()}`
 }
@@ -47,6 +54,7 @@ export function platformDescriptor(): string {
  * Download the upstream install script and execute it, streaming progress
  * lines as newline-delimited JSON: {"type":"log","line":"..."} or
  * {"type":"done","exitCode":0} or {"type":"error","message":"..."}.
+ * @returns One newline-delimited JSON frame per progress line, then a terminal frame.
  */
 export function runInstall(): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
@@ -117,7 +125,10 @@ export function runInstall(): ReadableStream<Uint8Array> {
   })
 }
 
-/** Readable.toWeb adapter for the install stream. */
+/**
+ * Readable.toWeb adapter for the install stream.
+ * @returns The same progress stream `runInstall` produces.
+ */
 export function installStream(): ReadableStream<Uint8Array> {
   return runInstall()
 }

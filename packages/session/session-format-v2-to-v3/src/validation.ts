@@ -25,6 +25,7 @@ export function assertReleasedV3Header(header: SessionFormatHeader): void {
  * The private relationship view never escapes; the returned artifact and its messages are unchanged.
  * @param artifact - detached v3 artifact.
  * @param knownEventTypes - event types understood by the installed Session package.
+ * @param laterSurfaceTypes - surface event types this reader must not own; they are admitted without interpretation.
  * @returns the same validated artifact.
  */
 export function restoreReleasedV3Artifact(

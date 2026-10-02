@@ -43,7 +43,7 @@ const DEFAULT_COMPOSE = join(dirname(require.resolve('@reachforstar/dsh-a2a-host
 
 /** 检测单个 host:port 是否可连（TCP 探测，500ms 超时）。 */
 function isPortReachable(host: string, port: number, timeoutMs = 500): Promise<boolean> {
-  return new Promise<boolean>(resolve => {
+  return new Promise<boolean>((resolve) => {
     const socket = createConnection({ host, port, timeout: timeoutMs })
     socket.once('connect', () => { socket.destroy(); resolve(true) })
     socket.once('error', () => resolve(false))
@@ -51,7 +51,11 @@ function isPortReachable(host: string, port: number, timeoutMs = 500): Promise<b
   })
 }
 
-/** 检测 Kafka 集群是否已运行：对每个 broker 做 TCP 探测，至少一个可达即认为已运行。 */
+/**
+ * 检测 Kafka 集群是否已运行：对每个 broker 做 TCP 探测，至少一个可达即认为已运行。
+ * @param brokers - 待探测的 `host:port` 列表，默认本机三 broker。
+ * @returns 任一 broker 可达时为 true。
+ */
 export async function isKafkaRunning(brokers: KafkaBrokers = DEFAULT_BROKERS): Promise<boolean> {
   const results = await Promise.all(brokers.map(async (b) => {
     const parts = b.split(':')
@@ -63,26 +67,36 @@ export async function isKafkaRunning(brokers: KafkaBrokers = DEFAULT_BROKERS): P
   return results.some(Boolean)
 }
 
-/** 检测本机 Docker 是否可用（docker info 成功即认为可用）。 */
+/**
+ * 检测本机 Docker 是否可用。
+ * @returns `docker info` 退出码为 0 时为 true。
+ */
 export function isDockerAvailable(): Promise<boolean> {
-  return new Promise<boolean>(resolve => {
+  return new Promise<boolean>((resolve) => {
     const child = spawn('docker', ['info', '--format', '{{.ServerVersion}}'], { stdio: 'ignore', windowsHide: true })
     child.once('error', () => resolve(false))
     child.once('exit', code => resolve(code === 0))
   })
 }
 
-/** 检测 WSL 是否可用（wsl --list 成功即认为可用）。 */
+/**
+ * 检测 WSL 是否可用。
+ * @returns Windows 上 `wsl --list --quiet` 退出码为 0 时为 true，其他平台恒为 false。
+ */
 export function isWslAvailable(): Promise<boolean> {
   if (process.platform !== 'win32') return Promise.resolve(false)
-  return new Promise<boolean>(resolve => {
+  return new Promise<boolean>((resolve) => {
     const child = spawn('wsl', ['--list', '--quiet'], { stdio: 'ignore', windowsHide: true })
     child.once('error', () => resolve(false))
     child.once('exit', code => resolve(code === 0))
   })
 }
 
-/** 在本机用 docker compose 启动 Kafka 集群。 */
+/**
+ * 在本机用 docker compose 启动 Kafka 集群。
+ * @param composeFile - compose 文件路径，默认本仓库的 `deploy/a2a/kafka/docker-compose.yml`。
+ * @returns 启动命令成功结束时兑现，非零退出码则拒绝。
+ */
 export function startKafkaViaDocker(composeFile: string = DEFAULT_COMPOSE): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const child = spawn('docker', ['compose', '-f', composeFile, 'up', '-d'], { stdio: 'pipe', windowsHide: true })
@@ -91,7 +105,11 @@ export function startKafkaViaDocker(composeFile: string = DEFAULT_COMPOSE): Prom
   })
 }
 
-/** 在 WSL 中用 docker compose 启动 Kafka 集群（compose 路径转 /mnt 形式）。 */
+/**
+ * 在 WSL 中用 docker compose 启动 Kafka 集群。
+ * @param composeFile - compose 文件路径；Windows 盘符路径会先转成 `/mnt/<drive>` 形式。
+ * @returns 启动命令成功结束时兑现，非零退出码则拒绝。
+ */
 export function startKafkaViaWsl(composeFile: string = DEFAULT_COMPOSE): Promise<void> {
   const wslPath = composeFile.replace(/^([A-Z]):\\/i, (_, drive) => `/mnt/${drive.toLowerCase()}/`).replace(/\\/g, '/')
   return new Promise<void>((resolve, reject) => {
@@ -104,6 +122,8 @@ export function startKafkaViaWsl(composeFile: string = DEFAULT_COMPOSE): Promise
 /**
  * 按优先级确保 Kafka 就绪：环境变量自定义 → 已运行 → Docker 启动 → WSL 启动 → 禁用。
  * 不抛错；未就绪时返回 ready: false + reason，调用方决定是否降级。
+ * @param options - broker 列表、环境变量快照与 compose 路径的覆盖值。
+ * @returns 是否就绪，以及实际使用的 broker 列表与判定原因。
  */
 export async function ensureKafka(options: EnsureKafkaOptions = {}): Promise<KafkaEnsureResult> {
   const brokers = options.brokers ?? DEFAULT_BROKERS

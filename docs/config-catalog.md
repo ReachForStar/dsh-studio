@@ -948,7 +948,7 @@ export interface StagehandModelConfig {
 
 - `inject`: `computerUse` · `tools`
 - `refs`: [`McpClient`](../packages/mcp/mcp-client/src/index.ts)
-- `source`: [`packages/experimental/computer-use-cua-driver-mcp/src/index.ts:20`](../packages/experimental/computer-use-cua-driver-mcp/src/index.ts)
+- `source`: [`packages/experimental/computer-use-cua-driver-mcp/src/index.ts:39`](../packages/experimental/computer-use-cua-driver-mcp/src/index.ts)
 
 ```ts config-catalog
 /** Installed executable and MCP connection overrides. */
@@ -4466,7 +4466,7 @@ export interface A2APeerConfig {
 
 - `inject`: `sessionController`
 - `refs`: [`AgentSkill`](../packages/a2a/a2a/src/index.ts)
-- `source`: [`packages/a2a/a2a-host/src/index.ts:35`](../packages/a2a/a2a-host/src/index.ts)
+- `source`: [`packages/a2a/a2a-host/src/index.ts:37`](../packages/a2a/a2a-host/src/index.ts)
 
 ```ts config-catalog
 /** Plugin configuration. */
@@ -4477,6 +4477,8 @@ export interface Config {
   port?: number
   /** Value calls must carry in `X-Api-Key`; empty serves unauthenticated. */
   apiKey?: string
+  /** Credential reference (environment-variable name) resolved through `ctx.credentials` per bind. */
+  apiKeyEnv?: string
   /** Endpoint peers are told to call, when it differs from host and port. */
   url?: string
   /** Working directory sessions start in; the host default when absent. */
@@ -4852,6 +4854,8 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-user-questions` | — | [`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts) |
 | `@deepseek-ai/dsh-webhook` | `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry` | [`packages/webhook/webhook/src/index.ts`](../packages/webhook/webhook/src/index.ts) |
 | `@deepseek-ai/dsh-workspace` | `storageDomain` · `sessionPersistence` | [`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts) |
+| `@reachforstar/dsh-a2a-status` | — | [`packages/a2a/a2a-status/src/index.ts`](../packages/a2a/a2a-status/src/index.ts) |
+| `@reachforstar/dsh-client-ui-a2a-status` | — | [`packages/client/ui-a2a-status/src/index.ts`](../packages/client/ui-a2a-status/src/index.ts) |
 | `@reachforstar/dsh-client-ui-ssh` | — | [`packages/client/ui-ssh/src/index.ts`](../packages/client/ui-ssh/src/index.ts) |
 | `@reachforstar/dsh-host-ssh-remotes` | `sshSftp` | [`packages/host/ssh-remotes/src/index.ts`](../packages/host/ssh-remotes/src/index.ts) |
 | `@reachforstar/dsh-tool-a2a` | `tools` · `a2a` | [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts) |

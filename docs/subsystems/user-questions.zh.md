@@ -276,7 +276,7 @@ async askTimed( request: AskUserQuestionRequest & { agent: Agent }, callId: Tool
 async ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer>
 ```
 
-Types: [Agent](core.zh.md) · [ToolCallId](core.zh.md)
+Types: [Agent](core.zh.md) · [ToolCallId](llm-streaming.zh.md)
 
 Source: [`packages/interaction/user-questions/src/index.ts`](../../packages/interaction/user-questions/src/index.ts)
 

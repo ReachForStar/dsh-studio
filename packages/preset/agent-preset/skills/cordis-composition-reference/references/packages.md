@@ -10,6 +10,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 |---|---|---|
 | `@reachforstar/dsh-a2a` | yes | A2A protocol and peer seam: wire types, server, and client on node:http, plus the configured remote agents this deployment may call |
 | `@reachforstar/dsh-a2a-host` | yes | A2A host: publish this deployment’s sessions to remote A2A agents over JSON-RPC and Server-Sent Events |
+| `@reachforstar/dsh-a2a-status` | no | Host Remote gateway for querying a2a-host listener and Kafka reachability status |
 | `@reachforstar/dsh-tool-a2a` | no | Model-facing A2A tools: list the configured peers and send one message to a peer |
 
 ## acp
@@ -123,6 +124,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-user-questions` | no | Web ask_user_question composer takeover and plan-review presentation UI |
 | `@deepseek-ai/dsh-client-ui-workflow-run` | no | Durable workflow-run Conversation Node and nested member disclosure for dsh web |
 | `@deepseek-ai/dsh-client-ui-workspace` | no | Workspace picker plugin: one WorkspacePicker registered into the sidebar and empty-state workspace slots |
+| `@reachforstar/dsh-client-ui-a2a-status` | no | A2A service status indicator in Web Settings |
 | `@reachforstar/dsh-client-ui-polish` | yes | Web GUI polish plugin: whole-app background image, session stats float with cost, git/latex/excalidraw panels, and configurable compaction threshold |
 | `@reachforstar/dsh-client-ui-ssh` | no | SSH/SFTP connection management page in Web Settings: list, create, edit, probe, and delete saved connections |
 

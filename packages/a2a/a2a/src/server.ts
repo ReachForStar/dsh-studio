@@ -31,7 +31,11 @@ export interface A2AStreamSink {
   appendArtifact(artifactId: string, name: string, text: string, lastChunk?: boolean): void
 }
 
-/** 多路 sink：同一份状态写多个 sink，总线入口与 RPC 入口共用同一套语义。 */
+/**
+ * 多路 sink：同一份状态写多个 sink，总线入口与 RPC 入口共用同一套语义。
+ * @param sinks - 接收同一份状态与工件的目标 sink。
+ * @returns 把每次写入转发给全部 sink 的 sink。
+ */
 export function teeSink(...sinks: A2AStreamSink[]): A2AStreamSink {
   return {
     sendStatus(state, text) {
@@ -528,7 +532,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
       rejectStopped(error)
       controller.abort(error)
       void Promise.resolve().then(() => options.executor.onCancel?.({ taskId: task.id, contextId: task.contextId }))
-        .catch((cancelError) => onError('A2A onCancel failed', cancelError))
+        .catch(cancelError => onError('A2A onCancel failed', cancelError))
     }
     const sink: A2AStreamSink = {
       sendStatus(state, text) {
@@ -548,7 +552,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
       return options.executor.onMessage({ ...context, sink, signal: controller.signal })
     })
     const promise = Promise.race([work, stopped])
-      .then(() => session.finish(), (error) => session.fail(error))
+      .then(() => session.finish(), error => session.fail(error))
       .finally(() => {
         settled = true
         clearTimeout(timer)
@@ -612,7 +616,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
     if (configuration.returnImmediately === true) {
       // 调用方要求不等：后台继续执行，终态通过 GetTask/SubscribeToTask/push 到达
       const snapshot = structuredClone(task)
-      void executeTask(exec, session).catch((error) => onError('A2A background execution failed', error))
+      void executeTask(exec, session).catch(error => onError('A2A background execution failed', error))
       return snapshot
     }
     return executeTask(exec, session)

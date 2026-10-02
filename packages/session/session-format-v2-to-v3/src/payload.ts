@@ -264,6 +264,7 @@ function assertFeedback(type: string, data: SessionFormatJsonObject): void {
  * Unclassified metadata is deferred to vocabulary-aware restoration; unknown required types must not become recoverable corruption.
  * @param event - decoded logical event.
  * @param knownEventTypes - additional installed event types whose envelopes are interpreted.
+ * @param laterSurfaceTypes - surface event types this reader must not own; they are admitted without interpretation.
  */
 export function assertV3Event(
   event: SessionFormatEvent,

@@ -39,7 +39,11 @@ const IDLE_STATE: A2aStatusState = {
   error: null,
 }
 
-/** 将 Remote 报错转为文本。 */
+/**
+ * 将 Remote 报错转为文本。
+ * @param error - 未知类型的错误值。
+ * @returns Error 实例的消息，其他值转为字符串。
+ */
 export function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }

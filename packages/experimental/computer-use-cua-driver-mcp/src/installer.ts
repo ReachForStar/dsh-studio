@@ -22,9 +22,13 @@ function installScriptName(): string {
  */
 export async function checkDriver(command: string): Promise<{ installed: boolean; version: string | null }> {
   return new Promise((resolve) => {
-    const child = spawn(command, ['--version'], {
+    // Windows resolves npm-installed `.cmd` shims only through a shell, and the
+    // shell splits the command line at its first space, so an absolute path
+    // such as `C:\Program Files\...` must be quoted to start at all.
+    const throughShell = process.platform === 'win32'
+    const child = spawn(throughShell ? `"${command}"` : command, ['--version'], {
       stdio: ['ignore', 'pipe', 'ignore'],
-      shell: process.platform === 'win32',
+      shell: throughShell,
     })
     let stdout = ''
     child.stdout?.on('data', (chunk: Buffer) => { stdout += chunk.toString() })

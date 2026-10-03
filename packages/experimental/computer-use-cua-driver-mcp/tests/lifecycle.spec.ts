@@ -24,6 +24,13 @@ vi.mock('@deepseek-ai/dsh-mcp-client', async (importOriginal) => {
   }
 })
 
+// 这些用例只管占位与释放顺序：驱动是否装在宿主 PATH 上属于别的用例，
+// 否则本地是否装了 cua-driver、配置里的路径是否存在都会改变结果。
+vi.mock('../src/installer.ts', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../src/installer.ts')>()
+  return { ...original, checkDriver: () => Promise.resolve({ installed: true, version: '1.0.0' }) }
+})
+
 import * as Provider from '../src/index.ts'
 
 const contexts: Context[] = []

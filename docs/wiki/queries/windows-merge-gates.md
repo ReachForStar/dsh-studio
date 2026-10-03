@@ -70,3 +70,11 @@ status: active
 - Windows 上 `tar`、`pnpm pack`、`tsc -b` 的路径/产物行为与 POSIX 不同，涉及归档或别名时先在本机复现一次再改测试。
 - 限并发要写全 `--fileParallelism=false`；裸写 `--fileParallelism` 会触发 pathe 启动崩溃（`input.replace is not a function`），进程无结果。全量跑仍用默认并发，取证靠分组串行复跑。
 - 分组复跑前先剔除已单独验证为绿的失败文件（例如负载类超时），否则等于再跑一遍全量。
+
+## 2026-10-03 测试红项的根因与修法
+
+| 现象 | 根因 | 修法 |
+| --- | --- | --- |
+| `computer-use-cua-driver-mcp` 的 4 条组合/生命周期用例失败（`driver.ndjson` 不存在、`providerName` 未定义） | `checkDriver` 在 Windows 上用 `shell: true` 却不转义命令：`C:\Program Files\...`、`...\Author Software\nvm\...` 这类带空格的路径被 shell 从第一个空格切开，`--version` 实际没跑起来，于是判为「未安装」；provider 在未安装时直接返回，不占位也不起子进程。本机 node 恰好在带空格的目录下，必然命中 | `checkDriver` 走 shell 时给命令加引号（`shell: true` 要保留，npm 安装的 `.cmd` 垫片只有 shell 能解析）；新增 `tests/installer.spec.ts`，用带空格的临时目录加 `.cmd` 垫片复现该路径 |
+| `lifecycle.spec.ts` 的「保留占位直到子进程收尾」失败（`configurations[1]` 是 undefined） | 用例只 mock 了 MCP 客户端，没 mock `checkDriver`，而它配置的 `/configured/driver` 在宿主上并不存在，provider 因此提前返回；先前能过只是因为宿主 PATH 里恰好装了 `cua-driver` | 在 `lifecycle.spec.ts` 里把 `checkDriver` 固定为「已安装」：该文件管的是占位与释放顺序，驱动是否在宿主 PATH 属另一类用例 |
+| `packages/a2a/a2a` 的两条用例失败（首帧前断连重试、流没有任务时报错） | 客户端新增了截断判定——流没有以终态帧收尾就报 `stream ended without a terminal frame`；两条用例的假服务器分别以「消息帧」和「空流」收尾，于走到各自断言前就抛了客户端错误 | 假服务器改为以终态 `statusUpdate` 收尾：「重试」用例仍验证重试一次；「没有任务」用例只回终态状态、不给任务帧，仍走 `stream ended without a task` 分支 |

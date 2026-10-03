@@ -416,3 +416,11 @@
 - 翻译配对：先 `--write --all` 重记 81 条陈旧记录，再修真实结构差异——`capability-seams.zh.md` 补齐 4 行 fork 服务（`ctx.a2a`/`ctx.a2aHost`/`ctx.xingchen`/`ctx.sshSftp`）、`ctx.subagents` 行的 `subagent-pi`、以及整块 mermaid；`tool-catalog.zh.md` 的 `a2a_send` schema 块替换为当前版本（mermaid 与代码块要求两侧逐字一致）。
 - 顺带：`pnpm install` 把与 manifests 不符的锁文件对齐（HEAD 的 `pnpm-lock.yaml` 完全没有 `dsh-pi-agent-loop` 等条目），`pnpm install --frozen-lockfile` 现可通过。
 - 验证：`pnpm run doc-sync` 42 通过 / 1 失败，唯一失败是 `docs:build`（esbuild 无法删除系统临时目录里的中间文件，把 `TEMP`/`TMP`/`TMPDIR` 指向仓库内目录即通过，属本机环境）；`packages/a2a/a2a-host` 26 项、`packages/session` 与 `packages/core/session` 3587 项测试通过。
+
+## [2026-10-03] fix | 修两组红用例：Windows 带空格路径与 A2A 终态帧
+
+- `computer-use-cua-driver-mcp` 的 4 条用例（3 组合 + 1 生命周期）失败，根因不在夹具：`checkDriver` 在 Windows 上用 `shell: true` 却不给命令加引号，带空格的绝对路径被 shell 从第一个空格切开，判成「未安装」，provider 于是直接返回。本机 node 就在 `...\Author Software\nvm\...` 下，必然命中。修法：走 shell 时给命令加引号（`.cmd` 垫片仍需 shell 才能解析），并新增 `tests/installer.spec.ts` 用带空格目录 + `.cmd` 垫片复现。
+- `lifecycle.spec.ts` 里那条依赖宿主 PATH 的用例改为 mock `checkDriver`：该文件验证的是占位与释放顺序，驱动是否装在宿主上属另一类用例。
+- `packages/a2a/a2a` 的两条用例：客户端现在要求每次流式尝试以终态帧收尾，假服务器原先用「消息帧」和「空流」收尾，于是先抛客户端错误。夹具改为以终态 `statusUpdate` 收尾，两条断言与它们各自的分支都保持不变。
+- 按用户给的命令构建：`TMP`/`TEMP` 指向 `tmp/esbuild-tmp` 后 `pnpm run build` 通过（679 个客户端产物）。
+- 验证：`packages/a2a`、`computer-use-cua-driver-mcp`、`tool-cordis`、`mcp` 共 26 文件 320 项通过；`typecheck` 与 `test:docs`（21/21）通过。

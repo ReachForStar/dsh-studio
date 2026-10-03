@@ -189,7 +189,8 @@ describe('A2AClient 流式调用', () => {
         return
       }
       res.writeHead(200, { 'Content-Type': 'text/event-stream' })
-      res.write(`data: ${JSON.stringify({ message: { messageId: 'm', role: 'ROLE_AGENT', parts: [{ text: 'ok' }] } })}\n\n`)
+      // 终态帧：一次尝试必须以其收尾，否则客户端按截断上报（本轮之前不会）
+      res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't', contextId: 'c', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
       res.end()
     })
     const client = new A2AClient({ url })

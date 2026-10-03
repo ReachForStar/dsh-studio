@@ -364,6 +364,8 @@ describe('A2AService 桥配置与委派', () => {
   it('直连派发在流没有任务时报错', async () => {
     const url = await rawServer((_req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      // 只回终态状态、不给任务帧：流本身合法结束，缺失的是任务
+      res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't1', contextId: 'c1', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
       res.end()
     })
     const service = serviceOf({ bridge: { configPath: bridgeFile() }, peers: { 'claude-code': { url } } })

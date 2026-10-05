@@ -48,7 +48,7 @@ async function fixture(
   await writeFile(join(repositoryRoot, 'package.json'), `${JSON.stringify({ version })}\n`)
   await writeFile(join(appRoot, 'package.json'), `${JSON.stringify({ version })}\n`)
 
-  const [os, arch] = target.split('-') as ['mac' | 'win', 'arm64' | 'x64']
+  const [os, arch] = target.split('-') as ['mac' | 'win' | 'linux', 'arm64' | 'x64']
   const base = `deepseek-harness-${version}-${os}-${arch}`
   const origin = environment === 'test'
     ? TEST_ORIGIN
@@ -70,6 +70,15 @@ async function fixture(
       version,
       path: `${base}.zip`,
       files: [{ url: `${base}.zip`, size: Buffer.byteLength(zip), sha512: digest(zip) }],
+    })}\n`)
+  }
+  else if (os === 'linux') {
+    const appImage = 'signed AppImage fixture'
+    await writeFile(join(artifactsRoot, `${base}.AppImage`), appImage)
+    await writeFile(join(artifactsRoot, desktopUpdateMetadataFilename(version, 'linux')), `${JSON.stringify({
+      version,
+      path: `${base}.AppImage`,
+      files: [{ url: `${base}.AppImage`, size: Buffer.byteLength(appImage), sha512: digest(appImage) }],
     })}\n`)
   }
   else {
@@ -263,6 +272,41 @@ describe('desktop upload plan', () => {
     expect(plan).toMatchObject({
       publicUrl: 'https://download.deepseek.com/dsh-desk/feeds/win-x64/',
       bucket: PRODUCTION_BUCKET,
+    })
+  })
+
+  it('publishes the Linux AppImage with no blockmap and puts channel metadata last', async () => {
+    const paths = await fixture('linux-x64')
+    const plan = await createDesktopUploadPlan('linux-x64', paths)
+    expect(plan).toMatchObject({
+      environment: 'test',
+      version: '1.2.3',
+      publicUrl: `https://desktop-updates.example.com/dsh-desk/${RELEASE_ID}/feeds/linux-x64/`,
+      bucket: TEST_BUCKET,
+    })
+    expect(plan.artifacts.map(artifact => artifact.filename)).toEqual([
+      'deepseek-harness-1.2.3-linux-x64.AppImage',
+      'nightly-linux.yml',
+      'latest-linux.yml',
+    ])
+    expect(plan.artifacts[0]).toMatchObject({
+      key: `dsh-desk/${RELEASE_ID}/bin/linux-x64/deepseek-harness-1.2.3-linux-x64.AppImage`,
+      contentType: 'application/vnd.appimage',
+      channelMetadata: false,
+    })
+    expect(plan.artifacts.at(-1)).toMatchObject({ channelMetadata: true })
+  })
+
+  it('installs the Linux AppImage at the fixed download URL', async () => {
+    const paths = await fixture('linux-x64', '1.2.3-alpha.4', 'production')
+    const plan = await createDesktopUploadPlan('linux-x64', { ...paths, latest: true })
+    expect(plan.version).toBe('1.2.3-alpha.4')
+    expect(plan.artifacts).toHaveLength(1)
+    expect(plan.artifacts[0]).toMatchObject({
+      filename: 'dsh-latest-linux-x64.AppImage',
+      key: 'desktop/dsh-latest-linux-x64.AppImage',
+      contentType: 'application/vnd.appimage',
+      channelMetadata: false,
     })
   })
 

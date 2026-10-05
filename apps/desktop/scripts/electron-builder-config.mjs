@@ -232,6 +232,7 @@ export function createElectronBuilderConfig(
     },
     linux: {
       category: 'Development',
+      executableName: 'deepseek-harness',
       target: ['AppImage'],
     },
     nsis: {

@@ -27,7 +27,7 @@ param(
     [ValidateSet('test', 'production')]
     [string]$Environment,
     [Parameter(ParameterSetName = 'Publish', Mandatory = $true)]
-    [ValidateSet('win-x64', 'mac-x64', 'mac-arm64')]
+    [ValidateSet('win-x64', 'mac-x64', 'mac-arm64', 'linux-x64')]
     [string]$Target,
     [Parameter(ParameterSetName = 'Publish', Mandatory = $true)]
     [ValidateNotNullOrEmpty()]

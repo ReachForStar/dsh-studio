@@ -424,3 +424,10 @@
 - `packages/a2a/a2a` 的两条用例：客户端现在要求每次流式尝试以终态帧收尾，假服务器原先用「消息帧」和「空流」收尾，于是先抛客户端错误。夹具改为以终态 `statusUpdate` 收尾，两条断言与它们各自的分支都保持不变。
 - 按用户给的命令构建：`TMP`/`TEMP` 指向 `tmp/esbuild-tmp` 后 `pnpm run build` 通过（679 个客户端产物）。
 - 验证：`packages/a2a`、`computer-use-cua-driver-mcp`、`tool-cordis`、`mcp` 共 26 文件 320 项通过；`typecheck` 与 `test:docs`（21/21）通过。
+
+## [2026-10-14] fix | Linux 侧修复 Lefthook 钩子安装被拒
+
+- 现象：`node scripts/install-lefthook.mjs` 报 `refusing to overwrite hooks directory with an invalid ownership marker`。根因是随工作区从 Windows 复制过来的 `.git`：`config.worktree` 的 `core.hooksPath` 与 `.git/dsh-hooks/.dsh-lefthook-owned` 都记着 `D:\deepseek-harness\.git\dsh-hooks`，该值在 Linux 下过不了 `isAbsolute()` 校验，又被 git 当相对路径解析到仓库根下的同名字面目录，实际生效的钩子来自那里。
+- 修法：把 worktree 配置与归属标记改成 Linux 绝对路径，删掉仓库根下的残留钩子目录（3 个 lefthook 生成物），重跑安装脚本。
+- 验证：安装脚本退出码 0 且连跑两次幂等；`git rev-parse --path-format=absolute --git-path hooks` 指向 `.git/dsh-hooks`；直接执行 `./.git/dsh-hooks/pre-commit` 由 lefthook 2.1.15 正常收尾且工作区无变化；无安装锁残留。
+- 新增页面：[Windows 侧 .git 迁到 Linux 后 Lefthook 钩子安装被拒](queries/lefthook-hookspath-cross-platform.md)。

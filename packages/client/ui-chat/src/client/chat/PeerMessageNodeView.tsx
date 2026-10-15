@@ -1,15 +1,31 @@
 /** Peer-answer card: another agent's assistant message, attributed to its producer. */
 
 import { memo, useMemo } from 'react'
-import type { AssistantBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { AssistantBlock, MessageImagesOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
 import type { InjectFace, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ChatNodeViewProps, PresentationInjected } from '../contract/slots.ts'
+import type { ChatNodeViewProps, PresentationInjected, ReasoningBodyOwnerProps } from '../contract/slots.ts'
 import { AssistantMarkdown } from './AssistantMarkdown.tsx'
 import css from './PeerMessageNodeView.module.css'
 
+type PeerRenderSlot = PropsRenderSlots<'conversation.chat.reasoning.body' | 'conversation.chat.message.images'>['renderSlot']
 type PeerMessageNodeViewProps = ChatNodeViewProps<'peer-message'> & InjectFace<PresentationInjected>
-  & PropsRenderSlots<'conversation.chat.reasoning.body'>
+
+/**
+ * Render an Assistant child slot's content through the root Content Factories.
+ * The `reasoning.body` and `message.images` child slots belong to the
+ * assistant-step entry and one slot has one declarer, so a peer answer cannot
+ * declare them; the Factories carry the same official content to any renderer.
+ * @param renderFactorySlot - the framework's Factory renderer for this entry.
+ * @returns a renderer accepted by {@link AssistantMarkdown} for both child keys.
+ */
+function peerChildRenderer(
+  renderFactorySlot: PeerMessageNodeViewProps['renderFactorySlot'],
+): PeerRenderSlot {
+  return (key: string, input: object) => key === 'conversation.chat.reasoning.body'
+    ? renderFactorySlot('conversation.chat.reasoning.content', input as ReasoningBodyOwnerProps)
+    : renderFactorySlot('conversation.images.content', input as MessageImagesOwnerProps)
+}
 
 /**
  * Project durable message content onto the assistant block vocabulary the
@@ -35,10 +51,11 @@ function toAssistantBlocks(content: readonly ContentBlock[]): readonly Assistant
 
 /** Keyed Chat renderer for one peer-agent answer. */
 export const PeerMessageNodeView = memo(function PeerMessageNodeView({
-  node, renderMessageImages, useDisclosure, useGroupAction, usePresentation, renderSlot, t,
+  node, loadImage, useDisclosure, useGroupAction, usePresentation, renderFactorySlot, t,
 }: PeerMessageNodeViewProps) {
   const data = node.data
   const blocks = useMemo(() => toAssistantBlocks(data.content), [data.content])
+  const renderSlot = useMemo(() => peerChildRenderer(renderFactorySlot), [renderFactorySlot])
   // The producer line names what the log actually recorded: the peer and the
   // skill. The role id stays on the node for callers that know the role table.
   const producer = data.producer.skill === ''
@@ -53,7 +70,7 @@ export const PeerMessageNodeView = memo(function PeerMessageNodeView({
       <AssistantMarkdown
         blocks={blocks}
         streaming={false}
-        renderMessageImages={renderMessageImages}
+        loadImage={loadImage}
         useDisclosure={useDisclosure}
         useGroupAction={useGroupAction}
         usePresentation={usePresentation}

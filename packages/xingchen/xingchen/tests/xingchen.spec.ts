@@ -99,13 +99,13 @@ function stubAgent(ctx: Context, id: string): { agent: Agent; session: Session }
 }
 
 interface SubagentStub {
-  readonly start: ReturnType<typeof vi.fn>
+  readonly startActivation: ReturnType<typeof vi.fn>
 }
 
 /** A `ctx.subagents` stub whose spawned seat answers with fixed text. */
 function subagentStub(text = '本机专家回答'): SubagentStub {
   return {
-    start: vi.fn(() => Promise.resolve({
+    startActivation: vi.fn(() => Promise.resolve({
       result: Promise.resolve({ stopReason: 'completed', output: [{ type: 'text', text }] }),
       dispose: () => Promise.resolve(),
     })),
@@ -320,12 +320,16 @@ describe('本机专家席（默认）', () => {
     const execution = await test.ctx.commands.execute(test.agent, '/review 评估这个 diff', [], signal)
     expect(execution?.result).toEqual({ kind: 'success', text: '天权 已处理：\n\n本机专家回答' })
     expect(test.a2a.send).not.toHaveBeenCalled()
-    expect(test.subagents.start).toHaveBeenCalledTimes(1)
-    const [provider, request] = test.subagents.start.mock.calls[0] as [string, {
-      prompt: { type: string; text: string }[]
-      parent: Agent
+    expect(test.subagents.startActivation).toHaveBeenCalledTimes(1)
+    const [spec] = test.subagents.startActivation.mock.calls[0] as [{
+      provider: string
+      request: {
+        prompt: { type: string; text: string }[]
+        parent: Agent
+      }
     }]
-    expect(provider).toBe('spawn')
+    expect(spec.provider).toBe('spawn')
+    const request = spec.request
     expect(request.parent).toBe(test.agent)
     expect(request.prompt[0]?.text).toContain('你是天权')
     expect(request.prompt[0]?.text).toContain('评估这个 diff')
@@ -337,7 +341,7 @@ describe('本机专家席（默认）', () => {
     expect(result.isError).toBe(false)
     expect(textOf(result)).toBe('[瑶光] 本机专家回答')
     expect(test.a2a.send).not.toHaveBeenCalled()
-    expect(test.subagents.start).toHaveBeenCalledTimes(1)
+    expect(test.subagents.startActivation).toHaveBeenCalledTimes(1)
   })
 
   it('本机席位超时后释放子运行并以错误结果落定，不再无限等待', async () => {
@@ -353,7 +357,7 @@ describe('本机专家席（默认）', () => {
       result: new Promise(() => {}),
       dispose: vi.fn(() => Promise.resolve()),
     }
-    const slow = { start: vi.fn(() => Promise.resolve(stuck)) }
+    const slow = { startActivation: vi.fn(() => Promise.resolve(stuck)) }
     ctx.provide('subagents', slow as never)
     const plugin = await ctx.plugin(xingchen, { seats: { tianquan: { timeoutMs: 5 } } })
     disposers.push(async () => { await plugin.dispose() })
@@ -369,11 +373,11 @@ describe('本机专家席（默认）', () => {
     const bridged = await harness(a2aStub({}, ['claude-code', 'pi', 'opencode']), 'auto')
     await bridged.ctx.commands.execute(bridged.agent, '/review 评估', [], signal)
     expect(bridged.a2a.send).toHaveBeenCalledTimes(1)
-    expect(bridged.subagents.start).not.toHaveBeenCalled()
+    expect(bridged.subagents.startActivation).not.toHaveBeenCalled()
     const plain = await harness(a2aStub(), 'auto')
     await plain.ctx.commands.execute(plain.agent, '/review 评估', [], signal)
     expect(plain.a2a.send).not.toHaveBeenCalled()
-    expect(plain.subagents.start).toHaveBeenCalledTimes(1)
+    expect(plain.subagents.startActivation).toHaveBeenCalledTimes(1)
   })
 
   it('seats.<role>.model 解析成子代理模型路由；格式不对则拒绝装配', async () => {
@@ -397,7 +401,9 @@ describe('本机专家席（默认）', () => {
     const { agent } = stubAgent(ctx, `xingchen-seat-${Math.random()}`)
     await ctx.agents.register(agent)
     await ctx.commands.execute(agent, '/planning 排期', [], signal)
-    const request = subagents.start.mock.calls[0]?.[1] as { agentOptions?: { provider: string; model: string } }
+    const request = (subagents.startActivation.mock.calls[0]?.[0] as {
+      request: { agentOptions?: { provider: string; model: string } }
+    }).request
     expect(request.agentOptions).toEqual({ provider: 'amax', model: 'qwen-3.8-27B' })
     // A malformed model route fails activation instead of silently running the
     // parent's route. A fresh context is required: Cordis reuses the activation
@@ -649,7 +655,7 @@ describe('进度上报 xingchen/dispatch-progress', () => {
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(AgentRegistry)
     ctx.provide('a2a', a2aStub() as never)
-    const failed = { start: vi.fn(() => Promise.resolve({
+    const failed = { startActivation: vi.fn(() => Promise.resolve({
       result: Promise.resolve({ stopReason: 'error', output: [] }),
       dispose: vi.fn(() => Promise.resolve()),
     })) }
@@ -663,7 +669,7 @@ describe('进度上报 xingchen/dispatch-progress', () => {
     const result = execution?.result as { kind: string; text: string }
     expect(result.kind).toBe('error')
     expect(result.text).toContain('failed')
-    expect(failed.start).toHaveBeenCalledTimes(1)
+    expect(failed.startActivation).toHaveBeenCalledTimes(1)
   })
 })
 

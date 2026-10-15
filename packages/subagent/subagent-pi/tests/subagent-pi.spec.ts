@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { fileURLToPath } from 'node:url'
+import { mountWorkingDirectoryFixture } from '../../subagent/tests/working-directory-fixture.ts'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -483,6 +484,8 @@ describe('provider runs against a scripted Pi RPC child', () => {
     roots.push(root)
     const ctx = new Context()
     contexts.push(ctx)
+    // The subagent seam resolves the child cwd through ctx.workingDirectory.
+    await mountWorkingDirectoryFixture(ctx)
     await ctx.plugin(SubagentRuntime)
     await ctx.plugin(LocalSubprocessRuntime)
     const spawn = ctx.subprocess.spawn.bind(ctx.subprocess)

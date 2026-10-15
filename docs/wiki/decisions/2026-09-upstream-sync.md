@@ -3,7 +3,7 @@ title: 合并上游 upstream/master（2026-09）
 type: decision
 tags: [upstream-sync, merge, cordis, ssh, session-format]
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-10-15
 sources: []
 status: active
 ---
@@ -64,3 +64,7 @@ fork（ReachForStar/dsh-studio）自分叉点起有 99 个自研提交（pi 后�
 ## 历史文档处理
 
 fork 此前的逐日任务报告位于 `doc/`（11 份，2026-09-03 ~ 09-05）。本轮把它们按主题并入本 wiki 的查询页（[客户端栈迁移](../queries/fork-client-stack-migration.md)、[Web 修复与快照通道](../queries/fork-web-ui-repairs.md)、[pi 后端实现历程](../queries/pi-backend-implementation.md)）后删除该目录，避免与 `docs/wiki/` 形成两套知识源；原始文本保存在 git 历史中。
+
+## 后续轮次：2026-10-15 合并上游
+
+策略不变（全量合并、按来源逐文件取舍），差异在**判定口径**：本轮不再只凭「测试红灯」判断改动是否由合并引入，而是用 HEAD 的独立工作树跑同一批用例作基线，只有基线绿、合并后红的用例才算合并引入。新增的判定与修复记录见 [合并上游（2026-10-15）](../queries/upstream-merge-2026-10.md)。

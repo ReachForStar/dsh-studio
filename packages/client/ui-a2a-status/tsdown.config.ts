@@ -1,3 +1,3 @@
 import { clientBundle } from '../tsdown.client.ts'
 
-export default clientBundle('@reachforstar/dsh-client-ui-a2a-status', ['lib/types/index.js', 'lib/types/invariant.js'])
+export default clientBundle(import.meta.dirname, ['lib/types/index.js'])

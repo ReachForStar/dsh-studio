@@ -4,8 +4,6 @@ English | [中文](architecture.zh.md)
 
 Read this before changing anything under `packages/`. It assumes you know Cordis; if not, start with the [primer](cordis-primer.md) or the [tutorial](cordis-tutorial/index.md).
 
-We recommend using an agent to explore the codebase and understand its architecture.
-
 ## Cordis
 
 [Cordis](cordis-primer.md) is the framework under dsh: plugins contribute services, typed events, and reversible effects to a shared context. Every part of the product is a plugin, including the model adapter, the tool registry, the session log, and the agent loop itself, so each is replaceable from configuration.
@@ -56,8 +54,6 @@ Electron starts the private Desktop Host in Electron Node mode. The Host invokes
 
 ## Core packages
 
-Here are some core packages that contribute to the Cordis tree.
-
 | Package | Owns | `ctx` key |
 |---|---|---|
 | [`core/session`](subsystems/session.md) | The append-only `SessionEvent` log and in-memory store | `ctx.sessions` |
@@ -67,7 +63,6 @@ Here are some core packages that contribute to the Cordis tree.
 | [`core/agent-loop`](subsystems/core.md) | The default driver implementing that interface | `ctx.agentLoop` |
 | [`core/scope`](subsystems/scope.md) | The per-agent scoped-registration primitive | library, no key |
 | [`llm/llm`](subsystems/llm-streaming.md) | Message and stream vocabulary plus the adapter seam | `ctx.llm` |
-| [`webhook/webhook`](subsystems/webhook.md) | Authenticated-delivery dispatch and Workspace Session creation | `ctx.webhookRuntime` |
 
 ## Events
 
@@ -77,7 +72,7 @@ Events are the extension points, and picking the right domain is the first decis
 - **Agent events** (`agent/*`) carry a live `Agent`: inbox, step, status, request, validation, continuation. Use one to observe or intercept work in flight.
 - **Capability events** attach policy and adapters to a seam (`fs/*`, `tools/*`, `telemetry/*`) without importing the loop.
 
-AgentLoop awaits serial `agent/created` initialization before starting queued work. Initialization failure rolls back creation; [agent-loop](../packages/core/agent-loop/README.md#understand-the-implementation) defines teardown ordering.
+AgentLoop awaits serial `agent/created` before queued work and rolls back failed initialization. Unload retains resources through Agent teardown; [agent-loop](../packages/core/agent-loop/README.md#understand-the-implementation) defines ordering.
 
 The [event map](event-producer-consumer.md) lists every event's producers and consumers.
 
@@ -88,13 +83,15 @@ A **step** is one model request plus the tools it calls. A **turn** is zero or m
 ```text
 turn/start
   claim next-step input plus one queued message
-  assemble prompt sections + tool schemas; project runtime context
-  -> agent/pre-step                   reject | enter(messages, startsRequestSeries?)
+  assemble prompt sections + tool schemas
+  -> agent/pre-step; project runtime context at fallback
+                                     reject | enter(messages, startsRequestSeries?)
      reject, or a first enter rewritten empty -> close the turn with no step
      step/start
      agent/request -> prepareCall (cancellation commits neither system nor users)
      reconcile system/message using the prepared call capability
-     append entered messages as user/message; log request/header and request/context as needed
+     append entered messages as user/message; reconcile retained runtime context
+     log request/header and request/context as needed
      derive and freeze model history from the log
      stream the bound prepared call -> llm/stream -> agent/assistant-stream start
        agent/assistant-stream chunk*
@@ -124,9 +121,11 @@ The session log is the source of the context the model sees. `deriveMessages()` 
 
 Session consumers know only the current logical format. Header-only `stat` and `list` rescan each Session directory, select its numerically highest canonical generation, and translate a supported historical header without loading events or publishing a successor. A stored-session `open` selects that same generation, refuses a future version, or decodes and composes the static adjacent migration chain once before returning validated current logical events. A read open uses that in-memory result without publishing a successor; a write open first encodes, verifies, and exclusively publishes the final version-named successor beside the unchanged source. Ordinary repair of an unsealed interrupted tail remains a handle consumer responsibility; migration inserts a missing interrupted `turn/end` only for the bounded released restart already sealed by a later `turn/start`. JSONL v0 uses `session.jsonl[.zstd]`, v1 and later use lowercase `session.vN.jsonl[.zstd]`, and committed generation paths are never renamed, replaced, or deleted. The JSONL provider owns physical framing, compression, generation selection, and exclusive publication, while each adjacent migration package owns exactly one `vN -> vN+1` step ([decision](../.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md)).
 
-**Model-visible means logged.** A runtime invariant checks model requests are reconstructable from the log. New model-visible inputs require session events. Plugins changing existing message content register [pure message projections](subsystems/session.md#plugin-owned-message-projections); detached readers supply the same definitions explicitly. Tool changes are capability-independent; [Session tool history](../packages/core/session/README.md) supplies provider declarations.
+**Model-visible means logged.** Every model request must be reconstructable from the log. New model-visible inputs require session events. Plugins changing existing message content register [pure message projections](subsystems/session.md#plugin-owned-message-projections); detached readers supply the same definitions explicitly. Tool changes are capability-independent; [Session tool history](../packages/core/session/README.md) supplies provider declarations.
 
 **Projection seam.** `dsh-session-projection` owns `ctx.sessionProjections`: registered units fold committed events incrementally, host consumers read one typed state with `stateOf()`, and carriers batch cropped client views with `snapshot()`. A host reader either requires this service during activation or fails explicitly when the registry or required key is absent. Contributors may retain `ctx.inject(['sessionProjections'], ...)` registration without silently defaulting a missing host value. The agent loop registers shared `turnBoundary` state for its readers ([decision](../.agents/notes/implemented/architecture/2026-08-19-session-projection-mandatory-seam.md)).
+
+[Working directories](subsystems/working-directory.md) supply user context and execution paths without changing original project identity, sandbox write roots, or existing process directories.
 
 ## Capability seams
 
@@ -134,7 +133,7 @@ A **seam** is a swappable capability with three roles: a **Service Definition** 
 
 Seams are why one provider swap changes the whole product. Filesystem and subprocess providers share one execution world, so pointing them at a remote sandbox moves Bash, PTY, and LSP with them, with no provider forks. [Subagent providers](subsystems/subagent.md) vary just as widely behind one interface, from a fresh child agent to a delegated turn in another product.
 
-[Experimental Agent Teams](subsystems/agent-team.md) is a published opt-in coordination seam on `ctx.agentTeams`, with a durable roster, task board, and mailbox layered over continuable subagents.
+[Experimental Agent Teams](subsystems/agent-team.md) exposes opt-in `ctx.agentTeams` coordination with durable roster and task state plus direct inbox messaging over continuable subagents.
 
 ## Where new behavior goes
 

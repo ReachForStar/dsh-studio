@@ -20,7 +20,9 @@ import { catalogModels, catalogProvider, catalogProviderIds } from '../src/catal
 
 describe('catalog provider ids', () => {
   it('drops a provider that lists only non-chat models and keeps one that lists none', () => {
-    expect(catalogProviderIds()).toEqual(['chat-provider', 'uncataloged-provider'])
+    // The AMAX gateway is appended by catalog.ts outside the mocked built-ins,
+    // so it stays in the served route list alongside the two kept providers.
+    expect(catalogProviderIds()).toEqual(['chat-provider', 'uncataloged-provider', 'amax'])
   })
 
   it('answers no catalog provider or models for the provider it drops', () => {

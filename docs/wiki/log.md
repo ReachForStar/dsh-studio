@@ -431,3 +431,11 @@
 - 修法：把 worktree 配置与归属标记改成 Linux 绝对路径，删掉仓库根下的残留钩子目录（3 个 lefthook 生成物），重跑安装脚本。
 - 验证：安装脚本退出码 0 且连跑两次幂等；`git rev-parse --path-format=absolute --git-path hooks` 指向 `.git/dsh-hooks`；直接执行 `./.git/dsh-hooks/pre-commit` 由 lefthook 2.1.15 正常收尾且工作区无变化；无安装锁残留。
 - 新增页面：[Windows 侧 .git 迁到 Linux 后 Lefthook 钩子安装被拒](queries/lefthook-hookspath-cross-platform.md)。
+
+## [2026-10-15] merge | 合并上游并修复会话格式与夹具
+
+- 合并范围：上游 `upstream/master` 的 2026-10-15 头提交并入本地 `master`（上次合并点是同日的更早一轮），冲突 50 文件，合并结果相对合并前改动 3349 文件（+133645 / −21895）；fork 独有提交 246 个、私有包目录 18 个，合并后逐一核对全部在位。
+- 判定口径：用合并前 HEAD 的独立工作树（`/tmp/opencode/head-baseline`，逐包符号链接 `node_modules`）跑同一批失败文件作基线，区分「合并引入 / 预存 / 偶发」；全量从 37 红降到 31 红（44471 绿），剩余 29 项基线同样红、2 项为 5 秒超时类偶发（单跑绿）。
+- 会话格式修复：`RELEASED_V4_EVENT_TYPES` 补上游在 v4 代内新增的 `job/registered`、`job/settled` 与 fork 既有的 `working-directory/change`；`catalogFact` 采纳上游 v3→v4 规则（version 2 + `external`）。corpus 769/769、三个格式包 804 用例通过。
+- 夹具修复：`vfs-example` 主会话当前代重录为 `session.v5.jsonl` 并重录投影缓存，去掉上游带入的 v4 文件；`session-snapshot-corpus-policy.spec.ts` 三例（合并改动 1 + 计数偏一 2）修至自洽。
+- 新增页面：[合并上游 upstream/master（2026-10-15）](queries/upstream-merge-2026-10.md)；更新[会话格式代际](concepts/session-format-generations.md)、[会话格式 v5 落地](queries/session-format-v5-landing.md)、[合并上游（2026-09）](decisions/2026-09-upstream-sync.md)与 `session-format-v4-to-v5` 双语 README。

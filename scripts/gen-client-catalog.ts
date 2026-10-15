@@ -43,10 +43,10 @@ const MAX_DECL_CHARS = 1200
 /**
  * Line budget for ONE slot's expanded report. The whole point of narrowing to a
  * single slot is to spend less context, so a report a model cannot finish
- * reading is a defect rather than a detail. The widest measured upstream slot
+* reading is a defect rather than a detail. The widest measured upstream slot
  * renders 60 lines.
  *
- * This fork's shipped toolviews raise the widest report to 124
+ * This fork's shipped toolviews raise the widest report
  * (`tool.call.toolview`: three Excalidraw registrations beside the shipped
  * rows, plus one owner member), which is surface growth rather than an owner
  * share or prose that ran away, so the ceiling holds at roughly twice the
@@ -259,7 +259,8 @@ function standardKits(files: readonly ScannedFile[]): ReadonlyMap<string, readon
   const kits = new Map<string, readonly string[]>()
   for (const scope of SCOPES) {
     const extra = SCOPE_KIT[scope]
-    kits.set(scope, [...global, ...extra === undefined ? [] : standardKitMembers(files, extra)])
+    // A scope-kit member replaces the global member of the same name, so each seat is listed once.
+    kits.set(scope, [...new Set([...global, ...extra === undefined ? [] : standardKitMembers(files, extra)])])
   }
   return kits
 }

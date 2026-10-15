@@ -21,7 +21,7 @@ Session fixture 保留 header 与 payload，但省略正文 seq/time envelope；
 
 ## spec 如何被执行
 
-fork 出的 worker 会同时运行多个 spec 文件，coverage gate 会拆成并发的 partition，与同一个 job 中的其它 gate 并排运行，而自托管 runner 共用同一台宿主机和同一个卷。被隔离的只有进程：端口、可预测路径、外部命名空间和继承而来的子进程都不隔离。为每个占用的资源负责到 teardown。只在单独运行时通过的 spec 存在测试缺陷，而非 runner 不稳定。[dsh-ci-test-reliability](../.agents/skills/dsh-ci-test-reliability/SKILL.md) 负责资源分配、状态恢复、同步、超时预算、平台差异与 teardown 规则；它的 [flake 诊断流程](../.agents/skills/dsh-ci-test-reliability/references/ci-flake-diagnosis.md)用于归类已经存在的概率性失败。 [fork 意外退出](../scripts/coverage-fork-diagnostics.ts)时会报告 PID、文件、退出码和信号。
+fork 出的 worker 会同时运行多个 spec 文件，coverage gate 会拆成[并发的 partition](../scripts/coverage-partitions.ts)，与同一个 job 中的其它 gate 并排运行，而自托管 runner 共用同一台宿主机和同一个卷。被隔离的只有进程：端口、可预测路径、外部命名空间和继承而来的子进程都不隔离。为每个占用的资源负责到 teardown。只在单独运行时通过的 spec 存在测试缺陷，而非 runner 不稳定。[dsh-ci-test-reliability](../.agents/skills/dsh-ci-test-reliability/SKILL.md) 负责资源分配、状态恢复、同步、超时预算、平台差异与 teardown 规则；它的 [flake 诊断流程](../.agents/skills/dsh-ci-test-reliability/references/ci-flake-diagnosis.md)用于归类已经存在的概率性失败。 [fork 意外退出](../scripts/coverage-fork-diagnostics.ts)时会报告 PID、文件、退出码和信号。
 
 ## 带密钥策略：推理（inference）在这里很便宜
 
@@ -55,4 +55,4 @@ e2e 断言应重新运行命令或从外部重新读取文件；对 agent 自身
 
 ## 何时需要快照测试
 
-每项非平凡的模型可见、协议可见或人类可见变更，都在同一 PR 中添加或更新无密钥录制会话场景；包级、e2e、仅 mock 和 PR 理由证据不能取代组装后的 transcript。Headless、SDK、ACP 和 Web 录制分别位于 `snapshots/session/`、`snapshots/sdk/`、`snapshots/acp/` 和 `snapshots/web/`；Web 渲染可以显式借用另一个场景的规范会话。不由录制会话驱动的预期输出保留在所属应用、包或脚本的 `tests/expected/` 下，并且不使用 `*.snapshot.ts` 后缀。[`dsh-session-snapshot`](../packages/test-support/session-snapshot/README.zh.md) 拥有共享存储规则和 profile 适配器。Agent loop、会话生命周期和 `SessionEventMap` 变更应更新两个 SDK 投影：`snapshots/sdk/` 拥有 TypeScript，[Python 运行时 CI](../.github/workflows/ci-master.yml) 拥有 `scripts/snapshots/python-sdk-single-exe/`。新增 capability seam、生命周期或 transcript 变体应在计划阶段列出每个必需层级。
+每项非平凡的模型可见、协议可见或人类可见变更，都在同一 PR 中添加或更新无密钥录制会话场景；包级、e2e、仅 mock 和 PR 理由证据不能取代组装后的 transcript。Headless、SDK、ACP 和 Web 录制分别位于 `snapshots/session/`、`snapshots/sdk/`、`snapshots/acp/` 和 `snapshots/web/`；Web 渲染可以显式借用另一个场景的规范会话。不由录制会话驱动的预期输出保留在所属应用、包或脚本的 `tests/expected/` 下，并且不使用 `*.snapshot.ts` 后缀。[`dsh-session-snapshot`](../packages/test-support/session-snapshot/README.zh.md) 拥有共享存储规则和 profile 适配器。Agent loop、会话生命周期和 `SessionEventMap` 变更应更新两个 SDK 投影：`snapshots/sdk/` 拥有 TypeScript，[Python 运行时 CI](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.1-alpha.3/.github/workflows/ci-master.yml) 拥有 `scripts/snapshots/python-sdk-single-exe/`。新增 capability seam、生命周期或 transcript 变体应在计划阶段列出每个必需层级。

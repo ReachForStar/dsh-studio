@@ -29,9 +29,12 @@
 | `@deepseek-ai/dsh-tool-present` | `present` | `ctx.workingDirectory`、`ctx.tools`, `ctx.fs`, `ctx.sessionProjections` | `tool/call`, `deliverables/presented 在成功的最终结果之后`, `tool/result` | - | 交付归调用方 Session 所有；Web ui-deliverables 提供源文件打开与卡片。 |
 | `@deepseek-ai/dsh-tool-pwsh` | `pwsh` | `ctx.workingDirectory`、`ctx.tools`、`ctx.shell`、`ctx.systemPrompt`、`ctx.shellEnv`、`ctx.jobs for run_in_background and the job-backed foreground path` | `tool/call`、`tool/result` | - | pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费方（由 `@deepseek-ai/dsh-pwsh-local` 等 PowerShell 执行器为 `ctx.shell` 提供后端）；除沙箱接口外，它逐项对应 bash 工具调用。使用 `run_in_background` 的运行会注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具收集／停止；托管的 `DSH_*` 环境来自 `@deepseek-ai/dsh-shell-env`。每次调用都在新进程中运行，不使用持久 PTY 会话。路径采用原生 `C:\...` 形式，变量采用 `$env:NAME`。 |
 | `@deepseek-ai/dsh-tool-cordis` | `cordis_inspect_list`, `cordis_inspect_query` | `ctx.tools`, `ctx.cordisInspect` | `tool/call`, `tool/result` | - | 创造模式提供两个只读运行时检查工具。Cordis host runner 提供检查注册表；Client 查询需要已连接页面。持久化变更编写为组合包，再通过 plugin_manager 安装。 |
+| `@reachforstar/dsh-tool-ssh` | `sftp_list`、`sftp_mkdir`、`sftp_read`、`sftp_rename`、`sftp_rm`、`sftp_stat`、`sftp_write`、`ssh_connect`、`ssh_connections`、`ssh_disconnect`、`ssh_exec`、`ssh_test` | `ctx.tools`、`ctx.ssh`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`settings/document-updated (ssh definition saves)` | - | ssh 工具是 SSH/SFTP 能力 seam 面向模型的消费方，提供连接管理、远程命令执行和 SFTP 传输／浏览。定义与记住的主机密钥持久化在 `ssh` settings 命名空间；主机密钥默认按 accept-new 校验，秘密不会出现在结果中。 |
 | `@deepseek-ai/dsh-tool-bash-persistent` | `bash` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 bash 工具；部署组合提供 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 pwsh 工具，持久 bash 工具的 Windows 对应物；部署组合提供 pwsh 方言的 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`、`ctx.fs` | `tool/call`、`fs/observed after view presence/absence, edit absence, or successful mutation`、`tool/result` | - | 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。 |
+| `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`、`excalidraw_export`、`excalidraw_read`、`excalidraw_write` | `ctx.tools`、`ctx.workspaceRegistry` | `tool/call`、`tool/result` | - | 白板场景工具从调用 agent 的会话推导目标工作区；没有归属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 `@reachforstar/dsh-client-ui-polish` 的 Web 画布标签页共享。 |
+| `@reachforstar/dsh-tool-a2a` | `a2a_peers`、`a2a_send` | `ctx.tools`、`ctx.a2a` | `tool/call`、`tool/result` | - | a2a_peers 列出已配置的 peer 名字，a2a_send 按名字向其中一个发送消息，可续接此前的任务或上下文；端点永远不由模型指定，因此采集 schema 时不需要可达的 peer。 |
 | `@deepseek-ai/dsh-tool-fs` | `edit`、`read`、`read_image`、`write` | `ctx.workingDirectory`、`ctx.tools`、`ctx.fs`、`ctx.systemPrompt`、`ctx.attachments (image-tool registration)`、`ctx.llm + an image-capable route (image-tool execution)` | `tool/call`、`fs/write-intent or fs/edit-intent for mutations`、`fs/observed after read presence/absence or successful file operation`、`durable attachment (read_image)`、`tool/result` | - | 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。 |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`、`grep` | `ctx.workingDirectory`、`ctx.tools`、`ctx.subprocess`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | glob 和 grep 是无条件可用的发现工具，通过 ctx.subprocess spawn 随包提供的 ripgrep 二进制文件（`@vscode/ripgrep`），并作为普通前台调用运行，绝不作为后台任务；无需在宿主机安装 `rg`，也不经过 shell 层。本目录使用 `sampleOverCapGlobResults: true`；部署必须显式选择该行为。结果超过上限时，会通过可选的 ctx.spillStore 后端保存完整的格式化列表；在共置部署中，如果后端公开本地路径，返回的定位信息可供后续读取／搜索。 |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`、`terminal_list`、`terminal_open`、`terminal_read`、`terminal_send`、`terminal_signal` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`ctx.systemPrompt`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | 这 6 个终端工具需要选择启用，用于补充一次性 bash／文件系统工具。`terminal_send(run_in_background: true)` 会注册到 `ctx.jobs`；schema 不包含 TUI、具名按键序列、BEL、调整尺寸、自动启动和跨 agent 共享。 |
@@ -58,7 +61,7 @@
 
 ### `plugin_manager`
 
-列出当前 profile 中的插件或组合包，启用或禁用它们，安装组合包或移除已安装的组合包。每项操作都要求 danger-full-access 权限或本次调用的批准。批准不改变会话权限模式。变更影响该 profile 的所有会话。先列出条目以获取准确标识。包安装可能运行已获批准的构建脚本。支持热更新的 profile 立即应用变更；仅启动时加载的 profile 需要重启。不兼容的 DSH peer 依赖会阻止安装和激活。版本豁免可能导致崩溃和数据丢失：授权前必须警告用户，并获得用户对精确插件版本与运行时版本组合的明确许可。
+列出当前 profile 中的插件或组合包，启用或禁用它们，安装组合包或移除已安装的组合包。每项操作都要求 danger-full-access 权限或本次调用的批准。批准不改变会话权限模式。变更影响该 profile 的所有会话。先列出条目以获取准确标识。包安装可能运行已获批准的构建脚本。支持热更新的 profile 立即应用变更，包括已安装包的升级；未直接应用的变更结果带有 nextStep，说明下一步要做什么或告诉用户什么。不兼容的 DSH peer 依赖会阻止安装和激活。版本豁免可能导致崩溃和数据丢失：授权前必须警告用户，并获得用户对精确插件版本与运行时版本组合的明确许可。
 
 ```json
 {
@@ -529,7 +532,7 @@ ask_user_question 默认保持原有阻塞行为；设置 `mode: timed` 后才�
 
 ### `run_code`
 
-针对可用工具执行 TypeScript 程序。接受两个必填参数：`description`，简要说明该程序做什么；以及 `code`，即异步函数的**函数体**（仅使用可擦除语法；支持顶层 `await` 和 `return`）。请根据系统提示词中的声明，以 `await tools.name(args)` 形式调用工具。只有打印或返回的内容属于程序输出，请谨慎筛选。含图片的子工具结果会在运行结束后附加。
+针对可用工具执行 TypeScript 程序。接受两个必填参数：`description`，简要说明该程序做什么；以及 `code`，要执行的程序。请根据系统提示词中的声明，以 `await tools.name(args)` 形式调用工具。请筛选程序输出。含图片的子工具结果会在运行结束后附加。
 
 ```json
 {
@@ -541,7 +544,7 @@ ask_user_question 默认保持原有阻塞行为；设置 `mode: timed` 后才�
     },
     "code": {
       "type": "string",
-      "description": "The program: the body of an async TypeScript function."
+      "description": "The TypeScript program to execute, following this tool's execution instructions."
     },
     "timeoutMs": {
       "type": "number",
@@ -787,6 +790,375 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 
 创造模式提供两个只读运行时检查工具。Cordis host runner 提供检查注册表；Client 查询需要已连接页面。持久化变更编写为组合包，再通过 plugin_manager 安装。
 
+<a id="reachforstardsh-tool-ssh"></a>
+
+## `@reachforstar/dsh-tool-ssh`
+
+### `sftp_list`
+
+通过 SFTP 列出单个远程目录（不递归）。条目报告类型、大小、修改时间和权限模式。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote directory path to list."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_mkdir`
+
+通过 SFTP 创建单个远程目录。带 `recursive` 时，缺失的父目录也一并创建。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote directory path to create."
+    },
+    "recursive": {
+      "type": "boolean",
+      "description": "Create missing parents (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_read`
+
+通过 SFTP 把单个远程文件下载到本地路径。除非设置 `overwrite`，本地文件必须不存在；传输失败会删除不完整的本地文件。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "remote_path": {
+      "type": "string",
+      "description": "Remote file path to download."
+    },
+    "local_path": {
+      "type": "string",
+      "description": "Local destination path; relative paths resolve against the session workspace."
+    },
+    "overwrite": {
+      "type": "boolean",
+      "description": "Replace an existing local file (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "remote_path",
+    "local_path"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_rename`
+
+通过 SFTP 重命名或移动单个远程路径。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "from": {
+      "type": "string",
+      "description": "Current remote path."
+    },
+    "to": {
+      "type": "string",
+      "description": "Destination remote path."
+    }
+  },
+  "required": [
+    "connection",
+    "from",
+    "to"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_rm`
+
+通过 SFTP 删除单个远程文件或目录。目录需要 `recursive: true` 并按深度优先删除；符号链接只解除链接，绝不跟随。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote path to remove."
+    },
+    "recursive": {
+      "type": "boolean",
+      "description": "Remove a directory tree (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_stat`
+
+通过 SFTP 获取单个远程路径的状态，不跟随符号链接。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote path to stat."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_write`
+
+通过 SFTP 把单个本地文件上传到远程路径。远程目录必须已存在（先使用 sftp_mkdir）。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "local_path": {
+      "type": "string",
+      "description": "Local source path; relative paths resolve against the session workspace."
+    },
+    "remote_path": {
+      "type": "string",
+      "description": "Remote destination path."
+    }
+  },
+  "required": [
+    "connection",
+    "local_path",
+    "remote_path"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_connect`
+
+保存新的 SSH 连接定义（或传入其 id 更新已有定义）。定义持久化在用户设置中，供 ssh_exec 与 sftp_* 工具使用；结果中绝不返回秘密。用 ssh_connections 列出已保存的连接。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique display name for the connection (also accepted wherever a connection id is)."
+    },
+    "host": {
+      "type": "string",
+      "description": "Remote host name or IP address."
+    },
+    "username": {
+      "type": "string",
+      "description": "Remote login user."
+    },
+    "port": {
+      "type": "number",
+      "description": "Remote SSH port (default 22)."
+    },
+    "auth": {
+      "type": "string",
+      "description": "Authentication kind: \"password\" or \"privateKey\".",
+      "enum": [
+        "password",
+        "privateKey"
+      ]
+    },
+    "password": {
+      "type": "string",
+      "description": "Password (required when auth is \"password\")."
+    },
+    "private_key_path": {
+      "type": "string",
+      "description": "Absolute local path of the private key (required when auth is \"privateKey\")."
+    },
+    "passphrase": {
+      "type": "string",
+      "description": "Private-key passphrase, when the key is encrypted."
+    },
+    "connect_timeout_ms": {
+      "type": "number",
+      "description": "Connection-establishment timeout in milliseconds (default 10000, range 1000-300000)."
+    },
+    "id": {
+      "type": "string",
+      "description": "Id of an existing connection to update; omit to create a new one."
+    }
+  },
+  "required": [
+    "name",
+    "host",
+    "username",
+    "auth"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_connections`
+
+列出全部已保存的 SSH 连接定义（不含秘密的视图）。把返回的 id 或名称用作 ssh_exec 与 sftp_* 工具的 `connection` 参数。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_disconnect`
+
+关闭某个已保存连接对应的共享连接。后续的 ssh_exec/sftp_* 调用会自动重连。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    }
+  },
+  "required": [
+    "connection"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_exec`
+
+在已保存的 SSH 连接上执行命令并返回其 stdout/stderr。每次调用都使用全新的远程 shell：调用之间不保留任何状态（当前目录、变量）——传入 `cwd` 而不是使用 `cd`。非零退出码报告为 `[exit code: N]`；超时的命令会被终止并报告为 `[timed out ...]`。过长输出会截断保留尾部并加上截断标记。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "command": {
+      "type": "string",
+      "description": "The command to execute on the remote host."
+    },
+    "timeout_ms": {
+      "type": "number",
+      "description": "Timeout in milliseconds. The provider applies its configured default and cap, and kills the command on expiry."
+    },
+    "cwd": {
+      "type": "string",
+      "description": "Remote working directory for this command; a `cd` prefix is applied on the remote side."
+    }
+  },
+  "required": [
+    "connection",
+    "command"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_test`
+
+探测某个已保存连接：建立连接、运行探测命令、再次关闭。报告往返时延或失败原因。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    }
+  },
+  "required": [
+    "connection"
+  ]
+}
+```
+
+来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh_connect/ssh_connections/ssh_disconnect/ssh_test）、远程命令执行（ssh_exec）以及 SFTP 传输与浏览（sftp_list/stat/read/write/mkdir/rm/rename）。定义与记住的主机密钥持久化在 `ssh` 设置命名空间；主机密钥默认按 accept-new 校验，结果中绝不出现秘密。
+
+
 <a id="deepseek-aidsh-tool-bash-persistent"></a>
 
 ## `@deepseek-ai/dsh-tool-bash-persistent`
@@ -948,6 +1320,230 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 来源：[`packages/fs/tool-str-replace-editor/src/index.ts`](../packages/fs/tool-str-replace-editor/src/index.ts)
 
 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。
+
+<a id="reachforstardsh-tool-excalidraw"></a>
+
+## `@reachforstar/dsh-tool-excalidraw`
+
+### `excalidraw_draw`
+
+在当前工作区的 Excalidraw 画布（共享白板）上绘制形状。用高层描述表达形状——无需 Excalidraw 内部字段。可用于绘制图示、流程图，或在画布上演算问题（例如几何）。`action: "append"` 追加到现有场景；`action: "replace"` 先清空画布。支持的元素 `type` 取值："rectangle"、"ellipse"、"diamond"、"text"（内容放在 `text`）、"arrow"、"line"（可选把 `points` 写成 [[x1,y1],[x2,y2],...]，否则使用贯穿该框的对角线）。坐标单位为画布像素（左上角为原点）。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "elements": {
+      "type": "array",
+      "description": "Shapes to draw.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "One of rectangle/ellipse/diamond/text/arrow/line."
+          },
+          "x": {
+            "type": "number",
+            "description": "Left edge in canvas pixels."
+          },
+          "y": {
+            "type": "number",
+            "description": "Top edge in canvas pixels."
+          },
+          "width": {
+            "type": "number",
+            "description": "Width in canvas pixels."
+          },
+          "height": {
+            "type": "number",
+            "description": "Height in canvas pixels."
+          },
+          "text": {
+            "type": "string",
+            "description": "Text content (for type \"text\")."
+          },
+          "points": {
+            "type": "array",
+            "description": "Line/arrow points as [[x,y],...] (optional)."
+          },
+          "strokeColor": {
+            "type": "string",
+            "description": "Outline color (CSS color)."
+          },
+          "backgroundColor": {
+            "type": "string",
+            "description": "Fill color (CSS color)."
+          },
+          "fillStyle": {
+            "type": "string",
+            "description": "hachure/solid/cross-hatch/zigzag."
+          },
+          "strokeWidth": {
+            "type": "number",
+            "description": "Outline width in pixels."
+          },
+          "opacity": {
+            "type": "number",
+            "description": "Opacity 0-100."
+          }
+        },
+        "required": [
+          "type",
+          "x",
+          "y",
+          "width",
+          "height"
+        ]
+      }
+    },
+    "action": {
+      "type": "string",
+      "description": "\"append\" (default) adds shapes; \"replace\" clears the canvas first."
+    }
+  },
+  "required": [
+    "elements"
+  ]
+}
+```
+
+来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_export`
+
+把当前工作区的 Excalidraw 画布导出为工作区内的 SVG 图片文件（纯 node 侧渲染——无需浏览器）。读取画布标签页显示的同一场景，并在 `<workspace>/<path>` 写出矢量 SVG（默认 `.dsh/excalidraw/export.svg`）。用它持久化模型绘制的图示，以便查看、提交或在别处转换。SVG 使用平面填充与描边（无手绘纹理）；文本保留其内容与字号。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Workspace-relative output path (e.g. \"docs/flow.svg\"); default \".dsh/excalidraw/export.svg\"."
+    },
+    "transparent": {
+      "type": "boolean",
+      "description": "When true, the SVG has a transparent background; default uses the canvas background color."
+    }
+  }
+}
+```
+
+来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_read`
+
+读取当前工作区的 Excalidraw 画布场景。返回摘要（按类型统计的元素数、文本元素、主题）、便于推断画布内容的紧凑 `elements` 列表（id/type/x/y/width/height/text），以及场景较小时 `sceneJson` 中的完整场景 JSON 字符串。用 `excalidraw_draw` 添加形状，或用 `excalidraw_write` 替换场景。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_write`
+
+用完整场景 JSON 字符串覆盖当前工作区的 Excalidraw 画布场景（即 `excalidraw_read` 的 `sceneJson` 产生的结构：含 `elements` 与 `appState` 的对象）。画布标签页渲染的正是这个文件。场景文件缺失时会创建。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scene": {
+      "type": "string",
+      "description": "Complete Excalidraw scene JSON (object with `elements` array and `appState` object)."
+    }
+  },
+  "required": [
+    "scene"
+  ]
+}
+```
+
+来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+白板场景工具从调用方 agent 的会话推导目标工作区；没有归属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 @reachforstar/dsh-client-ui-polish 的 Web 画布标签页共用。
+
+<a id="reachforstardsh-tool-a2a"></a>
+
+## `@reachforstar/dsh-tool-a2a`
+
+### `a2a_peers`
+
+列出本部署可调用的远程 A2A agent，包含每个 peer 的寻址名称、其已发布 agent card 中的显示名，以及它接受的技能。当你尚不知道存在哪些 peer 时，先调用它再调用 `a2a_send`。某个 peer 的 card 读取失败时，会列在该 peer 旁报告，而不是让整份列表失败。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+
+### `a2a_send`
+
+向远程 A2A agent 发送一个任务并返回其答复。用 `a2a_peers` 报告的名称或某个端点 URL 来寻址 peer。peer 在它自己的环境中工作：可以在那里读写文件，但看不到当前工作区。传入此前调用返回的 `contextId` 可续接同一会话，从而保留 peer 之前的轮次；省略它则开始新会话。
+
+选择 peer 应在哪个技能下工作，例如代码评审或编码；`a2a_peers` 列出每个 peer 接受的内容，省略时 peer 使用其默认技能。`mode: "direct"` 等待答复，可能需要数分钟——优先委派一个完整的工作单元，而不是许多次小往返。`mode: "bus"` 发布任务并在被认领后立即返回：用于超出本轮生命周期的工作，需要同时取得答复时加上 `wait: true`。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "peer": {
+      "type": "string",
+      "description": "Peer name from `a2a_peers`, or the endpoint URL of an unconfigured agent."
+    },
+    "message": {
+      "type": "string",
+      "description": "The task text, as a self-contained request the peer can act on."
+    },
+    "skill": {
+      "type": "string",
+      "description": "Skill the peer works under, from `a2a_peers`; omit to use the peer default."
+    },
+    "workspace": {
+      "type": "string",
+      "description": "Directory the peer runs in, when it should not use its own default."
+    },
+    "mode": {
+      "type": "string",
+      "description": "Channel: \"direct\" waits for the answer, \"bus\" publishes and returns early.",
+      "enum": [
+        "direct",
+        "bus"
+      ]
+    },
+    "wait": {
+      "type": "boolean",
+      "description": "On \"bus\", wait for the task to finish before returning."
+    },
+    "contextId": {
+      "type": "string",
+      "description": "Conversation to continue, from an earlier answer; omit to start a new one."
+    },
+    "taskId": {
+      "type": "string",
+      "description": "Task to continue, from an earlier answer; omit unless you are resuming that task."
+    }
+  },
+  "required": [
+    "peer",
+    "message"
+  ]
+}
+```
+
+来源：[`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+
+a2a_peers 列出已配置的 peer 名称，a2a_send 按名称寻址其中一个，并可选续接此前的任务或上下文；模型从不指定端点，因此采集 schema 时不需要可达的 peer。
+
 
 <a id="deepseek-aidsh-tool-fs"></a>
 
@@ -1403,7 +1999,7 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
     },
     "title": {
       "type": "string",
-      "description": "Task name of at most 120 characters, shown on the task card and in task lists."
+      "description": "Concise task name in the user's language, at most 120 characters. Name only the core action and subject; keep essential target identifiers such as PR numbers and branch names. Do not include execution frequency (e.g. daily, hourly), scheduled dates/times, time zones, task status, or configuration and execution details (e.g. read-only mode, profile-tag filters), even when embedded in the requested or existing title. Do not append parenthetical notes. Put scheduling information in the timing parameters and execution instructions in prompt."
     },
     "after_seconds": {
       "type": "number",
@@ -1564,7 +2160,7 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
     },
     "title": {
       "type": "string",
-      "description": "New task name of at most 120 characters."
+      "description": "New task name; follow the schedule_create title rules."
     },
     "prompt": {
       "type": "string",

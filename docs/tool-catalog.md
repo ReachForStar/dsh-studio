@@ -25,9 +25,12 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-present` | `present` | `ctx.workingDirectory`, `ctx.tools`, `ctx.fs`, `ctx.sessionProjections` | `tool/call`, `deliverables/presented after a successful final result`, `tool/result` | - | Deliveries belong to the calling Session; Web ui-deliverables supplies source-file opening and cards. |
 | `@deepseek-ai/dsh-tool-pwsh` | `pwsh` | `ctx.workingDirectory`, `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs for run_in_background and the job-backed foreground path` | `tool/call`, `tool/result` | - | The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@deepseek-ai/dsh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `DSH_*` environment comes from `@deepseek-ai/dsh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\...` paths and `$env:NAME` variables. |
 | `@deepseek-ai/dsh-tool-cordis` | `cordis_inspect_list`, `cordis_inspect_query` | `ctx.tools`, `ctx.cordisInspect` | `tool/call`, `tool/result` | - | Creator mode provides two read-only runtime inspection tools. The Cordis host runner supplies the inspection registry; Client queries require a connected page. Author persistent changes as bundles and install them with plugin_manager. |
+| `@reachforstar/dsh-tool-ssh` | `sftp_list`, `sftp_mkdir`, `sftp_read`, `sftp_rename`, `sftp_rm`, `sftp_stat`, `sftp_write`, `ssh_connect`, `ssh_connections`, `ssh_disconnect`, `ssh_exec`, `ssh_test` | `ctx.tools`, `ctx.ssh`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `settings/document-updated (ssh definition saves)` | - | The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: connection management (ssh_connect/ssh_connections/ssh_disconnect/ssh_test), remote command execution (ssh_exec), and SFTP transfer/browse (sftp_list/stat/read/write/mkdir/rm/rename). Definitions and remembered host keys persist in the `ssh` settings namespace; host keys verify by default (accept-new) and secrets never appear in results. |
 | `@deepseek-ai/dsh-tool-bash-persistent` | `bash` | `ctx.workingDirectory`, `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent bash tool; deployment composition supplies the PTY backend and may override the model-facing environment description. |
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.workingDirectory`, `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent pwsh tool, the Windows counterpart of the persistent bash tool; deployment composition supplies a pwsh-dialect PTY backend and may override the model-facing environment description. |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`, `ctx.fs` | `tool/call`, `fs/observed after view presence/absence, edit absence, or successful mutation`, `tool/result` | - | Standalone view/create/unique literal replace/line insert tool over the filesystem seam; it composes with any shell or terminal API. |
+| `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`, `excalidraw_export`, `excalidraw_read`, `excalidraw_write` | `ctx.tools`, `ctx.workspaceRegistry` | `tool/call`, `tool/result` | - | The whiteboard scene tools derive the target workspace from the calling agent's session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish. |
+| `@reachforstar/dsh-tool-a2a` | `a2a_peers`, `a2a_send` | `ctx.tools`, `ctx.a2a` | `tool/call`, `tool/result` | - | a2a_peers lists the configured peer names and a2a_send addresses one by name, optionally continuing an earlier task or context; the model never names an endpoint, so the harvest needs no reachable peer. |
 | `@deepseek-ai/dsh-tool-fs` | `edit`, `read`, `read_image`, `write` | `ctx.workingDirectory`, `ctx.tools`, `ctx.fs`, `ctx.systemPrompt`, `ctx.attachments (image-tool registration)`, `ctx.llm + an image-capable route (image-tool execution)` | `tool/call`, `fs/write-intent or fs/edit-intent for mutations`, `fs/observed after read presence/absence or successful file operation`, `durable attachment (read_image)`, `tool/result` | - | The read-before-write/edit policy is added by `@deepseek-ai/dsh-fs-observation-policy` (an `fs/*` event-gate plugin, no schema change); a deployment that loads these tools is expected to also load it. The image tool is not registered without `ctx.attachments`; its schema is route-independent, and execution refuses unless the exact routed model declares image input. |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`, `grep` | `ctx.workingDirectory`, `ctx.tools`, `ctx.subprocess`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | glob and grep are unconditional discovery tools that spawn the packaged ripgrep binary (`@vscode/ripgrep`) through ctx.subprocess as ordinary foreground calls (never background jobs) — no host `rg` install and no shell layer. The catalog uses `sampleOverCapGlobResults: true`; deployments must choose that behavior explicitly. Capped results save the complete formatted list through the optional ctx.spillStore backend; returned locators are follow-up-readable/searchable when the backend exposes local paths in co-located deployments. |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`, `terminal_list`, `terminal_open`, `terminal_read`, `terminal_send`, `terminal_signal` | `ctx.workingDirectory`, `ctx.tools`, `ctx.terminals`, `ctx.systemPrompt`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The six terminal tools are opt-in and complement one-shot shell/filesystem tools. `terminal_send(run_in_background: true)` registers with `ctx.jobs`; TUI, named key sequences, BEL, resize, auto-start, and cross-agent sharing are absent from the schema. |
@@ -54,7 +57,7 @@ This table connects model-visible tool names to the plugin package and service s
 
 ### `plugin_manager`
 
-List plugins or bundles in the current profile, enable or disable them, install a bundle, or remove an installed bundle. Every action requires danger-full-access permission or approval for this call. Approval does not change the session permission mode. Changes affect every session in this profile. List first to obtain exact identifiers. Package installation can execute allowed build scripts. Live profiles apply changes immediately; startup profiles require restart. Incompatible DSH peer dependencies block installation and activation. Version exemptions risk crashes and data loss: warn the user and obtain explicit permission for the exact plugin and runtime versions before granting one.
+List plugins or bundles in the current profile, enable or disable them, install a bundle, or remove an installed bundle. Every action requires danger-full-access permission or approval for this call. Approval does not change the session permission mode. Changes affect every session in this profile. List first to obtain exact identifiers. Package installation can execute allowed build scripts. Live profiles apply changes immediately, including upgrades of installed packages; a change result that is not applied carries nextStep, which says what to do or tell the user. Incompatible DSH peer dependencies block installation and activation. Version exemptions risk crashes and data loss: warn the user and obtain explicit permission for the exact plugin and runtime versions before granting one.
 
 ```json
 {
@@ -525,7 +528,7 @@ ask_user_question keeps the original blocking behavior by default; set `mode: ti
 
 ### `run_code`
 
-Execute a TypeScript program against the available tools. Takes two required arguments: `description`, a short summary of what the program does, and `code`, the BODY of an async function (erasable syntax only; top-level `await` and `return` work). Call tools as `await tools.name(args)` per the declarations in the system prompt. Only what you print or return is program output — curate it. Image-bearing subtool results are attached after the run.
+Execute a TypeScript program against the available tools. Takes two required arguments: `description`, a short summary of what the program does, and `code`, the program to execute. Call tools as `await tools.name(args)` per the declarations in the system prompt. Curate the program output. Image-bearing subtool results are attached after the run.
 
 ```json
 {
@@ -537,7 +540,7 @@ Execute a TypeScript program against the available tools. Takes two required arg
     },
     "code": {
       "type": "string",
-      "description": "The program: the body of an async TypeScript function."
+      "description": "The TypeScript program to execute, following this tool's execution instructions."
     },
     "timeoutMs": {
       "type": "number",
@@ -783,6 +786,374 @@ Source: [`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/
 
 Creator mode provides two read-only runtime inspection tools. The Cordis host runner supplies the inspection registry; Client queries require a connected page. Author persistent changes as bundles and install them with plugin_manager.
 
+<a id="reachforstardsh-tool-ssh"></a>
+
+## `@reachforstar/dsh-tool-ssh`
+
+### `sftp_list`
+
+List one remote directory over SFTP (non-recursive). Entries report type, size, mtime, and mode.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote directory path to list."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_mkdir`
+
+Create one remote directory over SFTP. With `recursive`, missing parents are created too.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote directory path to create."
+    },
+    "recursive": {
+      "type": "boolean",
+      "description": "Create missing parents (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_read`
+
+Download one remote file to a local path over SFTP. The local file must not exist unless `overwrite` is set; a failed transfer removes the partial local file.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "remote_path": {
+      "type": "string",
+      "description": "Remote file path to download."
+    },
+    "local_path": {
+      "type": "string",
+      "description": "Local destination path; relative paths resolve against the session workspace."
+    },
+    "overwrite": {
+      "type": "boolean",
+      "description": "Replace an existing local file (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "remote_path",
+    "local_path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_rename`
+
+Rename or move one remote path over SFTP.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "from": {
+      "type": "string",
+      "description": "Current remote path."
+    },
+    "to": {
+      "type": "string",
+      "description": "Destination remote path."
+    }
+  },
+  "required": [
+    "connection",
+    "from",
+    "to"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_rm`
+
+Remove one remote file or directory over SFTP. Directories require `recursive: true` and are deleted depth-first; symlinks are unlinked, never followed.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote path to remove."
+    },
+    "recursive": {
+      "type": "boolean",
+      "description": "Remove a directory tree (default false)."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_stat`
+
+Stat one remote path over SFTP without following symlinks.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "path": {
+      "type": "string",
+      "description": "Remote path to stat."
+    }
+  },
+  "required": [
+    "connection",
+    "path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `sftp_write`
+
+Upload one local file to a remote path over SFTP. The remote directory must already exist (use sftp_mkdir first).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "local_path": {
+      "type": "string",
+      "description": "Local source path; relative paths resolve against the session workspace."
+    },
+    "remote_path": {
+      "type": "string",
+      "description": "Remote destination path."
+    }
+  },
+  "required": [
+    "connection",
+    "local_path",
+    "remote_path"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_connect`
+
+Save a new SSH connection definition (or update one by passing its id). The definition persists in user settings and is usable by ssh_exec and the sftp_* tools; secrets never come back in results. List saved connections with ssh_connections.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique display name for the connection (also accepted wherever a connection id is)."
+    },
+    "host": {
+      "type": "string",
+      "description": "Remote host name or IP address."
+    },
+    "username": {
+      "type": "string",
+      "description": "Remote login user."
+    },
+    "port": {
+      "type": "number",
+      "description": "Remote SSH port (default 22)."
+    },
+    "auth": {
+      "type": "string",
+      "description": "Authentication kind: \"password\" or \"privateKey\".",
+      "enum": [
+        "password",
+        "privateKey"
+      ]
+    },
+    "password": {
+      "type": "string",
+      "description": "Password (required when auth is \"password\")."
+    },
+    "private_key_path": {
+      "type": "string",
+      "description": "Absolute local path of the private key (required when auth is \"privateKey\")."
+    },
+    "passphrase": {
+      "type": "string",
+      "description": "Private-key passphrase, when the key is encrypted."
+    },
+    "connect_timeout_ms": {
+      "type": "number",
+      "description": "Connection-establishment timeout in milliseconds (default 10000, range 1000-300000)."
+    },
+    "id": {
+      "type": "string",
+      "description": "Id of an existing connection to update; omit to create a new one."
+    }
+  },
+  "required": [
+    "name",
+    "host",
+    "username",
+    "auth"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_connections`
+
+List every saved SSH connection definition (secret-free view). Use the returned id or name as the `connection` argument of ssh_exec and the sftp_* tools.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_disconnect`
+
+Close the shared connection for one saved connection. Later ssh_exec/sftp_* calls reconnect automatically.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    }
+  },
+  "required": [
+    "connection"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_exec`
+
+Execute a command on a saved SSH connection and return its stdout/stderr. Each call runs in a fresh remote shell: no state (cwd, variables) persists between calls — pass `cwd` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`; commands that exceed the timeout are killed and reported as `[timed out ...]`. Long output is truncated to its tail with a truncation marker.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    },
+    "command": {
+      "type": "string",
+      "description": "The command to execute on the remote host."
+    },
+    "timeout_ms": {
+      "type": "number",
+      "description": "Timeout in milliseconds. The provider applies its configured default and cap, and kills the command on expiry."
+    },
+    "cwd": {
+      "type": "string",
+      "description": "Remote working directory for this command; a `cd` prefix is applied on the remote side."
+    }
+  },
+  "required": [
+    "connection",
+    "command"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+### `ssh_test`
+
+Probe one saved connection: connect, run a probe command, and close again. Reports the round-trip latency or the failure reason.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "string",
+      "description": "Connection id or name from ssh_connections."
+    }
+  },
+  "required": [
+    "connection"
+  ]
+}
+```
+
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+
+The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: connection management (ssh_connect/ssh_connections/ssh_disconnect/ssh_test), remote command execution (ssh_exec), and SFTP transfer/browse (sftp_list/stat/read/write/mkdir/rm/rename). Definitions and remembered host keys persist in the `ssh` settings namespace; host keys verify by default (accept-new) and secrets never appear in results.
+
 <a id="deepseek-aidsh-tool-bash-persistent"></a>
 
 ## `@deepseek-ai/dsh-tool-bash-persistent`
@@ -942,6 +1313,229 @@ Notes for using the `str_replace` command:
 Source: [`packages/fs/tool-str-replace-editor/src/index.ts`](../packages/fs/tool-str-replace-editor/src/index.ts)
 
 Standalone view/create/unique literal replace/line insert tool over the filesystem seam; it composes with any shell or terminal API.
+
+<a id="reachforstardsh-tool-excalidraw"></a>
+
+## `@reachforstar/dsh-tool-excalidraw`
+
+### `excalidraw_draw`
+
+Draw shapes on the current workspace's Excalidraw canvas (the shared whiteboard). Describe shapes at a high level — no Excalidraw internals needed. Use it to draw diagrams, flowcharts, or to work a problem on the canvas (e.g. geometry). `action: "append"` adds to the existing scene; `action: "replace"` clears the canvas first. Supported element `type` values: "rectangle", "ellipse", "diamond", "text" (put the content in `text`), "arrow", "line" (optionally give `points` as [[x1,y1],[x2,y2],...] else a diagonal across the box is used). Coordinates are in canvas pixels (top-left origin).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "elements": {
+      "type": "array",
+      "description": "Shapes to draw.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "One of rectangle/ellipse/diamond/text/arrow/line."
+          },
+          "x": {
+            "type": "number",
+            "description": "Left edge in canvas pixels."
+          },
+          "y": {
+            "type": "number",
+            "description": "Top edge in canvas pixels."
+          },
+          "width": {
+            "type": "number",
+            "description": "Width in canvas pixels."
+          },
+          "height": {
+            "type": "number",
+            "description": "Height in canvas pixels."
+          },
+          "text": {
+            "type": "string",
+            "description": "Text content (for type \"text\")."
+          },
+          "points": {
+            "type": "array",
+            "description": "Line/arrow points as [[x,y],...] (optional)."
+          },
+          "strokeColor": {
+            "type": "string",
+            "description": "Outline color (CSS color)."
+          },
+          "backgroundColor": {
+            "type": "string",
+            "description": "Fill color (CSS color)."
+          },
+          "fillStyle": {
+            "type": "string",
+            "description": "hachure/solid/cross-hatch/zigzag."
+          },
+          "strokeWidth": {
+            "type": "number",
+            "description": "Outline width in pixels."
+          },
+          "opacity": {
+            "type": "number",
+            "description": "Opacity 0-100."
+          }
+        },
+        "required": [
+          "type",
+          "x",
+          "y",
+          "width",
+          "height"
+        ]
+      }
+    },
+    "action": {
+      "type": "string",
+      "description": "\"append\" (default) adds shapes; \"replace\" clears the canvas first."
+    }
+  },
+  "required": [
+    "elements"
+  ]
+}
+```
+
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_export`
+
+Export the current workspace's Excalidraw canvas to an SVG image file in the workspace (pure node-side rendering — no browser needed). Reads the same scene the canvas tab shows and writes a vector SVG at `<workspace>/<path>` (default `.dsh/excalidraw/export.svg`). Use it to persist a diagram the model drew so it can be viewed, committed, or converted elsewhere. The SVG uses flat fills/strokes (no hand-drawn texture); text keeps its content and font size.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Workspace-relative output path (e.g. \"docs/flow.svg\"); default \".dsh/excalidraw/export.svg\"."
+    },
+    "transparent": {
+      "type": "boolean",
+      "description": "When true, the SVG has a transparent background; default uses the canvas background color."
+    }
+  }
+}
+```
+
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_read`
+
+Read the current workspace's Excalidraw canvas scene. Returns a summary (element counts by type, text elements, theme), a compact `elements` list (id/type/x/y/width/height/text) so you can reason about what is on the canvas, and the complete scene JSON string in `sceneJson` when small. Use `excalidraw_draw` to add shapes, or `excalidraw_write` to replace the scene.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+### `excalidraw_write`
+
+Overwrite the current workspace's Excalidraw canvas scene from a complete scene JSON string (the shape produced by `excalidraw_read`'s `sceneJson`: an object with `elements` and `appState`). The canvas tab renders this exact file. A missing scene file is created.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scene": {
+      "type": "string",
+      "description": "Complete Excalidraw scene JSON (object with `elements` array and `appState` object)."
+    }
+  },
+  "required": [
+    "scene"
+  ]
+}
+```
+
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+
+The whiteboard scene tools derive the target workspace from the calling agent's session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish.
+
+<a id="reachforstardsh-tool-a2a"></a>
+
+## `@reachforstar/dsh-tool-a2a`
+
+### `a2a_peers`
+
+List the remote A2A agents this deployment can call, with the name each is addressed by, the display name from its published agent card, and the skills it accepts. Call it before `a2a_send` when you do not already know which peers exist. It reports a peer whose card could not be read beside that peer instead of failing the whole listing.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+
+### `a2a_send`
+
+Send one task to a remote A2A agent and return its answer. Address a peer by the name `a2a_peers` reports, or by an endpoint URL. The peer works in its own environment: it can read and write files there, but it cannot see this workspace. Pass the `contextId` a previous call returned to continue the same conversation, so the peer keeps its earlier turns; omit it to start a new one.
+
+Choose the skill the peer should work under, such as code review or coding; `a2a_peers` lists what each peer accepts and the peer uses its default when you omit one. `mode: "direct"` waits for the answer, which can take minutes — prefer delegating a complete unit of work over many small round trips. `mode: "bus"` publishes the task and returns as soon as it is claimed: use it for work that outlives this turn, and add `wait: true` when you also want the answer.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "peer": {
+      "type": "string",
+      "description": "Peer name from `a2a_peers`, or the endpoint URL of an unconfigured agent."
+    },
+    "message": {
+      "type": "string",
+      "description": "The task text, as a self-contained request the peer can act on."
+    },
+    "skill": {
+      "type": "string",
+      "description": "Skill the peer works under, from `a2a_peers`; omit to use the peer default."
+    },
+    "workspace": {
+      "type": "string",
+      "description": "Directory the peer runs in, when it should not use its own default."
+    },
+    "mode": {
+      "type": "string",
+      "description": "Channel: \"direct\" waits for the answer, \"bus\" publishes and returns early.",
+      "enum": [
+        "direct",
+        "bus"
+      ]
+    },
+    "wait": {
+      "type": "boolean",
+      "description": "On \"bus\", wait for the task to finish before returning."
+    },
+    "contextId": {
+      "type": "string",
+      "description": "Conversation to continue, from an earlier answer; omit to start a new one."
+    },
+    "taskId": {
+      "type": "string",
+      "description": "Task to continue, from an earlier answer; omit unless you are resuming that task."
+    }
+  },
+  "required": [
+    "peer",
+    "message"
+  ]
+}
+```
+
+Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+
+a2a_peers lists the configured peer names and a2a_send addresses one by name, optionally continuing an earlier task or context; the model never names an endpoint, so the harvest needs no reachable peer.
 
 <a id="deepseek-aidsh-tool-fs"></a>
 
@@ -1397,7 +1991,7 @@ Create a reminder in the current session that delivers prompt when it becomes du
     },
     "title": {
       "type": "string",
-      "description": "Task name of at most 120 characters, shown on the task card and in task lists."
+      "description": "Concise task name in the user's language, at most 120 characters. Name only the core action and subject; keep essential target identifiers such as PR numbers and branch names. Do not include execution frequency (e.g. daily, hourly), scheduled dates/times, time zones, task status, or configuration and execution details (e.g. read-only mode, profile-tag filters), even when embedded in the requested or existing title. Do not append parenthetical notes. Put scheduling information in the timing parameters and execution instructions in prompt."
     },
     "after_seconds": {
       "type": "number",
@@ -1558,7 +2152,7 @@ Change a reminder in place, keeping its id. Supply a new title, prompt, or at mo
     },
     "title": {
       "type": "string",
-      "description": "New task name of at most 120 characters."
+      "description": "New task name; follow the schedule_create title rules."
     },
     "prompt": {
       "type": "string",

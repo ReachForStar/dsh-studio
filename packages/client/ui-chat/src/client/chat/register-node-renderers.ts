@@ -48,18 +48,17 @@ export function registerChatNodeRenderers(
     { name: 'conversation.chat.node', key: 'turn-trigger', locale: NS }, TurnTriggerNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
     { name: 'conversation.chat.node', key: 'system-prompt', locale: NS }, SystemPromptNodeView))
-  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
-    name: 'conversation.chat.node',
-    key: 'peer-message',
-    locale: NS,
-    children: { 'conversation.chat.reasoning.body': { kind: 'single', scope: 'session' } },
-    inject: () => ({ hooks: { presentation } }),
-  }, PeerMessageNodeView))
+  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
+    { name: 'conversation.chat.node', key: 'peer-message', locale: NS, inject: () => ({ hooks: { presentation } }) },
+    PeerMessageNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'assistant-step',
     locale: NS,
-    children: { 'conversation.chat.reasoning.body': { kind: 'single', scope: 'session' } },
+    children: {
+      'conversation.chat.reasoning.body': { kind: 'single', scope: 'session' },
+      'conversation.chat.message.images': { kind: 'single', scope: 'session' },
+    },
     inject: () => ({ hooks: { presentation } }),
   }, AssistantNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({

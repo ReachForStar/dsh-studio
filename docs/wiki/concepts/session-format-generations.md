@@ -3,7 +3,7 @@ title: 会话格式代际（相邻迁移链）
 type: concept
 tags: [session-format, 迁移, 版本, surface, 发布]
 created: 2026-09-24
-updated: 2026-09-26
+updated: 2026-10-15
 sources: []
 status: active
 ---
@@ -35,7 +35,7 @@ status: active
 | 工具结果 | `tool/result` 携带 `tool-result` 内容块包装 | 原生 `role: 'tool'` 消息 |
 | 请求工具 | 无 `deferLoading` | 声明 `deferLoading` |
 
-因此 v5 的准入词汇 `RELEASED_V4_EVENT_TYPES`（`packages/session/session-format-v4-to-v5/src/extension-identities.ts`）在上游集合之外**额外**接纳 `assistant/peer-message`，`session-format-v4-to-v5` 是「上游 v3→v4 边 + fork 方言」的合并包，不是上游文件的逐字副本。fork v4 与上游 v4 的归档差异记录在 [docs/persistence-changes/historical-formats/v4.md](../../../docs/persistence-changes/historical-formats/v4.md)。
+因此 v5 的准入词汇 `RELEASED_V4_EVENT_TYPES`（`packages/session/session-format-v4-to-v5/src/extension-identities.ts`）在已发布 V3 名称之上，另收上游 v4 在其世代存续期间新增的 `developer/message`、`working-directory/change`、`job/registered`、`job/settled`，以及 fork 方言事件 `assistant/peer-message`；`session-format-v4-to-v5` 是「上游 v3→v4 边 + fork 方言」的合并包，不是上游文件的逐字副本。上游 v4 读取器用实时事件表判定源事件，本仓库的 v4 源准入用冻结列表，因此上游在 v4 世代内新增的第一方类型必须补进这份清单，否则含该类型的 v4 日志会被拒。fork v4 与上游 v4 的归档差异记录在 [docs/persistence-changes/historical-formats/v4.md](../../../docs/persistence-changes/historical-formats/v4.md)。
 
 ## 新增一代的落地顺序（不可调换）
 

@@ -67,8 +67,19 @@ export const RELEASED_V3_EVENT_TYPES: ReadonlySet<string> = new Set([
 ])
 /* jscpd:ignore-end */
 
-/** The V4 reader's vocabulary: the released V3 set plus the developer tooling event introduced by the adopted V4 generation and the turn-free peer assistant message admitted by the fork's V4 generation. */
-export const RELEASED_V4_EVENT_TYPES: ReadonlySet<string> = new Set([...RELEASED_V3_EVENT_TYPES, 'developer/message', 'assistant/peer-message'])
+/**
+ * The V4 reader's vocabulary: the released V3 set plus every first-party type a released V4 writer can emit.
+ * V4 writers added `developer/message`, `working-directory/change`, `job/registered`, and `job/settled` inside the
+ * generation; `assistant/peer-message` is this repository's own V4 dialect event.
+ */
+export const RELEASED_V4_EVENT_TYPES: ReadonlySet<string> = new Set([
+  ...RELEASED_V3_EVENT_TYPES,
+  'developer/message',
+  'working-directory/change',
+  'job/registered',
+  'job/settled',
+  'assistant/peer-message',
+])
 
 /**
  * Keep unknown ignorable events opaque after header promotion.

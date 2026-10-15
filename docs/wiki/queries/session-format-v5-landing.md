@@ -3,7 +3,7 @@ title: 会话格式 v5 落地与 v4→v5 包的合并修复（2026-09-26）
 type: query
 tags: [session-format, merge, upstream, v4-to-v5, persistence-format]
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-10-15
 sources: []
 status: active
 ---
@@ -36,6 +36,22 @@ status: active
 v4→v5 换代本身早已实施，但一直没有对应的持久化确认记录，`verify-persistence-changes` 因此把自 V4 基线以来的全部差异报成未确认。补记 `docs/persistence-changes/2026-10-03-session-format-v5.md`（`decision: version-bump`，覆盖两个表头、`assistant/peer-message` 根、两个仅作归属标记的用户来源类型与 `xingchen/dispatch-progress` 根，共 8 个根），写入器仍为 V5。
 
 两个 fork 来源类型（`ui-polish`、`a2a-seat`）原先被分类为 `union-variants-changed`（要求 bump），因为它们的 `MessageSourceMap` 条目没有 `@persistenceAttribution`；补上该 JSDoc 标记后分类器改判 `attribution-only source kind added`（同版本允许）。这也是以后新增用户来源类型的必要条件。
+
+## 2026-10-15 合并上游：v4 源准入词汇与 catalog 事实缺口
+
+合并上游 `upstream/master` 在 2026-10-15 的头提交后，v4 会话重放批量失败：`session-format-corpus.spec.ts` 59 例、`webworker-packer` 与 `webworker-runtime` 的 v4 夹具各若干。根因是两侧读取器的词汇来源不同——上游 v4 读取器用**实时**事件表判定源事件，本仓库的 v4 源准入用**冻结**列表 `RELEASED_V4_EVENT_TYPES`。上游在 v4 世代存续期间新增了第一方类型，冻结列表没有跟着长：
+
+| 缺口 | 证据 |
+| --- | --- |
+| `job/registered`、`job/settled` | 上游在 v4 代内新增；HEAD 的夹具 0 处含之，合并工作区 53 个文件含之 |
+| `working-directory/change` | fork v4 夹具里本来就有，HEAD 即被拒（6 个文件），属预存缺陷 |
+| catalog `version: 2` + `mode: 'external'` | 上游 v3→v4 的 `catalogFact` 已放行；本包仍按「version 只允许 1」拒绝（HEAD 即红，5 例） |
+
+修法：`src/extension-identities.ts` 的词汇表补齐三类（保留 `developer/message`、`assistant/peer-message`），`src/facts.ts` 的 `catalogFact` 采纳上游 v3→v4 规则（version 允许 2、mode 允许 `external`、校验 `version === 2 ⟺ mode === 'external'`），双语 README 与 `README.i18n.yaml` 同步。判定口径：**上游在同代内新增的第一方事件类型，必须进本仓库的冻结准入列表**，否则含该类型的上游日志被判未知必读事件而整份拒绝。
+
+同一轮还有一处夹具口径修复：上游把 `packages/experimental/webworker-runtime/tests/fixtures/vfs-example` 的主会话当前代夹具（`session.v4.jsonl`）带进合并，而本仓库写入器是 v5。按其测试（合并时采纳的上游版本：主会话提交「当前代」字节，历史代作前置）重录为 `session.v5.jsonl`，同步重录 `home/storages/session_projcache.json`，并移除上游的 v4 文件——该目录的既定形状是「各会话 v2/v3 前代 + 主会话当前代」。录制用一次性 vitest 脚本调 `buildVfsExampleFiles()` 写出，脚本已删除。
+
+验证：corpus 769/769；`session-format-v4-to-v5` + `session-format-catalog` + `session-format-v3-to-v4` 45 文件 804 用例；vfs-example 与 webworker 两包 41 文件 1041 用例。
 
 ## 遗留（待决策，非本轮引入）
 

@@ -243,7 +243,7 @@ describe('reading a route from its own endpoint', () => {
     await expect(adapter.listModels('acme-gateway')).resolves.toHaveLength(1)
     // The merged collection still serves the route the configuration alone
     // materialized; a snapshot that dropped it would break every other route.
-    await expect(adapter.resolveModel('deepseek', 'deepseek-v4-flash')).resolves.toMatchObject({ id: 'deepseek-v4-flash' })
+    await expect(adapter.resolveModel('deepseek', 'deepseek-v4-pro')).resolves.toMatchObject({ id: 'deepseek-v4-pro' })
   })
 
   it('refuses a listing that names no model to serve', async () => {

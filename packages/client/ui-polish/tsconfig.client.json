@@ -65,9 +65,6 @@
     },
     {
       "path": "../../session/session-stats"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

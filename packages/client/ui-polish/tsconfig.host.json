@@ -13,7 +13,6 @@
     "src/git-llm.ts",
     "src/git-service.ts",
     "src/index.ts",
-    "src/invariant.ts",
     "src/latex-service.ts",
     "src/llm-route.ts"
   ],
@@ -53,9 +52,6 @@
     },
     {
       "path": "../../fs/tool-excalidraw"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

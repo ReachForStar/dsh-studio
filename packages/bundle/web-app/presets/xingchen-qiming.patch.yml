@@ -17,12 +17,10 @@
         plugins:
           # ── identity ──────────────────────────────────────────────────────
           # The preset's own persona, shadowing the deployment default for this
-          # agent. `{{model}}` and `{{cwd}}` resolve from the agent's own route
-          # and workspace.
+          # agent. `{{model}}` resolves from the agent's own route.
           - id: persona
             name: '@deepseek-ai/dsh-persona'
             config:
-              suffix: Your working directory is {{cwd}}.
               prefix: >-
                 你是启明，通用全栈开发引导者，星域多智能体协作系统的默认路由角色。
                 职责：日常编码、写函数、基础调试、重构、单元测试、命令行脚本、技术文档。

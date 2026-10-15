@@ -476,6 +476,8 @@ describe('provider runs against a scripted Pi RPC child', () => {
   async function harness(scenario: string): Promise<{
     readonly ctx: Context
     readonly parent: Agent
+    /** Directory handed to the provider as the child's own working directory. */
+    readonly workspace: string
   }> {
     const root = mkdtempSync(join(tmpdir(), 'dsh-subagent-pi-'))
     roots.push(root)
@@ -500,7 +502,7 @@ describe('provider runs against a scripted Pi RPC child', () => {
       id: 'pi-unit-parent',
       session: { header: { cwd: root } },
     } as unknown as Agent
-    return { ctx, parent }
+    return { ctx, parent, workspace: root }
   }
 
   async function expectQuiescent(): Promise<void> {
@@ -514,10 +516,11 @@ describe('provider runs against a scripted Pi RPC child', () => {
   }
 
   it('completes with the exact fixture answer', async () => {
-    const { ctx, parent } = await harness('complete')
-    const run = await ctx.subagents.start('pi', {
+    const { ctx, parent, workspace } = await harness('complete')
+    const run = await ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Return the sentinel.' }],
       parent,
+      cwd: workspace,
       signal: new AbortController().signal,
     })
     await expect(run.result).resolves.toEqual({
@@ -529,10 +532,11 @@ describe('provider runs against a scripted Pi RPC child', () => {
   })
 
   it('auto-cancels an extension dialog and still completes', async () => {
-    const { ctx, parent } = await harness('extension-ui')
-    const run = await ctx.subagents.start('pi', {
+    const { ctx, parent, workspace } = await harness('extension-ui')
+    const run = await ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Pick something.' }],
       parent,
+      cwd: workspace,
       signal: new AbortController().signal,
     })
     await expect(run.result).resolves.toEqual({
@@ -544,10 +548,11 @@ describe('provider runs against a scripted Pi RPC child', () => {
   })
 
   it('maps a settled-without-answer child to error', async () => {
-    const { ctx, parent } = await harness('no-answer')
-    const run = await ctx.subagents.start('pi', {
+    const { ctx, parent, workspace } = await harness('no-answer')
+    const run = await ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Say nothing.' }],
       parent,
+      cwd: workspace,
       signal: new AbortController().signal,
     })
     await expect(run.result).resolves.toEqual({
@@ -559,10 +564,11 @@ describe('provider runs against a scripted Pi RPC child', () => {
   })
 
   it('maps a rejected prompt to error', async () => {
-    const { ctx, parent } = await harness('prompt-error')
-    const run = await ctx.subagents.start('pi', {
+    const { ctx, parent, workspace } = await harness('prompt-error')
+    const run = await ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Will fail preflight.' }],
       parent,
+      cwd: workspace,
       signal: new AbortController().signal,
     })
     await expect(run.result).resolves.toMatchObject({ stopReason: 'error' })
@@ -571,10 +577,11 @@ describe('provider runs against a scripted Pi RPC child', () => {
   })
 
   it('maps an unparseable child stream to error', async () => {
-    const { ctx, parent } = await harness('bad-json')
-    const run = await ctx.subagents.start('pi', {
+    const { ctx, parent, workspace } = await harness('bad-json')
+    const run = await ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Produce garbage.' }],
       parent,
+      cwd: workspace,
       signal: new AbortController().signal,
     })
     await expect(run.result).resolves.toMatchObject({ stopReason: 'error' })
@@ -583,12 +590,13 @@ describe('provider runs against a scripted Pi RPC child', () => {
   })
 
   it('rejects start when the request is already aborted', async () => {
-    const { ctx, parent } = await harness('complete')
+    const { ctx, parent, workspace } = await harness('complete')
     const controller = new AbortController()
     controller.abort(new Error('pre-aborted'))
-    await expect(ctx.subagents.start('pi', {
+    await expect(ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Never mind.' }],
       parent,
+      cwd: workspace,
       signal: controller.signal,
     })).rejects.toThrow(/aborted before Pi startup/)
     // No child is spawned when the request is already cancelled.
@@ -596,21 +604,23 @@ describe('provider runs against a scripted Pi RPC child', () => {
   })
 
   it('rejects start when the child exits before readiness', async () => {
-    const { ctx, parent } = await harness('crash')
-    await expect(ctx.subagents.start('pi', {
+    const { ctx, parent, workspace } = await harness('crash')
+    await expect(ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Crash.' }],
       parent,
+      cwd: workspace,
       signal: new AbortController().signal,
     })).rejects.toThrow(/exited before the run settled|protocol stream closed/)
     await expectQuiescent()
   })
 
   it('settles cancellation locally and leaves the child quiescent', async () => {
-    const { ctx, parent } = await harness('hold')
+    const { ctx, parent, workspace } = await harness('hold')
     const controller = new AbortController()
-    const run = await ctx.subagents.start('pi', {
+    const run = await ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Wait forever.' }],
       parent,
+      cwd: workspace,
       signal: controller.signal,
     })
     await new Promise((resolve) => { setTimeout(resolve, 100) })

@@ -12,7 +12,7 @@
  * @module dsh-llm-pi-ai/catalog
  */
 
-import { builtinProviders, getBuiltinModels, getBuiltinProviders } from '@earendil-works/pi-ai/providers/all'
+import { builtinProviders, getAllBuiltinModels, getBuiltinModels } from '@earendil-works/pi-ai/providers/all'
 import type { BuiltinProvider } from '@earendil-works/pi-ai/providers/all'
 import { createProvider, envApiKeyAuth } from '@earendil-works/pi-ai'
 import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy'
@@ -203,35 +203,51 @@ export const CATALOG_ROUTE_APIS: Readonly<Record<string, string>> = {
 }
 
 /**
- * Installed catalog providers by id, constructed once. Each entry owns the API
- * implementations for its own models, which is why a catalog route reuses this
- * provider instead of being rebuilt from parts.
- * @returns the catalog provider index.
+ * Whether this adapter serves one installed catalog provider. It dispatches
+ * chat requests only, so a provider whose catalog lists models but no chat
+ * model (image-generation or classifier models alone) is not a catalog route;
+ * a provider whose catalog lists no models at all stays one.
+ * @param provider - the installed provider.
+ * @returns whether the provider ships a chat model or lists no models.
+ */
+function servesChat(provider: Provider): boolean {
+  const id = provider.id as BuiltinProvider
+  return getBuiltinModels(id).length > 0 || getAllBuiltinModels(id).length === 0
+}
+
+/**
+ * Installed catalog providers this adapter serves, by id, constructed once.
+ * Each entry owns the API implementations for its own models, which is why a
+ * catalog route reuses this provider instead of being rebuilt from parts.
+ * The AMAX gateway is appended because it is not a pi-ai built-in.
+ * @returns the catalog provider index, in catalog order.
  */
 function catalogProviders(): Map<string, Provider> {
   providerIndex ??= new Map([
-    ...builtinProviders().map(provider => [provider.id, provider] as const),
+    ...builtinProviders().filter(servesChat).map(provider => [provider.id, provider] as const),
     [AMAX_PROVIDER.id, AMAX_PROVIDER],
   ])
   return providerIndex
 }
 
 /**
- * The installed catalog provider for one route, when pi-ai ships one.
+ * The installed catalog provider for one route, when pi-ai ships one this
+ * adapter serves.
  * @param provider - provider route key.
- * @returns the catalog provider, or `undefined` for a route pi-ai does not ship.
+ * @returns the catalog provider, or `undefined` for a route pi-ai does not ship
+ *   or ships without a chat model.
  */
 export function catalogProvider(provider: string): Provider | undefined {
   return catalogProviders().get(provider)
 }
 
 /**
- * Every provider route the installed pi-ai catalog ships, plus the AMAX Token
- * Router gateway this build adds on top.
- * @returns the catalog provider ids.
+ * Every provider route this adapter serves: the pi-ai built-ins that ship a
+ * chat model, plus the AMAX Token Router gateway this build adds on top.
+ * @returns the catalog provider ids, in catalog order.
  */
 export function catalogProviderIds(): readonly string[] {
-  return [...getBuiltinProviders(), AMAX_PROVIDER.id]
+  return [...catalogProviders().keys()]
 }
 
 /**
@@ -249,7 +265,7 @@ export function catalogDisplayName(provider: string): string | undefined {
  * gateway ships none — its models come from the account's `GET /models`
  * listing — so a route naming it must configure models explicitly.
  * @param provider - provider route key.
- * @returns catalog models by id; empty for a route pi-ai does not ship or for AMAX.
+ * @returns catalog models by id; empty for a route {@link catalogProvider} does not return or for AMAX.
  */
 export function catalogModels(provider: string): Map<string, Model<Api>> {
   if (provider === AMAX_PROVIDER.id) return new Map()

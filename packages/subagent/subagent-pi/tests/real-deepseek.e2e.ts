@@ -80,16 +80,16 @@ describe.skipIf(!process.env.DEEPSEEK_API_KEY)(
         disposeEofGraceMs: 2_000,
         disposeGraceMs: 2_000,
       })
-      const parent = {
-        id: 'pi-deepseek-e2e-parent',
-        session: { header: { cwd: workspace } },
-      } as unknown as Agent
-      const run = await ctx.subagents.start('pi', {
+      // A provider-level run bypasses the activation manager, so the parent only
+      // satisfies the request type; the child's directory comes from `cwd`.
+      const parent = { id: 'pi-deepseek-e2e-parent' } as unknown as Agent
+      const run = await ctx.subagents.getProvider('pi')!.start!({
         prompt: [{
           type: 'text',
           text: `Reply with exactly ${nonce} and nothing else. Do not use tools.`,
         }],
         parent,
+        cwd: workspace,
         signal: new AbortController().signal,
       })
       const result = await run.result

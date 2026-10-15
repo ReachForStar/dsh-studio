@@ -25,10 +25,11 @@ import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands
 import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
+import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { createPeerAssistantMessage } from '@deepseek-ai/dsh-llm'
 import { ToolCallId } from '@deepseek-ai/dsh-llm/brand'
 import type {} from '@deepseek-ai/dsh-system-prompt'
-import { settleRun } from '@deepseek-ai/dsh-subagent'
+import type { SubagentActivation, SubagentResult } from '@deepseek-ai/dsh-subagent'
 import type {} from '@deepseek-ai/dsh-subagent'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { A2APeerReply } from '@reachforstar/dsh-a2a'
@@ -283,6 +284,47 @@ const UNANSWERED_STATES = new Set([
 ])
 
 /**
+ * Settle one local seat activation into the seat's answer text and end state.
+ *
+ * The activation manager releases the child when the caller disposes it, so a
+ * seat that times out still disposes. The activation's result never rejects on
+ * a child-level failure, which keeps the failure visible as a state instead of
+ * losing the command's result.
+ * @param activation - the started child activation.
+ * @returns the answer text and the end state.
+ */
+async function settleSeat(activation: SubagentActivation): Promise<{
+  readonly text?: string
+  readonly state: string
+  readonly detail?: string
+}> {
+  let result: SubagentResult
+  try {
+    result = await activation.result
+  } catch (error: unknown) {
+    await activation.dispose().catch(() => undefined)
+    return { text: String(error), state: 'failed', detail: String(error) }
+  }
+  await activation.dispose().catch(() => undefined)
+  if (result.stopReason === 'completed') {
+    const text = result.output
+      .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
+      .map(block => block.text)
+      .join('')
+    return { text, state: 'completed' }
+  }
+  // An abort with no provider detail is a local cancel; a diagnosed abort and
+  // every other end reason are failures carrying that detail.
+  if (result.stopReason === 'aborted' && result.diagnostic === undefined) return { state: 'killed' }
+  return {
+    state: 'failed',
+    detail: result.diagnostic === undefined
+      ? result.stopReason
+      : `${result.stopReason}; diagnostic: ${result.diagnostic}`,
+  }
+}
+
+/**
  * `ctx.xingchen`: the star-domain routing service.
  *
  * Owns the role bindings (peer + charter), the dispatch with per-session
@@ -455,11 +497,16 @@ export class XingchenService extends Service {
     if (seat.mode === 'a2a') {
       return await this.dispatchToPeer(role, seat.peer, seat.skill, seat.channel, text, parent, signal, ids)
     }
-    const run = await this.ctx.subagents.start(seat.provider, {
-      prompt: [{ type: 'text', text }],
-      parent,
+    const activation = await this.ctx.subagents.startActivation({
+      provider: seat.provider,
+      label: XINGCHEN_ROLE_NAMES[role],
+      delivery: 'caller',
       signal: signal ?? new AbortController().signal,
-      ...(seat.model === undefined ? {} : { agentOptions: seat.model }),
+      request: {
+        prompt: [{ type: 'text', text }],
+        parent,
+        ...(seat.model === undefined ? {} : { agentOptions: seat.model }),
+      },
     })
     // A local seat can stall — a composition whose child never drives a turn,
     // for instance — and a dispatch that waits forever leaves the command with
@@ -468,15 +515,18 @@ export class XingchenService extends Service {
     const expiry = new Promise<'timeout'>((resolve) => {
       timer = setTimeout(() => { resolve('timeout') }, seat.timeoutMs)
     })
-    const settled = await Promise.race([settleRun(run).then(outcome => ({ outcome })), expiry])
+    const settled = await Promise.race([settleSeat(activation).then(outcome => ({ outcome })), expiry])
     if (timer !== undefined) clearTimeout(timer)
     if (settled === 'timeout') {
-      await run.dispose().catch(() => undefined)
+      await activation.dispose().catch(() => undefined)
       throw new Error(`${XINGCHEN_ROLE_NAMES[role]} 席位超过 ${String(seat.timeoutMs)}ms 未完成，已释放子运行`)
     }
     const outcome = settled.outcome
-    if (outcome.status === 'completed') return { text: outcome.result ?? '', state: outcome.status }
-    return { text: outcome.detail ?? `${XINGCHEN_ROLE_NAMES[role]} 席位未完成（${outcome.status}）`, state: outcome.status }
+    if (outcome.state === 'completed') return { text: outcome.text ?? '', state: outcome.state }
+    return {
+      text: outcome.detail ?? `${XINGCHEN_ROLE_NAMES[role]} 席位未完成（${outcome.state}）`,
+      state: outcome.state,
+    }
   }
 
   /**

@@ -31,7 +31,9 @@ afterEach(async () => {
 interface RealHarness {
   readonly ctx: Context
   readonly handles: SubprocessHandle[]
+  /** Parent stand-in for the request type; a provider-level run never reaches the activation manager. */
   readonly parent: Agent
+  readonly workspace: string
   readonly agentDir: string
 }
 
@@ -71,11 +73,8 @@ async function realHarness(): Promise<RealHarness> {
     disposeEofGraceMs: 2_000,
     disposeGraceMs: 2_000,
   })
-  const parent = {
-    id: 'pi-real-parent',
-    session: { header: { cwd: workspace } },
-  } as unknown as Agent
-  return { ctx, handles, parent, agentDir }
+  const parent = { id: 'pi-real-parent' } as unknown as Agent
+  return { ctx, handles, parent, workspace, agentDir }
 }
 
 async function expectQuiescent(handles: readonly SubprocessHandle[]): Promise<void> {
@@ -90,12 +89,13 @@ async function expectQuiescent(handles: readonly SubprocessHandle[]): Promise<vo
 
 describe('real @earendil-works/pi-coding-agent 0.84.2 product', () => {
   it('starts the real Pi RPC server, redirects its dirs, and maps the keyless prompt to error', async () => {
-    const { ctx, handles, parent, agentDir } = await realHarness()
+    const { ctx, handles, parent, workspace, agentDir } = await realHarness()
     expect(piPackage.version).toBe('0.84.2')
 
-    const run = await ctx.subagents.start('pi', {
+    const run = await ctx.subagents.getProvider('pi')!.start!({
       prompt: [{ type: 'text', text: 'Return OK.' }],
       parent,
+      cwd: workspace,
       signal: new AbortController().signal,
     })
     // No provider is configured in this keyless fixture, so Pi's prompt

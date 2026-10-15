@@ -13,7 +13,7 @@ import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import {
   assertPositiveFinite,
   NO_START_CAPABILITIES,
-  resolveChildCwd,
+  assertUsableCwd,
   type ResolvedSubagentStartRequest,
   type SubagentCapabilities,
   type SubagentProvider,
@@ -96,13 +96,15 @@ class PiProvider implements SubagentProvider {
   ) {}
 
   start(request: ResolvedSubagentStartRequest) {
-    const parentCwd = request.parent.session.header.cwd
+    let cwd: string
+    try {
+      cwd = assertUsableCwd('subagent-pi', 'child cwd', request.cwd)
+    } catch (error: unknown) {
+      if (request.signal.aborted) throw new Error('subagent-pi: request was aborted before child startup')
+      throw error
+    }
     const spec: PiRunSpec = {
-      cwd: resolveChildCwd(
-        'subagent-pi',
-        undefined,
-        parentCwd,
-      ),
+      cwd,
       env: {
         ...this.config.env,
         ...(this.config.agentDir === undefined ? {} : { PI_CODING_AGENT_DIR: this.config.agentDir }),

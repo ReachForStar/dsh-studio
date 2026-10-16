@@ -1139,6 +1139,48 @@ describe('refreshFixtureReplacements', () => {
 
     expect(replacements).toEqual([{ from: 'fresh', to: 'old' }])
   })
+
+  it('maps background job ids to the existing fixture values in log order', () => {
+    const log = (first: string, second: string): string => [
+      JSON.stringify({ type: 'session', id: 'same', cwd: '/same' }),
+      JSON.stringify({ type: 'job/registered', data: { jobId: first } }),
+      JSON.stringify({ type: 'job/settled', data: { jobId: first } }),
+      JSON.stringify({ type: 'job/registered', data: { jobId: second } }),
+      JSON.stringify({ type: 'tool/call', data: { arguments: `{"job_id":"${second}","wait":true}` } }),
+      '',
+    ].join('\n')
+    const replacements = refreshFixtureReplacements(
+      [{ id: 'diagnostic', createdAt: 1, content: log('bash-1111111111111111', 'bash-2222222222222222') }],
+      [log('{{id:1}}', '{{id:2}}')],
+    )
+
+    expect(replacements).toEqual([
+      { from: 'bash-1111111111111111', to: '{{id:1}}' },
+      { from: 'bash-2222222222222222', to: '{{id:2}}' },
+    ])
+  })
+
+  it('skips background job ids whose value already matches or has no counterpart', () => {
+    const log = (jobId: string): string =>
+      `${JSON.stringify({ type: 'job/registered', data: { jobId } })}\n`
+    const replacements = refreshFixtureReplacements(
+      [{ id: 'diagnostic', createdAt: 1, content: log('{{id:1}}') + log('bash-3333333333333333') }],
+      [log('{{id:1}}')],
+    )
+
+    expect(replacements).toEqual([])
+  })
+
+  it('ignores job records without a usable job id', () => {
+    const content = [
+      JSON.stringify({ type: 'job/registered', data: null }),
+      JSON.stringify({ type: 'job/settled', data: { jobId: '' } }),
+      JSON.stringify({ type: 'job/settled', data: { jobId: 7 } }),
+      '',
+    ].join('\n')
+
+    expect(refreshFixtureReplacements([{ id: 'diagnostic', createdAt: 1, content }], [content])).toEqual([])
+  })
 })
 
 describe('stabilizeRefreshLog', () => {

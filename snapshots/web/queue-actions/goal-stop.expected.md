@@ -6,6 +6,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - navigation "Turn navigation":
   - button "Jump to turn 1"
   - button "Jump to turn 2"
@@ -51,6 +56,5 @@
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "Send message" [disabled]
-- button "3 turns 3 steps · {{throughput}} tok/s": 3 turns 3 steps{{throughput}} tok/s
-- button "7.9K tok · Cache hit 99%": 7.9K tokCache hit 99%
+- button "Input 7.8K"
 - button "6% of context used": 6%

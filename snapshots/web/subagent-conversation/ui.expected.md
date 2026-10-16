@@ -10,6 +10,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - navigation "Turn navigation":
   - button "Jump to turn 1"
   - button "Jump to turn 2"
@@ -36,6 +41,5 @@
 - button "Add files or run commands"
 - 'button "Access mode, current: Custom"': Custom
 - button "Send message" [disabled]
-- button "2 turns 2 steps · {{throughput}} tok/s": 2 turns 2 steps{{throughput}} tok/s
-- button "15.7K tok · Cache hit 99%": 15.7K tokCache hit 99%
+- button "Input 15.6K"
 - button "6% of context used": 6%

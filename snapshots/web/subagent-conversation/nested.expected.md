@@ -10,6 +10,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - text: Give one concrete event sourcing example. {{clock}}
 - button "Copy"
 - status: Completed

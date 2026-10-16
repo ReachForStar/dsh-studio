@@ -72,6 +72,14 @@
   name: '@deepseek-ai/dsh-tool-jobs'
   disabled: true
 
+- id: tool-ssh
+  name: '@reachforstar/dsh-tool-ssh'
+  disabled: true
+
+- id: tool-a2a
+  name: '@reachforstar/dsh-tool-a2a'
+  disabled: true
+
 - id: tool-fs
   name: '@deepseek-ai/dsh-tool-fs'
   disabled: true

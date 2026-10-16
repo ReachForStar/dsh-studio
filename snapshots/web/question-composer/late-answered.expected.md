@@ -5,6 +5,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - navigation "Turn navigation":
   - button "Jump to turn 1"
   - button "Jump to turn 2"

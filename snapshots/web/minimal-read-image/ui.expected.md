@@ -6,6 +6,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - text: Use read_image to inspect red.png. Then reply exactly MINIMAL_IMAGE_OK and stop. {{clock}}
 - button "Copy"
 - status: Completed
@@ -29,6 +34,5 @@
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash-Vision-Exp, reasoning effort high": DeepSeek-V4-Flash-Vision-Exp high
 - button "Send message" [disabled]
-- button "1 turns 2 steps · {{throughput}} tok/s": 1 turns 2 steps{{throughput}} tok/s
-- button "28 tok · Cache hit 0%": 28 tokCache hit 0%
+- button "Input 20"
 - button "0% of context used": 0%

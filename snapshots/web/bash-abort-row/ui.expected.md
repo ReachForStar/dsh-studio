@@ -5,6 +5,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - text: "Run two shell commands: wait for cancellation, then write skipped.txt. {{clock}}"
 - button "Copy"
 - status: Stopped
@@ -19,5 +24,4 @@
 - 'button "Access mode, current: Full access"': Full access
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "Send message" [disabled]
-- button "1 turns 1 steps"
-- button "20 tok · Cache hit 0%": 20 tokCache hit 0%
+- button "Input 10"

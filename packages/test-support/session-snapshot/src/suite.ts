@@ -811,9 +811,24 @@ export function unknownToolCallIds(rawLog: string): string[] {
   })
 }
 
+/** Distinct background job ids in log order, taken from the records that own them. */
+function jobIds(rawLog: string): string[] {
+  const seen = new Set<string>()
+  return parseJsonlRecords(rawLog).flatMap((record) => {
+    if (record.type !== 'job/registered' && record.type !== 'job/settled') return []
+    const data = record.data
+    if (data === null || typeof data !== 'object') return []
+    const id = (data as { jobId?: unknown }).jobId
+    if (typeof id !== 'string' || id.length === 0 || seen.has(id)) return []
+    seen.add(id)
+    return [id]
+  })
+}
+
 /**
  * Build refresh write-back replacements for per-log session ids, cwd values,
- * and spill paths. Durable message ids have a later structural owner.
+ * spill paths, and background job ids. Durable message ids have a later
+ * structural owner.
  *
  * @param logs The freshly harvested logs, in fixture order.
  * @param fixtures The existing fixture contents, in matching order.
@@ -840,6 +855,17 @@ export function refreshFixtureReplacements(logs: HarvestedLog[], fixtures: strin
       if (freshPath !== undefined && freshPath !== existingPath) {
         replacements.push({ from: freshPath, to: existingPath })
       }
+    }
+    // A job id reaches records that do not own it (tool arguments, result text).
+    // Replacing only the owning field would leave those occurrences raw while a
+    // token occupies the claim source, so identity redaction could never
+    // tokenize them.
+    const freshJobs = jobIds((logs[i] as HarvestedLog).content)
+    const existingJobs = jobIds(fixtures[i] ?? '')
+    for (let index = 0; index < Math.min(freshJobs.length, existingJobs.length); index++) {
+      const from = freshJobs[index] as string
+      const to = existingJobs[index] as string
+      if (from !== to) replacements.push({ from, to })
     }
   }
   return replacements

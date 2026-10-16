@@ -47,6 +47,27 @@ Program-only SDK bindings:
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 
 interface ToolArgsMap {
+  /** List the remote A2A agents this deployment can call, with the name each is addressed by, the display name from its published agent card, and the skills it accepts. Call it before `a2a_send` when you do not already know which peers exist. It reports a peer whose card could not be read beside that peer instead of failing the whole listing. */
+  a2a_peers: Record<string, JsonValue>;
+  /** Send one task to a remote A2A agent and return its answer. Address a peer by the name `a2a_peers` reports, or by an endpoint URL. The peer works in its own environment: it can read and write files there, but it cannot see this workspace. Pass the `contextId` a previous call returned to continue the same conversation, so the peer keeps its earlier turns; omit it to start a new one. Choose the skill the peer should work under, such as code review or coding; `a2a_peers` lists what each peer accepts and the peer uses its default when you omit one. `mode: "direct"` waits for the answer, which can take minutes — prefer delegating a complete unit of work over many small round trips. `mode: "bus"` publishes the task and returns as soon as it is claimed: use it for work that outlives this turn, and add `wait: true` when you also want the answer. */
+  a2a_send: {
+    /** Peer name from `a2a_peers`, or the endpoint URL of an unconfigured agent. */
+    peer: string;
+    /** The task text, as a self-contained request the peer can act on. */
+    message: string;
+    /** Skill the peer works under, from `a2a_peers`; omit to use the peer default. */
+    skill?: string;
+    /** Directory the peer runs in, when it should not use its own default. */
+    workspace?: string;
+    /** Channel: "direct" waits for the answer, "bus" publishes and returns early. */
+    mode?: "direct" | "bus";
+    /** On "bus", wait for the task to finish before returning. */
+    wait?: boolean;
+    /** Conversation to continue, from an earlier answer; omit to start a new one. */
+    contextId?: string;
+    /** Task to continue, from an earlier answer; omit unless you are resuming that task. */
+    taskId?: string;
+  } & Record<string, JsonValue>;
   /** Ask the user a concise question when you need confirmation, a choice, or missing information before proceeding. */
   ask_user_question: {
     /** Questions to ask the user before continuing. */
@@ -362,6 +383,37 @@ interface ToolArgsMap {
 }
 
 interface ToolOutputMap {
+  a2a_peers: {
+    /** Every configured peer, in configuration order. */
+    peers: {
+      /** Name to pass as `peer`. */
+      name: string;
+      /** Endpoint the peer is called at. */
+      url: string;
+      /** Display name from the peer card, when readable. */
+      title?: string;
+      /** Why the card could not be read, when it could not. */
+      error?: string;
+      /** Skills the peer accepts, to pass as `skill`; the first is its default. */
+      skills?: string[];
+    }[];
+  };
+  a2a_send: {
+    /** Peer that answered. */
+    peer: string;
+    /** The peer answer text. */
+    text: string;
+    /** Conversation identity; pass it back to continue. */
+    contextId?: string;
+    /** Task identity; pass it back to continue that task. */
+    taskId?: string;
+    /** Task state the peer ended in. */
+    state?: string;
+    /** Skill the peer worked under. */
+    skill?: string;
+    /** Channel the task travelled on. */
+    mode?: string;
+  };
   ask_user_question: {
     answers: {
       id: string;

@@ -10,7 +10,7 @@ import { verifyRuntimeClosure } from './verify-runtime-closure.ts'
 import { pnpmInvocation, restoreLegacyHoists } from './executable-packaging.ts'
 import { materializeStagedLinks, deduplicateStagedWorkspacePackages } from './build-exe-for-python-sdk-staging.ts'
 import { resolveLinuxNodePtyAddon } from './executable-native-pty.ts'
-import { artifactManifestSchema, fileDigest, payloadFiles, SSH_HELPER_TARGETS, verifyPayload, type SshHelperTarget } from './ssh-helper/artifact.ts'
+import { artifactManifestSchema, fileDigest, normalizePayloadModes, payloadFiles, SSH_HELPER_TARGETS, verifyPayload, type SshHelperTarget } from './ssh-helper/artifact.ts'
 import { probeHelper } from './ssh-helper/probe.ts'
 import { verifyNativePayload } from './ssh-helper/native.ts'
 
@@ -150,6 +150,9 @@ export async function buildSshHelper(argv: string[]): Promise<void> {
     await chmod(executable, 0o755)
     await verifyNativePayload(product, target)
     await copyLicenses(staging, product)
+    /* Packing flattens every mode to 0o755/0o644, so the recorded manifest must
+       describe those modes rather than the staging host's umask. */
+    await normalizePayloadModes(product)
     const hello = await probeHelper(executable, product)
     if (hello.kind !== 'executable' || hello.executable !== executable) throw new Error('Packaged SSH helper did not report its physical executable')
     const metadata = artifactManifestSchema.parse({

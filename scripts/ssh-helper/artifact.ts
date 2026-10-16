@@ -1,6 +1,6 @@
 /** Versioned archive metadata and file integrity checks for SSH helper releases. */
 import { createHash } from 'node:crypto'
-import { lstat, readFile, readdir } from 'node:fs/promises'
+import { chmod, lstat, readFile, readdir } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import { z } from 'zod'
 
@@ -64,6 +64,29 @@ export async function payloadFiles(root: string): Promise<string[]> {
  */
 export async function fileDigest(path: string): Promise<string> {
   return createHash('sha256').update(await readFile(path)).digest('hex')
+}
+
+/**
+ * The only mode a portable archive preserves: node-tar's `portable` normalization
+ * keeps the execute bit and nothing else, so a staged file's umask-derived mode
+ * never survives packing.
+ * @param mode - POSIX permission bits of a payload file.
+ * @returns 0o755 for an executable file, 0o644 otherwise.
+ */
+export function portablePayloadMode(mode: number): number {
+  return (mode & 0o111) === 0 ? 0o644 : 0o755
+}
+
+/**
+ * Set every payload file to the mode its archive preserves, so the manifest
+ * recorded before packing still matches the extracted payload.
+ * @param root - unpacked payload directory.
+ */
+export async function normalizePayloadModes(root: string): Promise<void> {
+  for (const path of await payloadFiles(root)) {
+    const file = join(root, path)
+    await chmod(file, portablePayloadMode((await lstat(file)).mode))
+  }
 }
 
 /**

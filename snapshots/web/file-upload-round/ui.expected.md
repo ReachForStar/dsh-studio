@@ -6,6 +6,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "668"
 - text: poem.txt TXT 16B
 - button "reference-1.png, click to view original":
   - img "reference-1.png"
@@ -25,6 +30,5 @@
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash-Vision-Exp, reasoning effort high": DeepSeek-V4-Flash-Vision-Exp high
 - button "Send message" [disabled]
-- button "1 turns 2 steps · {{throughput}} tok/s": 1 turns 2 steps{{throughput}} tok/s
-- button "17.3K tok · Cache hit 51%": 17.3K tokCache hit 51%
+- button "¥0.01 Input 17.2K / Output 155 / Cache 8.7K"
 - button "1% of context used": 1%

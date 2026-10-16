@@ -2,4 +2,4 @@
   - treeitem "Ungrouped" [expanded]
   - treeitem "Use the read tool twice (2) now"
   - treeitem "Use the read tool twice (1) now" [selected]
-  - treeitem "Use the read tool twice 1min"
+  - treeitem "Use the read tool twice 2min"

@@ -6,6 +6,11 @@
   - tablist:
     - tab "对话" [selected]
     - tab "轨迹"
+    - tab "Git"
+    - tab "画布"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "调整会话内容宽度": "896"
 - text: 只回复 MESSAGES_WEB_READY，不调用工具。 {{clock}}
 - button "复制"
 - status: 已完成
@@ -22,6 +27,5 @@
 - button "访问模式，当前：工作区内修改": 工作区内修改
 - button "选择模型，当前 DeepSeek-V4-Flash，推理等级 high": DeepSeek-V4-Flash high
 - button "发送消息" [disabled]
-- button "1 轮 1 步 · {{throughput}} tok/s": 1 轮 1 步{{throughput}} tok/s
-- button "8.2K tok · 缓存命中 16%": 8.2K tok缓存命中 16%
+- button "¥0.01 输入 8.2K / 输出 9 / 缓存 1.3K"
 - button "上下文已用 1%": 1%

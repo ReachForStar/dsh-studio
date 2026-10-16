@@ -1,5 +1,6 @@
 - text: {{cwd}}/a.txt
 - button "Line wrap" [pressed]
+- button "Edit"
 - button "Read the file again"
 - button "Show file location"
 - text: alpha

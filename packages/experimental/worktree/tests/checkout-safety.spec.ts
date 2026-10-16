@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { access, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -20,6 +21,18 @@ async function repo(): Promise<string> {
   roots.push(root)
   return root
 }
+
+/**
+ * Whether this Git reads attributes from the object named by `GIT_ATTR_SOURCE`, which it honors
+ * from 2.41. An older Git ignores the variable, so an ordinary checkout cannot differ from the
+ * product's and the control checkout proves nothing there.
+ */
+const attrSourceSupported = (() => {
+  const printed = spawnSync('git', ['--version'], { encoding: 'utf8' }).stdout ?? ''
+  const match = /git version (\d+)\.(\d+)/.exec(printed)
+  if (match === null) throw new Error(`cannot read the Git version from ${JSON.stringify(printed)}`)
+  return Number(match[1]) > 2 || (Number(match[1]) === 2 && Number(match[2]) >= 41)
+})()
 
 describe('worktree checkout Git configuration', () => {
   it.each(['some.nested.driver', 'x=y', 'lfs'])('disables required clean and smudge filters named %s without changing repository configuration', async (driver) => {
@@ -97,6 +110,8 @@ describe('worktree checkout Git configuration', () => {
     await git(root, 'config', 'includeIf.onbranch:invalid.path', included)
     ctx = await harness(root)
     const agent = testAgent(ctx, root)
+    // Git translates its own diagnostics, and the assertion reads Git's English text.
+    vi.stubEnv('LC_ALL', 'C')
 
     await expect(ctx.worktrees.create(agent, { name: 'invalid' })).rejects.toThrow(/Any created checkout and branch are retained.*bad config line/s)
 
@@ -180,9 +195,11 @@ describe('worktree checkout Git configuration', () => {
     const attributesCommit = await git(root, 'rev-parse', 'HEAD')
     await git(root, 'checkout', 'main')
     vi.stubEnv('GIT_ATTR_SOURCE', attributesCommit)
-    const control = join(root, 'ordinary-checkout')
-    await git(root, 'worktree', 'add', '-b', 'ordinary', control)
-    expect(await contents(join(control, 'tracked.txt'))).toBe('initial\r\n')
+    if (attrSourceSupported) {
+      const control = join(root, 'ordinary-checkout')
+      await git(root, 'worktree', 'add', '-b', 'ordinary', control)
+      expect(await contents(join(control, 'tracked.txt'))).toBe('initial\r\n')
+    }
 
     ctx = await harness(root)
     const created = await ctx.worktrees.create(testAgent(ctx, root), { name: 'selected' })

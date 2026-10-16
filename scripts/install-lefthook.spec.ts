@@ -293,6 +293,9 @@ describe('worktree-local Lefthook installer', { timeout: 90_000 }, () => {
     git(fixture, fixture.main, ['worktree', 'add', '-b', 'late-linked', lateLinked])
     write(join(lateLinked, 'lefthook.yml'), 'late-linked-worktree-config\n')
     installFakeLefthook(lateLinked)
+    // Whether `git worktree add` copies the main worktree config into the new one depends on
+    // the Git version, so state the inherited hook path the case is about explicitly.
+    git(fixture, lateLinked, ['config', '--worktree', 'core.hooksPath', mainHooks])
     expect(git(fixture, lateLinked, ['config', '--worktree', '--get', 'core.hooksPath'])).toBe(mainHooks)
 
     const linkedInstall = await runInstaller(fixture, lateLinked)

@@ -522,7 +522,8 @@ describe('result facts', () => {
       const lockedDir = join(deniedRoot, 'locked')
       mkdirSync(lockedDir)
       chmodSync(lockedDir, 0o555)
-      const result = await run(bash, bash.resolve({ command: `echo x > ${lockedDir}/f` }))
+      // The provider's denial signature is English, so pin the command's own locale.
+      const result = await run(bash, bash.resolve({ command: `echo x > ${lockedDir}/f`, env: { LC_ALL: 'C' } }))
       expect(result.exitCode).not.toBe(0)
       expect(result.sandbox).toEqual({ mode: 'read-only', denied: true, enforcement: 'full' })
     } finally {

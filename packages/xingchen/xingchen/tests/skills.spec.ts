@@ -69,7 +69,8 @@ describe('@reachforstar/dsh-xingchen/skills', () => {
   it('缺少资源文件或传入相对 assetRoot 时拒绝装配', async () => {
     await expect(harness({ assetRoot: 'relative/path' }))
       .rejects.toThrow('assetRoot must be an absolute directory')
-    await expect(harness({ assetRoot: 'C:/definitely-missing-xingchen-skills' }))
+    // Absolute on every platform: a Windows-style `C:/...` path is relative on POSIX.
+    await expect(harness({ assetRoot: `${import.meta.dirname}/definitely-missing-xingchen-skills` }))
       .rejects.toThrow('SKILL.md')
   })
 })

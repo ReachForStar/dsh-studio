@@ -29,6 +29,10 @@ it.skipIf(!gioAvailable)('queries and launches an installed Linux desktop entry 
   const config = join(root, 'config')
   const empty = join(root, 'empty')
   await mkdir(join(data, 'applications'), { recursive: true })
+  // The private data root carries its own MIME glob: GIO resolves a content type
+  // from the XDG data roots only, so the host's shared-mime-info must not decide it.
+  await mkdir(join(data, 'mime'))
+  await writeFile(join(data, 'mime', 'globs'), 'text/plain:*.txt\n')
   await mkdir(config)
   await mkdir(empty)
   const path = join(root, "测试 ' file.txt")

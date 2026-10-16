@@ -25,6 +25,7 @@ const sandboxUsable = await (async () => {
 })()
 
 afterEach(async () => {
+  vi.unstubAllEnvs()
   await ctx?.fiber.dispose()
   ctx = undefined
   if (root !== undefined) await rm(root, { recursive: true, force: true })
@@ -81,6 +82,8 @@ describe.skipIf(!sandboxUsable)('worktree standing sandbox policy', () => {
     ctx = await harness(linked, {}, 'workspace-write')
     const agent = testAgent(ctx, linked)
     const confine = vi.spyOn(ctx.sandbox, 'confine')
+    // Git translates its own diagnostics, and the assertion reads Git's English text.
+    vi.stubEnv('LC_ALL', 'C')
     await expect(ctx.worktrees.create(agent, { name: 'denied-admin' })).rejects.toThrow(/permission denied|operation not permitted|read-only file system/i)
     expect(ctx.workingDirectory.get(agent.session)).toBe(linked)
     expect(await git(root, 'branch', '--list', 'denied-admin')).toBe('')

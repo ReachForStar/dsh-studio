@@ -48,7 +48,8 @@ it.skipIf(process.platform === 'win32')('resolves the exact spill verifier, reta
     const other = await (await ctx.shell.execute(ctx.shell.resolve({ command: 'printf ordinary; exit 7' }))).result()
     expect(other.exitCode).toBe(7)
     expect(other.stdout.text).toBe('ordinary')
-    const unmatched = await (await ctx.shell.execute(ctx.shell.resolve({ command: command + '; exit 9' }))).result()
+    // The assertion below reads grep's own diagnostic, so the child locale is pinned to English.
+    const unmatched = await (await ctx.shell.execute(ctx.shell.resolve({ command: command + '; exit 9', env: { LC_ALL: 'C' } }))).result()
     expect(unmatched.exitCode).toBe(9)
     expect(unmatched.stderr.text).toContain('No such file')
     const physical = ctx.fs.processPath(await ctx.fs.resolve(saved.locator))

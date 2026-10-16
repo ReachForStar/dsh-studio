@@ -8,6 +8,10 @@
   "ui-plan/src/client/PlanPreview.module.css": [
     ".cardIcon: border-radius: 10px"
   ],
+  "ui-polish/src/client/ExcalidrawToolView.module.css": [
+    ".card: border-radius: 8px",
+    ".preview: border-radius: 6px"
+  ],
   "ui-schedule/src/client/ClockPicker.module.css": [
     ".option: border-radius: 10px"
   ],

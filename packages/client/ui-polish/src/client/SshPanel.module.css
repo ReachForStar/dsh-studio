@@ -243,6 +243,9 @@
   flex: 1;
   overflow-y: auto;
   display: block;
+  /* This sheet draws an elevated detail card, so the scroller rebinds the thumb pair. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
 .table th {

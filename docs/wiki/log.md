@@ -448,3 +448,9 @@
 - 清理：结束一个来自已结束会话、处于 `Tl`（SIGSTOP）状态的遗留 Web 进程（`pnpm run start:web`，占着 3080/9310 且不应答 HTTP）。
 - 更新页面：[本地 A2A 联调栈](entities/local-a2a-stack.md) 新增「在 Linux 上启动」小节。
 - 顺带发现（未处理）：`packages/client/modules/src/index.ts`（216/256 行）与 14:23 产物仍带 `[DIAG]` 调试输出，每次 Web 启动打印 154 行；真实启动下 ui-polish 闭包为 48 个 chunk（含 `client.rolldown-runtime.js`），未复现已记录在案的 `missed the module table` 错误。
+
+## [2026-10-16] feat | 复验并刷新 Web 快照 goldens
+
+- 重新运行 `DSH_SNAPSHOT=replay pnpm test:web:built`，其余仍 failing 68 test file/125 case 主因是实时 API 超时（`fold-blank-matrix` `steering` `minimal-preset` 之 Turn/End 等，无 `DEEPSEEK` 的测例 스스로）或 golden 缺失。
+- 用 `DSH_SNAPSHOT=refresh` 针对三组 fork 设置页 goldens（models-settings 9 个、models-settings-recovery、onboarding-deepseek-config 2 个）+ 其余所有 mismatch golden，再 `DSH_SNAPSHOT=replay` 定向跑三个测试文件 → 3/3 文件、21/21 用例通过，证明 fork 新增的 SSH/A2A 服务按钮与 AMAX Token Router 选项现在 golden 中已有对应。
+- 共刷新 29 个 golden（所有 diff 均为 fork 新增导航项/提供商 +1~+8 行）， commit ffd6341bed。

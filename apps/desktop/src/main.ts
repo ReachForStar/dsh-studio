@@ -212,6 +212,9 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     minWidth: 520,
     minHeight: 600,
     show,
+    icon: nativeImage.createFromPath(development
+      ? join(app.getAppPath(), 'resources', 'icon-windows.png')
+      : join(process.resourcesPath, 'icon.png')),
     ...(process.platform === 'win32' && primary ? {
       titleBarStyle: 'hidden' as const,
       titleBarOverlay: { height: WINDOWS_TITLEBAR_HEIGHT, color: chromeFallbackFill(),

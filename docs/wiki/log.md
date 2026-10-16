@@ -439,3 +439,12 @@
 - 会话格式修复：`RELEASED_V4_EVENT_TYPES` 补上游在 v4 代内新增的 `job/registered`、`job/settled` 与 fork 既有的 `working-directory/change`；`catalogFact` 采纳上游 v3→v4 规则（version 2 + `external`）。corpus 769/769、三个格式包 804 用例通过。
 - 夹具修复：`vfs-example` 主会话当前代重录为 `session.v5.jsonl` 并重录投影缓存，去掉上游带入的 v4 文件；`session-snapshot-corpus-policy.spec.ts` 三例（合并改动 1 + 计数偏一 2）修至自洽。
 - 新增页面：[合并上游 upstream/master（2026-10-15）](queries/upstream-merge-2026-10.md)；更新[会话格式代际](concepts/session-format-generations.md)、[会话格式 v5 落地](queries/session-format-v5-landing.md)、[合并上游（2026-09）](decisions/2026-09-upstream-sync.md)与 `session-format-v4-to-v5` 双语 README。
+
+## [2026-10-16] feat | 启动本地 A2A 栈与 Kafka 并核验
+
+- 前置修复：`deploy/a2a/gateway` 缺依赖（`node_modules` 只剩 `@earendil-works`），执行 `npm ci` + `npm run build` 后 `@a2a-bridge/*` 链接与 `@a2a-js/sdk`/`kafkajs` 就位。
+- 启动方式：`sg docker -c "node deploy/a2a/stack.mjs up"`（当前登录会话缺 `docker` 补充组，直接调用会让 Kafka 探测失败并回退不存在的 `wsl.exe`）；根 `.env` 先 `source` 再启动，供网关取 `AMAX_*`。
+- 核验结果：Kafka 三 broker（9092/9093/9094）+ 三台网关（9310/9320/9330，agent card 均 HTTP 200）+ Web（3080，带 token 返回 303）；主题 `a2a.task` 6 分区 6 领导、`a2a.event` 6/6、`a2a.dlq` 1/1，消费者组 `pi-gw`/`claude-code-gw`/`opencode-gw` 均为 `Stable`。
+- 清理：结束一个来自已结束会话、处于 `Tl`（SIGSTOP）状态的遗留 Web 进程（`pnpm run start:web`，占着 3080/9310 且不应答 HTTP）。
+- 更新页面：[本地 A2A 联调栈](entities/local-a2a-stack.md) 新增「在 Linux 上启动」小节。
+- 顺带发现（未处理）：`packages/client/modules/src/index.ts`（216/256 行）与 14:23 产物仍带 `[DIAG]` 调试输出，每次 Web 启动打印 154 行；真实启动下 ui-polish 闭包为 48 个 chunk（含 `client.rolldown-runtime.js`），未复现已记录在案的 `missed the module table` 错误。

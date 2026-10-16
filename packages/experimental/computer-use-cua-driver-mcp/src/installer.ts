@@ -6,14 +6,10 @@
 import { spawn } from 'node:child_process'
 import { platform, arch } from 'node:os'
 
-/** GitHub release tag pinned in cordis.patch.yml. */
-const CUA_DRIVER_RELEASE_TAG = 'cua-driver-rs-v0.28.0'
-const GITHUB_RELEASE_BASE = `https://github.com/trycua/cua/releases/download/${CUA_DRIVER_RELEASE_TAG}`
-
-/** Install script name per platform. */
-function installScriptName(): string {
-  return process.platform === 'win32' ? 'install.ps1' : 'install.sh'
-}
+/** Official CUA Driver install entry points. */
+const OFFICIAL_INSTALL_SCRIPT = 'https://cua.ai/driver/install.sh'
+const OFFICIAL_INSTALL_COMMAND = `curl -fsSL ${OFFICIAL_INSTALL_SCRIPT} | bash`
+const OFFICIAL_INSTALL_SCRIPT_PS1 = 'irm https://cua.ai/driver/install.ps1 | iex'
 
 /**
  * Check whether a command is available in PATH and optionally capture its version.
@@ -62,8 +58,6 @@ export function platformDescriptor(): string {
  */
 export function runInstall(): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
-  const script = installScriptName()
-  const url = `${GITHUB_RELEASE_BASE}/${script}`
 
   return new ReadableStream({
     async start(controller) {
@@ -72,23 +66,16 @@ export function runInstall(): ReadableStream<Uint8Array> {
       }
 
       try {
-        send({ type: 'log', line: `Downloading ${script} from ${CUA_DRIVER_RELEASE_TAG}...` })
-        const response = await fetch(url, { redirect: 'follow' })
-        if (!response.ok) {
-          send({ type: 'error', message: `Failed to download install script: ${response.status} ${response.statusText}` })
-          controller.close()
-          return
-        }
-        const scriptContent = await response.text()
-
         const isWindows = process.platform === 'win32'
         const child = isWindows
-          ? spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', scriptContent], {
+          ? spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', OFFICIAL_INSTALL_SCRIPT_PS1], {
             stdio: ['ignore', 'pipe', 'pipe'],
           })
-          : spawn('bash', ['-c', scriptContent], {
+          : spawn('bash', ['-c', OFFICIAL_INSTALL_COMMAND], {
             stdio: ['ignore', 'pipe', 'pipe'],
           })
+
+        send({ type: 'log', line: `Downloading and running ${OFFICIAL_INSTALL_SCRIPT}...` })
 
         const lineBuffer: string[] = []
         const flushLines = (source: Buffer, stream: 'stdout' | 'stderr'): void => {

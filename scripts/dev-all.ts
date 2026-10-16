@@ -18,7 +18,7 @@ function run(command: string, args: readonly string[], cwd: string, label: strin
     stdio: 'inherit',
     detached: false,
   })
-  child.on('error', (err) => console.error(`[${label}] failed to start: ${err.message}`))
+  child.on('error', err => console.error(`[${label}] failed to start: ${err.message}`))
   child.on('exit', (code, signal) =>
     console.log(`[${label}] exited (code=${String(code ?? '(none)')} signal=${String(signal ?? '(none)')})`),
   )

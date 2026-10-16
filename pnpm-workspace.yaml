@@ -13,6 +13,8 @@ packages:
   # Deploy root of the single-exe build: a pure dependency manifest whose
   # closure is what the exe bundles and what the Python runtime distributes.
   - python/sdk-runtime
+  # Local A2A bridge gateways (pi / Claude Code / opencode).
+  - deploy/a2a/gateway/packages/*
 
 overrides:
   'extract-zip>yauzl': '3.4.0'

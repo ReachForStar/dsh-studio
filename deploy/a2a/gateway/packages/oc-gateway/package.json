@@ -11,6 +11,6 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@a2a-bridge/shared": "*"
+    "@a2a-bridge/shared": "workspace:*"
   }
 }

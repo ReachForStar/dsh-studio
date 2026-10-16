@@ -6,6 +6,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - button "/user-invoke-demo"
 - button "meeting notes-this-is-a-very-long-filename-for-testing-user-message-file-references-and-preview-layout.md"
 - text: and confirm the fixture wiring {{clock}}
@@ -23,6 +28,5 @@
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "Send message" [disabled]
-- button "1 turns 1 steps · {{throughput}} tok/s": 1 turns 1 steps{{throughput}} tok/s
-- button "272 tok · Cache hit 0%": 272 tokCache hit 0%
+- button "Input 256"
 - button "0% of context used": 0%

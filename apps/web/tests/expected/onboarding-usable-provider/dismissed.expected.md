@@ -5,6 +5,8 @@
     - button "模型"
     - button "内置插件"
     - button "Agent 预设"
+    - button "SSH 连接"
+    - button "A2A 服务"
   - button "打开配置文件"
   - button "关闭"
   - heading "模型" [level=2]
@@ -62,6 +64,7 @@
       - option "xiaomi-token-plan-sgp"
       - option "zai"
       - option "zai-coding-cn"
+      - option "AMAX Token Router"
     - text: API 密钥
     - button "认证说明": "?"
     - textbox "API 密钥":

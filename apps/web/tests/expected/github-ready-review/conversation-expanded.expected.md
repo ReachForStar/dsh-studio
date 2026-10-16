@@ -16,6 +16,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - button "GitHub event received {{clock}}":
   - text: GitHub event received
   - time: {{clock}}
@@ -32,4 +37,4 @@
 - 'button "Access mode, current: Read Only"': Read Only
 - button "Select model, current github-webhook-review-test/reply": github-webhook-review-test/reply
 - button "Send message" [disabled]
-- button "1 turns 1 steps"
+- button "1 turns · 1 steps"

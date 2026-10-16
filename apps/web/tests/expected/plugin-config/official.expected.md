@@ -38,6 +38,16 @@
     - button "查看 开发者工具": 开发者工具
     - text: 实验性 查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端
     - switch "启用 开发者工具"
+  - listitem:
+    - button "查看 浏览器自动化": 浏览器自动化
+    - text: 实验性 启用浏览器自动化工具，由 Playwright MCP 驱动 Chromium。
+    - switch "启用 浏览器自动化"
+  - listitem:
+    - button "查看 计算机操作": 计算机操作
+    - text: 实验性 启用桌面自动化工具，通过 Cua Driver 读取屏幕并操作指针与键盘。
+    - switch "启用 计算机操作"
+    - text: cua-driver 未安装
+    - button "安装 cua-driver"
 - heading "已安装插件" [level=3]
 - list:
   - listitem:

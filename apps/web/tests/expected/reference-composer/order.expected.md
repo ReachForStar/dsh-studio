@@ -5,6 +5,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - text: Research notes what changed? Referenced session · Research notes {{clock}}
 - button "Copy"
 - status: Completed

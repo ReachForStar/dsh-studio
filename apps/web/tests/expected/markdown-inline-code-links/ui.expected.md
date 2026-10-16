@@ -4,6 +4,10 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
 - text: Show the local preview URL. {{clock}}
 - button "Copy"
 - status: Completed
@@ -35,4 +39,4 @@
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "Send message" [disabled]
-- button "1 turns 1 steps"
+- button "1 turns · 1 steps"

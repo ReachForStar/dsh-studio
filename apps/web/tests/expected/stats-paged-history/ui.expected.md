@@ -5,6 +5,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - tab "Git"
+    - tab "Canvas"
+    - tab "LaTeX"
+    - tab "SSH"
+- slider "Adjust the conversation content width": "896"
 - navigation "Turn navigation":
   - button "Jump to turn 1"
   - button "Jump to turn 2"
@@ -293,4 +298,4 @@
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "Send message" [disabled]
-- button "28 turns 28 steps"
+- button "28 turns · 28 steps"

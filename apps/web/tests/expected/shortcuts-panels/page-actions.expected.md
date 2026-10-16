@@ -21,3 +21,4 @@
 - list:
   - listitem:
     - button "t6-refresh.txt"
+    - button "Delete t6-refresh.txt"

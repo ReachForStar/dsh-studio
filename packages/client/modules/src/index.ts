@@ -213,12 +213,22 @@ const CLIENT_CHUNK = /^client\.[A-Za-z0-9][A-Za-z0-9._-]*\.js$/
  */
 function syncChunkClosure(clientPath: string): SyncChunk[] {
   const dir = dirname(clientPath)
+
   const present = new Set(readdirSync(dir).filter(name => CLIENT_CHUNK.test(name) && name !== 'client.js'))
   const requiresOf = new Map<string, string[]>()
   for (const name of present) {
-    const requires = prologueRequires(readFileSync(join(dir, name), 'utf8'))
-      .map(spec => spec.startsWith('./') ? spec.slice(2) : undefined)
-      .filter((target): target is string => target !== undefined && present.has(target))
+    // Chunk bytes are filesystem-only: a host that materializes lazily
+    // requested files on first read refuses blocking reads of some files, so
+    // an unreadable prologue contributes no closure edges instead of aborting.
+    let requires: string[] = []
+    try {
+      const path = join(dir, name)
+      requires = prologueRequires(readFileSync(path, 'utf8'))
+        .map(spec => spec.startsWith('./') ? spec.slice(2) : undefined)
+        .filter((target): target is string => target !== undefined && present.has(target))
+    } catch {
+      requires = []
+    }
     requiresOf.set(name, requires)
   }
   const entryRequires = prologueRequires(readFileSync(clientPath, 'utf8'))
@@ -235,10 +245,14 @@ function syncChunkClosure(clientPath: string): SyncChunk[] {
       }
     }
   }
-  return [...closure].sort().map(fileName => ({
-    fileName,
-    bundle: readFileSync(join(dir, fileName)),
-  }))
+  const _res = [...closure].sort().flatMap((fileName) => {
+    try {
+      return [{ fileName, bundle: readFileSync(join(dir, fileName)) }]
+    } catch {
+      return []
+    }
+  })
+  return _res
 }
 
 /** Resolve `exports["./client"]` to a relative path, accepting the string and one-level conditional forms. */

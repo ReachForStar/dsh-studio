@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { generate, type GenerateOptions } from '../src/generate.ts'
 import { scratch, setEnv } from './support.ts'
 
@@ -135,6 +135,8 @@ it('reads a root package, reports repositories without one, and refuses transpor
   const repo = repository()
   gitHome(repo.dir)
   const warnings: string[] = []
+  // Git translates its own diagnostics, and the assertion reads Git's English text.
+  vi.stubEnv('LC_ALL', 'C')
   const run = async (defaultTransports = false) => {
     const withFile = options(scratch(), warnings)
     const { gitTransports: _file, ...defaults } = withFile

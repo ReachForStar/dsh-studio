@@ -453,4 +453,12 @@
 
 - 重新运行 `DSH_SNAPSHOT=replay pnpm test:web:built`，其余仍 failing 68 test file/125 case 主因是实时 API 超时（`fold-blank-matrix` `steering` `minimal-preset` 之 Turn/End 等，无 `DEEPSEEK` 的测例 스스로）或 golden 缺失。
 - 用 `DSH_SNAPSHOT=refresh` 针对三组 fork 设置页 goldens（models-settings 9 个、models-settings-recovery、onboarding-deepseek-config 2 个）+ 其余所有 mismatch golden，再 `DSH_SNAPSHOT=replay` 定向跑三个测试文件 → 3/3 文件、21/21 用例通过，证明 fork 新增的 SSH/A2A 服务按钮与 AMAX Token Router 选项现在 golden 中已有对应。
-- 共刷新 29 个 golden（所有 diff 均为 fork 新增导航项/提供商 +1~+8 行）， commit ffd6341bed。
+- 共刷新 29 个 golden（所有 diff 均为 fork 新增导航项/提供商 +1~+8 行），提交见 git 历史（`刷新 web 快照 goldens（合并后 fork UI 新增）`）。
+
+## [2026-10-18] merge | 合并上游 master（dsh-v0.2.1-rc.2）
+
+- 增量合并 49 个上游提交到 develop：20 个冲突按来源取舍，703 个文件变更；fork 的 icon/bundle patch/a2a 依赖保留，上游 DeepSeek Search/Fetch API 与模型标签 1017 并入。
+- 9 个系统提示词快照经 `DSH_SNAPSHOT=refresh` 重生成（上游新增 personaPrefix、回退 read 文案）；office-progressive-ptc 与 web-search-endpoint-guidance 两个合并引入红项重录夹具后转绿。
+- 全量验证：typecheck/build/test:docs 通过；`test` 6 红均为偶发或预存（verify-packed-install 本机 npm 环境问题、两文件 5 秒超时偶发）；快照 6 红为预存（需 live record/pwsh 或 v5 重录欠账）。
+- 顺手修复 log.md 裸 commit hash 触发 verify-repository-references 门禁。
+- 新增页面：[合并上游（2026-10-18）](queries/upstream-merge-2026-10-18.md)。

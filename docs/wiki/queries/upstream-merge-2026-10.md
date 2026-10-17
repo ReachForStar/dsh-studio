@@ -3,7 +3,7 @@ title: 合并上游 upstream/master（2026-10-15）
 type: query
 tags: [upstream-sync, merge, session-format, 夹具, 判定口径]
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-18
 sources: []
 status: active
 ---
@@ -62,5 +62,5 @@ status: active
 
 ## 存疑或待跟进
 
-- `test:snapshot` 的仓库级 corpus 检查（`scripts/session-snapshot-corpus.corpus.ts`）在合并前后**同样红**：`web/diff-context` 的借用方清单仍指向 `session.v4.jsonl`（属主目录当前代已是 v5），`acp/cancel` 选了 v4 却没在 `snapshot.yml` 声明保留代。两条都属 fork 侧 v5 重录尚未收尾的存量（合并新增的 20 个上游场景也全是 v4 单代文件），本轮未处理。
+- `test:snapshot` 的仓库级 corpus 检查（`scripts/session-snapshot-corpus.corpus.ts`）在合并前后**同样红**：`web/diff-context` 的借用方清单仍指向 `session.v4.jsonl`（属主目录当前代已是 v5），`acp/cancel` 选了 v4 却没在 `snapshot.yml` 声明保留代。两条都属 fork 侧 v5 重录尚未收尾的存量（合并新增的 20 个上游场景也全是 v4 单代文件），本轮未处理。下一轮（[2026-10-18](upstream-merge-2026-10-18.md)）复核仍在。
 - `packages/client/ui-settings-general/tests/shell.client.spec.ts` 的 `PRODUCT_SECTIONS` 少列 fork 自己注册的 `a2a-status` 段（合并前 HEAD 的 roster 就已含该段，属预存），其余存量红项见上方验证记录。

@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-a2a-host",
   "description": "A2A host: publish this deployment’s sessions to remote A2A agents over JSON-RPC and Server-Sent Events",
-  "version": "0.1.1-rc.2",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },

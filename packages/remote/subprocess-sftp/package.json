@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-subprocess-sftp",
   "description": "SSH exec/PTY-backed implementation of the DeepSeek Harness subprocess capability seam over the ctx.sshSftp connection",
-  "version": "0.1.0",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },

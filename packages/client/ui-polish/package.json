@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-client-ui-polish",
   "description": "Web GUI polish plugin: whole-app background image, session stats float with cost, git/latex/excalidraw panels, and configurable compaction threshold",
-  "version": "0.1.1-rc.2",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-host-ssh-remotes",
   "description": "Host Remote gateway for the SSH connection-management surface of the Web GUI",
-  "version": "0.1.1-rc.2",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },

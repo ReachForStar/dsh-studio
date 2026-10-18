@@ -47,13 +47,13 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@reachforstar/dsh-ssh": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@reachforstar/dsh-ssh": "workspace:*",
+    "@deepseek-ai/dsh-typert-protocol": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:*"
   },
   "devDependencies": {
-    "@reachforstar/dsh-ssh": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@reachforstar/dsh-ssh": "workspace:*",
+    "@deepseek-ai/dsh-typert-protocol": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:*"
   }
 }

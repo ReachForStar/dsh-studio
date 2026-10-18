@@ -27,13 +27,13 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@reachforstar/dsh-a2a": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*",
+    "@reachforstar/dsh-a2a": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@reachforstar/dsh-a2a": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*",
+    "@reachforstar/dsh-a2a": "workspace:*"
   }
 }

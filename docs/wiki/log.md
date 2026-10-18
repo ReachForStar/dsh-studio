@@ -462,3 +462,9 @@
 - 全量验证：typecheck/build/test:docs 通过；`test` 6 红均为偶发或预存（verify-packed-install 本机 npm 环境问题、两文件 5 秒超时偶发）；快照 6 红为预存（需 live record/pwsh 或 v5 重录欠账）。
 - 顺手修复 log.md 裸 commit hash 触发 verify-repository-references 门禁。
 - 新增页面：[合并上游（2026-10-18）](queries/upstream-merge-2026-10-18.md)。
+
+## [2026-10-18] feat | 发布 fork release dsh-v0.2.1-rc.2
+
+- GitHub release「dsh 0.2.1-rc.2 (ReachForStar fork)」上线：tag 指向 fork 发布提交（「fork 包工作区依赖改为 workspace:* 并移除误跟踪的旧 tarball」提交），资产为 361 个 npm tarball 的 zip（约 25MB），正文沿用「同步基线 + 自研清单」格式。
+- 发布链修复四事：18 个 fork 自研包版本对齐 0.2.1-rc.2；17 个 manifest 的 workspace:^ 改 workspace:*（packed manifest 要求精确版本）；产物改用 build:official（pack 校验官方剖面记录）；dist/npm 里误跟踪的 231 个 0.1.1 tarball 取消跟踪。
+- 顺序教训：构建记录内联 HEAD 的 commit hash，修复提交落地后必须重新 build:official + pack，tag 指向与最后一次构建的提交一致。流程与根因见 [fork 发布流程页](queries/fork-release-dsh-0.2.1-rc.2.md)。

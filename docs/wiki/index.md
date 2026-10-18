@@ -61,3 +61,4 @@ updated: 2026-10-18
 - [会话格式 v5 落地与 v4→v5 包的合并修复（2026-09-26）](queries/session-format-v5-landing.md) — `deferLoading` 与 tool-change 标签的迁移层越界、README 代际位移重建、v4 历史格式归档流程，以及 fork 自有 v4 日志读不出的遗留项；含 2026-10-15 合并上游时补的 v4 源准入词汇与 catalog 事实缺口。
 - [合并上游 upstream/master（2026-10-15）](queries/upstream-merge-2026-10.md) — 用合并前 HEAD 工作树作基线区分「合并引入/预存/偶发」的判定口径、本轮三类修复（v4 源准入词汇、vfs-example 夹具代际、corpus 策略规格自洽）与 fork 私有包在位核对。
 - [合并上游 upstream/master（2026-10-18）](queries/upstream-merge-2026-10-18.md) — 0.2.1-rc.2 增量合并：20 个冲突按来源取舍、系统提示词快照经 refresh 重生成、基线工作树不可用时降级为「夹具 + 因果源码零差异」代码证据判定，以及本轮红灯归因清单。
+- [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建。

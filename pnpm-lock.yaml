@@ -10526,6 +10526,18 @@ importers:
         specifier: workspace:*
         version: link:../../workspace/workspace
 
+  packages/fs/tool-excalidraw-copy:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:*
+        version: link:../../core/tools
+      '@deepseek-ai/dsh-workspace':
+        specifier: workspace:*
+        version: link:../../workspace/workspace
+
   packages/fs/tool-fs:
     dependencies:
       '@deepseek-ai/dsh-util-code-language':

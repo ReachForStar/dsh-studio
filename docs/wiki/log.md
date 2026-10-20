@@ -468,3 +468,9 @@
 - GitHub release「dsh 0.2.1-rc.2 (ReachForStar fork)」上线：tag 指向 fork 发布提交（「fork 包工作区依赖改为 workspace:* 并移除误跟踪的旧 tarball」提交），资产为 361 个 npm tarball 的 zip（约 25MB），正文沿用「同步基线 + 自研清单」格式。
 - 发布链修复四事：18 个 fork 自研包版本对齐 0.2.1-rc.2；17 个 manifest 的 workspace:^ 改 workspace:*（packed manifest 要求精确版本）；产物改用 build:official（pack 校验官方剖面记录）；dist/npm 里误跟踪的 231 个 0.1.1 tarball 取消跟踪。
 - 顺序教训：构建记录内联 HEAD 的 commit hash，修复提交落地后必须重新 build:official + pack，tag 指向与最后一次构建的提交一致。流程与根因见 [fork 发布流程页](queries/fork-release-dsh-0.2.1-rc.2.md)。
+
+## [2026-10-20] feat | 复制 Excalidraw 画板工具包
+
+- 新增 `packages/fs/tool-excalidraw-copy`：`@reachforstar/dsh-tool-excalidraw` 的整包副本（源码、测试、双语 README、tsconfig 与 manifest），包名 `@reachforstar/dsh-tool-excalidraw-copy`，Cordis 插件名 `tool-excalidraw-copy`；四个工具名称与行为保持不变。
+- 注册点：`tsconfig.base.json` 路径别名、`tsconfig.host.json` 工程引用、`pnpm-lock.yaml` 工作区条目，以及 `gen-plugin-packages` 生成的包清单。
+- 已知代价：副本与原包注册相同工具名称，同一 profile 只能挂载其中一个；副本继承原包的 oxlint 红项（`no-base-to-string`、`no-unnecessary-type-assertion`、测试中的 `no-unsafe-*`）。

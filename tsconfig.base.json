@@ -384,7 +384,6 @@
       "@reachforstar/dsh-subagent-pi/wire": ["./packages/subagent/subagent-pi/src/wire.ts"],
       "@reachforstar/dsh-subagent-pi/run": ["./packages/subagent/subagent-pi/src/run.ts"],
       "@reachforstar/dsh-tool-excalidraw": ["./packages/fs/tool-excalidraw/src"],
-      "@reachforstar/dsh-tool-excalidraw-copy": ["./packages/fs/tool-excalidraw-copy/src"],
       "@reachforstar/dsh-client-ui-polish": ["./packages/client/ui-polish/src"],
       "@reachforstar/dsh-client-ui-polish/client": ["./packages/client/ui-polish/src/client/index.ts"],
       "@reachforstar/dsh-client-ui-ssh": ["./packages/client/ui-ssh/src"],

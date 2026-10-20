@@ -469,8 +469,8 @@
 - 发布链修复四事：18 个 fork 自研包版本对齐 0.2.1-rc.2；17 个 manifest 的 workspace:^ 改 workspace:*（packed manifest 要求精确版本）；产物改用 build:official（pack 校验官方剖面记录）；dist/npm 里误跟踪的 231 个 0.1.1 tarball 取消跟踪。
 - 顺序教训：构建记录内联 HEAD 的 commit hash，修复提交落地后必须重新 build:official + pack，tag 指向与最后一次构建的提交一致。流程与根因见 [fork 发布流程页](queries/fork-release-dsh-0.2.1-rc.2.md)。
 
-## [2026-10-20] feat | 复制 Excalidraw 画板工具包
+## [2026-10-20] chore | Excalidraw 工具副本移出本仓
 
-- 新增 `packages/fs/tool-excalidraw-copy`：`@reachforstar/dsh-tool-excalidraw` 的整包副本（源码、测试、双语 README、tsconfig 与 manifest），包名 `@reachforstar/dsh-tool-excalidraw-copy`，Cordis 插件名 `tool-excalidraw-copy`；四个工具名称与行为保持不变。
-- 注册点：`tsconfig.base.json` 路径别名、`tsconfig.host.json` 工程引用、`pnpm-lock.yaml` 工作区条目，以及 `gen-plugin-packages` 生成的包清单。
-- 已知代价：副本与原包注册相同工具名称，同一 profile 只能挂载其中一个；副本继承原包的 oxlint 红项（`no-base-to-string`、`no-unnecessary-type-assertion`、测试中的 `no-unsafe-*`）。
+- `packages/fs/tool-excalidraw` 保留不动；其副本不再作为本仓工作区包存在，已移到仓外目录 `/data/d/excalidraw-tools`，供其他项目独立使用。
+- 回退随副本引入的注册点：`tsconfig.base.json` 路径别名、`tsconfig.host.json` 工程引用、`pnpm-lock.yaml` 工作区条目，以及 `gen-plugin-packages` 生成的包清单。
+- 仓外副本改成自包含目录：删去仓内 `tsconfig.base.json` 继承与 `README.i18n.yaml` 配对记录，`peerDependencies` 由 `workspace:*` 改为已发布版本范围，并补 `build`/`typecheck`/`test` 脚本。

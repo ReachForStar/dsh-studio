@@ -257,7 +257,6 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-tool-fs-search` | yes | Model-facing filesystem discovery tools (glob, grep) backed by the packaged ripgrep binary (@vscode/ripgrep) |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | yes | Model-facing view, create, literal replace, and line insert tool over the Harness filesystem service |
 | `@reachforstar/dsh-tool-excalidraw` | no | Model-facing Excalidraw scene tools (read, write, draw, export) over the workspace scene file |
-| `@reachforstar/dsh-tool-excalidraw-copy` | no | Model-facing Excalidraw scene tools (read, write, draw, export) over the workspace scene file — duplicate of dsh-tool-excalidraw |
 
 ## goal
 

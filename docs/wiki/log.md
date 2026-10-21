@@ -488,3 +488,8 @@
 - 关联 [共享 runtime 排查](queries/cjs-client-shared-runtime-chunk.md)与[桌面 deb 发布](queries/desktop-deb-release.md)。
 
 - Windows 首次 CI 失败来自 GNU tar 将 `D:` 当作远程主机；包集合脚本改为复用已有跨平台 tarball 读取函数。新增发布前客户端同步分片检查，旧真实包被拒绝、修复真实包通过。
+
+## [2026-10-21] chore | 清理已授权的桌面临时文件
+
+- 逐项核对并清理旧清单的 47 个路径，安装包与项目文档保留；安装脚本、日志、状态文件、任务清单与剩余路径清单共 5 项仍供升级使用。
+- 修复后的四平台 CI 已触发；本机新版 deb 升级仍等待终端密码。状态见 [桌面 deb 发布](queries/desktop-deb-release.md)。

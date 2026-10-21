@@ -57,3 +57,6 @@ Linux 从已有圆角透明底鲸鱼 SVG 生成 16、24、32、48、64、128、2
 `prepare:packages` 在安装前使用现有 tar 库和 `prologueRequires` 检查同步 `client.*.js` 文件。旧版真实 ui-polish tarball 因缺少 runtime 被拒绝；补齐发布清单的真实 tarball 通过。此检查用于阻止后端检查通过但客户端无法激活的安装包继续生成。
 
 本轮修复验证：完整构建 9 项通过，后续脚本类型检查 2 项通过，包集合与本地打包测试 11 项通过，包元数据检查通过；完整真实桌面包集合通过新增客户端分片检查。仓库全量约束检查仍报告既有依赖协议和实验包引用问题，本次没有修改这些依赖定义。
+
+- [修复后的四平台 CI](https://github.com/ReachForStar/dsh-studio/actions/runs/39567304425)已触发，结果待核验。新版本地 deb 与 AppImage 的 SHA256 校验通过；升级终端等待用户输入 sudo 密码。
+- 按用户授权清理旧清单的 47 个临时路径；升级仍需使用的 5 项保留在 `tmp/desktop-temporary-paths.txt`，本轮新增调试文件未获删除授权。

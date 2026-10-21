@@ -1,7 +1,8 @@
 import { officePackageDirectories } from '../../../scripts/libreoffice-packages.mjs'
 import { X509Certificate } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
+import sharp from 'sharp'
 import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
@@ -123,6 +124,14 @@ export function createElectronBuilderConfig(
     electronDist: buildPaths.electron,
     electronFuses: { runAsNode: true },
     beforeBuild: async () => {
+      if (resolvedPlatform === 'linux') {
+        const directory = join(buildPaths.root, 'linux-icons')
+        await mkdir(directory, { recursive: true })
+        // 使用已有圆角图案，并为桌面主题提供标准尺寸。
+        await Promise.all([16, 24, 32, 48, 64, 128, 256, 512].map(size =>
+          sharp(fileURLToPath(new URL('../resources/icon-windows.svg', import.meta.url)))
+            .resize(size, size).png().toFile(join(directory, `${size}x${size}.png`))))
+      }
       if (resolvedPlatform !== 'win32') return true
       await promisify(execFile)('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
         fileURLToPath(new URL('./prepare-windows-installer.ps1', import.meta.url)),
@@ -251,7 +260,8 @@ export function createElectronBuilderConfig(
       category: 'Development',
       executableName: 'deepseek-harness',
       target: ['AppImage', 'deb'],
-      icon: fileURLToPath(new URL('../resources/icon.png', import.meta.url)),
+      icon: join(buildPaths.root, 'linux-icons'),
+      syncDesktopName: true,
       maintainer: 'ReachForStar <ReachForStar@users.noreply.github.com>',
     },
     deb: {

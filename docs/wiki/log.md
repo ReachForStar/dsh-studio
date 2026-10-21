@@ -480,3 +480,11 @@
 - Linux 增加 deb，保留 AppImage；显式 unsigned 本地构建独立于发布服务配置。
 - 增加 GitHub Release 桌面工作流；四平台工作流配置、127 项相关测试和 43 项文档检查通过；Linux deb/AppImage 及打包后 Office 转换通过，安装终端等待密码。
 - 记录见 [桌面 deb 与 Release](queries/desktop-deb-release.md)。
+
+## [2026-10-21] fix | 修复桌面客户端文件缺失与 Linux 图标
+
+- 首次系统安装完成后，实际启动暴露 ui-polish 发布清单缺少客户端分片。补齐后，真实 tarball 含 173 个客户端 JavaScript 文件，真实 ASAR 浏览器进入工作台且控制台无错误。
+- Linux 改用已有圆角鲸鱼图案的标准尺寸图标，并统一桌面入口与窗口标识；新 deb 升级待核验。
+- 关联 [共享 runtime 排查](queries/cjs-client-shared-runtime-chunk.md)与[桌面 deb 发布](queries/desktop-deb-release.md)。
+
+- Windows 首次 CI 失败来自 GNU tar 将 `D:` 当作远程主机；包集合脚本改为复用已有跨平台 tarball 读取函数。新增发布前客户端同步分片检查，旧真实包被拒绝、修复真实包通过。

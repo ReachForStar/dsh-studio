@@ -62,6 +62,8 @@ The host half registers the `/git`, `/latex`, `/bg`, and `/scene` route prefixes
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+The npm package includes `lib/client.js` and every `lib/client.*.js` sibling. The synchronous runtime chunk must arrive before the entry activates; lazy canvas chunks remain available in the installed distribution.
+
 <details>
 <summary>Implementation internals — click to expand</summary>
 

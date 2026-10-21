@@ -259,6 +259,8 @@ NSIS removes its temporary extraction tree during installation, before the compl
 
 ## Desktop runtime preparation
 
+Package-set preparation rejects npm tarballs that omit synchronous `client.*.js` dependencies before installing the runtime.
+
 Desktop [patch policy](../scripts/runtime-patch-policy.ts) explicitly classifies every workspace patch as shared, workspace-only, or runtime-only. Shared entries reuse the root patch bytes and verify their hash against the root lockfile; runtime-only entries use separate repository files without changing workspace installation. Workspace-only patches belong to build tools or dependencies already embedded in client bundles. Unclassified or stale entries, missing files, changed hashes, incompatible resolved versions, and workspace-only packages entering the runtime stop packaging. The [preparation script](../scripts/prepare-runtime-patches.ts) writes only to the temporary project; pnpm applies the selected patches and rejects application failures.
 
 Desktop dependency overrides are declared separately in the patch-policy module, not inferred from patch versions. The pi-ai constraint keeps its runtime version at the version qualified by the shared patch. Desktop still resolves a fresh runtime lockfile for each build, then installs with `--frozen-lockfile`; dependency resolution across separate builds is not yet reproducible. CLI packed-installation tests and other distribution flows retain their own configuration.

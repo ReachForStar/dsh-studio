@@ -15,6 +15,7 @@ import {
 import { basename, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import * as yaml from 'js-yaml'
+import { list } from 'tar'
 import {
   DESKTOP_HOST_PACKAGE,
   DESKTOP_HOST_RUNTIME_FILES,
@@ -23,8 +24,8 @@ import {
   parseDesktopCorePackageSet,
   type DesktopCorePackageRecord,
 } from '../src/core-package-set.ts'
-import { capture } from '../../../scripts/release/process.ts'
-import { tarballFiles } from '../../../scripts/release/tarball.ts'
+import { packedManifest, tarballFiles } from '../../../scripts/release/tarball.ts'
+import { prologueRequires } from '../../../packages/client/modules/src/client/manifest.ts'
 import { resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
 
 const DSH_PACKAGE = '@deepseek-ai/dsh'
@@ -87,14 +88,6 @@ export function selectDesktopPackageClosure(
   return [...selected.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, packed]) => packed)
 }
 
-function packedManifest(tarball: string): Record<string, unknown> {
-  const value: unknown = JSON.parse(capture('tar', ['-xOzf', tarball, 'package/package.json']))
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`desktop package set: ${tarball} has no package manifest`)
-  }
-  return value as Record<string, unknown>
-}
-
 function packedPackages(inputs: readonly string[]): Map<string, PackedDesktopPackage> {
   const available = new Map<string, PackedDesktopPackage>()
   for (const input of inputs) {
@@ -127,12 +120,37 @@ export function assertDesktopHostPackageFiles(files: readonly string[]): void {
   }
 }
 
+/**
+ * 在安装前拒绝缺少同步客户端分片的真实发布包。
+ * @param tarball - 待安装的 npm 压缩包路径。
+ * @param files - 以 package/ 为根的包内文件列表。
+ * @returns 校验通过时无返回值。
+ */
+export function assertDesktopClientPackageFiles(tarball: string, files: readonly string[]): void {
+  const present = new Set(files)
+  list({ file: tarball, sync: true, onReadEntry(entry) {
+    if (!/(?:^|\/)client(?:\.[\w.-]+)?\.js$/u.test(entry.path)) return
+    let code = ''
+    entry.on('data', (chunk: Buffer) => {
+      if (!code.includes('//#region')) code += chunk.toString('utf8')
+    })
+    entry.on('end', () => {
+      const required = prologueRequires(code).filter(specifier => specifier.startsWith('./client.'))
+      for (const specifier of required) {
+        const target = `${entry.path.slice(0, entry.path.lastIndexOf('/') + 1)}${specifier.slice(2)}`
+        if (!present.has(target)) throw new Error(`desktop package set: ${tarball} omits required client chunk ${target}`)
+      }
+    })
+  } })
+}
+
 /** Prepare a package set from release tarball directories. */
 export function prepareDesktopPackageSet(inputs: readonly string[], output: string): void {
   const selected = selectDesktopPackageClosure(packedPackages(inputs))
   const host = selected.find(packed => packed.manifest.name === DESKTOP_HOST_PACKAGE)
   if (host === undefined) throw new Error(`desktop package set: selected closure omits ${DESKTOP_HOST_PACKAGE}`)
   assertDesktopHostPackageFiles(tarballFiles(host.tarball))
+  for (const packed of selected) assertDesktopClientPackageFiles(packed.tarball, tarballFiles(packed.tarball))
   rmSync(output, { recursive: true, force: true })
   const packageDir = join(output, DESKTOP_PACKAGES_DIR)
   mkdirSync(packageDir, { recursive: true })

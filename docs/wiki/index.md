@@ -62,4 +62,4 @@ updated: 2026-10-18
 - [合并上游 upstream/master（2026-10-15）](queries/upstream-merge-2026-10.md) — 用合并前 HEAD 工作树作基线区分「合并引入/预存/偶发」的判定口径、本轮三类修复（v4 源准入词汇、vfs-example 夹具代际、corpus 策略规格自洽）与 fork 私有包在位核对。
 - [合并上游 upstream/master（2026-10-18）](queries/upstream-merge-2026-10-18.md) — 0.2.1-rc.2 增量合并：20 个冲突按来源取舍、系统提示词快照经 refresh 重生成、基线工作树不可用时降级为「夹具 + 因果源码零差异」代码证据判定，以及本轮红灯归因清单。
 - [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建。
-- [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 双格式安装包与 ASAR Office 解析；系统安装验证进行中。
+- [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；修复包升级验证进行中。

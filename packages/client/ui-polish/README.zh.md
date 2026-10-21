@@ -62,6 +62,8 @@ host 半在 host webserver 上注册 `/git`、`/latex`、`/bg`、`/scene` 路由
 <a id="understand-the-implementation"></a>
 ## 理解实现
 
+npm 包包含 `lib/client.js` 和全部 `lib/client.*.js` 同目录文件。同步 runtime 文件必须在入口激活前注册，画布懒加载文件也必须随安装包交付。
+
 <details>
 <summary>实现细节——点击展开</summary>
 

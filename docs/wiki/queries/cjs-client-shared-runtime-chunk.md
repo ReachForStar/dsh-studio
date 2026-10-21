@@ -3,7 +3,7 @@ title: CJS 客户端包共享 runtime chunk 导致 web boot 失败
 type: query
 tags: [web, client-modules, rolldown, ui-polish, 构建, 排查]
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-10-21
 sources: []
 status: active
 ---
@@ -58,3 +58,9 @@ ui-polish 内嵌 Excalidraw，其依赖树含大量 CJS 依赖与动态 import�
 - [fork Web 面板](../entities/fork-web-panels.md)（ui-polish 客户端包）
 - `@deepseek-ai/dsh-client-modules`（模块表 host/client 两半）
 - `packages/client/tsdown.client.ts`（client 包构建预设）
+
+## 桌面安装包中的发布文件缺失
+
+桌面 0.2.1-rc.2 安装后复现相同报错，但 Host/Client 同步闭包机制仍在。直接原因是 ui-polish 的 `package.json.files` 只发布 `lib/client.js`，遗漏了 172 个 `lib/client.*.js` 文件。补齐发布清单后，真实 tarball 包含全部 173 个客户端 JavaScript 文件；真实 ASAR 运行时的浏览器进入工作台，控制台错误为零。
+
+同时检查 [桌面 deb 发布与安装](desktop-deb-release.md)，避免只验证源码 Web 开发目录而遗漏 npm 和 ASAR 中的文件。

@@ -37,7 +37,7 @@ ASAR 内不存在的目录在 Electron 的 `lstatSync(..., { throwIfNoEntry: fal
 - 组装后的真实应用完成 Node/原生模块/终端/搜索/离线插件及 DOCX、XLSX、PPTX 转 PDF 验证。
 - deb 已生成：包名 `deepseek-harness`、版本 `0.2.1~rc.2`、架构 `amd64`，应用目录 `/opt/DeepSeek Harness`。安装包与 SHA256SUMS 保留在 `dist/desktop/0.2.1-rc.2/`。
 - 系统安装与启动：已打开交互终端，等待用户输入 sudo 密码。
-- 远端 Actions 执行：待核验。
+- [四平台 Actions 首次运行](https://github.com/ReachForStar/dsh-studio/actions/runs/39563648636)已触发，四个目标均已启动；最终结果待核验。
 
 ## 涉及模块
 

@@ -129,7 +129,7 @@ export function createElectronBuilderConfig(
         await mkdir(directory, { recursive: true })
         // 使用已有圆角图案，并为桌面主题提供标准尺寸。
         await Promise.all([16, 24, 32, 48, 64, 128, 256, 512].map(size =>
-          sharp(fileURLToPath(new URL('../resources/icon-windows.svg', import.meta.url)))
+          sharp(fileURLToPath(new URL('../resources/icon-linux.svg', import.meta.url)))
             .resize(size, size).png().toFile(join(directory, `${size}x${size}.png`))))
       }
       if (resolvedPlatform !== 'win32') return true
@@ -163,7 +163,7 @@ export function createElectronBuilderConfig(
     asarUnpack: unpack,
     extraResources: [
       { from: buildPaths.runtime, to: 'runtime' },
-      { from: fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url)), to: 'icon.png' },
+      { from: fileURLToPath(new URL(resolvedPlatform === 'linux' ? '../resources/icon-linux.png' : '../resources/icon-windows.png', import.meta.url)), to: 'icon.png' },
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
       ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),
     ],

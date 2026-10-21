@@ -36,7 +36,7 @@ ASAR 内不存在的目录在 Electron 的 `lstatSync(..., { throwIfNoEntry: fal
 - 全库 lint 在未修改文件中失败；本次文件专项 lint 通过。
 - 组装后的真实应用完成 Node/原生模块/终端/搜索/离线插件及 DOCX、XLSX、PPTX 转 PDF 验证。
 - deb 已生成：包名 `deepseek-harness`、版本 `0.2.1~rc.2`、架构 `amd64`，应用目录 `/opt/DeepSeek Harness`。安装包与 SHA256SUMS 保留在 `dist/desktop/0.2.1-rc.2/`。
-- 首次系统安装成功：`deepseek-harness 0.2.1~rc.2 amd64 install ok installed`。实际启动发现 ui-polish 发布缺少客户端分片，修复见 [共享 runtime 排查](cjs-client-shared-runtime-chunk.md)。修复后的真实 ASAR 页面进入工作台，控制台无错误；新 deb 升级待核验。
+- 首次系统安装成功：`deepseek-harness 0.2.1~rc.2 amd64 install ok installed`。实际启动发现 ui-polish 发布缺少客户端分片，修复见 [共享 runtime 排查](cjs-client-shared-runtime-chunk.md)。修复后的真实 ASAR 页面进入工作台，控制台无错误；修复包已覆盖安装，系统桌面入口的 StartupWMClass 已更新为 deepseek-harness。
 - [四平台 Actions 首次运行](https://github.com/ReachForStar/dsh-studio/actions/runs/39563648636)已触发，Linux x64 与 macOS Intel 已成功，Windows 在 GNU tar 读取盘符路径时失败，macOS arm64 也已成功。Windows 包集合读取改为复用跨平台 tarball helper，修复后的远端结果待核验。
 
 ## 涉及模块
@@ -50,7 +50,7 @@ ASAR 内不存在的目录在 Electron 的 `lstatSync(..., { throwIfNoEntry: fal
 
 ## Linux 图标
 
-Linux 从已有圆角透明底鲸鱼 SVG 生成 16、24、32、48、64、128、256、512 像素 PNG，交由 builder 安装到 hicolor 对应尺寸目录。应用清单声明 `desktopName: deepseek-harness.desktop`，Linux 开启 `syncDesktopName`，保持桌面入口、图标与运行窗口标识一致。
+Linux 从蓝色鲸鱼 `apps/desktop/resources/icon-linux.svg` 生成 16、24、32、48、64、128、256、512 像素 PNG，交由 builder 安装到 hicolor 对应尺寸目录。应用清单声明 `desktopName: deepseek-harness.desktop`，Linux 开启 `syncDesktopName`，保持桌面入口、图标与运行窗口标识一致。
 
 ## 发布包验收
 
@@ -58,5 +58,5 @@ Linux 从已有圆角透明底鲸鱼 SVG 生成 16、24、32、48、64、128、2
 
 本轮修复验证：完整构建 9 项通过，后续脚本类型检查 2 项通过，包集合与本地打包测试 11 项通过，包元数据检查通过；完整真实桌面包集合通过新增客户端分片检查。仓库全量约束检查仍报告既有依赖协议和实验包引用问题，本次没有修改这些依赖定义。
 
-- [修复后的四平台 CI](https://github.com/ReachForStar/dsh-studio/actions/runs/39567304425)已触发，结果待核验。新版本地 deb 与 AppImage 的 SHA256 校验通过；升级终端等待用户输入 sudo 密码。
+- [修复后的四平台 CI](https://github.com/ReachForStar/dsh-studio/actions/runs/39567304425)四个平台均已成功。新版本地 deb 与 AppImage 的 SHA256 校验通过；客户端修复包已安装，蓝色鲸鱼图标包已生成并通过 SHA256 校验，deb 内 512 像素图标与源 PNG 完全一致，蓝色图标版覆盖安装终端等待用户认证。
 - 按用户授权清理旧清单的 47 个临时路径；升级仍需使用的 5 项保留在 `tmp/desktop-temporary-paths.txt`，本轮新增调试文件未获删除授权。

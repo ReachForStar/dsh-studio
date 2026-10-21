@@ -94,6 +94,8 @@ pnpm run package:desktop:win:x64
 pnpm run package:desktop:linux:x64
 ```
 
+Linux uses a blue whale icon from `resources/icon-linux.svg`; the packaged runtime also carries its PNG version.
+
 The macOS arm64 command requires Apple Silicon. The macOS x64 command runs on Intel macOS or Apple Silicon with Rosetta. The Windows x64 command requires Windows x64. The Linux x64 command requires Linux x64; it produces an AppImage and an amd64 `.deb` with an `executableName` of `deepseek-harness`. Without a machine preset, `--unsigned` builds on all platforms use local defaults without release service configuration. deb upgrades use the system package manager. The GitHub `Release Desktop` workflow supports manual builds and published `dsh-v<version>` Releases, producing Linux x64 AppImage/deb, Windows x64 EXE, and macOS arm64/x64 DMG installers without release signing or Apple notarization.
 
 Both release and local unsigned macOS DMGs use LZMA compression (`dmg.format: 'ULMO'`) in [the electron-builder configuration](../scripts/electron-builder-config.mjs). A [build-time patch](../../../patches/app-builder-lib@26.17.0.patch) adds this format to the pinned builder's validation and TypeScript declarations.

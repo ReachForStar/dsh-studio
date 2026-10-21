@@ -94,6 +94,8 @@ pnpm run package:desktop:win:x64
 pnpm run package:desktop:linux:x64
 ```
 
+Linux 使用 `resources/icon-linux.svg` 中的蓝色鲸鱼图标，运行时同时携带对应 PNG。
+
 macOS arm64 命令要求 Apple Silicon。macOS x64 命令可以在 Intel macOS 或带 Rosetta 的 Apple Silicon 上运行。Windows x64 命令要求 Windows x64。Linux x64 命令要求 Linux x64；它产出 `executableName` 为 `deepseek-harness` 的 AppImage 和 amd64 `.deb`。未选择机器 preset 时，各平台追加 `--unsigned` 均使用本地默认值，不读取发布服务配置。deb 通过系统包管理器升级。GitHub 的 `Release Desktop` 工作流支持手动构建与发布 `dsh-v<version>` Release，生成 Linux x64 AppImage/deb、Windows x64 EXE 和 macOS arm64/x64 DMG 安装包，不执行发布签名或 Apple 公证。
 
 macOS 正式发布和本地未签名 DMG 都通过 [electron-builder 配置](../scripts/electron-builder-config.mjs)中的 `dmg.format: 'ULMO'` 使用 LZMA 压缩。[构建时补丁](../../../patches/app-builder-lib@26.17.0.patch)为固定版本 builder 的校验规则和 TypeScript 声明添加此格式。

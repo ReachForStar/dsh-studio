@@ -3,7 +3,7 @@ title: 本地 A2A 联调栈（deploy/a2a）
 type: entity
 tags: [部署, a2a, kafka, 网关, 启动脚本, 联调]
 created: 2026-09-24
-updated: 2026-10-16
+updated: 2026-10-21
 sources: []
 status: active
 ---
@@ -53,6 +53,10 @@ sg docker -c "node deploy/a2a/stack.mjs up"
 - 网关的模型密钥取自仓库根 `.env`（`AMAX_API_KEY`/`AMAX_MODEL`/`AMAX_BASE_URL`）：`stack.mjs` 以 `{...process.env}` 传给子进程，所以先 `source .env` 再启动。
 - 9310 同时是 Web 应用 `a2a-host` 的默认端口（`DSH_A2A_PORT`）与 pi 网关端口。[`a2a-host` 的 apply](../../../packages/a2a/a2a-host/src/index.ts) 在端口被占用时跳过启动而不抛 `EADDRINUSE`，因此两者共存：先起的 pi 网关占用 9310，Web 应用不再对外发布自己的 A2A 端点。
 - 只读核验用 kafkajs admin 查主题与消费者组；`kafkajs` 只装在 `deploy/a2a/gateway/node_modules`，探针脚本要以该目录为工作目录执行，否则报 `ERR_MODULE_NOT_FOUND`。
+
+## 2026-10-21 状态核验
+
+Kafka 三个容器均为 running。9310 返回 agent card，名称为 `dsh-studio`，不能仅凭端口将其判为 pi 网关；9320、9330 未监听。状态页面只读取当前应用的 `a2aHost.listening`，不代表整台机器的所有 A2A 服务；端口被占用时，本应用会跳过 A2A 主机启动。
 
 ## 重要变更记录
 

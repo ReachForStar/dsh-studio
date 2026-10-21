@@ -1,0 +1,78 @@
+name: Release Desktop
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  desktop:
+    name: Desktop ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            runner: ubuntu-22.04
+            extensions: |
+              apps/desktop/.desktop-build/targets/linux-x64/unsigned-artifacts/*.deb
+              apps/desktop/.desktop-build/targets/linux-x64/unsigned-artifacts/*.AppImage
+          - target: win-x64
+            runner: windows-latest
+            extensions: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*.exe
+          - target: mac-arm64
+            runner: macos-15
+            extensions: apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/*.dmg
+          - target: mac-x64
+            runner: macos-15-intel
+            extensions: apps/desktop/.desktop-build/targets/mac-x64/unsigned-artifacts/*.dmg
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      DSH_TELEMETRY_DISABLED: '1'
+      TMPDIR: ${{ github.workspace }}/tmp
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - run: mkdir -p tmp
+      - uses: pnpm/action-setup@v5.0.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '24'
+      - run: pnpm install --frozen-lockfile
+      - name: Validate release version
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: node --input-type=module -e "import fs from 'node:fs'; const {version}=JSON.parse(fs.readFileSync('package.json','utf8')); if(process.env.RELEASE_TAG !== 'dsh-v'+version) throw Error('Release tag must match dsh-v'+version)"
+      - name: Build desktop installers
+        run: pnpm --dir apps/desktop exec tsx scripts/package-target.ts "${{ matrix.target }}" --unsigned
+      - name: Retain installers
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-${{ matrix.target }}
+          path: ${{ matrix.extensions }}
+          if-no-files-found: error
+      - name: Attach installers to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          shopt -s nullglob
+          installers=(apps/desktop/.desktop-build/targets/"${{ matrix.target }}"/unsigned-artifacts/*.{deb,AppImage,exe,dmg})
+          test "${#installers[@]}" -gt 0
+          gh release upload "$RELEASE_TAG" "${installers[@]}"

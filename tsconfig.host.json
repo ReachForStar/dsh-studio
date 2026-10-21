@@ -8,6 +8,7 @@
     "rewriteRelativeImportExtensions": false
   },
   "include": [
+    "tests/**/*.spec.ts",
     "apps/web/tests/collapse-timing.e2e.ts",
     "apps/web/tests/notice-wake-tail.e2e.ts",
     "apps/web/tests/fold-blank-matrix.e2e.ts",

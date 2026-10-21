@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import yaml from 'js-yaml'
 import { valid } from 'semver'
-import { DESKTOP_RUNTIME_DEPENDENCY_OVERRIDES, DESKTOP_RUNTIME_PATCHES, type DesktopRuntimePatch } from './runtime-patch-policy.ts'
+import { DESKTOP_RUNTIME_DEPENDENCY_OVERRIDES, DESKTOP_RUNTIME_PATCHES, DESKTOP_RUNTIME_UNPATCHED_VERSIONS, type DesktopRuntimePatch } from './runtime-patch-policy.ts'
 
 /** Expected patch bytes and package version for one independent installation. */
 export interface PreparedRuntimePatch {
@@ -77,7 +77,7 @@ export function prepareRuntimePatches(
     selected.push({ spec, ...identity, path: `patches/desktop-${selected.length}.patch`, hash, bytes })
   }
   const targetPath = join(projectRoot, 'pnpm-workspace.yaml')
-  const target = yaml.load(readFileSync(targetPath, 'utf8')) as Record<string, unknown> & { overrides?: Record<string, string> }
+  const target = yaml.load(readFileSync(targetPath, 'utf8')) as Record<string, unknown> & { overrides?: Record<string, string>; allowBuilds?: Record<string, boolean> }
   for (const [name, version] of Object.entries(overrides)) {
     if (target.overrides?.[name] !== undefined && target.overrides[name] !== version) {
       throw new Error(`desktop patches: conflicting dependency override for ${name}`)
@@ -86,6 +86,8 @@ export function prepareRuntimePatches(
   mkdirSync(join(projectRoot, 'patches'), { recursive: true })
   for (const entry of selected) writeFileSync(join(projectRoot, entry.path), entry.bytes)
   writeFileSync(targetPath, yaml.dump({ ...target, overrides: { ...target.overrides, ...overrides },
+    // SSH 运行时沿用仓库已审核的安装脚本权限，禁用可选原生加速器。
+    allowBuilds: { ...target.allowBuilds, ssh2: true, 'cpu-features': false },
     patchedDependencies: Object.fromEntries(selected.map(entry => [entry.spec, entry.path])), allowUnusedPatches: false }))
   return { patches: selected.map(({ bytes: _bytes, ...entry }) => entry),
     workspaceOnly: Object.entries(policy).filter(([, rule]) => rule.scope === 'workspace-only').map(([spec]) => patchIdentity(spec).name) }
@@ -118,6 +120,7 @@ export function verifyRuntimePatches(projectRoot: string, plan: PreparedRuntimeP
     }
     const candidates = plan.patches.filter(patch => spec.startsWith(`${patch.name}@`))
     if (candidates.length === 0) continue
+    if (DESKTOP_RUNTIME_UNPATCHED_VERSIONS.has(spec)) continue
     if (!candidates.some(patch => (entry.version ?? spec.slice(patch.name.length + 1)) === patch.version)) {
       throw new Error(`desktop patches: ${spec} has no matching patch; review its version and Desktop patch policy`)
     }

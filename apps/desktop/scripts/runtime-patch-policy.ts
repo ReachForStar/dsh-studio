@@ -23,3 +23,8 @@ export const DESKTOP_RUNTIME_DEPENDENCY_OVERRIDES: Readonly<Record<string, strin
   // The provider declares ^1.1.0; its patch is qualified against 1.1.0.
   '@earendil-works/pi-ai@^1.1.0': '1.1.0',
 }
+
+/** pi 后端保留旧版模型协议，不复用 1.1.0 适配器的补丁。 */
+export const DESKTOP_RUNTIME_UNPATCHED_VERSIONS: ReadonlySet<string> = new Set([
+  '@earendil-works/pi-ai@0.84.4',
+])

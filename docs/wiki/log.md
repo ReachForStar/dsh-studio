@@ -474,3 +474,9 @@
 - `packages/fs/tool-excalidraw` 保留不动；其副本不再作为本仓工作区包存在，已移到仓外目录 `/data/d/excalidraw-tools`，供其他项目独立使用。
 - 回退随副本引入的注册点：`tsconfig.base.json` 路径别名、`tsconfig.host.json` 工程引用、`pnpm-lock.yaml` 工作区条目，以及 `gen-plugin-packages` 生成的包清单。
 - 仓外副本改成自包含目录：删去仓内 `tsconfig.base.json` 继承与 `README.i18n.yaml` 配对记录，`peerDependencies` 由 `workspace:*` 改为已发布版本范围，并补 `build`/`typecheck`/`test` 脚本。
+
+## [2026-10-21] feat | 增加 Linux 桌面 deb 与 Release 构建
+
+- Linux 增加 deb，保留 AppImage；显式 unsigned 本地构建独立于发布服务配置。
+- 增加 GitHub Release 桌面工作流；四平台工作流配置、127 项相关测试和 43 项文档检查通过；Linux deb/AppImage 及打包后 Office 转换通过，安装终端等待密码。
+- 记录见 [桌面 deb 与 Release](queries/desktop-deb-release.md)。

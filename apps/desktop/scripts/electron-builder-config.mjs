@@ -65,7 +65,8 @@ export function createElectronBuilderConfig(
   if (skipNotarization && (unsigned || resolvedPlatform !== 'darwin')) throw new Error('Skipping notarization requires a signed macOS build')
   const packagesMacOS = targetPlatform === 'darwin' || (targetPlatform === undefined && hostPlatform === 'darwin')
   const packagesWindows = resolvedPlatform === 'win32'
-  const policy = packagesMacOS && unsigned ? undefined : resolveDesktopPolicyEnvironment(env)
+  const policy = unsigned && env.DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN === undefined
+    && env.DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN === undefined ? undefined : resolveDesktopPolicyEnvironment(env)
   if (resolvedPlatform === 'win32') installWindowsDirectoryInstaller()
   const macOSSigning = packagesMacOS && !unsigned ? resolveMacOSSigningEnvironment(env) : undefined
   if (packagesMacOS && !unsigned && !skipNotarization) resolveMacOSNotarizationEnvironment(env)
@@ -107,6 +108,7 @@ export function createElectronBuilderConfig(
     appId,
     protocols: [{ name: 'DeepSeek Harness', schemes: ['dsh'] }],
     extraMetadata: {
+      homepage: 'https://github.com/ReachForStar/dsh-studio',
       dshDesktopAppId: appId,
       dshDesktopUpdateChannel: update?.channel ?? 'nightly',
       ...(policy === undefined ? {} : { dshMandatoryUpdatePolicy: policy }),
@@ -248,7 +250,12 @@ export function createElectronBuilderConfig(
     linux: {
       category: 'Development',
       executableName: 'deepseek-harness',
-      target: ['AppImage'],
+      target: ['AppImage', 'deb'],
+      icon: fileURLToPath(new URL('../resources/icon.png', import.meta.url)),
+      maintainer: 'ReachForStar <ReachForStar@users.noreply.github.com>',
+    },
+    deb: {
+      packageName: 'deepseek-harness',
     },
     nsis: {
       installerSidebar: join(buildPaths.root, 'installer-ui', 'uninstaller-sidebar.bmp'),

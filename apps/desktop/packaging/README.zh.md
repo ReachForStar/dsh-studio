@@ -71,7 +71,7 @@ production 发布使用产品版本本身，不传 `--build-version`。其上传
 
 两个手动打包工作流都接受 `test_release_id`。留空沿用机器 preset；非空值必须是 32 位小写十六进制字符串，且仅允许 test preset。加载器通过 `PACKAGE_TEST_RELEASE_ID` 应用覆盖值，不修改 preset 文件。同一平台连续升级测试需使用相同值。轮换默认值只影响后续构建：已安装客户端保留原更新地址，旧对象仍可访问，除非另行删除。随机前缀降低地址的可发现性，但不提供下载身份认证。
 
-不选择机器 preset 时，打包、上传以及手动 macOS 签名检查（本地 macOS 与 Linux 未签名构建除外）使用 `apps/desktop/.env.windows`、`.env.macos` 或 `.env.linux`，由目标平台选择。复制对应的 [Windows 模板](../.env.windows.example)、[macOS 模板](../.env.macos.example) 或 [Linux 模板](../.env.linux.example)，填写本机配置；Git 忽略这些本地文件，安装产物也不包含它们。发布字段只从选定的配置文件读取，不回退到系统或 shell 中的同名变量；`PATH`、代理和构建工具环境仍保留。发布版本是命令参数而非发布字段，上传从打包写下的完成记录中读取它。文件使用 UTF-8，支持 BOM；相对证书、SignTool、Apple API Key 和钥匙串路径以 `apps/desktop` 为基准，变量值不做 shell 展开，包含 `#` 或空格的密码需要引号。Windows CI 读取相同的机器 preset。
+不选择机器 preset 时，打包、上传以及手动 macOS 签名检查（本地未签名构建除外）使用 `apps/desktop/.env.windows`、`.env.macos` 或 `.env.linux`，由目标平台选择。复制对应的 [Windows 模板](../.env.windows.example)、[macOS 模板](../.env.macos.example) 或 [Linux 模板](../.env.linux.example)，填写本机配置；Git 忽略这些本地文件，安装产物也不包含它们。发布字段只从选定的配置文件读取，不回退到系统或 shell 中的同名变量；`PATH`、代理和构建工具环境仍保留。发布版本是命令参数而非发布字段，上传从打包写下的完成记录中读取它。文件使用 UTF-8，支持 BOM；相对证书、SignTool、Apple API Key 和钥匙串路径以 `apps/desktop` 为基准，变量值不做 shell 展开，包含 `#` 或空格的密码需要引号。Windows CI 读取相同的机器 preset。
 
 每条打包命令在构建与下载前检查应用 ID 以及该模式需要的更新与签名配置，随后探测本次运行要用的外部工具：归档读取工具，以及 Windows 目标的安装器编译器。macOS 检查身份、Team ID、一套完整公证凭据、`CSC_LINK` 指定的可读本地 p12 文件、显式配置的 `CSC_KEY_PASSWORD`，以及引用的 API Key 和钥匙串文件；Windows 检查公开代码签名证书、SignTool 文件、容器名称和 PIN 格式。仅准备 Windows 资源以及两个平台上的显式未签名打包均不要求签名凭据。配置检查不验证 PIN 是否正确、Token 是否登录、钥匙串是否解锁或 Apple 是否接受凭据；实际签名与公证负责这些检查。未选择机器 preset 时，`--build-version auto` 会访问目标 bucket，`--check` 下同样如此。单独运行相同检查：
 
@@ -94,7 +94,7 @@ pnpm run package:desktop:win:x64
 pnpm run package:desktop:linux:x64
 ```
 
-macOS arm64 命令要求 Apple Silicon。macOS x64 命令可以在 Intel macOS 或带 Rosetta 的 Apple Silicon 上运行。Windows x64 命令要求 Windows x64。Linux x64 命令要求 Linux x64；它产出 `executableName` 为 `deepseek-harness` 的 AppImage。
+macOS arm64 命令要求 Apple Silicon。macOS x64 命令可以在 Intel macOS 或带 Rosetta 的 Apple Silicon 上运行。Windows x64 命令要求 Windows x64。Linux x64 命令要求 Linux x64；它产出 `executableName` 为 `deepseek-harness` 的 AppImage 和 amd64 `.deb`。未选择机器 preset 时，各平台追加 `--unsigned` 均使用本地默认值，不读取发布服务配置。deb 通过系统包管理器升级。GitHub 的 `Release Desktop` 工作流支持手动构建与发布 `dsh-v<version>` Release，生成 Linux x64 AppImage/deb、Windows x64 EXE 和 macOS arm64/x64 DMG 安装包，不执行发布签名或 Apple 公证。
 
 macOS 正式发布和本地未签名 DMG 都通过 [electron-builder 配置](../scripts/electron-builder-config.mjs)中的 `dmg.format: 'ULMO'` 使用 LZMA 压缩。[构建时补丁](../../../patches/app-builder-lib@26.17.0.patch)为固定版本 builder 的校验规则和 TypeScript 声明添加此格式。
 
@@ -235,7 +235,7 @@ Desktop 在本地打包工作区包，并通过目标捆绑的 Node 和 pnpm 安
 
 [Electron 外壳文件清单](../scripts/electron-builder-config.mjs)从单独收集的 `resources/app.asar/node_modules` 依赖中排除已识别的 JavaScript/CSS/TypeScript source map 和 TypeScript 构建缓存。这些排除规则保留运行时代码、原生模块、WASM、数据文件（包括普通 `.map` 资源）、许可证和 notices；[外壳归档测试](../tests/shell-file-selection.spec.ts)检查保留文件的字节和排除项。
 
-[Office 转换提供方](../../../packages/document/office-to-pdf/README.zh.md)携带目标已声明的原生引擎；kit 未声明匹配原生目标时携带 WASM 引擎。准备阶段在打包前拒绝缺少目标引擎的情况。完整 Office 依赖（CLI、JavaScript 库和选定引擎的可执行文件、数据、许可证及 notices）解包到 `resources/app.asar.unpacked/dsh/node_modules/` 下。Desktop Host 将引擎清单解析到这些物理目录，并向加载的技能提供独立 Node 和解包后 CLI 的绝对路径。Node 位于 `resources/runtime/primary-runtime/dependencies/node/bin/`；CLI 位于解包后的 `@deepseek-ai/libreoffice-kit/lib/cli.js`。macOS 上的原生辅助程序获得 [LibreOffice UNO 桥](https://github.com/LibreOffice/core/blob/master/sysui/desktop/macosx/hardened_runtime.xcent.in)所需的 JIT entitlement。
+[Office 转换提供方](../../../packages/document/office-to-pdf/README.zh.md)携带目标已声明的原生引擎；kit 未声明匹配原生目标时携带 WASM 引擎。准备阶段在打包前拒绝缺少目标引擎的情况。完整 Office 依赖（CLI、JavaScript 库和选定引擎的可执行文件、数据、许可证及 notices）解包到 `resources/app.asar.unpacked/dsh/node_modules/` 下。Desktop Host 将 Office 入口 JavaScript 和原生引擎清单解析到这些物理目录，并向加载的技能提供独立 Node 和解包后 CLI 的绝对路径。Node 位于 `resources/runtime/primary-runtime/dependencies/node/bin/`；CLI 位于解包后的 `@deepseek-ai/libreoffice-kit/lib/cli.js`。macOS 上的原生辅助程序获得 [LibreOffice UNO 桥](https://github.com/LibreOffice/core/blob/master/sysui/desktop/macosx/hardened_runtime.xcent.in)所需的 JIT entitlement。
 
 打包应用运行编译后的 JavaScript 和预生成的 Typert 元数据，不编译 TypeScript 插件。源码级调试导航和编辑器声明仍可从开发包中获取。[复制规则测试](../tests/runtime-file-policy.spec.ts)覆盖排除项和保留资源；[产物 smoke](../tests/fixtures/runtime-payload-smoke.mjs) 在 Host smoke 和最终清单验证之前，使用 Electron RunAsNode 执行。产物 smoke 解析搜索工具使用的 ripgrep 可执行文件，并验证文本搜索和文件枚举。Windows 签名构建在依赖签名后运行这些检查；其他构建在 `prepare:dsh` 中运行。[Host smoke](../scripts/smoke-runtime.ts) 使用捆绑的 Python 创建 DOCX、XLSX 和 PPTX 输入，通过真实 Office 提供方逐一转换并检查 PDF 输出。每个组装后的应用（包括目录包和未签名构建）都会针对 ASAR 重复产物和 Host 检查。归档完整性检查将归档内完整描述符与准备结果比对，并核对归档和解包目录中的文件内容与清单、归档内文件记录的执行标志，以及解包文件的物理权限。转换失败会在写入发布记录前终止打包；macOS DMG/ZIP 构建在公证前执行这些检查。
 

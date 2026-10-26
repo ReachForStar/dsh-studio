@@ -33,6 +33,13 @@
           # layer. Specialist dispatch goes to the configured A2A peers (host
           # `a2a` row owns their endpoints).
           #
+          # `autoRoute` is the preset's routing scheme: a message the keyword
+          # router assigns to a specialist runs on that seat's own model and the
+          # answer comes back as the seat's message, so the specialists answer
+          # without the routing agent first choosing to delegate. Seats keep the
+          # agent's own route unless `seats.<role>.model` names another. `holdRole`
+          # keeps a conversation on the specialist it started with.
+          #
           # The row publishes `ctx.xingchen`, so it must sit behind an
           # entry-local realm: a preset service registered into the root isolate
           # would be process-global (`mountPreset` rejects that) and would answer
@@ -45,6 +52,17 @@
             config:
               - id: xingchen-router
                 name: '@reachforstar/dsh-xingchen'
+                config:
+                  autoRoute:
+                    enabled: true
+                    holdRole: true
+                  seats:
+                    tianquan:
+                      mode: local
+                    yaoguang:
+                      mode: local
+                    tianliang:
+                      mode: local
 
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'

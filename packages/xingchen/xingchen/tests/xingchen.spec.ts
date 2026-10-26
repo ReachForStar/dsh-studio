@@ -1,12 +1,13 @@
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import AgentRegistry, { AgentModel } from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { AgentModel, agentEvents } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import { ManualCompactionError } from '@deepseek-ai/dsh-compaction'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { Session, SessionId, SessionStore } from '@deepseek-ai/dsh-session'
+import type { UserMessage } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -175,6 +176,21 @@ type ToolOutcome = ToolExecutionResult
 
 function textOf(result: ToolOutcome): string {
   return result.content.filter(block => block.type === 'text').map(block => block.text ?? '').join('')
+}
+
+/** Seat answers logged as turn-free assistant messages, in log order. */
+function seatReplies(session: { ownEvents(): readonly unknown[] }): { role: string; text: string }[] {
+  return session.ownEvents()
+    .filter(event => (event as { type: string }).type === 'assistant/peer-message')
+    .map((event) => {
+      const message = (event as {
+        data: { message: { source: { role: string }; content: { type: string; text?: string }[] } }
+      }).data.message
+      return {
+        role: message.source.role,
+        text: message.content.filter(block => block.type === 'text').map(block => block.text ?? '').join(''),
+      }
+    })
 }
 
 describe('routeXingchen 启发式路由', () => {
@@ -734,5 +750,139 @@ describe('席位走 a2a-bridge 方案', () => {
     expect(result.kind).toBe('error')
     expect(result.text).toContain('TASK_STATE_FAILED')
     expect(result.text).toContain('fetch failed')
+  })
+})
+
+describe('自动路由：专家消息不经路由代理的工具调用', () => {
+  /** One user message as the loop hands it to `agent/pre-step`. */
+  function userStep(text: string): { messages: UserMessage[]; turn: number; step: number } {
+    return { messages: [createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } })], turn: 1, step: 1 }
+  }
+
+  /** Run the step waterfall as the loop would, returning the admitted messages. */
+  async function runStep(
+    ctx: Context,
+    agent: Agent,
+    payload: { messages: UserMessage[]; turn: number; step: number },
+  ): Promise<UserMessage[]> {
+    const decision = await agentEvents(ctx, agent).waterfall('agent/pre-step', {
+      ...payload, signal, modelSelection: { provider: 'stub', model: 'stub' },
+    }, () => Promise.resolve({ kind: 'enter', messages: payload.messages }))
+    return decision.kind === 'reject' ? [] : decision.messages
+  }
+
+  it('专家消息由对应席位回答，并作为免轮次助手消息落进会话', async () => {
+    const test = await harness(a2aStub(), 'auto', { autoRoute: { enabled: true } })
+    const admitted = await runStep(test.ctx, test.agent, userStep('这个 bug 崩溃了，帮我复现根因'))
+    expect(test.subagents.startActivation).toHaveBeenCalledTimes(1)
+    const [spec] = test.subagents.startActivation.mock.calls[0] as [{ request: { prompt: { text: string }[] } }]
+    expect(spec.request.prompt[0]?.text).toContain('你是瑶光')
+    expect(seatReplies(test.session)).toEqual([expect.objectContaining({ role: 'yaoguang', text: '本机专家回答' })])
+    // The message still reaches the model: withholding it would end the turn
+    // with no model call at all.
+    expect(admitted).toHaveLength(1)
+  })
+
+  it('没有专家信号的消息留给启明', async () => {
+    const test = await harness(a2aStub(), 'auto', { autoRoute: { enabled: true } })
+    await runStep(test.ctx, test.agent, userStep('写个函数'))
+    expect(test.subagents.startActivation).not.toHaveBeenCalled()
+    expect(seatReplies(test.session)).toEqual([])
+  })
+
+  it('未配置 autoRoute 时不路由，行为与既有配置一致', async () => {
+    const test = await harness(a2aStub(), 'auto')
+    expect(test.ctx.get('xingchen')).toBeDefined()
+    const decision = await agentEvents(test.ctx, test.agent).waterfall('agent/pre-step', {
+      ...userStep('这个 bug 崩溃了，帮我复现根因'), signal, modelSelection: { provider: 'stub', model: 'stub' },
+    }, () => Promise.resolve({ kind: 'enter', messages: [] }))
+    expect(decision).toEqual({ kind: 'enter', messages: [] })
+    expect(test.subagents.startActivation).not.toHaveBeenCalled()
+  })
+
+  it('autoRoute.enabled 为 false 时不路由', async () => {
+    const test = await harness(a2aStub(), 'auto', { autoRoute: { enabled: false } })
+    await runStep(test.ctx, test.agent, userStep('这个 bug 崩溃了，帮我复现根因'))
+    expect(test.subagents.startActivation).not.toHaveBeenCalled()
+  })
+
+  it('holdRole 默认保持已定角色：后续没有关键词的消息不换角色', async () => {
+    const test = await harness(a2aStub(), 'auto', { autoRoute: { enabled: true } })
+    test.session.append('command/run', {
+      commandId: 'cmd-hold' as never, name: 'bug', args: '复现', source: { kind: 'user' },
+    })
+    await runStep(test.ctx, test.agent, userStep('继续看这个'))
+    expect(test.subagents.startActivation).not.toHaveBeenCalled()
+  })
+
+  it('holdRole 为 false 时后续消息重新按启发式判定', async () => {
+    const test = await harness(a2aStub(), 'auto', { autoRoute: { enabled: true, holdRole: false } })
+    test.session.append('command/run', {
+      commandId: 'cmd-free' as never, name: 'bug', args: '复现', source: { kind: 'user' },
+    })
+    await runStep(test.ctx, test.agent, userStep('帮我审查一下架构'))
+    expect(seatReplies(test.session)).toEqual([expect.objectContaining({ role: 'tianquan' })])
+  })
+
+  it('席位失败时把用户消息留给启明，并记下失败', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
+    await ctx.plugin(AgentRegistry)
+    ctx.provide('a2a', a2aStub() as never)
+    ctx.provide('subagents', {
+      startActivation: vi.fn(() => Promise.resolve({
+        result: Promise.resolve({ stopReason: 'error', output: [] }),
+        dispose: vi.fn(() => Promise.resolve()),
+      })),
+    } as never)
+    const plugin = await ctx.plugin(xingchen, { autoRoute: { enabled: true } })
+    disposers.push(async () => { await plugin.dispose() })
+    const { agent, session } = stubAgent(ctx, `xingchen-auto-fail-${Math.random()}`)
+    await ctx.agents.register(agent)
+    const admitted = await runStep(ctx, agent, userStep('这个 bug 崩溃了，帮我复现根因'))
+    expect(admitted).toHaveLength(1)
+    expect(seatReplies(session)).toEqual([])
+    const failed = session.ownEvents()
+      .filter(event => (event as { type: string }).type === 'xingchen/dispatch-progress')
+      .map(event => (event as { data: { state?: string } }).data.state)
+    expect(failed).toEqual(['failed'])
+  })
+
+  it('席位以未完成状态收尾时同样留给启明', async () => {
+    const stub = a2aStub({ text: '对端挂了', state: 'TASK_STATE_FAILED' }, ['claude-code'])
+    const test = await harness(stub, 'a2a', { autoRoute: { enabled: true } })
+    const admitted = await runStep(test.ctx, test.agent, userStep('帮我审查一下架构'))
+    expect(admitted).toHaveLength(1)
+    expect(seatReplies(test.session)).toEqual([])
+  })
+
+  it('只路由一轮里的第一步，后续步骤与既有会话不重复派发', async () => {
+    const test = await harness(a2aStub(), 'auto', { autoRoute: { enabled: true } })
+    await runStep(test.ctx, test.agent, { ...userStep('这个 bug 崩溃了，帮我复现根因'), turn: 2 })
+    await runStep(test.ctx, test.agent, { ...userStep('这个 bug 崩溃了，帮我复现根因'), step: 2 })
+    expect(test.subagents.startActivation).not.toHaveBeenCalled()
+  })
+})
+
+describe('自动路由的系统提示词段落', () => {
+  it('开启时告诉路由代理直接转述席位回答', async () => {
+    const test = await harness(a2aStub(), 'auto', { autoRoute: { enabled: true } })
+    const assembled = await test.ctx.systemPrompt.assemble({
+      agent: test.agent, modelSelection: { provider: 'stub', model: 'stub' }, toolSet: await test.ctx.tools.resolve({ agent: test.agent, modelSelection: { provider: 'stub', model: 'stub' }, signal }),
+    })
+    expect(JSON.stringify(assembled)).toContain('自动路由已开启')
+  })
+
+  it('未开启时只给出既有的委派纪律', async () => {
+    const test = await harness(a2aStub(), 'auto')
+    const assembled = await test.ctx.systemPrompt.assemble({
+      agent: test.agent, modelSelection: { provider: 'stub', model: 'stub' }, toolSet: await test.ctx.tools.resolve({ agent: test.agent, modelSelection: { provider: 'stub', model: 'stub' }, signal }),
+    })
+    expect(JSON.stringify(assembled)).not.toContain('自动路由已开启')
   })
 })

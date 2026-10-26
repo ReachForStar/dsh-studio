@@ -3,7 +3,7 @@ title: 星域多智能体协作（dsh-xingchen）
 type: entity
 tags: [星域, 多智能体, 路由, a2a, preset, 会话投影, fork 扩展]
 created: 2026-09-19
-updated: 2026-10-02
+updated: 2026-10-27
 sources: []
 status: active
 ---
@@ -44,7 +44,17 @@ fork 自研的四角色协作系统，位于 [`packages/xingchen/xingchen`](../.
 
 - `xingchen_route` 工具：路由代理判定任务属于专家时调用；任务必须自包含，远端席位看不到本工作区，需要附上相关文件内容、diff 与上下文。
 - `/review`、`/bug`、`/planning` 命令：人直接指定专家，不经过父代理模型轮次；`dispatchCommand` 把派发失败落定为命令错误结果，本地专家仍要运行自己的模型轮次。
-- `routeXingchen` 启发式：行首斜杠命令直接决定；否则需两个以上不同关键词命中且得分严格最高者胜出，平局与单信号留给启明。该分类器没有自动派发入口，普通消息不会仅因关键词命中就生成专家任务。
+- `routeXingchen` 启发式：行首斜杠命令直接决定；否则需两个以上不同关键词命中且得分严格最高者胜出，平局与单信号留给启明。
+
+## 自动路由（`autoRoute`，2026-10 新增）
+
+`routeXingchen` 原本没有自动派发入口——普通消息不会仅因关键词命中就生成专家任务。`autoRoute` 配置把它接进 `agent/pre-step`：
+
+- **启用**：`autoRoute: { enabled: true }`。首轮第一步把启发式命中专家的消息直接派给对应席位（`dispatch`），答复以 `assistant/peer-message` 进模型可见内容，路由代理随后据此转述、不再重复委派。未配置或 `enabled: false` 时行为与原来完全一致。
+- **`holdRole`（默认 `true`）**：会话投影的 `lastRole` 与命中角色不一致时不再路由，保持会话留在已定的专家上；`false` 时每轮按启发式重新判定。
+- **失败不吞消息**：席位派发失败或以未完成态收尾时，留下 `xingchen/dispatch-progress`（`state` 为 `failed`/终态）后把原消息交回启明继续本轮，不静默丢弃。
+- **提示词段落**：开启时 `xingchen:routing` 追加一条转述纪律，告诉路由代理直接转述已落地的席位回答。
+- 预设接线：`xingchen-qiming.patch.yml` 的 `xingchen-router` 行显式声明 `autoRoute: { enabled: true, holdRole: true }` 与三席 `local`，使「设置的方案」可读；随包基础组合未启用。
 
 ## 进度上报（2026-09-22）
 

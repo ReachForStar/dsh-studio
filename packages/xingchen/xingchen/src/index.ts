@@ -22,7 +22,7 @@ import z from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { CommandDefinitionId, CommandId } from '@deepseek-ai/dsh-commands/brand'
 import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
-import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
+import type { Agent, AgentOptions, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session/types'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
@@ -31,9 +31,12 @@ import { ToolCallId } from '@deepseek-ai/dsh-llm/brand'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type { SubagentActivation, SubagentResult } from '@deepseek-ai/dsh-subagent'
 import type {} from '@deepseek-ai/dsh-subagent'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionDefinition, ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type { A2APeerReply } from '@reachforstar/dsh-a2a'
-import { XINGCHEN_COMMAND_ROLES, XINGCHEN_ROLE_NAMES, XINGCHEN_ROLE_SUMMARIES, roleOfCommand, type XingchenCommandName } from './route.ts'
+import {
+  XINGCHEN_COMMAND_ROLES, XINGCHEN_ROLE_NAMES, XINGCHEN_ROLE_SUMMARIES, roleOfCommand, routeXingchen,
+  type XingchenCommandName,
+} from './route.ts'
 import { TIANLIANG_CHARTER, TIANQUAN_CHARTER, YAOGUANG_CHARTER } from './charters.ts'
 import type {
   XingchenProjection, XingchenRoleId, XingchenSpecialistId, XingchenTurnReason, XingchenUnitState,
@@ -65,6 +68,27 @@ export interface XingchenConfig {
   charters?: XingchenCharters
   /** How each specialist seat runs; every seat defaults to a local spawned agent. */
   seats?: XingchenSeats
+  /**
+   * Whether a message the router would delegate runs on that specialist without
+   * the router model choosing to delegate first. Omitted keeps every message
+   * with the router agent, which then calls `xingchen_route` itself.
+   */
+  autoRoute?: XingchenAutoRoute
+}
+
+/** How a routed message reaches a specialist without the router's own tool call. */
+export interface XingchenAutoRoute {
+  /**
+   * Whether routing is on. It defaults to off: an unset `autoRoute` and a
+   * deployment that never mentions it behave the same.
+   */
+  readonly enabled?: boolean
+  /**
+   * Whether the session's projected role must still match the routed role. The
+   * default `true` keeps a conversation on the specialist it started with, so a
+   * follow-up without routing keywords is not pulled back to the router.
+   */
+  readonly holdRole?: boolean
 }
 
 /** A2A peer name per specialist role. */
@@ -179,6 +203,7 @@ export const Config: z<XingchenConfig> = z.object({
     yaoguang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), skill: z.string(), channel: z.union(['direct', 'bus']), timeoutMs: z.number().min(1) }),
     tianliang: z.object({ mode: z.union(['local', 'a2a']), provider: z.string(), model: z.string(), skill: z.string(), channel: z.union(['direct', 'bus']), timeoutMs: z.number().min(1) }),
   }),
+  autoRoute: z.object({ enabled: z.boolean(), holdRole: z.boolean() }),
 })
 
 /** Whether a string names a specialist role. */
@@ -350,6 +375,12 @@ export class XingchenService extends Service {
     readonly charter: string
   }>>
 
+  /** Auto-routing policy resolved from config, or undefined when off. */
+  private readonly autoRoute: { readonly holdRole: boolean } | undefined
+
+  /** The `xingchen` projection handle the auto-router reads the pinned role from. */
+  private projection: Promise<ProjectionHandle<XingchenUnitState>>
+
   /**
    * @param ctx - the owning host context.
    * @param config - seat, peer, and charter bindings per specialist role.
@@ -385,13 +416,19 @@ export class XingchenService extends Service {
       }
     }
     this.seats = { tianquan: seat('tianquan'), yaoguang: seat('yaoguang'), tianliang: seat('tianliang') }
+    this.autoRoute = config.autoRoute?.enabled === true
+      ? { holdRole: config.autoRoute.holdRole ?? true }
+      : undefined
 
-    ctx.sessionProjections.register(xingchenProjectionDefinition)
+    this.projection = ctx.sessionProjections.register(xingchenProjectionDefinition)
+    if (this.autoRoute !== undefined) this.installAutoRoute(ctx)
 
     ctx.systemPrompt.section({
       name: 'xingchen:routing',
       order: ctx.systemPrompt.getSectionOrder('PLAN_POLICY'),
-      text: () => ROUTING_SECTION,
+      text: () => this.autoRoute === undefined
+        ? ROUTING_SECTION
+        : `${ROUTING_SECTION}\n- 自动路由已开启：属于专家角色的消息已经在该席位完成，并以该席位的助手消息记入会话；直接转述那条回答，不重复委派。`,
     })
 
     ctx.tools.register(defineTool({
@@ -467,6 +504,63 @@ export class XingchenService extends Service {
           handler: invocation => this.dispatchCommand(role, invocation),
         })
       }
+    })
+  }
+
+  /**
+   * Install the auto-router: a message the heuristic assigns to a specialist
+   * runs on that specialist instead of the router agent.
+   *
+   * The dispatch happens in `agent/pre-step`, after the loop claimed the waking
+   * message, so the specialist answers the same turn the message opened. The
+   * step keeps the claimed message: the loop ends a turn whose steps carry
+   * nothing, so withholding it would spin the driver. The seat answer reaches
+   * the model as its own logged assistant message.
+   * @param ctx - the service's owning context.
+   */
+  private installAutoRoute(ctx: Context): void {
+    ctx.on('agent/pre-step', async ({ agent, messages, turn, step, signal }, next): Promise<PreStepDecision> => {
+      // Only a turn's first message is a request to route; later steps carry
+      // tool results, and a resumed session continues the role it already had.
+      if (turn !== 1 || step !== 1) return next()
+      const text = messages.map(message => message.content
+        .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
+        .map(block => block.text).join('')).join('\n')
+      const routed = routeXingchen(text)
+      if (routed === 'qiming') return next()
+      if (this.autoRoute?.holdRole === true) {
+        const projected = (await this.projection).stateOf(agent.session).lastRole
+        if (projected !== null && projected !== routed) return next()
+      }
+      signal.throwIfAborted()
+      const seat = this.seats[routed]
+      /** Record a hand-off the router keeps, so the reason stays in the transcript. */
+      const keepWithRouter = (state: string, text: string): void => {
+        agent.session.append('xingchen/dispatch-progress', {
+          role: routed,
+          agent: seat.peer,
+          skill: seat.skill,
+          mode: seat.mode === 'a2a' ? seat.channel : 'direct',
+          state,
+          text,
+        })
+      }
+      let reply: { readonly text: string; readonly state?: string }
+      try {
+        reply = await this.dispatch(routed, text, agent, signal)
+      } catch (error: unknown) {
+        // A seat that cannot answer must not swallow the user's message: the
+        // router continues the turn with it.
+        keepWithRouter('failed', error instanceof Error ? error.message : String(error))
+        return next()
+      }
+      // An unanswered seat is not an answer.
+      if (reply.state !== undefined && UNANSWERED_STATES.has(reply.state)) {
+        keepWithRouter(reply.state, reply.text)
+        return next()
+      }
+      this.publishSeatReply(agent, routed, reply.text)
+      return next()
     })
   }
 
@@ -628,7 +722,7 @@ export class XingchenService extends Service {
       message: createPeerAssistantMessage({
         role: 'assistant',
         content: [{ type: 'text', text }],
-        source: { kind: 'a2a-seat', role, agent: seat.peer ?? seat.provider, skill: seat.skill },
+        source: { kind: 'a2a-seat', role, agent: seat.peer, skill: seat.skill },
       }),
     }, { surfaceOp: 'append' })
   }

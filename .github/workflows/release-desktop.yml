@@ -1,7 +1,25 @@
 name: Release Desktop
 
+# Desktop installers for every supported system, attached to one GitHub Release.
+#
+# Triggers:
+# - `release: published` — the fork's dsh-v* release, built and attached.
+# - `push` of a `dsh-v*` tag — the release workflow that created the release
+#   sometimes publishes it before these artifacts exist, so a tag push is an
+#   independent trigger rather than a second manual step.
+# - `workflow_dispatch` — rebuild and attach to an existing release by tag, which
+#   is how a release created earlier gains its desktop packages.
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag to attach the installers to (for example dsh-v0.2.1-rc.3); leave empty to build without attaching'
+        type: string
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'dsh-v*'
   release:
     types: [published]
 
@@ -9,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-desktop-${{ github.ref }}
+  group: release-desktop-${{ github.event.release.tag_name || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -21,18 +39,18 @@ jobs:
         include:
           - target: linux-x64
             runner: ubuntu-22.04
-            extensions: |
+            installers: |
               apps/desktop/.desktop-build/targets/linux-x64/unsigned-artifacts/*.deb
               apps/desktop/.desktop-build/targets/linux-x64/unsigned-artifacts/*.AppImage
           - target: win-x64
             runner: windows-latest
-            extensions: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*.exe
+            installers: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*.exe
           - target: mac-arm64
             runner: macos-15
-            extensions: apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/*.dmg
+            installers: apps/desktop/.desktop-build/targets/mac-arm64/unsigned-artifacts/*.dmg
           - target: mac-x64
             runner: macos-15-intel
-            extensions: apps/desktop/.desktop-build/targets/mac-x64/unsigned-artifacts/*.dmg
+            installers: apps/desktop/.desktop-build/targets/mac-x64/unsigned-artifacts/*.dmg
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
@@ -43,6 +61,9 @@ jobs:
     env:
       DSH_TELEMETRY_DISABLED: '1'
       TMPDIR: ${{ github.workspace }}/tmp
+      # One tag resolution for every trigger: the release event names it, a tag
+      # push carries it, and a manual run may name it to attach to that release.
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || (github.event_name == 'push' && github.ref_name) || '' }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -54,25 +75,25 @@ jobs:
           node-version: '24'
       - run: pnpm install --frozen-lockfile
       - name: Validate release version
-        if: github.event_name == 'release'
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: node --input-type=module -e "import fs from 'node:fs'; const {version}=JSON.parse(fs.readFileSync('package.json','utf8')); if(process.env.RELEASE_TAG !== 'dsh-v'+version) throw Error('Release tag must match dsh-v'+version)"
+        if: env.RELEASE_TAG != ''
+        run: node --input-type=module -e "import fs from 'node:fs'; const {version}=JSON.parse(fs.readFileSync('package.json','utf8')); if(process.env.RELEASE_TAG !== 'dsh-v'+version) throw Error('Release tag must match dsh-v'+version+', got '+process.env.RELEASE_TAG)"
       - name: Build desktop installers
         run: pnpm --dir apps/desktop exec tsx scripts/package-target.ts "${{ matrix.target }}" --unsigned
       - name: Retain installers
         uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-${{ matrix.target }}
-          path: ${{ matrix.extensions }}
+          path: ${{ matrix.installers }}
           if-no-files-found: error
-      - name: Attach installers to release
-        if: github.event_name == 'release'
+      - name: Attach installers to the release
+        if: env.RELEASE_TAG != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           shopt -s nullglob
-          installers=(apps/desktop/.desktop-build/targets/"${{ matrix.target }}"/unsigned-artifacts/*.{deb,AppImage,exe,dmg})
-          test "${#installers[@]}" -gt 0
-          gh release upload "$RELEASE_TAG" "${installers[@]}"
+          found=(apps/desktop/.desktop-build/targets/"${{ matrix.target }}"/unsigned-artifacts/*.{deb,AppImage,exe,dmg})
+          # The matrix entry already names what this target must produce, so an
+          # empty sweep means the packaging step lied, not that the release has
+          # nothing to attach.
+          test "${#found[@]}" -gt 0 || { echo "no installer for ${{ matrix.target }}"; exit 1; }
+          gh release upload "$RELEASE_TAG" "${found[@]}" --clobber

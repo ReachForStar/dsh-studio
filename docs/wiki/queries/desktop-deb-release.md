@@ -3,9 +3,9 @@ title: Linux 桌面 deb 安装包与 Release 工作流
 type: query
 tags: [desktop, deb, release, linux]
 created: 2026-10-21
-updated: 2026-10-26
+updated: 2026-10-27
 sources: []
-status: draft
+status: active
 ---
 
 # Linux 桌面 deb 安装包与 Release 工作流
@@ -27,6 +27,16 @@ Linux 同时生成 AppImage 与 amd64 deb，deb 包名为 `deepseek-harness`。�
 运行时补丁规则明确允许 pi 后端使用未打补丁的 `pi-ai 0.84.4`，上游适配器仍固定到带补丁的 `1.1.0`；其余未审核版本继续拒绝。真实运行时锁文件已通过校验，故意提供错误补丁版本时拒绝。独立运行时安装沿用仓库 SSH 权限：`ssh2: true`、`cpu-features: false`。
 
 ASAR 内不存在的目录在 Electron 的 `lstatSync(..., { throwIfNoEntry: false })` 下返回 `null`，Office 库用 `!== undefined` 判断时误报原生引擎不完整。Host 将 Office 入口 JavaScript 与原生引擎一起解析到 `.asar.unpacked` 的实际目录，避免在 ASAR 路径进行引擎存在性检查。修复由打包后真实 Office 转换验证。
+
+## Release 桌面包三触发与补传（2026-10-27）
+
+`release-desktop.yml` 改为三个触发共用同一 tag 解析（`RELEASE_TAG`）：
+
+- `release: published` —— fork 的 `dsh-v*` Release，构建并附上四个目标产物。
+- `push: tags: dsh-v*` —— 发布流程有时先创建 Release 再构建产物，tag 推送是独立触发而不是第二个手动步骤。
+- `workflow_dispatch` 的 `release_tag` —— 给一个已存在的 Release 补传桌面安装包（`--clobber` 覆盖同名资产），用于「Release 已建但缺安装包」的补发。
+
+attach 步骤按矩阵条目声明的实际产物收集（`{deb,AppImage,exe,dmg}`），并对每个 target 校验非空；`Validate release version` 仍要求 tag 等于 `dsh-v<版本>`。此前的两个坑（Windows GNU tar 读盘符路径失败、macOS arm64 独立成功）已在本页上文记录；产物仍落在 `apps/desktop/.desktop-build/targets/<target>/unsigned-artifacts/`。
 
 ## 验证
 

@@ -37,7 +37,7 @@ import type { ConfigPageForm } from './slot-contract.ts'
 import { UpdateDialog, VersionSection } from './versions.tsx'
 import { BundleDetailSection } from './BundleDetailSection.tsx'
 import css from './PluginManagerPage.module.css'
-import { CuaDriverInstall } from './CuaDriverInstall.tsx'
+import { CuaDriverSetup } from './CuaDriverInstall.tsx'
 
 /** Full component props assembled by the main slot renderer. */
 export type PluginManagerPageProps =
@@ -99,6 +99,9 @@ function AddPluginMenu({ t, disabled, openInstall, renderSlot }: {
 
 /** How long the list marks a package an install just enabled. */
 const HIGHLIGHT_MS = 2_400
+
+/** The official computer-use bundle whose page carries the driver setup. */
+const COMPUTER_USE_BUNDLE = '@deepseek-ai/dsh-computer-use'
 
 /**
  * Whether the main list shows an official optional bundle: any bundle outside `MORE_BUNDLES`, and any held-back one the profile enabled.
@@ -778,6 +781,13 @@ function PackageDetail({
           ? (
             <section className={css.detailSection} data-plugin-config>
               {renderSlot('plugins.bundle.config', { view: 'page' }, { entryKey: pkg.name })}
+            </section>
+          )
+          : null}
+        {pkg.name === COMPUTER_USE_BUNDLE
+          ? (
+            <section className={css.detailSection} data-plugin-setup>
+              <CuaDriverSetup t={t} />
             </section>
           )
           : null}
@@ -1594,7 +1604,7 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
       newer={versionUpdate(state.versions[pkg.name])}
       onOpen={() => { setActivation(null); setView({ kind: 'package', name: pkg.name, ...showsMoreList ? { from: 'more' } : {} }) }}
       onSetEnabled={(enabled) => { setActivation(enabled ? pkg.name : null); props.setEnabled(pkg.name, enabled) }}
-      footer={pkg.name === '@deepseek-ai/dsh-computer-use' ? <CuaDriverInstall t={t} /> : undefined}
+
     />
   )
   const basicCards = ledger.items.map(item => (

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { ConfigPageForm } from '../src/client/slot-contract.ts'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
@@ -2874,5 +2874,37 @@ describe('registry versions and updates', () => {
     set({ update: { ...base, phase: 'done', steps: ['checking', 'removing'], lost: 'socket closed' } })
     expect(within(dialog()).getByText(en.updateLost)).toBeTruthy()
     expect([...dialog().querySelectorAll('li')].map(item => item.getAttribute('data-state'))).toEqual(['done', 'unknown'])
+  })
+})
+
+describe('computer use page carries the driver setup', () => {
+  const name = '@deepseek-ai/dsh-computer-use'
+
+  /** Answer the driver check the setup runs on mount. */
+  function stubFetch(installed: boolean): void {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ installed, version: installed ? '0.36.0' : null, path: installed ? '/home/user/.local/bin/cua-driver' : null })))
+  }
+
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  /** Open the computer-use bundle's own page. */
+  function openPage(): void {
+    const board = renderTab({ packages: [pkg({ name, official: true })] })
+    act(() => { board.navigation.actions.setView({ kind: 'package', name }) })
+  }
+
+  it('shows the detected driver on the package page, not on the plugin card', async () => {
+    stubFetch(true)
+    openPage()
+    await waitFor(() => { expect(screen.getByText(en.cuaDriverPresent.replace('{version}', '0.36.0'))).toBeTruthy() })
+    expect(document.querySelector('[data-plugin-setup]')?.textContent).toContain('/home/user/.local/bin/cua-driver')
+    expect(document.querySelector(`[data-plugin-package="${name}"]`)).toBeNull()
+  })
+
+  it('offers the install action when the check reports no driver', async () => {
+    stubFetch(false)
+    openPage()
+    await waitFor(() => { expect(screen.getByText(en.cuaDriverMissing, { exact: false })).toBeTruthy() })
+    expect(screen.getByRole('button', { name: en.cuaDriverInstall })).toBeTruthy()
   })
 })

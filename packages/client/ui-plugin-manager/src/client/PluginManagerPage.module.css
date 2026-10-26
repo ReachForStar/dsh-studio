@@ -1736,6 +1736,13 @@ label.registryOption {
   color: var(--dsw-alias-text-secondary);
 }
 
+/* The installed executable, shown beside its version so an unexpected path is visible. */
+.cuaDriverPath {
+  font-size: 11px;
+  color: var(--dsw-alias-text-secondary);
+  overflow-wrap: anywhere;
+}
+
 .cuaDriverLogLine {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

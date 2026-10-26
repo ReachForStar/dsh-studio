@@ -198,3 +198,45 @@ describe('installed Cua Driver Loader composition', () => {
     for (const event of events.filter(event => event.event === 'start')) expectProcessExited(event.pid)
   })
 })
+
+describe('check 与 install 的 Fetch 路由', () => {
+  /**
+   * Register the provider's Fetch routes for a driver that is not installed, so
+   * the composition activates without a connection.
+   * @param command - the executable the provider looks for.
+   * @returns the registered routes.
+   */
+  async function routes(command: string): Promise<Map<string, (request: Request) => Promise<Response>>> {
+    const registered = new Map<string, (request: Request) => Promise<Response>>()
+    const ctx = new Context()
+    contexts.push(ctx)
+    ctx.provide('connection', {
+      fetch: {
+        register(route: { path: string; fetch: (request: Request) => Promise<Response> }) {
+          registered.set(route.path, route.fetch)
+          return () => Promise.resolve()
+        },
+      },
+    } as never)
+    ctx.provide('computerUse', { register: () => () => Promise.resolve() } as never)
+    ctx.provide('tools', {} as never)
+    await ctx.plugin(Provider, { command, args: ['mcp'], reconnect: { enabled: false, initialDelayMs: 1, maxDelayMs: 1, maxAttempts: 1 } })
+    return registered
+  }
+
+  it('驱动未安装时仍注册检测路由，并据实报告未安装', async () => {
+    const registered = await routes('/nonexistent/cua-driver-for-test')
+    const check = registered.get('/api/computer-use/cua-driver/check')
+    expect(check).toBeDefined()
+    const response = await (check as (request: Request) => Promise<Response>)(new Request('http://dsh.internal/api/computer-use/cua-driver/check'))
+    await expect(response.json()).resolves.toEqual({ installed: false, version: null, path: null })
+  })
+
+  it('检测路由与安装路由同时存在', async () => {
+    const registered = await routes('/nonexistent/cua-driver-for-test')
+    expect([...registered.keys()].sort()).toEqual([
+      '/api/computer-use/cua-driver/check',
+      '/api/computer-use/cua-driver/install',
+    ])
+  })
+})

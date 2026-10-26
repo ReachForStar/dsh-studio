@@ -61,7 +61,7 @@ updated: 2026-10-27
 - [Windows 侧 .git 迁到 Linux 后 Lefthook 钩子安装被拒](queries/lefthook-hookspath-cross-platform.md) — `config.worktree` 与归属标记里的 Windows 绝对路径在 Linux 下既过不了 `isAbsolute()` 校验，又被 git 当相对路径解析成仓库根下的怪名字目录；三步就地修法与自查命令。
 - [会话格式 v5 落地与 v4→v5 包的合并修复（2026-09-26）](queries/session-format-v5-landing.md) — `deferLoading` 与 tool-change 标签的迁移层越界、README 代际位移重建、v4 历史格式归档流程，以及 fork 自有 v4 日志读不出的遗留项；含 2026-10-15 合并上游时补的 v4 源准入词汇与 catalog 事实缺口。
 - [合并上游 upstream/master（2026-10-15）](queries/upstream-merge-2026-10.md) — 用合并前 HEAD 工作树作基线区分「合并引入/预存/偶发」的判定口径、本轮三类修复（v4 源准入词汇、vfs-example 夹具代际、corpus 策略规格自洽）与 fork 私有包在位核对。
-- [合并上游 upstream/master（2026-10-27，rc.3 同步）](queries/upstream-merge-2026-10-27.md) — 176 文件 / 441 块冲突：批量工具接口与 `Agent.model` 的 fork 适配、持久化 schema v1→v2 历史归档重编码、生成物重生成顺序、6 处合并丢失的 i18n 键，以及 88 条既有 lint 红项的归因。
+- [合并上游 upstream/master（2026-10-27，rc.3 同步）](queries/upstream-merge-2026-10-27.md) — 176 文件 / 441 块冲突：批量工具接口与 `Agent.model` 的 fork 适配、持久化 schema v1→v2 历史归档重编码、生成物重生成顺序、6 处合并丢失的 i18n 键，以及 88 条既有 lint 红项的归因；收尾快进 `master` 并推送 `me`。
 - [合并上游 upstream/master（2026-10-18）](queries/upstream-merge-2026-10-18.md) — 0.2.1-rc.2 增量合并：20 个冲突按来源取舍、系统提示词快照经 refresh 重生成、基线工作树不可用时降级为「夹具 + 因果源码零差异」代码证据判定，以及本轮红灯归因清单。
 - [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建。
 - [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 蓝色鲸鱼及标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；含本机重打包的两个网络问题（坏代理拖垮 npm 下载、`@electron/get` 的 SHASUMS 行格式）与本地镜像做法。

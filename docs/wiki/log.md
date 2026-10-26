@@ -529,3 +529,4 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 特殊处理：`v4.schema.json` 由 fork 用旧布局生成，上游把持久化 schema 升级到 v2 布局（顶层 `nodes` + 摘要前缀键），用一次性脚本重编码后 63378 行压缩为 1036 行才通过门禁。`exit_plan_mode` 变为条件工具导致其从 SDK 工具 schema 消失属预期。
 - 验证：`typecheck` 5 门、`build:artifacts` 8 门、`build:check` 2 门、`test:docs` 21 门全过；定向单测 9629 条通过；Web 冲突相关 41 个用例与 SDK/session 5 组夹具 replay 全绿。预存红项（`fresh-round-trip` 的 v5 fixture、WebKit 二进制缺失、88 条既有 lint）已归因，非本轮引入。
 - 新增页面：[合并上游（2026-10-27）](queries/upstream-merge-2026-10-27.md)。关联 [2026-09 合并决策](decisions/2026-09-upstream-sync.md)、[会话内容宽度轴](concepts/conversation-width-axis.md)、[pi 后端](entities/pi-backend.md)。
+- 收尾：`develop` 验证通过后快进 `master`，两分支推送 `me`，指向同一合并提交；推送前 pre-push 在两端各复跑 typecheck 5 门均过。

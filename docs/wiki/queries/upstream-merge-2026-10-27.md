@@ -12,7 +12,7 @@ status: active
 
 ## 问题
 
-把上游 `upstream/master` 的合并提交（1539 个提交，含 `0.2.1-rc.3` 版本同步、工具执行器插件化、条件工具、模型选择迁到 Agent、会话持久化 schema v2 布局）并入 `develop`。合并基点为上一轮的合并结果，fork 侧同期 282 个提交。
+把上游 `upstream/master` 的合并提交（1539 个提交，含 `0.2.1-rc.3` 版本同步、工具执行器插件化、条件工具、模型选择迁到 Agent、会话持久化 schema v2 布局）并入 `develop`。合并基点为上一轮的合并结果，fork 侧同期 282 个提交。验证通过后快进 `master`，两个分支推送到 `me`（`git@github.com:ReachForStar/dsh-studio.git`），二者同点，落在同一合并提交上。
 
 规模：**176 个冲突文件、441 处冲突块**，是本仓库历轮合并中最大的一次。冲突块数量集中在生成物：`docs/persistence-catalog.{md,zh.md}` 各 79 处、`docs/persistence-catalog.i18n.yaml` 39 处、`pnpm-lock.yaml` 17 处。
 
@@ -63,6 +63,10 @@ pnpm run verify-translation-pairing --write <每个改过侧的文件>
 - 定向单测：`agent-loop`/`tools`/`app-boot`/`session-controller`/`official-bundles` 7381 条、`compaction-basic`/`client-modules`/`ui-conversation`/`ui-chat`/`plan-mode` 2248 条，全绿。
 - Web 快照：41 个冲突相关用例 `DSH_SNAPSHOT=refresh` 重录后 replay 全绿（除下述两条预存项）。
 - SDK/session 快照：`bash-tool`、`dynamic-tool-updates`、`tool-error-details`、`office-render-tools`（含 ptc）、`subagent-no-message-tool` replay 全绿。
+
+## 分支与推送
+
+合并先在 `develop` 验证，通过后快进 `master`（`git merge develop --ff-only`，无冲突），两分支均推送 `me`：`me/develop` 与 `me/master` 同指同一合并提交，本地与远端零差异。推送前的 typecheck 门禁（5 门）由 pre-push 钩子在两个分支上各复跑一次，均过。
 
 ## 预存问题（不是本次合并引入）
 

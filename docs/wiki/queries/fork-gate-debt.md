@@ -3,7 +3,7 @@ title: fork 自研包的门禁红项清单
 type: query
 tags: [gates, doc-sync, lint, coverage, constraints, fork, 待办]
 created: 2026-09-18
-updated: 2026-10-03
+updated: 2026-10-27
 sources: []
 status: active
 ---
@@ -23,7 +23,7 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | ~~`verify-tool-catalog`~~ **已清偿（2026-09-18 A2A 文档批）** | `tool-a2a` 未登记进 `TOOL_PACKAGES` | A2A 批 | — |
 | `verify-config-catalog` | `pi-agent-loop` 约 16 处配置字段缺 JSDoc 散文（`a2a-host` 的 5 处已清偿） | pi 后端批 | 给每个 `Config` 字段补一句用途说明 |
 | `verify-client-catalog` | ~~`slot-catalog.ts` 过期~~ **已清偿（2026-09-18 文件面板去重批）** | office 批 | — |
-| ~~`verify-persistence-catalog`~~ **已清偿（2026-09-19 星域批）**；`verify-persistence-changes` 仍红 | `docs/persistence-{catalog,schema}` 过期（跑生成器即绿）；`SessionHeader.backend` / `JsonlHeaderLine.backend` 新增可选字段未确认 | 会话 v3 `backend` 字段批 | 生成物已重跑；确认记录需按 [persistence 变更流程](../../../docs/cookbook/reviewing-persistence-type-changes.md) 写入并处理版本决定 |
+| ~~`verify-persistence-catalog`~~ **已清偿（2026-09-19 星域批）**；~~`verify-persistence-changes`~~ **已清偿（2026-10-27 持久化历史批）** | 布局（v5 记录旧布局缺顶层 `nodes`）、记录分叉（v5 与 action-card-status 共享 4 个根）、`assistant/peer-message` 的来源联合新增 `action-cards` 未确认 | 持久化历史批 | 已修：重编码 v5 快照、重排 action-card-status 的分支为 v5→action-card-status、新增 `2026-10-27-fork-peer-source-kind` 记录。详见[持久化历史分叉与来源种类补记](persistence-history-fork-repair.md) |
 | `verify-config-source-ownership` | `packages/bundle/web-app/cordis.patch.yml:289` 内联 `apiKey: !!js process.env.DSH_A2A_API_KEY` | A2A 批 | 让 `dsh-a2a-host` 接受 `apiKeyEnv` 并经 `ctx.credentials`/环境快照解析，patch 只写变量名（与 `llm-*` 的 `apiKeyEnv` 同型） |
 | `pnpm run lint` | `tool-excalidraw`：src 的 `no-base-to-string`/`no-unnecessary-type-assertion`，tests 的 `no-unsafe-*`（excalidraw 场景 API 是 `any`） | excalidraw 批 | 给场景元素补类型（或 `unknown` + 收窄），测试用类型化 fixture |
 | `pnpm run lint` | `pi-agent-loop/src/agent.ts` 调已弃用的 `snapshotEvents`；`tests/translator.spec.ts` 多余类型断言 | pi 后端批 | 迁到同步读取的替代 API；删掉多余断言 |

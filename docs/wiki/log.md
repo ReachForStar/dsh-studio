@@ -512,3 +512,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 顺带修掉真实缺陷：`isKafkaRunning` 用 `split(':')` 取主机端口，`:9092` 的空主机名会连本机而不被拦（`host === undefined` 是死分支）；改为 `parseBroker` 取最后一个冒号并校验端口为正整数。
 - 验证：三包合计 99 项测试通过，`tsc -b` 通过，`build:artifacts` 7 项通过，`doc-quick` 21 项通过；lib 面端到端复验仍从停止状态自动拉起（`started-via-docker`，553ms）。
 - 关联 [桌面版 Kafka 不可用](queries/desktop-a2a-kafka-unavailable.md)、[A2A 栈](entities/a2a-stack.md)。
+
+## [2026-10-26] chore | 重打包 Linux 桌面版（同版本 0.2.1-rc.2）
+
+- 目的：让已安装的桌面版带上 A2A 状态页的 Kafka 修复。按用户确认采用同版本覆盖（不升版本号）。
+- 两次失败都在下载环节，与构建无关。其一：本机 `https_proxy` 指向的代理直连失败，而直连 npmjs 稳定 200，`prepare-dsh` 保留代理变量导致 pnpm 大量 `ECONNRESET`；去掉六个代理变量后通过。其二：`@electron/get` 缓存 zip 命中后仍需联网取 `SHASUMS256.txt`，改走本地镜像时须对齐 URL 形态（`customDir` 不带 v）与 `sumchecker` 的行格式（`hash *filename`，单空格加标记）。
+- 产物：`dist/desktop/0.2.1-rc.2/` 下 deb（303732032 字节）与 AppImage（387776359 字节）已替换为本次构建，`SHA256SUMS` 重算并通过 `sha256sum -c`。解包核对 ASAR 内 `kafka-detect.js` 含 stdin 传 compose、固定项目名、`failure` 分类与 `parseBroker` 修复；`a2a-status` 含 `kafkaDiagnostic`。
+- 安装需 sudo，非交互会话无法执行，留给用户。
+- 详见 [桌面 deb 发布](queries/desktop-deb-release.md)。

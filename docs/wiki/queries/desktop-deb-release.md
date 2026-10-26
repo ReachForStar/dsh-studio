@@ -3,7 +3,7 @@ title: Linux 桌面 deb 安装包与 Release 工作流
 type: query
 tags: [desktop, deb, release, linux]
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-26
 sources: []
 status: draft
 ---
@@ -60,3 +60,17 @@ Linux 从蓝色鲸鱼 `apps/desktop/resources/icon-linux.svg` 生成 16、24、3
 
 - [修复后的四平台 CI](https://github.com/ReachForStar/dsh-studio/actions/runs/39567304425)四个平台均已成功。新版本地 deb 与 AppImage 的 SHA256 校验通过；客户端修复包已安装，蓝色鲸鱼图标包已生成并通过 SHA256 校验，deb 内 512 像素图标与源 PNG 完全一致，蓝色图标版覆盖安装终端等待用户认证。
 - 按用户授权清理旧清单的 47 个临时路径；升级仍需使用的 5 项保留在 `tmp/desktop-temporary-paths.txt`，本轮新增调试文件未获删除授权。
+
+## 2026-10-26 重打包：两个网络坑与解法
+
+同版本 `0.2.1-rc.2` 重打包以带上 A2A 状态页的 Kafka 修复（[来龙去脉](desktop-a2a-kafka-unavailable.md)）。构建本身无改动，失败全在下载环节。
+
+**坑一：Electron 下载被 `https_proxy` 拖垮。** 本机 `https_proxy=http://127.0.0.1:7890`，该代理直连失败（`curl -x` 对该 URL 返回 000），但**不走代理直连 npmjs 稳定 200**。`prepare-dsh` 的 `runPnpm` 会清掉 `npm_*`/`pnpm_*` 与 `DSH_DESKTOP_*` 变量，却保留 `https_proxy`，于是 pnpm 走坏代理后大量 `ECONNRESET`。解法：打包命令前 `env -u https_proxy -u HTTPS_PROXY -u http_proxy -u HTTP_PROXY -u all_proxy -u ALL_PROXY`。
+
+**坑二：`@electron/get` 的 SHASUMS 格式。** 断网时缓存里的 `electron-v44.7.0-linux-x64.zip` 仍需联网取 `SHASUMS256.txt` 校验，因此准备本地镜像。三处须与库实现对齐，否则反复失败：
+
+- **URL 形态**是 `${ELECTRON_MIRROR}${ELECTRON_CUSTOM_DIR}/${file}`，`customDir` 默认是**版本号本身（不带 v）**；写成 `/v44.7.0/` 会 404。对应设置 `ELECTRON_MIRROR=http://127.0.0.1:8899/` 与 `ELECTRON_CUSTOM_DIR=44.7.0`。
+- **SHASUMS 行格式**受 `sumchecker` 的正则 `/^([\da-fA-F]+) ([ *])(.+)$/` 约束：哈希后必须是**一个空格加一个标记字符**（`*` 或空格），再跟文件名。写两个空格会让第二空格被当成标记，报 `ChecksumMismatchError`。照官方格式写 `hash *filename`。
+- **校验和要真算**：从 zip 现算 sha256，不写伪造值；`zip` 完整性另用 `unzip -t` 核。
+
+产物落 `dist/desktop/0.2.1-rc.2/`（git 忽略），并生成新的 `SHA256SUMS`。安装需 sudo，非交互环境无法完成，留给用户执行。

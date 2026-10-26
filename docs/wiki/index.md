@@ -18,7 +18,7 @@ updated: 2026-10-27
 - [fork Web 面板（ui-polish 的 Git/LaTeX/SSH/画布标签页）](entities/fork-web-panels.md) — 面板职责、`/git/*` 路由表（多仓库卡片、规则与生成模型、合并状态）、`ctx.fs` 接缝之外的守卫与编辑边界，以及文件面板去重。
 - [LaTeX 面板（/latex 路由与 Overleaf 式编辑流程）](entities/latex-panel.md) — 项目发现/文件树/路径基准、xelatex+bibtex 临时镜像编译链路（含文件数/字节/单文件边界与缺失引用诊断）、字体与 tlmgr 安装、AI 写作的模型路由与安全边界。
 - [工作区文件删除（ctx.fs.remove → workspaceFiles.delete → 右侧栏文件树）](entities/workspace-file-deletion.md) — 四层删除链的各层要点、父目录围栏与 `FS_NOT_EMPTY`，以及 `workspaceFiles/remove` 与客户端命名空间服务撞名导致整包启动失败、改方法名后必须重建两侧产物的踩坑。
-- [星域多智能体协作（dsh-xingchen）](entities/xingchen-multi-agent.md) — 四角色划分、本地与 A2A 席位的配置判断、派发入口、会话投影与现有预设接线。
+- [星域多智能体协作（dsh-xingchen）](entities/xingchen-multi-agent.md) — 四角色划分、本地与 A2A 席位的配置判断、派发入口、会话投影与现有预设接线；2026-10-27 新增 `autoRoute` 自动路由（`enabled` + `holdRole`）接入 `agent/pre-step`。
 - [本地 A2A 联调栈（deploy/a2a）](entities/local-a2a-stack.md) — 一条命令拉起 Kafka + 三网关 + Web；已运行则跳过、Kafka 停了自动重启、配置单一来源（`A2A_CONFIG`）与运行期日志位置；Linux 上 `sg docker` 提权、网关 `npm ci` 前置、9310 双占用让位规则。
 
 ## 概念 concepts
@@ -64,4 +64,7 @@ updated: 2026-10-27
 - [合并上游 upstream/master（2026-10-27，rc.3 同步）](queries/upstream-merge-2026-10-27.md) — 176 文件 / 441 块冲突：批量工具接口与 `Agent.model` 的 fork 适配、持久化 schema v1→v2 历史归档重编码、生成物重生成顺序、6 处合并丢失的 i18n 键，以及 88 条既有 lint 红项的归因；收尾快进 `master` 并推送 `me`。
 - [合并上游 upstream/master（2026-10-18）](queries/upstream-merge-2026-10-18.md) — 0.2.1-rc.2 增量合并：20 个冲突按来源取舍、系统提示词快照经 refresh 重生成、基线工作树不可用时降级为「夹具 + 因果源码零差异」代码证据判定，以及本轮红灯归因清单。
 - [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建。
-- [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 蓝色鲸鱼及标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；含本机重打包的两个网络问题（坏代理拖垮 npm 下载、`@electron/get` 的 SHASUMS 行格式）与本地镜像做法。
+- [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 蓝色鲸鱼及标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；含本机重打包的两个网络问题（坏代理拖垮 npm 下载、`@electron/get` 的 SHASUMS 行格式）与本地镜像做法；2026-10-27 补 Release 桌面包三触发（published / `dsh-v*` tag push / 手动 `release_tag` 补传）与按 target 校验非空。
+- [Cua Driver 检测补全与入口迁移（2026-10-27）](queries/cua-driver-detect-and-placement.md) — 检测补齐安装器写入的稳定路径（`~/.local/bin`、`~/.cua-driver/packages/current`、Windows `LOCALAPPDATA`）并按 `X_OK` 判定，check 路由回报 `path`；安装入口从插件卡片 footer 迁到「计算机操作」详情页，安装后自动重检。
+- [任务列表跨轮次消失与状态不回写（2026-10-27）](queries/todo-list-lifetime-and-status.md) — `todos` 投影不再在 `turn/start` 清空（`stateVersion` 2→3），列表跨轮次保留；状态仍归模型 `todo_write` 全量重写，描述追加轮次结束前回写纪律。
+- [持久化历史分叉与来源种类补记（2026-10-27）](queries/persistence-history-fork-repair.md) — v5 记录快照重编码为 v2 布局、`action-card-status` 的 4 个共享根重排为 v5→action-card-status 消分叉、`assistant/peer-message` 来源联合新增 `action-cards` 补 `same-version` 记录；含「判断某根是否需记录要读门禁 tips」的复发预防。

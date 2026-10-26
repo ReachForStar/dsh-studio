@@ -530,3 +530,21 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 验证：`typecheck` 5 门、`build:artifacts` 8 门、`build:check` 2 门、`test:docs` 21 门全过；定向单测 9629 条通过；Web 冲突相关 41 个用例与 SDK/session 5 组夹具 replay 全绿。预存红项（`fresh-round-trip` 的 v5 fixture、WebKit 二进制缺失、88 条既有 lint）已归因，非本轮引入。
 - 新增页面：[合并上游（2026-10-27）](queries/upstream-merge-2026-10-27.md)。关联 [2026-09 合并决策](decisions/2026-09-upstream-sync.md)、[会话内容宽度轴](concepts/conversation-width-axis.md)、[pi 后端](entities/pi-backend.md)。
 - 收尾：`develop` 验证通过后快进 `master`，两分支推送 `me`，指向同一合并提交；推送前 pre-push 在两端各复跑 typecheck 5 门均过。
+
+## [2026-10-27] feat | 星域自动路由、Cua Driver 检测补全、Release 桌面包与任务列表生命周期
+
+- 星域（`packages/xingchen/xingchen`）：新增 `autoRoute` 配置（`enabled` + `holdRole`），`agent/pre-step` 消费 `routeXingchen` 把首轮专家消息直接派给对应席位，答复以 `assistant/peer-message` 进模型可见内容；失败/未完成时不吞消息，留 `xingchen/dispatch-progress` 后交回启明。预设 `xingchen-qiming.patch.yml` 显式声明三席 `local` 与 `autoRoute`。单测 8 项自动路由 + 2 项提示词段落。
+- Cua Driver（`computer-use-cua-driver-mcp` + `ui-plugin-manager`）：检测补齐安装器写入的稳定路径并按 `X_OK` 判定，check 路由回报 `path`；安装入口从插件卡片 footer 迁到「计算机操作」详情页，安装后自动重检。installer/路由/页面共 9 项单测。
+- Release（`.github/workflows/release-desktop.yml`）：三触发（published / `dsh-v*` tag push / 手动 `release_tag` 补传）共用 `RELEASE_TAG`，attach 步骤按 target 产物校验非空并 `--clobber`。
+- 任务列表（`packages/todo/tool-todo`）：`todos` 投影删除 `turn/start` 清空分支（`stateVersion` 2→3），列表跨轮次保留；工具描述追加轮次结束前回写纪律。测试改「跨轮次保留」断言，README 同步。
+- 验证：单测 441 通过 1 跳过；typecheck 5 门全绿；改动文件 lint 清零（xingchen 测试文件 8 条与 installer.ts 5 条为 HEAD 既有债务，installer.ts 已一并修掉）。
+- 沉淀：[星域实体页](entities/xingchen-multi-agent.md) 增自动路由节、[desktop-deb-release](queries/desktop-deb-release.md) 增三触发节并转 active、新建 [Cua Driver 检测补全](queries/cua-driver-detect-and-placement.md) 与 [任务列表生命周期](queries/todo-list-lifetime-and-status.md) 两页，同步 index。
+
+## [2026-10-27] fix | 修复持久化历史门禁：布局、分叉与来源种类补记
+
+- 布局：`docs/persistence-changes/2026-10-03-session-format-v5.schema.json` 由旧布局（根内嵌 `schema`、无顶层 `nodes`）重编码为 v2 布局，逐根校验「内嵌 schema 摘要 == 根 digest」后确认 digest 未变，文件 15453 行 → 267 行。
+- 分叉：fork `v5` 记录与上游 `action-card-status` 记录对 4 个共享根（`agent/inbox/spliced`、`developer/message`、`session/title-llm-request`、`user/message`）同以 `2026-10-13-user-rpc-principal` 为父。改 `action-card-status` 的这 4 个根以 v5 为父、`after` 更新为当前源码 digest、快照重编码——这是唯一语义正确的方向（v5 状态不含 `action-cards` 来源种类）。
+- 补记：新增 `docs/persistence-changes/2026-10-27-fork-peer-source-kind.md`（`same-version`），确认 `assistant/peer-message` 来源联合新增 `action-cards`：该属性是 merge-extensible 的消息来源联合而非 user/developer 归属绑定，未挂载生产者的读者原样保留消息与元数据，既有记录解读不变。
+- 澄清：`event:subagent/catalog` 无需补记——其 tip 是 `2026-09-19-external-subagent-catalog`，digest 与当前源码一致；早先用 `unknown-child-catalog` 快照对比得到的 `payload-version-added` 是取错 tip 所致。
+- 验证：`verify-persistence-changes`（67 根匹配 19 条记录）、`verify-persistence-catalog`、`verify-persistence-formats`（v0–v5）、`verify-persistence-releases`（26 条记录/25 个相邻转换）全绿；action-cards 测试 28 项通过；typecheck 5 门全绿。
+- 沉淀：新建[持久化历史分叉与来源种类补记](queries/persistence-history-fork-repair.md)，更新[门禁红项清单](queries/fork-gate-debt.md)将该门禁转为已清偿，同步 index。

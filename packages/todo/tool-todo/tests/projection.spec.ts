@@ -84,7 +84,7 @@ describe('todos projection provider', () => {
     expect(projections?.asOfSeq).toBe(session.seq - 1)
   })
 
-  it('clears the standing plan on the next turn/start (turn/end keeps it)', async () => {
+  it('keeps the standing plan across turn boundaries until the next write', async () => {
     const bench = await harness(true)
     const session = bench.session
     seedMessage(session)
@@ -93,10 +93,14 @@ describe('todos projection provider', () => {
     session.append('todo/write', { todos: list })
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
     expect((await bench.tailProjections())?.values.todos).toEqual(list)
+    // A new turn does not retire a plan the model has not replaced: a list the
+    // reader still depends on must not vanish because the user typed again.
     session.append('turn/start', { turn: 2 })
-    const cleared = await bench.tailProjections()
-    expect(cleared?.values.todos).toBeNull()
-    expect(cleared?.asOfSeq).toBe(session.seq - 1)
+    const carried = await bench.tailProjections()
+    expect(carried?.values.todos).toEqual(list)
+    expect(carried?.asOfSeq).toBe(session.seq - 1)
+    session.append('todo/write', { todos: [{ content: 'next', status: 'pending' }] })
+    expect((await bench.tailProjections())?.values.todos).toEqual([{ content: 'next', status: 'pending' }])
   })
 
   it('has no todos key when tool-todo is not composed', async () => {

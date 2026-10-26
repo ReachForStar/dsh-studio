@@ -1,6 +1,8 @@
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { A2APeerInfo, A2APeerReply, A2ABridgeConfig } from '@reachforstar/dsh-a2a'
@@ -25,6 +27,7 @@ async function setup(stub: PeerStub): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   // 桥未配置的桩也要能回答 skills；未配置的 agent 没有 skill。
   ctx.provide('a2a', { skills: () => [], ...stub } as never)
   const fiber = ctx.plugin({ ...tool })
@@ -34,16 +37,18 @@ async function setup(stub: PeerStub): Promise<Context> {
 }
 
 let counter = 0
-function call(ctx: Context, name: string, args: unknown): Promise<{ content: { type: string; text?: string }[] }> {
-  return ctx.tools.execute({
+/** Run one A2A tool call through the batch executor and return its settled result. */
+async function call(ctx: Context, name: string, args: unknown): Promise<ToolExecutionResult> {
+  const batch = await ctx.tools.execute({
+    calls: [{ type: 'tool-call', id: ToolCallId(`call-${String(++counter)}`), name, arguments: JSON.stringify(args) }],
     signal,
-    callId: ToolCallId(`call-${String(++counter)}`),
-    name,
-    arguments: args,
   })
+  const settled = batch.results[0]
+  if (settled === undefined) throw new Error(`a2a tool ${name} produced no result`)
+  return settled.result
 }
 
-function textOf(result: { content: { type: string; text?: string }[] }): string {
+function textOf(result: ToolExecutionResult): string {
   return result.content.filter(block => block.type === 'text').map(block => block.text ?? '').join('')
 }
 
@@ -94,7 +99,7 @@ describe('a2a_send', () => {
   it('对等端失败时把失败结果交给调用方', async () => {
     const send = vi.fn(() => Promise.reject(new Error('no A2A peer named "ghost"')))
     const ctx = await setup({ inspect: vi.fn(), send })
-    const result = await call(ctx, 'a2a_send', { peer: 'ghost', message: 'hi' }) as unknown as { isError?: boolean; content: { type: string; text?: string }[] }
+    const result = await call(ctx, 'a2a_send', { peer: 'ghost', message: 'hi' })
     expect(result.isError).toBe(true)
     expect(textOf(result)).toContain('no A2A peer named "ghost"')
   })
@@ -181,7 +186,7 @@ describe('a2a_send 走桥方案', () => {
     const empty = bridgeStub()
     empty.skills?.mockReturnValue([])
     const ctx2 = await setup(empty)
-    const failed = await call(ctx2, 'a2a_send', { peer: 'pi', message: 'x' }) as unknown as { isError?: boolean; content: { type: string; text?: string }[] }
+    const failed = await call(ctx2, 'a2a_send', { peer: 'pi', message: 'x' })
     expect(failed.isError).toBe(true)
     expect(textOf(failed)).toContain('advertises no skill')
   })

@@ -10,6 +10,7 @@
     - tab "画布"
     - tab "LaTeX"
     - tab "SSH"
+  - button "更多会话视图"
 - slider "调整会话内容宽度": "896"
 - text: 只回复 MESSAGES_WEB_READY，不调用工具。 {{clock}}
 - button "复制"

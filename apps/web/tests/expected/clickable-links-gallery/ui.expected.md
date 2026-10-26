@@ -9,6 +9,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: "Assemble the link gallery: write the report and styles, inspect the sources, and summarize. {{clock}}"
 - button "Copy"

@@ -10,6 +10,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: Reply with the single word LIGHTHOUSE and stop. {{clock}}
 - button "Copy"

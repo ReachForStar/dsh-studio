@@ -25,26 +25,32 @@
   - listitem:
     - button "查看 智能体团队": 智能体团队
     - text: 实验性 启用团队协作、团队工具、成员列表和共享任务看板。
+    - status
     - switch "启用 智能体团队"
   - listitem:
     - button "查看 语音输入": 语音输入
     - text: 实验性 在本机使用 SenseVoice 转写录音，首次使用需安装依赖。
+    - status
     - switch "启用 语音输入"
+  - listitem:
+    - button "查看 自定义插件索引": 自定义插件索引
+    - text: 实验性 在插件页添加「发现」标签页，从你添加的插件索引浏览和安装插件。
+    - status
+    - switch "启用 自定义插件索引"
   - listitem:
     - button "查看 自动授权审查": 自动授权审查
     - text: 实验性 提供自动审查权限模式，由模型在每次工具调用前判断是否授权。
+    - status
     - switch "启用 自动授权审查"
-  - listitem:
-    - button "查看 开发者工具": 开发者工具
-    - text: 实验性 查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端
-    - switch "启用 开发者工具"
   - listitem:
     - button "查看 浏览器自动化": 浏览器自动化
     - text: 实验性 启用浏览器自动化工具，由 Playwright MCP 驱动 Chromium。
+    - status
     - switch "启用 浏览器自动化"
   - listitem:
     - button "查看 计算机操作": 计算机操作
     - text: 实验性 启用桌面自动化工具，通过 Cua Driver 读取屏幕并操作指针与键盘。
+    - status
     - switch "启用 计算机操作"
     - text: cua-driver 未安装
     - button "安装 cua-driver"
@@ -53,7 +59,9 @@
   - listitem:
     - button "查看 @fixture/bundle": "@fixture/bundle"
     - text: Registry description for the fixture bundle.
+    - status
     - switch "启用 @fixture/bundle" [checked]
   - listitem:
     - button "查看 dsh-web-scaffold-defaults": dsh-web-scaffold-defaults
+    - status
     - switch "启用 dsh-web-scaffold-defaults" [checked]

@@ -16,7 +16,9 @@ import Loader, { type ModuleLoaderV2 } from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import LocalSshService from '@reachforstar/dsh-ssh-local'
 import { profileComposition } from '../../../settings/settings/tests/profile-composition.ts'
 import * as ToolSsh from '../src/index.ts'
@@ -49,6 +51,8 @@ describe('ssh tools through a real Loader composition', () => {
       "  name: '@deepseek-ai/dsh-tools'",
       '- id: system-prompt',
       "  name: '@deepseek-ai/dsh-system-prompt'",
+      '- id: tool-executor-native',
+      "  name: '@deepseek-ai/dsh-tool-executor-native'",
       '- id: ssh-local',
       "  name: '@reachforstar/dsh-ssh-local'",
       '  config:',
@@ -67,6 +71,7 @@ describe('ssh tools through a real Loader composition', () => {
     const modules = new Map<string, unknown>([
       ['@deepseek-ai/dsh-tools', ToolRuntime],
       ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
+      ['@deepseek-ai/dsh-tool-executor-native', NativeToolExecutor],
       ['@reachforstar/dsh-ssh-local', LocalSshService],
       ['@reachforstar/dsh-tool-ssh', ToolSsh],
     ])
@@ -87,12 +92,16 @@ describe('ssh tools through a real Loader composition', () => {
 
     expect(ctx.tools.schemas().map(schema => schema.name)).toContain('ssh_exec')
 
-    const execute = (name: string, args: Record<string, unknown>) => ctx.tools.execute({
-      signal: new AbortController().signal,
-      callId: ToolCallId(`loader-${name}`),
-      name,
-      arguments: args,
-    })
+    /** Run one composed SSH tool call through the batch executor and return its settled result. */
+    const execute = async (name: string, args: Record<string, unknown>): Promise<ToolExecutionResult> => {
+      const batch = await ctx.tools.execute({
+        calls: [{ type: 'tool-call', id: ToolCallId(`loader-${name}`), name, arguments: JSON.stringify(args) }],
+        signal: new AbortController().signal,
+      })
+      const settled = batch.results[0]
+      if (settled === undefined) throw new Error(`composed SSH tool ${name} produced no result`)
+      return settled.result
+    }
     const textOf = (result: { content: { type: string; text?: string }[] }): string =>
       result.content.filter(block => block.type === 'text').map(block => block.text).join('')
 

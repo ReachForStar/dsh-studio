@@ -11,6 +11,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: Inspect the protected operation, but do not run it unless authorized. {{clock}}
 - button "Copy"
@@ -42,6 +43,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: Inspect the protected operation, but do not run it unless authorized. {{clock}}
 - button "Copy"
@@ -77,6 +79,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - toolbar "Trajectory toolbar":
   - button "Use actual duration": Duration
   - button "Collapse turns": Turns

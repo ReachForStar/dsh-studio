@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Computer Use",
-    "description": "Enable desktop automation tools through the Cua Driver."
+    "title": "Computer provider registry",
+    "description": "Register Computer Use providers by name, with one provider per name."
   }
 }

@@ -520,3 +520,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 产物：`dist/desktop/0.2.1-rc.2/` 下 deb（303732032 字节）与 AppImage（387776359 字节）已替换为本次构建，`SHA256SUMS` 重算并通过 `sha256sum -c`。解包核对 ASAR 内 `kafka-detect.js` 含 stdin 传 compose、固定项目名、`failure` 分类与 `parseBroker` 修复；`a2a-status` 含 `kafkaDiagnostic`。
 - 安装需 sudo，非交互会话无法执行，留给用户。
 - 详见 [桌面 deb 发布](queries/desktop-deb-release.md)。
+
+## [2026-10-27] feat | 合并上游 upstream/master（0.2.1-rc.3 同步，176 文件冲突）
+
+- 规模：上游 master 的 1539 个提交并入 `develop`；**176 个冲突文件、441 处冲突块**，为历轮最高。冲突集中处为生成物（`docs/persistence-catalog.*` 79 处、配对记录 39 处、`pnpm-lock.yaml` 17 处）。
+- 取舍：结构变化一律重生成而非手工合并；fork 已删的云端 CI（`ci.yml` 及三个 spec）维持删除，引用改指 `.github/workflows/` 目录；宽度控件 CSS 取 fork 的滑块版本。
+- 合并引入并修复的真实缺陷：`tools.execute` 改批量接口（pi 后端 + a2a/ssh/xingchen 测试适配）、`Agent.model` 新增必需成员（PiLoopAgent 接入 `AgentModel` 并注册 projection）、`AgentRegistry` 新增 `sessionProjections` 注入、新架构需显式挂 `tool-executor-native`、6 个客户端包在上游新增语种字典里丢失的 i18n 键、`ui-chat` 的 `StatsPills.tsx` 残留旧版。
+- 特殊处理：`v4.schema.json` 由 fork 用旧布局生成，上游把持久化 schema 升级到 v2 布局（顶层 `nodes` + 摘要前缀键），用一次性脚本重编码后 63378 行压缩为 1036 行才通过门禁。`exit_plan_mode` 变为条件工具导致其从 SDK 工具 schema 消失属预期。
+- 验证：`typecheck` 5 门、`build:artifacts` 8 门、`build:check` 2 门、`test:docs` 21 门全过；定向单测 9629 条通过；Web 冲突相关 41 个用例与 SDK/session 5 组夹具 replay 全绿。预存红项（`fresh-round-trip` 的 v5 fixture、WebKit 二进制缺失、88 条既有 lint）已归因，非本轮引入。
+- 新增页面：[合并上游（2026-10-27）](queries/upstream-merge-2026-10-27.md)。关联 [2026-09 合并决策](decisions/2026-09-upstream-sync.md)、[会话内容宽度轴](concepts/conversation-width-axis.md)、[pi 后端](entities/pi-backend.md)。

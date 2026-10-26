@@ -10,6 +10,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - group "Command input": /goal
 - 'button "goal No goal is currently set. Usage: /goal [<objective>|clear|edit <objective>|pause|resume]"'

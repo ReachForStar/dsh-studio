@@ -11,6 +11,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: Clean up the stale build log. {{clock}}
 - button "Copy"
@@ -41,6 +42,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: Clean up the stale build log. {{clock}}
 - button "Copy"

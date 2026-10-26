@@ -79,6 +79,7 @@
     "@deepseek-ai/dsh-subagent": "workspace:*",
     "@deepseek-ai/dsh-system-prompt": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*",
+    "@deepseek-ai/dsh-tool-executor-native": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:*",
     "@reachforstar/dsh-a2a": "workspace:*"
   }

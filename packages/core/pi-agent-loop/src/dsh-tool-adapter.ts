@@ -11,7 +11,7 @@
  */
 
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, ToolCallBlock } from '@deepseek-ai/dsh-llm'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type ToolRuntime from '@deepseek-ai/dsh-tools'
 import { Type, type TSchema } from 'typebox'
@@ -129,14 +129,15 @@ export function adaptDshTool(
     description: tool.description,
     parameters,
     execute: async (toolCallId, params, signal) => {
-      const result = await tools.execute({
-        callId: ToolCallId(toolCallId),
+      const call: ToolCallBlock = {
+        type: 'tool-call',
+        id: ToolCallId(toolCallId),
         name: tool.name,
-        arguments: params,
-        agent,
-        signal: signal ?? new AbortController().signal,
-      })
-      return { content: result.content }
+        arguments: JSON.stringify(params),
+      }
+      const batch = await tools.execute({ calls: [call], agent, signal: signal ?? new AbortController().signal })
+      const settled = batch.results[0]
+      return { content: settled === undefined ? [] : settled.result.content }
     },
   }
 }

@@ -9,6 +9,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: Show the Markdown image policy. {{clock}}
 - button "Copy"

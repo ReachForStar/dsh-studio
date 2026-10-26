@@ -10,6 +10,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - button "/user-invoke-demo"
 - button "meeting notes-this-is-a-very-long-filename-for-testing-user-message-file-references-and-preview-layout.md"

@@ -57,7 +57,8 @@ export function CuaDriverInstall({ t }: { readonly t: Translate }): ReactNode {
           try {
             const message = JSON.parse(line) as { type: string; line?: string; message?: string; exitCode?: number }
             if (message.type === 'log' && message.line !== undefined) {
-              setState(prev => prev.phase === 'installing' ? { phase: 'installing', lines: [...prev.lines, message.line!] } : prev)
+              const text = message.line
+              setState(prev => prev.phase === 'installing' ? { phase: 'installing', lines: [...prev.lines, text] } : prev)
             } else if (message.type === 'done') {
               setState(message.exitCode === 0 ? { phase: 'done' } : { phase: 'error', message: `Exit code ${message.exitCode}` })
             } else if (message.type === 'error') {

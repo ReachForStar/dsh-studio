@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
 import LocalSshService from '@reachforstar/dsh-ssh-local'
@@ -35,6 +37,7 @@ async function mountStack(ctx: Context): Promise<void> {
   } as never)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(ToolSsh)
 }
 
@@ -45,14 +48,28 @@ async function setup(): Promise<Context> {
   return ctx
 }
 
-function execute(ctx: Context, name: string, args: Record<string, unknown>, agent?: object) {
-  return ctx.tools.execute({
-    signal: new AbortController().signal,
-    callId: ToolCallId(`ssh-tool-${name}`),
-    name,
-    arguments: args,
-    ...agent !== undefined ? { agent } : {},
-  } as never)
+/** Run one SSH tool call through the batch executor and return its settled result. */
+async function execute(
+  ctx: Context, name: string, args: Record<string, unknown>, agent?: object,
+): Promise<ToolExecutionResult> {
+  return runCall(ctx, name, args, new AbortController().signal, agent)
+}
+
+async function runCall(
+  ctx: Context,
+  name: string,
+  args: Record<string, unknown>,
+  signal: AbortSignal,
+  agent?: object,
+): Promise<ToolExecutionResult> {
+  const batch = await ctx.tools.execute({
+    calls: [{ type: 'tool-call', id: ToolCallId(`ssh-tool-${name}`), name, arguments: JSON.stringify(args) }],
+    signal,
+    ...agent !== undefined ? { agent: agent as never } : {},
+  })
+  const settled = batch.results[0]
+  if (settled === undefined) throw new Error(`ssh tool ${name} produced no result`)
+  return settled.result
 }
 
 function text(result: { content: { type: string; text?: string }[] }): string {
@@ -207,12 +224,7 @@ describe('ssh tools', () => {
       auth: 'password', password: TEST_SSH_PASSWORD,
     })
     const controller = new AbortController()
-    const running = ctx.tools.execute({
-      signal: controller.signal,
-      callId: ToolCallId('ssh-tool-abort'),
-      name: 'ssh_exec',
-      arguments: { connection: 'box', command: 'node -e "setTimeout(() => {}, 60000)"' },
-    })
+    const running = runCall(ctx, 'ssh_exec', { connection: 'box', command: 'node -e "setTimeout(() => {}, 60000)"' }, controller.signal)
     setTimeout(() => { controller.abort() }, 400)
     const result = await running
     expect(result.isError).toBe(true)

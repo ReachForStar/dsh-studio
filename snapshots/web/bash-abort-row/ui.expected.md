@@ -9,6 +9,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: "Run two shell commands: wait for cancellation, then write skipped.txt. {{clock}}"
 - button "Copy"

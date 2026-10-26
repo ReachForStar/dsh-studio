@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "浏览器自动化",
-    "description": "启用浏览器自动化工具，由 Playwright MCP 驱动 Chromium。"
+    "title": "浏览器服务注册",
+    "description": "按名称注册独占的浏览器操作提供方。"
   }
 }

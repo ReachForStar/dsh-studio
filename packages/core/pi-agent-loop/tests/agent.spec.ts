@@ -3,6 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import SessionStore from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import { PiLoop, PiLoopAgent } from '@deepseek-ai/dsh-pi-agent-loop'
 import type { PiAgentSessionLike, OpenPiSession } from '@deepseek-ai/dsh-pi-agent-loop'
@@ -71,6 +72,7 @@ describe('PiLoop factory', () => {
   it('registers under the pi backend and creates a pi-backed agent', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     const openCalls: string[] = []
     const openSession: OpenPiSession = async ({ cwd }) => {
@@ -93,6 +95,7 @@ describe('PiLoop factory', () => {
   it('routes resume with backend pi to the Pi factory', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     // A persisted pi session is required for resume to load its header + history.
     ctx.provide('sessionPersistence', {
@@ -116,6 +119,7 @@ describe('PiLoop factory', () => {
   it('forwards configured gateway providers to the session opener', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     let receivedProviders: unknown
     await ctx.plugin(PiLoop, {

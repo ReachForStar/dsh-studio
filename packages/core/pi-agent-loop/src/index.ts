@@ -19,6 +19,9 @@ import type {
   CreateAgentOptions,
   ResumeAgentOptions,
 } from '@deepseek-ai/dsh-agent'
+import { modelSelectionProjectionDefinition } from '@deepseek-ai/dsh-agent'
+import type { ModelSelectionProjectionState } from '@deepseek-ai/dsh-agent'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import { interruptedTurnClosers, SessionPreparation } from '@deepseek-ai/dsh-session'
 import type { SessionEvent, SessionHeader, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { PiLoopAgent } from './agent.ts'
@@ -81,8 +84,10 @@ export interface PiLoopConfig {
  * itself under the `pi` backend via {@link AgentRegistry.setFactory}.
  */
 export class PiLoop extends Service implements AgentFactory {
-  static inject = ['agents', 'sessions']
+  static inject = ['agents', 'sessions', 'sessionProjections']
 
+  /** Model-selection projection reader shared by every Pi-driven Session. */
+  private modelProjectionHandle!: ProjectionHandle<ModelSelectionProjectionState>
   private readonly openSession: OpenPiSession
   private readonly providers: readonly PiProviderConfig[]
   private readonly model: { readonly provider: string; readonly modelId: string } | undefined
@@ -93,6 +98,10 @@ export class PiLoop extends Service implements AgentFactory {
     this.providers = config.providers ?? []
     this.model = config.model
     ctx.effect(() => ctx.agents.setFactory(this, 'pi'), 'piAgentLoop.setFactory()')
+  }
+
+  protected async [Service.init](): Promise<void> {
+    this.modelProjectionHandle = await this.ctx.sessionProjections.register(modelSelectionProjectionDefinition)
   }
 
   async createAgent(_ownerCtx: Context, options: CreateAgentOptions): Promise<AgentHandle> {
@@ -209,6 +218,7 @@ export class PiLoop extends Service implements AgentFactory {
       durable?.handle,
       durable?.stored,
       route,
+      () => this.modelProjectionHandle.stateOf(preparation.session),
     )
     const tools = this.ctx.get('tools')
     if (tools !== undefined) {

@@ -381,8 +381,12 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     ).toBeGreaterThanOrEqual(1)
     await expect.poll(() => page.locator('[role="treeitem"][aria-selected="true"]').count(), { timeout: 10_000 }).toBe(1)
     await expect.poll(() => page.getByText('LIGHTHOUSE', { exact: true }).count(), { timeout: 15_000 }).toBeGreaterThanOrEqual(1)
-    // The usage pill's one label span concatenates the billed total and the cache-hit share.
-    await expect.poll(() => page.getByRole('button', { name: /Cache hit 99\.5%/ }).count(), { timeout: 15_000 }).toBe(1)
+    // This composition mounts ui-polish, whose stats float replaces the core
+    // usage pill; its collapsed capsule is the composer's usage readout.
+    await expect.poll(
+      () => page.locator('[data-ui-polish-stats]').count(),
+      { timeout: 15_000 },
+    ).toBe(1)
     // Host: the session's durable header cwd is the folder the workspace
     // flow created and adopted (<workspaceCwd>/workspace) — the proof the
     // send went through workspace materialization rather than a bare

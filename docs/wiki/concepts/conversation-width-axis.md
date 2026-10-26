@@ -3,7 +3,7 @@ title: 会话内容宽度轴（--dsh-chat-content-width）
 type: concept
 tags: [web, ui, conversation, layout, css-variable, slider]
 created: 2026-09-17
-updated: 2026-09-19
+updated: 2026-10-27
 sources: []
 status: active
 ---
@@ -44,6 +44,14 @@ status: active
 第二轮上游合并（882 提交）把该控件覆盖回上游的**左右两条 40px 拖拽手柄**版本：`ConversationWidthControls.tsx` 整个文件取了上游侧，`Slider` 的实现只剩 `ui-primitives` 与 locale 键还在，Agent Note 记录的设计在代码里消失。恢复方式是按 Agent Note 重写该组件（Slider + 顶部条），删除 `.widthHandle` 系列的 CSS（命中条、辉光、`data-dragging`），并把 `tests/width-handle-styles.client.spec.ts` 换成 `tests/width-slider-styles.client.spec.ts`。
 
 同批修掉的还有：`hero` 阶段与 `<640+176` 列宽不渲染控件、`skeleton.client.spec.tsx` 里手柄的指针/滚轮用例改为滑块的步进—持久化—重钳制往返。**判据**：宽度滑块的实现分布在 `ui-conversation/src/client/skeleton/ConversationWidthControls.tsx`、`ConversationRoot.module.css`（`.widthSlider`）、`ConversationContent.tsx`（渲染位置与文案注入）、`contract/slots.ts`（input props）五处，合并冲突时要一起看，只保文件不保语义会再次丢掉控件。
+
+## 第三轮上游合并后的状态（2026-10-27）
+
+第三次上游合并（1539 提交）同样把 `ConversationRoot.module.css` 的宽度控件覆盖回拖拽手柄。本轮按 fork 设计恢复：`ConversationRoot.module.css` 只保留 `.widthSlider` 系列规则，`.widthHandle` 全部删除；`ConversationWidthControls.tsx`（Slider + 顶部条）未受影响。
+
+同轮补回 6 个语种（de/es/fr/ja/pt/ru）缺失的 `width.slider` 与 `width.sliderValue` 两个键：上游新增这些字典时只带了上游自己的键集，fork 的宽度控件文案没有随之进入。
+
+上游把 `conversation.session.header.views.actions` 的「More conversation views」加入同一标签栏；它与本页的宽度滑块互不影响（一个是视图切换，一个是内容宽度），冲突时两者都要保留。判定依据：`ConversationSession.tsx` 里 `hasEntryActions` 为真时渲染 `ViewsMoreMenu`，与 `.widthSlider` 的渲染位置（`.body` 内、滚动区之前）无交叠。`apps/web/tests/question-composer.e2e.ts` 里依赖拖拽手柄的 `dragChatWidth` 已改为操作 `[data-conversation-width-slider] input[type="range"]`。
 
 ## 关联页面
 

@@ -10,6 +10,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "668"
 - text: poem.txt TXT 16B
 - button "reference-1.png, click to view original":

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Browser Use",
-    "description": "Enable browser automation tools driven by Playwright MCP."
+    "title": "Browser provider registry",
+    "description": "Register browser automation providers by name, with one provider per name."
   }
 }

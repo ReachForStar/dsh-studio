@@ -16,7 +16,8 @@ import type {
   InboxTarget,
   Inbox,
 } from '@deepseek-ai/dsh-agent'
-import { emitAgentEvent } from '@deepseek-ai/dsh-agent'
+import { AgentModel, emitAgentEvent } from '@deepseek-ai/dsh-agent'
+import type { ModelSelectionProjectionState } from '@deepseek-ai/dsh-agent'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import type { TextBlock } from '@deepseek-ai/dsh-llm'
@@ -26,6 +27,9 @@ import type { Context } from '@deepseek-ai/cordis'
 import { PiEventTranslator } from './pi-event-translator.ts'
 import { adaptDshTool } from './dsh-tool-adapter.ts'
 import { adaptPiTool } from './pi-tool-adapter.ts'
+
+/** Selection state for a loop mounted without a projection reader (tests). */
+const emptyModelState = (): ModelSelectionProjectionState => ({ lastUsed: null, pending: null })
 
 /** The Pi AgentSession surface this driver needs; narrow so tests can supply a stub. */
 export interface PiAgentSessionLike {
@@ -80,6 +84,8 @@ export class PiLoopAgent implements Agent {
   readonly options: AgentOptions
   readonly session: Session
   readonly inbox: Inbox
+  /** Agent-owned durable model selection shared with the Host's projection readers. */
+  readonly model: AgentModel
   /** Lifetime scope owning this driver's registrations; disposed with the agent. */
   readonly scope: Scope
   readonly ctx: Context
@@ -106,10 +112,12 @@ export class PiLoopAgent implements Agent {
     durable?: PiDurableWrite,
     storedCount?: number,
     modelRoute?: { readonly provider: string; readonly modelId: string },
+    readModel?: () => ModelSelectionProjectionState,
   ) {
     this.id = id
     this.options = options
     this.session = session
+    this.model = new AgentModel(readModel ?? emptyModelState, session, options)
     this.piSession = piSession
     this.durable = durable
     this.stored = storedCount ?? 0

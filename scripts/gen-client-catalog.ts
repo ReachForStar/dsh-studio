@@ -43,14 +43,14 @@ const MAX_DECL_CHARS = 1200
 /**
  * Line budget for ONE slot's expanded report. The whole point of narrowing to a
  * single slot is to spend less context, so a report a model cannot finish
-* reading is a defect rather than a detail. The widest measured upstream slot
+ * reading is a defect rather than a detail. The widest measured upstream slot
  * renders 60 lines.
  *
  * This fork's shipped toolviews raise the widest report
  * (`tool.call.toolview`: three Excalidraw registrations beside the shipped
  * rows, plus one owner member), which is surface growth rather than an owner
- * share or prose that ran away, so the ceiling holds at roughly twice the
- * original measurement instead of cutting documented contract text.
+ * share or prose that ran away, so the ceiling holds above the upstream
+ * measurement instead of cutting documented contract text.
  */
 const MAX_ENTRY_LINES = 128
 

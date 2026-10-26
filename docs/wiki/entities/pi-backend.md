@@ -3,7 +3,7 @@ title: pi 后端（pi-agent-loop）
 type: entity
 tags: [pi, agent-loop, backend, session, amax]
 created: 2026-09-17
-updated: 2026-09-24
+updated: 2026-10-27
 sources: []
 status: active
 ---
@@ -45,6 +45,7 @@ status: active
 
 ## 重要变更记录
 
+- 2026-10-27：合并上游 `0.2.1-rc.3` 同步，适配三处上游接口变更。(1) `tools.execute` 由单调用改为批量——`dsh-tool-adapter.ts` 用 `{ calls: [ToolCallBlock], signal, agent }` 提交，从 `batch.results[0].result.content` 取回内容；(2) `Agent` 新增必需成员 `model: Model`——`PiLoopAgent` 改用上游 `AgentModel(readModel, session, options)`，`PiLoop` 在 `[Service.init]` 注册 `modelSelectionProjectionDefinition` 并把 `stateOf(session)` 作为读取器传入；(3) `AgentRegistry` 新增 `sessionProjections` 注入，测试 setup 需补挂 `SessionProjectionRegistry`。详见 [合并上游（2026-10-27）](../queries/upstream-merge-2026-10-27.md)。
 - 2026-09：合并上游 `upstream/master`，完成上表全部适配；`typecheck`/`build` 通过，e2e 在无 `AMAX_API_KEY` 时自跳过。
 - 2026-09-24：`PiEventTranslator` 记录模型——`PiLoop.launch` 解析的模型路由（`this.model` 或 `agentOptions.provider/model`）经 agent 传入翻译器，`assistant/message` 的 source 由硬编码空 `provider`/`model` 改为记真实值（路由未设时记空，语义「未知模型」）。配合会话校验放宽修复重载报错，见 [会话重载校验报错](../queries/session-reload-model-source.md)。
 - 已知限制见 `packages/core/pi-agent-loop/README.md` 的「Known Limitations and Deferred Work」：inbox 不接管、无 `agent/session-start`、Pi 专有工具特性不做近似、模型路线需显式声明、resume 依赖持久化。

@@ -34,6 +34,8 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*",
+    "@deepseek-ai/dsh-tool-executor-native": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
     "@reachforstar/dsh-a2a": "workspace:*"
   }
 }

@@ -6,8 +6,7 @@
     - tab "Trajectory"
     - tab "Git"
     - tab "Canvas"
-    - tab "LaTeX"
-    - tab "SSH"
+  - button "More conversation views"
 - text: Show the local preview URL. {{clock}}
 - button "Copy"
 - status: Completed

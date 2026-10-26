@@ -9,11 +9,7 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
-    - tab "Git"
-    - tab "Canvas"
-    - tab "LaTeX"
-    - tab "SSH"
-- slider "Adjust the conversation content width": "896"
+  - button "More conversation views"
 - navigation "Turn navigation":
   - button "Jump to turn 1"
   - button "Jump to turn 2"
@@ -54,4 +50,4 @@
 - 'button "Access mode, current: Custom"': Custom
 - button "Stop generating"
 - button "Send message" [disabled]
-- button "1 turns · 1 steps"
+- button "1 turns 1 steps"

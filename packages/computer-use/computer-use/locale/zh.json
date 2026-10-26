@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "计算机操作",
-    "description": "启用桌面自动化工具，通过 Cua Driver 读取屏幕并操作指针与键盘。"
+    "title": "电脑操作服务注册",
+    "description": "按名称注册独占的电脑操作提供方。"
   }
 }

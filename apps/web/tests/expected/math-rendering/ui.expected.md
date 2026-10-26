@@ -9,6 +9,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - text: Render this mathematical proof. {{clock}}
 - button "Copy"
@@ -23,6 +24,7 @@
   - text: .
 - math: π 4 < θ < π 2
 - math: θ ∈ ( π 4 , π 2 ) . (1)
+- math: α + β γ
 - table:
   - rowgroup:
     - row "Symbol Value":

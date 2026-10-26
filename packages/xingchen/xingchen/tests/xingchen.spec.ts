@@ -1,7 +1,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { AgentModel } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import { ManualCompactionError } from '@deepseek-ai/dsh-compaction'
@@ -10,11 +10,13 @@ import { Session, SessionId, SessionStore } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import type { A2ABridgeConfig, A2ADispatchRequest, A2APeerReply } from '@reachforstar/dsh-a2a'
 import type { SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session/types'
 import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
 import * as xingchen from '../src/index.ts'
-import type { XingchenConfig } from '../src/index.ts'
+import type { XingchenConfig, XingchenUnitState } from '../src/index.ts'
 import * as xingchenClear from '../src/clear.ts'
 import { routeXingchen } from '../src/route.ts'
 
@@ -85,6 +87,7 @@ function stubAgent(ctx: Context, id: string): { agent: Agent; session: Session }
     options: {},
     session,
     inbox,
+    model: new AgentModel(() => ({ lastUsed: null, pending: null }), session, {}),
     ctx: new Context(),
     get status() { return status },
     send: () => {},
@@ -134,6 +137,7 @@ async function harness(stub: A2AStub = a2aStub(), mode: 'auto' | 'a2a' = 'a2a', 
   await ctx.plugin(CommandRuntime)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(AgentRegistry)
   ctx.provide('a2a', stub as never)
   const subagents = subagentStub()
@@ -149,21 +153,25 @@ async function harness(stub: A2AStub = a2aStub(), mode: 'auto' | 'a2a' = 'a2a', 
 }
 
 let toolCounter = 0
-function runTool(ctx: Context, agent: Agent, args: unknown): Promise<unknown> {
-  return ctx.tools.execute({
+/** Run one xingchen_route call through the batch executor and return its settled result. */
+async function runTool(ctx: Context, agent: Agent, args: unknown): Promise<ToolExecutionResult> {
+  const batch = await ctx.tools.execute({
+    calls: [{
+      type: 'tool-call',
+      id: ToolCallId(`xingchen-call-${String(++toolCounter)}`),
+      name: 'xingchen_route',
+      arguments: JSON.stringify(args),
+    }],
     signal,
-    callId: ToolCallId(`xingchen-call-${String(++toolCounter)}`),
-    name: 'xingchen_route',
-    arguments: args,
     agent,
   })
+  const settled = batch.results[0]
+  if (settled === undefined) throw new Error('xingchen_route produced no result')
+  return settled.result
 }
 
 /** Model-facing outcome of one tool call, including the failure envelope. */
-interface ToolOutcome {
-  readonly content: readonly { type: string; text?: string }[]
-  readonly isError?: boolean
-}
+type ToolOutcome = ToolExecutionResult
 
 function textOf(result: ToolOutcome): string {
   return result.content.filter(block => block.type === 'text').map(block => block.text ?? '').join('')
@@ -351,6 +359,7 @@ describe('本机专家席（默认）', () => {
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     await ctx.plugin(AgentRegistry)
     ctx.provide('a2a', a2aStub() as never)
     const stuck = {
@@ -389,6 +398,7 @@ describe('本机专家席（默认）', () => {
       await ctx.plugin(CommandRuntime)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
+      await ctx.plugin(NativeToolExecutor)
       await ctx.plugin(AgentRegistry)
       ctx.provide('a2a', a2aStub() as never)
       const subagents = subagentStub()
@@ -417,9 +427,7 @@ describe('本机专家席（默认）', () => {
 describe('xingchen_route 委派工具', () => {
   it('把自包含任务委派给专家角色并带角色前缀返回', async () => {
     const test = await harness()
-    const result = await runTool(test.ctx, test.agent, { role: 'tianquan', task: '称量这段架构' }) as {
-      content: readonly { type: string; text?: string }[]
-    }
+    const result = await runTool(test.ctx, test.agent, { role: 'tianquan', task: '称量这段架构' }) as ToolOutcome
     expect(test.a2a.send).toHaveBeenCalledTimes(1)
     expect(textOf(result)).toBe('[天权] 专家回答')
   })
@@ -502,8 +510,8 @@ describe('xingchen 会话投影', () => {
   it('手动停止的轮次终止回投影为 user 原因的 aborted', async () => {
     const test = await harness()
     test.session.append('turn/end', { turn: 1, reason: { kind: 'aborted', reason: { kind: 'user' } } })
-    expect(test.ctx.sessionProjections.stateOf(test.session, 'xingchen')?.lastTurnReason)
-      .toEqual({ kind: 'aborted', cause: 'user' })
+    const state: XingchenUnitState = test.ctx.sessionProjections.stateOf(test.session, 'xingchen') as XingchenUnitState
+    expect(state.lastTurnReason).toEqual({ kind: 'aborted', cause: 'user' })
   })
 })
 
@@ -524,6 +532,7 @@ describe('@reachforstar/dsh-xingchen/clear', () => {
   async function clearHarness(compactNow: ReturnType<typeof vi.fn>): Promise<ClearHarness> {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(AgentRegistry)
     ctx.provide('compaction', { compactNow } as never)
@@ -653,6 +662,7 @@ describe('进度上报 xingchen/dispatch-progress', () => {
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     await ctx.plugin(AgentRegistry)
     ctx.provide('a2a', a2aStub() as never)
     const failed = { startActivation: vi.fn(() => Promise.resolve({

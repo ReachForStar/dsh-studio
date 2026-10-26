@@ -14,6 +14,7 @@
     - tab "Canvas"
     - tab "LaTeX"
     - tab "SSH"
+  - button "More conversation views"
 - slider "Adjust the conversation content width": "896"
 - navigation "Turn navigation":
   - button "Jump to turn 1"

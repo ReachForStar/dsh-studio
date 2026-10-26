@@ -3,12 +3,22 @@ import { adaptDshTool } from '@deepseek-ai/dsh-pi-agent-loop'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type ToolRuntime from '@deepseek-ai/dsh-tools'
 
-/** A minimal fake of the dsh ToolRuntime.execute surface. */
+/** A minimal fake of the dsh ToolRuntime batch-execute surface. */
 function fakeTools(calls: Array<{ name: string; args: unknown; callId: string }>) {
   return {
-    async execute(exec: { callId: string; name: string; arguments: unknown }) {
-      calls.push({ name: exec.name, args: exec.arguments, callId: exec.callId })
-      return { content: [{ type: 'text' as const, text: `ran ${exec.name}` }] }
+    async execute(input: { calls: readonly { id: string; name: string; arguments: string }[] }) {
+      const results = input.calls.map((call) => {
+        calls.push({ name: call.name, args: JSON.parse(call.arguments) as unknown, callId: call.id })
+        return {
+          callId: call.id,
+          result: {
+            isError: false as const,
+            value: null,
+            content: [{ type: 'text' as const, text: `ran ${call.name}` }],
+          },
+        }
+      })
+      return { results, additionalContexts: [], concluded: false }
     },
   } as unknown as ToolRuntime
 }

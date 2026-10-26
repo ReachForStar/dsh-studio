@@ -3,7 +3,7 @@ title: 合并上游 upstream/master（2026-09）
 type: decision
 tags: [upstream-sync, merge, cordis, ssh, session-format]
 created: 2026-09-17
-updated: 2026-10-15
+updated: 2026-10-27
 sources: []
 status: active
 ---
@@ -64,6 +64,15 @@ fork（ReachForStar/dsh-studio）自分叉点起有 99 个自研提交（pi 后�
 ## 历史文档处理
 
 fork 此前的逐日任务报告位于 `doc/`（11 份，2026-09-03 ~ 09-05）。本轮把它们按主题并入本 wiki 的查询页（[客户端栈迁移](../queries/fork-client-stack-migration.md)、[Web 修复与快照通道](../queries/fork-web-ui-repairs.md)、[pi 后端实现历程](../queries/pi-backend-implementation.md)）后删除该目录，避免与 `docs/wiki/` 形成两套知识源；原始文本保存在 git 历史中。
+
+## 后续轮次：2026-10-27 合并上游（规模最高的一轮）
+
+策略不变，新增两条取舍准则：
+
+1. **上游把接口改成批量或加必需成员时，以 `typecheck` 作为主判据**。本轮 `tools.execute` 从单调用变批量、`Agent` 新增 `model: Model`、`AgentRegistry` 新增 `sessionProjections` 注入，都直接让 fork 自研包编译失败。这比快照差异更早暴露、定位更准，因此合并后先跑 `pnpm run typecheck`，再动快照。
+2. **生成物的布局升级不能靠生成脚本自然产出**。上游把持久化 schema 从「schema 内联在 root/type 上」改为「顶层 nodes 表 + 摘要前缀键」，fork 的历史归档 `v4.schema.json` 仍是旧布局，`verify-persistence-formats` 报 `missing field nodes`。这类升级需要一次性重编码脚本（本轮把 63378 行压到 1036 行），而不是放宽校验或改历史数据。
+
+本轮细节见 [合并上游（2026-10-27）](../queries/upstream-merge-2026-10-27.md)。
 
 ## 后续轮次：2026-10-15 合并上游
 

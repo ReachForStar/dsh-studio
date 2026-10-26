@@ -67,7 +67,7 @@ fork 自研的 Agent2Agent 支持，位于 `packages/a2a/`，三个包都是 `@r
 - **每个被委派的 A2A 席位没有自己的超时**：`seats.<role>.timeoutMs` 只约束 `local` 席位；A2A 席位靠对端网关的 `taskTimeoutMs`（bridge 默认 600s）收尾，对端不响应时会一直等。
 - 总线通道的 `GetTask` 可见性依赖 bridge 网关是否把总线任务并入 A2A 任务表：2026-09-20 实测 bridge 的 cc 网关**没有**并入（其自身 CLI 的 bus 派发同样查不到），详见[总线任务可见性实测](../queries/a2a-bus-task-visibility.md)。
 - 只处理文本 part；文件与结构化 part 不翻译。
-- 覆盖率：`packages/a2a/*/src` 约 96% 语句 / 88% 分支，剩余为可选配置的 `? :` 分支，追 100% 需补组合用例。
+- 覆盖率：`packages/a2a/*/src` 约 96% 语句 / 88% 分支，剩余为可选配置的 `? :` 分支，追 100% 需补组合用例。例外是本次修复触及的 `a2a-host/src/kafka-detect.ts` 与 `a2a-status/src/index.ts`：两者已按每文件 100% 补齐，并与客户端两个文件一起实测四项全绿；`kafka-detect` 靠 `probe` / `dockerAvailable` / `wslAvailable` 三个同形注入点驱动，细节见[桌面版 Kafka 不可用](../queries/desktop-a2a-kafka-unavailable.md#覆盖率追到-100同日)。
 - Kafka 就绪只到端口层：`kafka-detect` 用 TCP 探测判断可达，不校验分区、ISR 与主题配置。
 
 ## 关联

@@ -13,6 +13,13 @@ import { dirname, join } from 'node:path'
 /** Kafka broker 地址列表。 */
 export type KafkaBrokers = readonly string[]
 
+/**
+ * broker 可达性探测。
+ * @param brokers - 待探测的 `host:port` 列表。
+ * @returns 任一 broker 可连时为 true。
+ */
+export type BrokerProbe = (brokers: KafkaBrokers) => Promise<boolean>
+
 /** ensureKafka 的结果。 */
 export interface KafkaEnsureResult {
   /** Kafka 是否已就绪（检测到运行或成功启动）。 */
@@ -69,6 +76,8 @@ export interface EnsureKafkaOptions {
   dockerAvailable?: () => Promise<boolean>
   /** 覆盖 WSL 可用性探测，供测试隔离宿主机平台。 */
   wslAvailable?: () => Promise<boolean>
+  /** 覆盖 broker 可达性探测，供测试驱动就绪与等待分支而不依赖真实网络。 */
+  probe?: BrokerProbe
   /** 启动命令执行后等待 broker 监听的时限，默认 30 秒；0 只探一次。 */
   startupTimeoutMs?: number
 }
@@ -95,17 +104,29 @@ function isPortReachable(host: string, port: number, timeoutMs = 500): Promise<b
 }
 
 /**
+ * 解析 `host:port`。
+ * @param broker - 待解析的地址。
+ * @returns 主机与端口；缺少分隔符、主机为空或端口不是正整数时为 undefined。
+ */
+function parseBroker(broker: string): { host: string; port: number } | undefined {
+  // 取最后一个冒号：带方括号的 IPv6 字面量（如 [::1]:9092）也能切对。
+  const separator = broker.lastIndexOf(':')
+  if (separator <= 0) return undefined
+  const port = Number(broker.slice(separator + 1))
+  if (!Number.isInteger(port) || port <= 0) return undefined
+  return { host: broker.slice(0, separator), port }
+}
+
+/**
  * 检测 Kafka 集群是否已运行：对每个 broker 做 TCP 探测，至少一个可达即认为已运行。
  * @param brokers - 待探测的 `host:port` 列表，默认本机三 broker。
  * @returns 任一 broker 可达时为 true。
  */
 export async function isKafkaRunning(brokers: KafkaBrokers = DEFAULT_BROKERS): Promise<boolean> {
-  const results = await Promise.all(brokers.map(async (b) => {
-    const parts = b.split(':')
-    const host = parts[0]
-    const port = Number(parts[1])
-    if (host === undefined || Number.isNaN(port)) return false
-    return isPortReachable(host, port)
+  const results = await Promise.all(brokers.map(async (broker) => {
+    const parsed = parseBroker(broker)
+    if (parsed === undefined) return false
+    return isPortReachable(parsed.host, parsed.port)
   }))
   return results.some(Boolean)
 }
@@ -173,14 +194,15 @@ function messageOf(error: unknown): string {
  * 等待 broker 可连。
  * @param brokers - 待探测的 broker 列表。
  * @param timeoutMs - 等待时限；0 表示只探一次。
+ * @param probe - 可达性探测，默认走 TCP 端口探测。
  * @returns 时限内任一次探测可达时为 true。
  */
-async function waitForBrokers(brokers: KafkaBrokers, timeoutMs: number): Promise<boolean> {
-  if (await isKafkaRunning(brokers)) return true
+async function waitForBrokers(brokers: KafkaBrokers, timeoutMs: number, probe: BrokerProbe): Promise<boolean> {
+  if (await probe(brokers)) return true
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 1000))
-    if (await isKafkaRunning(brokers)) return true
+    if (await probe(brokers)) return true
   }
   return false
 }
@@ -197,6 +219,7 @@ export async function ensureKafka(options: EnsureKafkaOptions = {}): Promise<Kaf
   const startupTimeoutMs = options.startupTimeoutMs ?? DEFAULT_STARTUP_TIMEOUT_MS
   const dockerAvailable = options.dockerAvailable ?? isDockerAvailable
   const wslAvailable = options.wslAvailable ?? isWslAvailable
+  const probe = options.probe ?? isKafkaRunning
 
   // 1. 环境变量自定义 broker
   const envBootstrap = options.envBootstrap ?? process.env.A2A_BUS_BOOTSTRAP
@@ -208,7 +231,7 @@ export async function ensureKafka(options: EnsureKafkaOptions = {}): Promise<Kaf
   }
 
   // 2. 检测是否已运行
-  if (await isKafkaRunning(brokers)) {
+  if (await probe(brokers)) {
     return { ready: true, brokers, reason: 'already-running' }
   }
 
@@ -221,7 +244,7 @@ export async function ensureKafka(options: EnsureKafkaOptions = {}): Promise<Kaf
   if (!options.skipDocker && await dockerAvailable()) {
     try {
       await startKafkaViaDocker(composeFile, runner)
-      if (await waitForBrokers(brokers, startupTimeoutMs)) {
+      if (await waitForBrokers(brokers, startupTimeoutMs, probe)) {
         return { ready: true, brokers, reason: 'started-via-docker' }
       }
       failure = 'not-listening'
@@ -236,7 +259,7 @@ export async function ensureKafka(options: EnsureKafkaOptions = {}): Promise<Kaf
   if (!options.skipWsl && await wslAvailable()) {
     try {
       await startKafkaViaWsl(composeFile, runner)
-      if (await waitForBrokers(brokers, startupTimeoutMs)) {
+      if (await waitForBrokers(brokers, startupTimeoutMs, probe)) {
         return { ready: true, brokers, reason: 'started-via-wsl' }
       }
       failure = 'not-listening'

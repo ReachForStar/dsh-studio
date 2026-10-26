@@ -504,3 +504,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 修法：compose 内容由本进程读出后经 stdin 传给 `docker compose -p kafka -f -`（WSL 分支同理）；`infra/kafka/docker-compose.yml` 补 `name: kafka`，与 `deploy/a2a/kafka` 共用容器与数据卷；`KafkaEnsureResult` 增加 `failure`（`no-runtime`/`start-failed`/`not-listening`）与 `detail`，空 `catch` 改为留证；wire 词汇把 `kafkaReason: string` 换成结构化的 `kafkaFailure` + `kafkaDiagnostic`，文案归客户端 locale 字典；状态页渲染失败类别、探测地址与诊断，CSS 选择器从 `data-kafka-ready` 改为组件实际输出的 `data-kafka-phase`。
 - 验证：新增 `kafka-detect` 9 项、状态网关 6 项、客户端组件 7 项测试，`packages/a2a` 与 `packages/client/ui-a2a-status` 合计 169 项通过；`tsc -b` 通过；Typert 产物已重生成。端到端以 `ELECTRON_RUN_AS_NODE=1` 运行真实 electron 二进制，读 asar 内 compose → stdin 启动 → 9092/9093/9094 全部监听。
 - 关联 [桌面版 Kafka 不可用](queries/desktop-a2a-kafka-unavailable.md)、[A2A 栈](entities/a2a-stack.md)、[本地 A2A 联调栈](entities/local-a2a-stack.md)。
+
+## [2026-10-26] test | kafka-detect 与 a2a 状态相关文件覆盖率补到 100%
+
+- `kafka-detect.ts` 从 48.51% 语句 / 66.1% 分支追到四项全 100%，并与 `a2a-status/src/index.ts`、`A2aStatusSection.tsx`、`a2a-status-store.ts`、`locales.ts` 一起实测 172 语句 / 127 分支 / 44 函数 / 144 行全绿。
+- 补齐手段：`spawn` 用假实现 + `PassThrough` 冒充 stderr/stdin 驱动默认执行器四种结局；起真实套接字测可达、保留地址测超时；`vi.spyOn(process, 'platform')` 覆盖 WSL 的 Windows 分支；`EnsureKafkaOptions` 新增与 `dockerAvailable`/`wslAvailable` 同形的 `probe` 注入点，配合假定时器覆盖等待循环三条路径。
+- 顺带修掉真实缺陷：`isKafkaRunning` 用 `split(':')` 取主机端口，`:9092` 的空主机名会连本机而不被拦（`host === undefined` 是死分支）；改为 `parseBroker` 取最后一个冒号并校验端口为正整数。
+- 验证：三包合计 99 项测试通过，`tsc -b` 通过，`build:artifacts` 7 项通过，`doc-quick` 21 项通过；lib 面端到端复验仍从停止状态自动拉起（`started-via-docker`，553ms）。
+- 关联 [桌面版 Kafka 不可用](queries/desktop-a2a-kafka-unavailable.md)、[A2A 栈](entities/a2a-stack.md)。

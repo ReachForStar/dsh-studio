@@ -3,7 +3,7 @@ title: A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）
 type: entity
 tags: [a2a, 协议, 跨 agent, 出站调用, fork 扩展]
 created: 2026-09-17
-updated: 2026-09-20
+updated: 2026-10-26
 sources: []
 status: active
 ---
@@ -19,6 +19,8 @@ fork 自研的 Agent2Agent 支持，位于 `packages/a2a/`，三个包都是 `@r
 | `@reachforstar/dsh-a2a` | 协议层与对等端接缝：A2A v1.0.1 线协议类型、请求处理器与监听器、客户端、内存任务表、Kafka 总线、桥配置装载、`a2a` 服务 | `src/{schema,server,client,task-store,bus,bridge-config,index}.ts` |
 | `@reachforstar/dsh-a2a-host` | 宿主端点：构建 agent card、绑定监听器、以会话为后端驱动一轮 | `src/{index,executor,card}.ts` |
 | `@reachforstar/dsh-tool-a2a` | 面对模型的两个工具：`a2a_peers`、`a2a_send` | `src/index.ts` |
+| `@reachforstar/dsh-a2a-status` | Host Remote 网关：查询 `a2a-host` 监听状态与 Kafka 就绪情况，并回传失败类别与诊断 | `src/{index,types}.ts` |
+| `@reachforstar/dsh-client-ui-a2a-status` | 浏览器半：设置页「A2A 服务」分区与 `ctx.a2aStatus` store | `src/client/*` |
 
 接线位置：`packages/bundle/base/cordis.patch.yml` 挂 `a2a` 与 `tool-a2a`；`packages/bundle/web-app/cordis.patch.yml` 挂 `a2a-host`（`port` 取 `DSH_A2A_PORT`，默认 9310；`apiKeyEnv: DSH_A2A_API_KEY`）。入站密钥不再在 patch 里内联环境变量：`dsh-a2a-host` 在绑定前经 `ctx.credentials` 解析 `apiKeyEnv`，拿不到值时警告并按未认证服务，同时从卡片上撤掉鉴权声明，避免对等端以为会被校验。
 
@@ -50,6 +52,13 @@ fork 自研的 Agent2Agent 支持，位于 `packages/a2a/`，三个包都是 `@r
 - **总线的投递语义**照搬 bridge：taskId 幂等去重、失败 `attempt+1` 重投、超过 `maxAttempts` 或每任务超时进 `a2a.dlq`、消费者崩溃自恢复、启动等消费组 `Stable` 再返回。
 - **进度回传（2026-09-22）**：`ctx.a2a.dispatch` 请求可带 `onProgress(progress: { state?, text })`，报告的是**累计**状态与文本（text 是工件拼接后的全文，不是增量）。`direct` 通道逐帧转发：`statusUpdate` 在状态变化时上报，`artifactUpdate` 每帧上报；终态无工件时取状态消息里的文本补报。`bus` 通道逐事件转发 `a2a.event` 的 `status-update`/`artifact-update`/`terminal`。直连通道的报告器在 `for await` 流内抛出会让派发失败（fast-fail）；总线通道的报告器在消费处理器里被 try/catch 包住（文档明示那是进度通道不是任务记录）。不传回调则行为与原来完全一致。
 
+## Kafka 就绪探测（`kafka-detect`）
+
+`dsh-a2a-host` 导出 `ensureKafka`，由 `dsh-a2a-status` 在构造时后台调用，不阻塞启动。顺序：`A2A_BUS_BOOTSTRAP` 环境变量 → 已运行（TCP 探测三个 broker）→ 本机 `docker compose` → WSL → 放弃。
+
+- **compose 内容经 stdin 传给 docker**：打包后 compose 位于 `app.asar` 内，交给外部进程的路径读不到；内容由本进程读出后写入 `docker compose -f -` 的 stdin。项目名固定 `kafka`，与 `deploy/a2a/kafka` 共用容器与数据卷。
+- **失败留证**：结果带 `failure`（`no-runtime` / `start-failed` / `not-listening`）与 `detail`（退出码与 stderr），空 `catch` 会吞掉可排查线索。排障记录见 [桌面版 Kafka 不可用](../queries/desktop-a2a-kafka-unavailable.md)。
+
 ## 已知限制与待办
 
 - gRPC / HTTP+JSON 绑定未实现，卡片也未声明。
@@ -59,6 +68,7 @@ fork 自研的 Agent2Agent 支持，位于 `packages/a2a/`，三个包都是 `@r
 - 总线通道的 `GetTask` 可见性依赖 bridge 网关是否把总线任务并入 A2A 任务表：2026-09-20 实测 bridge 的 cc 网关**没有**并入（其自身 CLI 的 bus 派发同样查不到），详见[总线任务可见性实测](../queries/a2a-bus-task-visibility.md)。
 - 只处理文本 part；文件与结构化 part 不翻译。
 - 覆盖率：`packages/a2a/*/src` 约 96% 语句 / 88% 分支，剩余为可选配置的 `? :` 分支，追 100% 需补组合用例。
+- Kafka 就绪只到端口层：`kafka-detect` 用 TCP 探测判断可达，不校验分区、ISR 与主题配置。
 
 ## 关联
 

@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-10-18
+updated: 2026-10-26
 ---
 
 # Wiki 索引
@@ -12,7 +12,7 @@ updated: 2026-10-18
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。
 - [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全量会话）、数据源与两条计价路径。
-- [A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）](entities/a2a-stack.md) — 自研 A2A：协议层、宿主端点、对等端工具与 Kafka 总线；零依赖、`contextId` 即会话 id、Loader default 导出踩坑、按 a2a-bridge 方案对接的两通道与 skill 契约。
+- [A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）](entities/a2a-stack.md) — 自研 A2A：协议层、宿主端点、对等端工具、状态网关与 Kafka 总线；零依赖、`contextId` 即会话 id、Loader default 导出踩坑、按 a2a-bridge 方案对接的两通道与 skill 契约，以及 `kafka-detect` 的启动与失败留证。
 - [文档面板的编辑与保存（workspaceFiles.write）](entities/document-panel-editing.md) — 写接口的守卫与包含性、pane 级编辑器、Typert 产物需根构建重生成，以及 office 预览的 fflate 浏览器入口踩坑与构建期 builtin 守卫。
 - [远端工作区 provider（fs-sftp / subprocess-sftp）](entities/remote-workspace-providers.md) — 基于 `ctx.sshSftp` 的远端 fs/subprocess：路径标识、版本与原子发布、终端 pid 发现，以及 Web 工作区不可用的踩坑。
 - [fork Web 面板（ui-polish 的 Git/LaTeX/SSH/画布标签页）](entities/fork-web-panels.md) — 面板职责、`/git/*` 路由表（多仓库卡片、规则与生成模型、合并状态）、`ctx.fs` 接缝之外的守卫与编辑边界，以及文件面板去重。
@@ -57,6 +57,7 @@ updated: 2026-10-18
 - [会话重载校验报错：assistant/message 空 model 来源（2026-09-24）](queries/session-reload-model-source.md) — 根因三层（校验过严/pi 后端记空/迁移搬运）、加载侧放宽 + 写入侧记真实模型的双层修法与真实数据验证。
 - [会话格式 v4：席位答复以 assistant 角色进模型可见内容](queries/session-format-v4-landing.md) — 为何必须动会话格式、一代迁移包的确切清单，以及本次实施结果与实测踩坑（写入器曾为 v4，现为 v5）。
 - [工具调度符号丢失导致任何工具调用崩溃（2026-09-24）](queries/tool-scheduler-symbol-duplication.md) — src/lib 两份 `dsh-tools` 各造一个同名 `unique symbol`，`ctx.tools[...]` 取不到调度器；改用 `Symbol.for` 并重建 `lib/`，含真实会话复现与 A2A 实测。
+- [桌面版 A2A 状态页报 Kafka 不可用（asar 内 compose 路径）](queries/desktop-a2a-kafka-unavailable.md) — 打包后 compose 位于 `app.asar` 内、`docker` 子进程读不到路径（Electron 的 fs 能读），空 `catch` 又吞掉了原因；改为内容经 stdin 传入、固定项目名、回传失败类别与诊断，含 Electron 实测证据与状态页渲染修复。
 - [Windows 侧 .git 迁到 Linux 后 Lefthook 钩子安装被拒](queries/lefthook-hookspath-cross-platform.md) — `config.worktree` 与归属标记里的 Windows 绝对路径在 Linux 下既过不了 `isAbsolute()` 校验，又被 git 当相对路径解析成仓库根下的怪名字目录；三步就地修法与自查命令。
 - [会话格式 v5 落地与 v4→v5 包的合并修复（2026-09-26）](queries/session-format-v5-landing.md) — `deferLoading` 与 tool-change 标签的迁移层越界、README 代际位移重建、v4 历史格式归档流程，以及 fork 自有 v4 日志读不出的遗留项；含 2026-10-15 合并上游时补的 v4 源准入词汇与 catalog 事实缺口。
 - [合并上游 upstream/master（2026-10-15）](queries/upstream-merge-2026-10.md) — 用合并前 HEAD 工作树作基线区分「合并引入/预存/偶发」的判定口径、本轮三类修复（v4 源准入词汇、vfs-example 夹具代际、corpus 策略规格自洽）与 fork 私有包在位核对。

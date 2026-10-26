@@ -27,8 +27,11 @@
   en: ee4615a04fa6503d
   zh: ee2c5fb2204a43cf
 /reachforstar-dsh-a2a-host/understand-the-implementation/source-map:
-  en: e5ef23c30a04803d
-  zh: 2d6bff08fb6daf76
+  en: 1eda22422d92d5e6
+  zh: 32f22a852fc3a141
+/reachforstar-dsh-a2a-host/understand-the-implementation/why-kafka-starts-over-stdin:
+  en: 558fe32ad0e425d8
+  zh: f4f52d536be89f4e
 /reachforstar-dsh-a2a-host/understand-the-implementation/export-shape:
   en: 0bd8d32448fd2cc2
   zh: 3862b00449f9a496
@@ -39,8 +42,8 @@
   en: 9addb976421ab848
   zh: 8c91368cd7236f05
 /reachforstar-dsh-a2a-host/known-limitations-and-deferred-work:
-  en: 7efd4d61a608801f
-  zh: 3271361a439f7464
+  en: 3fcc1758113a7ab0
+  zh: e73075a7d9ea5899
 /reachforstar-dsh-a2a-host/known-limitations-and-deferred-work/dev-note:
   en: 47b51c8820934486
   zh: af771134a19e69d2

@@ -65,6 +65,11 @@ Choose it when this deployment should be reachable as an A2A agent. A deployment
 | [`src/index.ts`](src/index.ts) | `A2AHostService`: card, listener, lifetime, and `Config` |
 | [`src/executor.ts`](src/executor.ts) | `DshA2AExecutor`: session follow, prompt, streaming, cancel, timeout |
 | [`src/card.ts`](src/card.ts) | `buildAgentCard` and the default skill |
+| [`src/kafka-detect.ts`](src/kafka-detect.ts) | `ensureKafka`: probing, starting the Kafka cluster over stdin, and reporting a failure category with its diagnostic |
+
+### Why Kafka starts over stdin
+
+`ensureKafka` starts the cluster from this package's `infra/kafka/docker-compose.yml` when no broker answers. The process reads the compose content and writes it to the child's stdin (`docker compose -f -`) instead of handing docker the file path: in a packaged build that file lives inside `app.asar`, which Electron's `fs` can read and the `docker` child process cannot, so a path fails with `not a directory`. The project name is fixed to `kafka`, so this cluster and the one [`deploy/a2a`](../../../deploy/a2a/README.md) starts share containers and volumes.
 
 ### Export shape
 
@@ -85,6 +90,7 @@ The executor mints a request id, subscribes to the session's event stream, and o
 - **No push notifications.** The host does not register webhook targets, so peers poll or subscribe as [`dsh-a2a`](../a2a/README.md) documents.
 - **Sessions are named by the caller.** A trusted peer names any session id; there is no per-session authorization beyond the deployment-wide `apiKey`.
 - **Text in, text out.** Only text parts are turned into prompts, and the reply is text; files and structured parts are not translated.
+- **Kafka probing stops at the port.** `kafka-detect` decides reachability with TCP probes and does not verify partitions, ISR, or topic configuration.
 
 ### Dev Note
 

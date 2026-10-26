@@ -497,3 +497,10 @@
 ## [2026-10-21] fix | 将 Linux 桌面鲸鱼改为蓝色
 
 Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打包 CI 均成功。详见 [桌面 deb 发布](queries/desktop-deb-release.md)。
+
+## [2026-10-26] fix | 修复桌面版 A2A 状态页 Kafka 不可用
+
+- 根因：`kafka-detect` 把 `app.asar` 内的 compose 路径交给 `docker` 子进程，docker 读不到（Electron 的 `fs` 能读，普通子进程报 `ENOTDIR`/`not a directory`）；Docker 分支是空 `catch`，失败后降级到 Linux 上永不成立的 WSL 分支，最终报 `unavailable`，而状态页从未渲染 `kafkaReason`。
+- 修法：compose 内容由本进程读出后经 stdin 传给 `docker compose -p kafka -f -`（WSL 分支同理）；`infra/kafka/docker-compose.yml` 补 `name: kafka`，与 `deploy/a2a/kafka` 共用容器与数据卷；`KafkaEnsureResult` 增加 `failure`（`no-runtime`/`start-failed`/`not-listening`）与 `detail`，空 `catch` 改为留证；wire 词汇把 `kafkaReason: string` 换成结构化的 `kafkaFailure` + `kafkaDiagnostic`，文案归客户端 locale 字典；状态页渲染失败类别、探测地址与诊断，CSS 选择器从 `data-kafka-ready` 改为组件实际输出的 `data-kafka-phase`。
+- 验证：新增 `kafka-detect` 9 项、状态网关 6 项、客户端组件 7 项测试，`packages/a2a` 与 `packages/client/ui-a2a-status` 合计 169 项通过；`tsc -b` 通过；Typert 产物已重生成。端到端以 `ELECTRON_RUN_AS_NODE=1` 运行真实 electron 二进制，读 asar 内 compose → stdin 启动 → 9092/9093/9094 全部监听。
+- 关联 [桌面版 Kafka 不可用](queries/desktop-a2a-kafka-unavailable.md)、[A2A 栈](entities/a2a-stack.md)、[本地 A2A 联调栈](entities/local-a2a-stack.md)。

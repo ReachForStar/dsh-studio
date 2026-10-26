@@ -47,7 +47,8 @@ No direct effect; the snapshot never enters a model request.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- The section reports what the gateway answered. It starts neither Kafka nor the a2a-host listener, so "not running" describes this deployment rather than a defect in the section.
+- The section reports what the gateway answered and starts neither Kafka nor the a2a-host listener itself; the gateway starts Kafka in its background task.
+- When Kafka is not ready the section shows the failure category (no runtime, start command failed, started but not listening) plus the raw diagnostic text, with the copy taken from this package's locale dictionary.
 - Mounting this browser half without the [`dsh-a2a-status`](../../a2a/a2a-status/README.md) Host gateway shows a failed read with the retry control instead of an empty section.
 
 <a id="dev-note"></a>

@@ -66,6 +66,11 @@ kind: "package-reference"
 | [`src/index.ts`](src/index.ts) | `A2AHostService`：卡片、监听器、生命周期与 `Config` |
 | [`src/executor.ts`](src/executor.ts) | `DshA2AExecutor`：会话跟随、提示、流式、取消、超时 |
 | [`src/card.ts`](src/card.ts) | `buildAgentCard` 与默认技能 |
+| [`src/kafka-detect.ts`](src/kafka-detect.ts) | `ensureKafka`：探测、经 stdin 启动 Kafka 集群，并回传失败类别与诊断 |
+
+### Kafka 启动为什么要走 stdin
+
+`ensureKafka` 会在没有可用 broker 时用本包 `infra/kafka/docker-compose.yml` 启动集群。compose 内容由本进程读出后写入子进程 stdin（`docker compose -f -`），而不是把文件路径交给 docker：打包后该文件位于 `app.asar` 内，Electron 的 `fs` 能读，`docker` 子进程不能，按路径传会以 `not a directory` 失败。项目名固定为 `kafka`，与 [`deploy/a2a`](../../../deploy/a2a/README.zh.md) 的同名集群落到同一套容器与数据卷。
 
 ### 导出形状
 
@@ -88,6 +93,7 @@ kind: "package-reference"
 - **没有推送通知**：宿主不注册 webhook 目标，对等端按 [`dsh-a2a`](../a2a/README.zh.md) 所述轮询或订阅。
 - **会话由调用方点名**：可信对等端可以点名任意会话 id，除部署级 `apiKey` 外没有按会话的授权。
 - **文本进文本出**：只有文本 part 会转成提示，回复也是文本；文件与结构化 part 不翻译。
+- **Kafka 探测只到端口层**：`kafka-detect` 用 TCP 探测判断 broker 是否可达，不校验分区、ISR 与主题配置。
 
 <a id="dev-note"></a>
 ### 开发备注

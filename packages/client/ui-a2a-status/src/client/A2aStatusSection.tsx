@@ -25,6 +25,12 @@ export function A2aStatusSection({ controller, useSnapshot, t }: A2aStatusSectio
     void controller.load()
   }, [controller])
 
+  // 失败类别来自 Host，文案取自本地字典：同一快照在不同语言下都能正确呈现。
+  const failureText = state.kafkaFailure === 'no-runtime' ? t('kafkaNoRuntime')
+    : state.kafkaFailure === 'start-failed' ? t('kafkaStartFailed')
+      : state.kafkaFailure === 'not-listening' ? t('kafkaNotListening')
+        : null
+
   return (
     <div className={css.section}>
       <p className={css.description}>{t('description')}</p>
@@ -48,6 +54,15 @@ export function A2aStatusSection({ controller, useSnapshot, t }: A2aStatusSectio
                 : t('kafkaUnavailable')}
           </dd>
         </dl>
+      ) : null}
+      {state.status === 'ready' && state.kafkaPhase === 'unavailable' ? (
+        <div className={css.diagnosis}>
+          {failureText === null ? null : <p className={css.reason}>{failureText}</p>}
+          <p className={css.brokers}>{t('kafkaBrokers')}: {state.kafkaBrokers.join(', ')}</p>
+          {state.kafkaDiagnostic === '' ? null : (
+            <p className={css.diagnostic}>{t('kafkaDiagnostic')}: {state.kafkaDiagnostic}</p>
+          )}
+        </div>
       ) : null}
     </div>
   )

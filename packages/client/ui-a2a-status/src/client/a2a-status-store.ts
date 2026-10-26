@@ -5,7 +5,10 @@
 
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { A2AStatus } from '@reachforstar/dsh-a2a-status/types'
+import type { A2AStatus, KafkaFailure } from '@reachforstar/dsh-a2a-status/types'
+
+/** Kafka 未就绪类别的别名，供组件与 store 共用同一词汇。 */
+export type A2aKafkaFailure = KafkaFailure | null
 
 /** a2a/status Remote 的调用面。 */
 export interface A2aStatusRemoteFace {
@@ -22,7 +25,10 @@ export interface A2aStatusState {
   kafkaPhase: 'starting' | 'ready' | 'unavailable'
   kafkaReady: boolean
   kafkaBrokers: readonly string[]
-  kafkaReason: string
+  /** Kafka 未就绪的类别；就绪或探测中时为 null。 */
+  kafkaFailure: A2aKafkaFailure
+  /** Kafka 未就绪时的原始诊断文本；无细节时为空字符串。 */
+  kafkaDiagnostic: string
   /** 查询失败时的错误文本。 */
   error: string | null
 }
@@ -35,7 +41,8 @@ const IDLE_STATE: A2aStatusState = {
   kafkaPhase: 'starting',
   kafkaReady: false,
   kafkaBrokers: [],
-  kafkaReason: '',
+  kafkaFailure: null,
+  kafkaDiagnostic: '',
   error: null,
 }
 
@@ -82,7 +89,8 @@ export class A2aStatusStore {
         state.kafkaPhase = result.kafkaPhase
         state.kafkaReady = result.kafkaReady
         state.kafkaBrokers = result.kafkaBrokers
-        state.kafkaReason = result.kafkaReason
+        state.kafkaFailure = result.kafkaFailure
+        state.kafkaDiagnostic = result.kafkaDiagnostic
         state.available = result.hostRunning
       })
     } catch (error) {

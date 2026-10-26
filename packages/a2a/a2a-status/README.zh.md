@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包把 a2a-host 监听状态与 Kafka broker 可达性提供给 Web 客户端。网关探测可选的 `ctx.a2aHost` 服务，并对默认 Kafka broker 做 TCP 可达性检查，但不启动它们。它需要 Typert Remote 协议与 Host Connection 传输。
+本包把 a2a-host 监听状态与 Kafka 就绪情况提供给 Web 客户端。网关探测可选的 `ctx.a2aHost` 服务，并在启动时后台确保 Kafka：环境变量自定义、已运行、Docker、WSL 依次尝试，未就绪时把失败类别与原始诊断随快照回传。它需要 Typert Remote 协议与 Host Connection 传输。
 
 ## 目录
 
@@ -32,7 +32,15 @@ kind: "package-reference"
   name: '@reachforstar/dsh-a2a-status'
 ```
 
-a2a-host 缺失时网关报告 `hostRunning: false`，无 broker 可达时报告 `kafkaReady: false`。
+a2a-host 缺失时网关报告 `hostRunning: false`，未就绪时报告 `kafkaReady: false` 与失败类别。
+
+| 字段 | 含义 |
+|---|---|
+| `kafkaPhase` | `starting` 探测或启动中、`ready` 已就绪、`unavailable` 不可用 |
+| `kafkaFailure` | 未就绪类别：`no-runtime` 无 Docker 也无 WSL、`start-failed` 启动命令失败、`not-listening` 命令执行但 broker 未监听；就绪时为 `null` |
+| `kafkaDiagnostic` | 启动命令的退出码与 stderr 等原始文本；无细节时为空字符串 |
+
+失败类别是结构化词汇，展示文案由客户端 locale 字典提供，因此同一快照在中文与英文界面都正确。
 
 <a id="model-experience"></a>
 ## 模型体验
@@ -47,8 +55,9 @@ a2a-host 缺失时网关报告 `hostRunning: false`，无 broker 可达时报告
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- Kafka 可达性仅用 TCP 探测，不启动 Kafka，也不验证 broker 端口可达之外的集群健康。
-- broker 列表固定为默认 `127.0.0.1:9092,9093,9094`；此处不读环境变量覆盖（`A2A_BUS_BOOTSTRAP`），避免状态查询产生副作用。
+- 就绪判定只用 TCP 端口探测，不校验 broker 端口可达之外的集群健康（分区、ISR、主题配置）。
+- Kafka 由启动时的后台任务确保，因此该网关会让本机启动容器；只观察不启动的部署应预先自行拉起集群。
+- broker 列表固定为默认 `127.0.0.1:9092,9093,9094`；此处不读 `A2A_BUS_BOOTSTRAP`，避免状态查询产生副作用。
 
 <a id="dev-note"></a>
 ### 开发备注

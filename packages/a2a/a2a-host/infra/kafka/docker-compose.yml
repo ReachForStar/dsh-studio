@@ -2,6 +2,9 @@
 #   wsl -e bash -lc "docker compose -f /mnt/d/file/a2a-bridge/infra/kafka/docker-compose.yml up -d"
 # 客户端（Windows 侧）bootstrap: 127.0.0.1:9092,127.0.0.1:9093,127.0.0.1:9094
 # 切换: A2A_BUS_BOOTSTRAP=127.0.0.1:9092,127.0.0.1:9093,127.0.0.1:9094 npm run start:pi
+# 项目名与 deploy/a2a/kafka 版本一致：两处启动落到同一套集群与数据卷。
+name: kafka
+
 x-kafka-common: &kafka-common
   image: apache/kafka:3.9.0
   environment: &kafka-common-env

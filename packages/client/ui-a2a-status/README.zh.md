@@ -47,7 +47,8 @@ kind: "package-reference"
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- 分区只报告网关的回答。它既不启动 Kafka 也不启动 a2a-host 监听器，因此「未运行」描述的是本部署，而不是分区的缺陷。
+- 分区只报告网关的回答，不自己启动 Kafka 与 a2a-host 监听器；Kafka 的启动由网关后台完成。
+- 未就绪时分区显示失败类别（无可用运行时、启动命令失败、命令执行后未监听）与原始诊断文本；具体文案取自本包的 locale 字典。
 - 只挂载这个浏览器半、不挂 [`dsh-a2a-status`](../../a2a/a2a-status/README.zh.md) Host 网关时，会显示读取失败与重试控件，而不是一个空分区。
 
 <a id="dev-note"></a>

@@ -8,7 +8,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { ensureKafka, isKafkaRunning } from '@reachforstar/dsh-a2a-host/kafka-detect'
 import type { KafkaEnsureResult } from '@reachforstar/dsh-a2a-host/kafka-detect'
-import type { A2AStatus } from './types.ts'
+import type { A2AStatus, KafkaFailure } from './types.ts'
 
 export type * from './types.ts'
 
@@ -18,16 +18,16 @@ import type {} from '@reachforstar/dsh-a2a-host'
 /** 默认探测的 Kafka broker 地址。 */
 const DEFAULT_BROKERS: readonly string[] = ['127.0.0.1:9092', '127.0.0.1:9093', '127.0.0.1:9094']
 
-/** 把 ensureKafka 的 reason 转成可展示的中文说明。 */
-function reasonText(result?: KafkaEnsureResult): string {
-  if (result === undefined) return '正在检测并启动 Kafka...'
-  switch (result.reason) {
-    case 'already-running': return ''
-    case 'started-via-docker': return ''
-    case 'started-via-wsl': return ''
-    case 'env-override': return ''
-    case 'unavailable': return '本机未找到 Docker 或 WSL，且无自定义 broker；请手动启动 Kafka 或设置 A2A_BUS_BOOTSTRAP'
-    default: return ''
+/**
+ * 从启动探测结果取出失败类别与原始诊断。
+ * 这里只给结构化词汇与原始文本：展示文案由客户端 locale 字典拥有。
+ * @param result - 启动探测结果；后台任务未完成时为 undefined。
+ * @returns 失败类别与诊断文本；就绪或探测中时分别为 null 与空字符串。
+ */
+function failureOf(result?: KafkaEnsureResult): { failure: KafkaFailure; diagnostic: string } {
+  return {
+    failure: result === undefined ? 'no-runtime' : (result.failure ?? 'no-runtime'),
+    diagnostic: result?.detail ?? '',
   }
 }
 
@@ -45,8 +45,14 @@ export class A2AStatusGateway extends TypertRemoteService {
   private async bootstrapKafka(): Promise<void> {
     try {
       this.kafkaState = await ensureKafka({ brokers: DEFAULT_BROKERS })
-    } catch {
-      this.kafkaState = { ready: false, brokers: [...DEFAULT_BROKERS], reason: 'unavailable' }
+    } catch (error) {
+      this.kafkaState = {
+        ready: false,
+        brokers: [...DEFAULT_BROKERS],
+        reason: 'unavailable',
+        failure: 'start-failed',
+        detail: error instanceof Error ? error.message : String(error),
+      }
     }
   }
 
@@ -69,13 +75,16 @@ export class A2AStatusGateway extends TypertRemoteService {
         kafkaReady = await isKafkaRunning(DEFAULT_BROKERS)
       } catch { /* 探测失败按未就绪处理 */ }
     }
+    const failed = failureOf(state)
     return {
       hostRunning,
       hostPort,
       kafkaPhase: state === undefined ? 'starting' : (kafkaReady ? 'ready' : 'unavailable'),
       kafkaReady,
       kafkaBrokers: [...(state?.brokers ?? DEFAULT_BROKERS)],
-      kafkaReason: kafkaReady ? '' : reasonText(state),
+      // 本次探测已可达时不再回放历史失败，避免「已恢复但显示故障原因」。
+      kafkaFailure: kafkaReady ? null : failed.failure,
+      kafkaDiagnostic: kafkaReady ? '' : failed.diagnostic,
     }
   }
 }

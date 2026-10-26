@@ -40,12 +40,40 @@
   margin: 0;
 }
 
+/* 选择器跟随组件实际输出的 data-kafka-phase，状态色才与文案一致。 */
 .grid dd[data-host-running="true"],
-.grid dd[data-kafka-ready="true"] {
+.grid dd[data-kafka-phase="ready"] {
   color: var(--dsw-success, #16a34a);
 }
 
 .grid dd[data-host-running="false"],
-.grid dd[data-kafka-ready="false"] {
+.grid dd[data-kafka-phase="unavailable"] {
   color: var(--dsw-danger, #dc2626);
+}
+
+.grid dd[data-kafka-phase="starting"] {
+  color: var(--dsw-text-secondary, #6b7280);
+}
+
+.diagnosis {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.diagnosis p {
+  margin: 0;
+}
+
+.reason {
+  color: var(--dsw-danger, #dc2626);
+}
+
+.brokers,
+.diagnostic {
+  color: var(--dsw-text-secondary, #6b7280);
+  font-size: 0.9em;
+  /* 命令行 stderr 可能很长，换行展示而不是撑破容器。 */
+  overflow-wrap: anywhere;
 }

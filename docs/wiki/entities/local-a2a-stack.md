@@ -3,7 +3,7 @@ title: 本地 A2A 联调栈（deploy/a2a）
 type: entity
 tags: [部署, a2a, kafka, 网关, 启动脚本, 联调]
 created: 2026-09-24
-updated: 2026-10-21
+updated: 2026-10-26
 sources: []
 status: active
 ---
@@ -23,6 +23,7 @@ status: active
 ## 幂等规则（为什么反复执行是安全的）
 
 - **Kafka**：按 compose 项目 `kafka` 查容器，三个都 `running` 就跳过；否则 `docker compose up -d`。compose 文件固定了 `name: kafka`，所以换目录调用仍归属同一项目、不会起第二套集群。
+- **两处启动共用同一项目名**：`deploy/a2a/kafka/docker-compose.yml` 与 `packages/a2a/a2a-host/infra/kafka/docker-compose.yml` 都声明 `name: kafka`，桌面版 `ensureKafka` 也在命令行固定 `-p kafka`。因此任一处拉起都会复用同一套容器与数据卷 `kafka_kafka1-data` 等。
 - **网关**：端口已在监听就跳过，否则只拉起缺的那台。
 - **Web**：3080 已在监听就跳过。
 - `up` 结束后最多等 30 秒直到所有端口响应，再打印最终状态；`down` 只停本栈记录在 `tmp/a2a-stack/started.json` 的进程，并等端口真正释放后才报告残留。
@@ -53,6 +54,10 @@ sg docker -c "node deploy/a2a/stack.mjs up"
 - 网关的模型密钥取自仓库根 `.env`（`AMAX_API_KEY`/`AMAX_MODEL`/`AMAX_BASE_URL`）：`stack.mjs` 以 `{...process.env}` 传给子进程，所以先 `source .env` 再启动。
 - 9310 同时是 Web 应用 `a2a-host` 的默认端口（`DSH_A2A_PORT`）与 pi 网关端口。[`a2a-host` 的 apply](../../../packages/a2a/a2a-host/src/index.ts) 在端口被占用时跳过启动而不抛 `EADDRINUSE`，因此两者共存：先起的 pi 网关占用 9310，Web 应用不再对外发布自己的 A2A 端点。
 - 只读核验用 kafkajs admin 查主题与消费者组；`kafkajs` 只装在 `deploy/a2a/gateway/node_modules`，探针脚本要以该目录为工作目录执行，否则报 `ERR_MODULE_NOT_FOUND`。
+
+## 2026-10-26 状态核验
+
+Kafka 三容器曾于 2026-10-23 04:40 以 `Exited (143)` 正常退出后未被拉起；桌面版状态页只显示「Kafka 不可用」。根因不是集群配置，而是 `kafka-detect` 把 asar 内的 compose 路径交给了 `docker` 子进程。修复后（compose 经 stdin 传入、项目名固定 `kafka`、失败留证）已验证：以 `ELECTRON_RUN_AS_NODE=1` 运行真实 electron 二进制，读 asar 内 compose → stdin 启动 → 9092/9093/9094 全部监听。详见 [桌面版 Kafka 不可用](../queries/desktop-a2a-kafka-unavailable.md)。
 
 ## 2026-10-21 状态核验
 

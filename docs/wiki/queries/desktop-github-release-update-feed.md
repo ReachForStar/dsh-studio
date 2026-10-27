@@ -53,7 +53,13 @@ rc.4 是首个带更新源的发布，已实发验证：
 - `nightly.yml` 的 `path` 指 `…-win-x64-unsigned.exe`，`nightly-linux.yml` 的 `path` 指 AppImage（另列出 deb），且三个条目的 `size` 与 Release 资产的字节数逐一相等——两批构建都成功且后到者覆盖，因此元数据与最终资产一致。
 - 新一轮 `SHA256SUMS-linux-x64` 里的 deb/AppImage 摘要各查到 1 条 Sigstore 证明。
 
-**验证边界**：本次从本机直连 `…/releases/latest/download/nightly.yml` 时网络层报 `HTTP2 framing layer` 错误，未能复测 200；但同一目录路径在本次会话里对 `SHA256SUMS-linux-x64` 实测过 200，且两个 yml 的内容经 Release API 获取并核对。Windows 安装包内的 `app-update.yml` 未从 exe 里抽出验证，依据是同一条 electron-builder `publish` 代码路径（本地 linux 构建已实测写入）与 `installer-packaging.spec.ts` 对 unsigned win32 配置的断言。
+**验证完成**：
+
+- **公开 feed 直连 200**：用 Node `fetch` 直连 `https://github.com/<owner>/dsh-studio/releases/latest/download/nightly.yml` 与 `…/nightly-linux.yml`，均返回 **200**，内容字节数与经 API 取得的一致（398 / 626）。先前 curl 报的 `HTTP2 framing layer` 是本机 curl 的连接问题，不是地址问题。
+- **Windows 安装包内确实带 feed**：下载 `deepseek-harness-0.2.1-rc.4-win-x64-unsigned.exe`（334,900,536 B），用 `7z` 先取出 `$PLUGINSDIR/app-64.7z`，再从中取出 `resources/app-update.yml`，内容为 `provider: generic`、`url: https://github.com/<owner>/dsh-studio/releases/latest/download/`、`channel: nightly`，另带 electron-builder 计算的 updater 缓存目录名。
+- **macOS 无 feed**：Release 资产里没有 `nightly-mac.yml`，与「未签名不带更新源」的设计一致。
+
+因此链路完整：安装后的应用读内嵌 feed → 取 `…/releases/latest/download/nightly.yml`（实测 200）→ 下载 yml 里 `path` 指的 `.exe`（同为已发布资产）。
 
 ## 已知限制
 

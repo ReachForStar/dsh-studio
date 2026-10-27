@@ -595,3 +595,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 一致性核对：两份 yml 引用的 win exe / AppImage / deb 的 `size` 与 Release 资产字节数逐一相等；新的 deb 与 AppImage 摘要各查到 1 条 Sigstore 证明。
 - 网络说明：本次本机直连 `…/releases/latest/download/nightly.yml` 报 `HTTP2 framing layer` 错误未能复测；同目录路径此前实测 200，yml 内容经 Release API 获取并核对。
 - 沉淀：更新[桌面更新源指向发布页](queries/desktop-github-release-update-feed.md)的「发布结果（rc.4）」与验证边界。
+
+## [2026-10-27] test | 补验 rc.4 更新链路两端（公开 feed 与 Windows 内嵌配置）
+
+- 公开路径直连：Node `fetch` 取 `…/releases/latest/download/nightly.yml` 与 `nightly-linux.yml` 均 200，字节数与 API 取得的一致（398/626）；先前 curl 的 `HTTP2 framing layer` 属本机 curl 连接问题。
+- Windows 安装包内嵌配置：下载 `…win-x64-unsigned.exe` 后经 `7z` 两层解包（`$PLUGINSDIR/app-64.7z` → `resources/app-update.yml`），确认 `provider: generic`、feed 指向 `…/releases/latest/download/`、`channel: nightly`。
+- macOS 侧无 `nightly-mac.yml`，与未签名不带更新源的设计一致。
+- 沉淀：把[桌面更新源页](queries/desktop-github-release-update-feed.md)的“验证边界”改为“验证完成”。

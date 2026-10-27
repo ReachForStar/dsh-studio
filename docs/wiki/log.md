@@ -548,3 +548,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 澄清：`event:subagent/catalog` 无需补记——其 tip 是 `2026-09-19-external-subagent-catalog`，digest 与当前源码一致；早先用 `unknown-child-catalog` 快照对比得到的 `payload-version-added` 是取错 tip 所致。
 - 验证：`verify-persistence-changes`（67 根匹配 19 条记录）、`verify-persistence-catalog`、`verify-persistence-formats`（v0–v5）、`verify-persistence-releases`（26 条记录/25 个相邻转换）全绿；action-cards 测试 28 项通过；typecheck 5 门全绿。
 - 沉淀：新建[持久化历史分叉与来源种类补记](queries/persistence-history-fork-repair.md)，更新[门禁红项清单](queries/fork-gate-debt.md)将该门禁转为已清偿，同步 index。
+
+## [2026-10-27] feat | 发布 dsh 0.2.1-rc.3（含四平台桌面安装包）
+
+- 家族版本对齐：合并上游后 18 个 fork 公开包停在 0.2.1-rc.2，全部改为 0.2.1-rc.3；`release/verify` 通过（382 member、publish order resolved）。
+- 构建与打包：`build:official` 10 门通过并记录 688 个客户端产物；`pack` 产出 382 个 tarball（zip 后约 30MB）。
+- 发布：本地 `dsh-v0.2.1-rc.3` tag 原先由 fetch 指向上游同名提交，`-f` 移回发布提交 `1b5f1e2b4d`；`gh release create` 不带 `--target`（带 `--target` 报 422）创建 prerelease 并上传 npm zip；`master` 与 `develop` 均已推送。
+- 桌面安装包：`Release Desktop` 工作流由 tag 与 release published 两个事件各触发一次（concurrency group 取值不同，并行两批，`--clobber` 覆盖），四目标为 linux-x64 deb+AppImage、win-x64 exe、mac-arm64/mac-x64 dmg；结果待核验。
+- 踩坑与纠正：诊断某 fork 包目录时把「显示层掩码改写目录名」误判为文件系统损坏，一度准备执行删除+恢复。真实字节核对（`Buffer.from(name,'utf8').toString('hex')`）后确认文件完好，改用 `git add -u packages` 完成提交。此教训记入[发布页](queries/release-dsh-0.2.1-rc.3.md)。
+- 沉淀：新建[发布 dsh 0.2.1-rc.3](queries/release-dsh-0.2.1-rc.3.md)，同步 index。

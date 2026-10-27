@@ -68,3 +68,4 @@ updated: 2026-10-27
 - [Cua Driver 检测补全与入口迁移（2026-10-27）](queries/cua-driver-detect-and-placement.md) — 检测补齐安装器写入的稳定路径（`~/.local/bin`、`~/.cua-driver/packages/current`、Windows `LOCALAPPDATA`）并按 `X_OK` 判定，check 路由回报 `path`；安装入口从插件卡片 footer 迁到「计算机操作」详情页，安装后自动重检。
 - [任务列表跨轮次消失与状态不回写（2026-10-27）](queries/todo-list-lifetime-and-status.md) — `todos` 投影不再在 `turn/start` 清空（`stateVersion` 2→3），列表跨轮次保留；状态仍归模型 `todo_write` 全量重写，描述追加轮次结束前回写纪律。
 - [持久化历史分叉与来源种类补记（2026-10-27）](queries/persistence-history-fork-repair.md) — v5 记录快照重编码为 v2 布局、`action-card-status` 的 4 个共享根重排为 v5→action-card-status 消分叉、`assistant/peer-message` 来源联合新增 `action-cards` 补 `same-version` 记录；含「判断某根是否需记录要读门禁 tips」的复发预防。
+- [发布 dsh 0.2.1-rc.3（含四平台桌面安装包）](queries/release-dsh-0.2.1-rc.3.md) — 家族版本对齐→`build:official`→`pack`→`tag -f`→`gh release create`（不带 `--target`）的完整流程，同名 tag 上移、手打路径被显示层掩码引发的误判与 `git add -u` 绕法、桌面工作流双触发。

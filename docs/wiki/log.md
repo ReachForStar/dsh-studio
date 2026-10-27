@@ -564,3 +564,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - Release `dsh-v0.2.1-rc.3` 最终资产 6 个：`deepseek-harness-0.2.1-rc.3-linux-amd64-unsigned.deb`（约 306MB）、`-linux-x86_64-unsigned.AppImage`（约 392MB）、`-mac-arm64-unsigned.dmg`（约 291MB）、`-mac-x64-unsigned.dmg`（约 313MB）、`-win-x64-unsigned.exe`（约 335MB）、`dsh-0.2.1-rc.3-npm.tar.gz.zip`（约 30MB）。
 - 引用位置：tag `dsh-v0.2.1-rc.3` = `1b5f1e2b4d`（发布提交）；`master` = `fda53d95f9`；`develop` = `1b5f1e2b4d`。
 - 发布记录见[发布 dsh 0.2.1-rc.3](queries/release-dsh-0.2.1-rc.3.md)。
+
+## [2026-10-27] feat | 桌面安装包加校验和并用 Sigstore 无密钥签名
+
+- 工作流：`release-desktop.yml` 新增「Checksum installers」（按 target 生成 `SHA256SUMS-<target>`）与「Sign installers」（`actions/attest-build-provenance@v4.2.2`，`subject-checksums` 从校验和文件一次证明该平台全部安装包）；作业权限补 `id-token: write` 与 `attestations: write`。校验和文件同时进入制品与 Release 资产。
+- 无密钥签名不需要购买证书：Sigstore 用工作流自身的 OIDC 身份签发，证明写入仓库证明存储；公共仓库免费。
+- 重建与验证：`workflow_dispatch` 以 `release_tag=dsh-v0.2.1-rc.3` 重跑成功；Release 现有 10 个资产（5 个安装包 + npm zip + 4 个校验和文件）。五个安装包摘要各查到 1 条证明记录；下载 deb 实测 `sha256sum -c SHA256SUMS-linux-x64` 成功，校验和与已发布字节一致。
+- 平台原生签名仍未具备：macOS 仅 ad-hoc 签名（无 Developer ID、未公证），Windows 无代码签名证书，Linux 无 GPG 签名。所需申请材料与变量名记入[发布页](queries/release-dsh-0.2.1-rc.3.md#签名与验证)。
+- 验证：Release 说明已补「完整性校验与出处证明」小节（`gh api -X PATCH` 更新，本机 gh 2.4.0 的 `release edit` 不支持 `--notes-file`）。

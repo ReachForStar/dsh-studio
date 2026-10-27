@@ -59,7 +59,47 @@ Buffer.from(name, 'utf8').toString('hex')
 
 `gh release create` 会同时创建 tag 与 Release，于是 `push: tags: dsh-v*` 与 `release: published` 各触发一次；两者的 `concurrency.group` 取值不同（一个用 `github.ref`，一个用 `github.event.release.tag_name`），因此**并行跑两批构建**而非排队。两批都上传同名资产，`gh release upload --clobber` 后到者覆盖前到者，结果正确但浪费一倍构建时间。
 
-## 验证
+## 签名与验证
+
+### 已具备：Sigstore 无密钥签名（不需购买证书）
+
+`.github/workflows/release-desktop.yml` 在构建后为每个安装包生成 `SHA256SUMS-<target>` 并调用 `actions/attest-build-provenance@v4.2.2`：工作流用自身的 OIDC 身份签名，证明记录写入仓库的证明存储，因此不购置证书、不保存签名私钥。作业权限需要 `id-token: write` 与 `attestations: write`（公共仓库免费）。
+
+用户验证：
+
+```bash
+sha256sum -c SHA256SUMS-linux-x64            # 校验和
+gh attestation verify <安装包> -R <owner>/<repo>   # 出处证明（需较新 gh）
+```
+
+### 尚未具备：平台原生签名
+
+| 平台 | 当前状态 | 缺口 |
+| --- | --- | --- |
+| macOS | 应用已 **ad-hoc 签名**（`electron-builder-config.mjs` 中 `identity: unsigned ? '-' : ...`），DMG 容器不签名、不做公证 | 无 Developer ID，Gatekeeper 会拦截；用户需右键→打开 |
+| Windows | 完全未签名 | 无代码签名证书 |
+| Linux | 完全未签名 | 无 GPG 密钥（可选） |
+
+### 需要申请的材料
+
+**macOS**：Apple Developer Program 会员（年费）→ 取得 Developer ID Application 证书（导出为 `.p12`）与公证凭据。对应变量：
+
+- `CSC_LINK`（p12 路径或 base64）、`CSC_KEY_PASSWORD`
+- `DSH_DESKTOP_MACOS_SIGNING_IDENTITY`、`DSH_DESKTOP_MACOS_TEAM_ID`
+- 公证三选一：`APPLE_API_KEY` + `APPLE_API_KEY_ID` + `APPLE_API_ISSUER`；或 `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID`；或 `APPLE_KEYCHAIN_PROFILE`
+
+**Windows**：EV 代码签名证书（含 SafeNet 硬件令牌）。对应变量：`DSH_DESKTOP_WINDOWS_CER_FILE`、`DSH_DESKTOP_WINDOWS_SIGNTOOL`、`DSH_DESKTOP_WINDOWS_KEY_CONTAINER`、`DSH_DESKTOP_WINDOWS_TOKEN_PIN`。仓库现有签名流程只支持 SafeNet 密钥容器（`windows-sign.mjs` 的 `resolveTokenIdentity` 强制要求 `KEY_CONTAINER` 与 `TOKEN_PIN`），因此**文件形式的 OV 证书无法直接用**；改用云签名服务（如 Azure Trusted Signing）需改代码。
+
+**Linux**（可选）：自建 GPG 密钥，无需申请；可对 `.deb` 与校验和文件出分离签名并公布公钥。
+
+### 签名构建的机器前置
+
+签名构建不走 GitHub 托管运行器：
+
+- Windows：`runs-on: dsh-win-package-trial`（自托管），凭据放在机器上 repo 外的 `packaging/secrets`，经 `apps/desktop/scripts/setup-windows-packaging.ps1` 初始化
+- macOS：`runs-on: [self-hosted, macOS, ARM64, dsh-mac-package-trial]`
+
+## 验证（发布流程）
 
 - `pnpm exec tsx scripts/release/verify.ts --family dsh`：382 member(s)、0.2.1-rc.3、publish order resolved、0 个未排序的 peer 声明
 - `pnpm run build:official`：10 门通过，记录 688 个客户端产物与 4 个公开值

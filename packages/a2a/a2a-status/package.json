@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-a2a-status",
   "description": "Host Remote gateway for querying a2a-host listener and Kafka reachability status",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },

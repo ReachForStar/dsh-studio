@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-tool-ssh",
   "description": "Model-facing Consumer of the SSH/SFTP capability seam: connection management, remote command execution, and SFTP file transfer tools",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },

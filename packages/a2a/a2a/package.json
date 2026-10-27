@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-a2a",
   "description": "A2A protocol and peer seam: wire types, server, and client on node:http, plus the configured remote agents this deployment may call",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },

@@ -44,6 +44,17 @@ status: active
 
 **检查**：`pnpm run typecheck` 5 门通过；`apps/desktop/tests` 165 个文件 1872 项通过、2 项失败——这两项（`desktop-policy-environment.spec.ts` 与 `macos-signature.spec.ts` 关于 local macOS 的 mandatory-update 策略）在 stash 掉本次改动后同样失败，属既有红项；oxlint 对本批改动文件 0 报错。
 
+## 发布结果（rc.4）
+
+rc.4 是首个带更新源的发布，已实发验证：
+
+- 版本对齐到 `0.2.1-rc.4`（`release:dsh` 一次改 387 个 manifest 并提交）、`build:official` 10 门通过、`pack` 382 个 tarball；Release `dsh-v0.2.1-rc.4` 以**非 prerelease**创建，从而成为仓库 Latest（feed 依赖这一点）。
+- `Release Desktop` 两批（tag 与 release 事件）均成功，Release 现 12 个资产：5 个安装包、npm zip、**`nightly.yml`**、**`nightly-linux.yml`**、4 个 `SHA256SUMS-<target>`。macOS 没有 yml，与“未签名不带更新源”的设计一致。
+- `nightly.yml` 的 `path` 指 `…-win-x64-unsigned.exe`，`nightly-linux.yml` 的 `path` 指 AppImage（另列出 deb），且三个条目的 `size` 与 Release 资产的字节数逐一相等——两批构建都成功且后到者覆盖，因此元数据与最终资产一致。
+- 新一轮 `SHA256SUMS-linux-x64` 里的 deb/AppImage 摘要各查到 1 条 Sigstore 证明。
+
+**验证边界**：本次从本机直连 `…/releases/latest/download/nightly.yml` 时网络层报 `HTTP2 framing layer` 错误，未能复测 200；但同一目录路径在本次会话里对 `SHA256SUMS-linux-x64` 实测过 200，且两个 yml 的内容经 Release API 获取并核对。Windows 安装包内的 `app-update.yml` 未从 exe 里抽出验证，依据是同一条 electron-builder `publish` 代码路径（本地 linux 构建已实测写入）与 `installer-packaging.spec.ts` 对 unsigned win32 配置的断言。
+
 ## 已知限制
 
 - **依赖 Latest**：feed 走 `releases/latest/download/`，所以每次发布都必须把该版本设为仓库 Latest（不能标 prerelease），否则 Latest 指回旧版本、updater 读到旧元数据。rc.3 已按此设为非 prerelease。

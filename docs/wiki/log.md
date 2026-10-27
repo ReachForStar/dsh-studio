@@ -587,3 +587,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 实测：`…/releases/download` 与 `…/releases/download/<文件>` 均 404，`…/releases/latest/download/<文件>` 为 200，故采用 latest 形态；本地 linux-x64 unsigned 打包产出 `nightly-linux.yml`（`path`=AppImage，sha512 与产物一致）与应用内 `app-update.yml`（`provider: generic`，url/channel 正确）。
 - 验证：typecheck 5 门通过；`apps/desktop/tests` 1872 项通过、2 项失败（已核实为既有红项，stash 本次改动后同样失败）；改动文件 oxlint 0 报错；打包文档中英同步并重记配对。
 - 沉淀：新建[桌面更新源指向发布页](queries/desktop-github-release-update-feed.md)，同步 index。
+
+## [2026-10-27] feat | 发布 dsh 0.2.1-rc.4（首个自带更新源的版本）
+
+- 版本对齐 `0.2.1-rc.4`（`release:dsh` 改 387 个 manifest 并提交 `a8d7de858d`）；`build:official` 10 门通过；`pack` 382 个 tarball；Release `dsh-v0.2.1-rc.4` 以非 prerelease 创建并成为仓库 Latest（更新源依赖此点），npm zip 作为资产上传；`master` 与 `develop` 已推送。
+- `Release Desktop` 两批均成功，Release 12 个资产含 `nightly.yml`（Windows）与 `nightly-linux.yml`（Linux），macOS 无 yml（未签名不带更新源）。
+- 一致性核对：两份 yml 引用的 win exe / AppImage / deb 的 `size` 与 Release 资产字节数逐一相等；新的 deb 与 AppImage 摘要各查到 1 条 Sigstore 证明。
+- 网络说明：本次本机直连 `…/releases/latest/download/nightly.yml` 报 `HTTP2 framing layer` 错误未能复测；同目录路径此前实测 200，yml 内容经 Release API 获取并核对。
+- 沉淀：更新[桌面更新源指向发布页](queries/desktop-github-release-update-feed.md)的「发布结果（rc.4）」与验证边界。

@@ -557,3 +557,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 桌面安装包：`Release Desktop` 工作流由 tag 与 release published 两个事件各触发一次（concurrency group 取值不同，并行两批，`--clobber` 覆盖），四目标为 linux-x64 deb+AppImage、win-x64 exe、mac-arm64/mac-x64 dmg；结果待核验。
 - 踩坑与纠正：诊断某 fork 包目录时把「显示层掩码改写目录名」误判为文件系统损坏，一度准备执行删除+恢复。真实字节核对（`Buffer.from(name,'utf8').toString('hex')`）后确认文件完好，改用 `git add -u packages` 完成提交。此教训记入[发布页](queries/release-dsh-0.2.1-rc.3.md)。
 - 沉淀：新建[发布 dsh 0.2.1-rc.3](queries/release-dsh-0.2.1-rc.3.md)，同步 index。
+
+## [2026-10-27] chore | 0.2.1-rc.3 桌面安装包构建完成
+
+- `Release Desktop` 两批运行（`push: tags` 与 `release: published` 各触发一次）均 success，四目标全部构建成功。
+- Release `dsh-v0.2.1-rc.3` 最终资产 6 个：`deepseek-harness-0.2.1-rc.3-linux-amd64-unsigned.deb`（约 306MB）、`-linux-x86_64-unsigned.AppImage`（约 392MB）、`-mac-arm64-unsigned.dmg`（约 291MB）、`-mac-x64-unsigned.dmg`（约 313MB）、`-win-x64-unsigned.exe`（约 335MB）、`dsh-0.2.1-rc.3-npm.tar.gz.zip`（约 30MB）。
+- 引用位置：tag `dsh-v0.2.1-rc.3` = `1b5f1e2b4d`（发布提交）；`master` = `fda53d95f9`；`develop` = `1b5f1e2b4d`。
+- 发布记录见[发布 dsh 0.2.1-rc.3](queries/release-dsh-0.2.1-rc.3.md)。

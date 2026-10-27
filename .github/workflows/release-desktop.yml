@@ -58,6 +58,11 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: write
+      # Keyless signing: the attestation is signed with this workflow's OIDC
+      # identity and recorded in the repository's attestation store, so no
+      # certificate is bought and no signing key is stored anywhere.
+      id-token: write
+      attestations: write
     env:
       DSH_TELEMETRY_DISABLED: '1'
       TMPDIR: ${{ github.workspace }}/tmp
@@ -79,12 +84,36 @@ jobs:
         run: node --input-type=module -e "import fs from 'node:fs'; const {version}=JSON.parse(fs.readFileSync('package.json','utf8')); if(process.env.RELEASE_TAG !== 'dsh-v'+version) throw Error('Release tag must match dsh-v'+version+', got '+process.env.RELEASE_TAG)"
       - name: Build desktop installers
         run: pnpm --dir apps/desktop exec tsx scripts/package-target.ts "${{ matrix.target }}" --unsigned
+      - name: Checksum installers
+        env:
+          # The name carries the target because every target's checksum file is
+          # attached to the same release, where basenames must be unique.
+          CHECKSUMS_NAME: SHA256SUMS-${{ matrix.target }}
+        working-directory: apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts
+        run: |
+          node --input-type=module -e "
+          import { createHash } from 'node:crypto'
+          import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+          const names = readdirSync('.').filter(name => /\\.(?:deb|AppImage|exe|dmg)$/u.test(name)).sort()
+          if (names.length === 0) throw new Error('no installer in ' + process.cwd())
+          const lines = names.map(name => createHash('sha256').update(readFileSync(name)).digest('hex') + '  ' + name)
+          writeFileSync(process.env.CHECKSUMS_NAME, lines.join('\\n') + '\\n')
+          console.log(lines.join('\\n'))
+          "
       - name: Retain installers
         uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-${{ matrix.target }}
-          path: ${{ matrix.installers }}
+          path: |
+            ${{ matrix.installers }}
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/SHA256SUMS-${{ matrix.target }}
           if-no-files-found: error
+      - name: Sign installers
+        uses: actions/attest-build-provenance@v4.2.2
+        with:
+          # One subject per installer, read from the digests the previous step
+          # computed, so every published file carries its own provenance.
+          subject-checksums: apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/SHA256SUMS-${{ matrix.target }}
       - name: Attach installers to the release
         if: env.RELEASE_TAG != ''
         env:
@@ -97,3 +126,4 @@ jobs:
           # nothing to attach.
           test "${#found[@]}" -gt 0 || { echo "no installer for ${{ matrix.target }}"; exit 1; }
           gh release upload "$RELEASE_TAG" "${found[@]}" --clobber
+          gh release upload "$RELEASE_TAG" apps/desktop/.desktop-build/targets/"${{ matrix.target }}"/unsigned-artifacts/SHA256SUMS-${{ matrix.target }} --clobber

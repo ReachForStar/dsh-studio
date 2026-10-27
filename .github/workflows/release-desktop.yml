@@ -69,6 +69,13 @@ jobs:
       # One tag resolution for every trigger: the release event names it, a tag
       # push carries it, and a manual run may name it to attach to that release.
       RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || (github.event_name == 'push' && github.ref_name) || '' }}
+      # The packaged updater reads its channel metadata from this release's own
+      # assets, so an installation that has no separate update service can still
+      # check. The path resolves the repository's Latest release, which is why a
+      # published version must be the repository's latest rather than a
+      # prerelease. Unsigned macOS builds receive no feed: Squirrel.Mac verifies
+      # the signature of what it installs.
+      DSH_DESKTOP_UPDATE_RELEASES_URL: https://github.com/${{ github.repository }}/releases/latest/download
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -107,6 +114,7 @@ jobs:
           path: |
             ${{ matrix.installers }}
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/SHA256SUMS-${{ matrix.target }}
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/nightly*.yml
           if-no-files-found: error
       - name: Sign installers
         uses: actions/attest-build-provenance@v4.2.2
@@ -127,3 +135,10 @@ jobs:
           test "${#found[@]}" -gt 0 || { echo "no installer for ${{ matrix.target }}"; exit 1; }
           gh release upload "$RELEASE_TAG" "${found[@]}" --clobber
           gh release upload "$RELEASE_TAG" apps/desktop/.desktop-build/targets/"${{ matrix.target }}"/unsigned-artifacts/SHA256SUMS-${{ matrix.target }} --clobber
+          # The updater fetches these channel files from the release, so they are
+          # release assets rather than build-only output. A target without a
+          # feed (unsigned macOS) contributes none and is skipped.
+          metadata=(apps/desktop/.desktop-build/targets/"${{ matrix.target }}"/unsigned-artifacts/nightly*.yml)
+          if [ "${#metadata[@]}" -gt 0 ]; then
+            gh release upload "$RELEASE_TAG" "${metadata[@]}" --clobber
+          fi

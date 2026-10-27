@@ -21,7 +21,7 @@ import {
   resolveWindowsUpdatePublisher,
   scrubWindowsSigningEnvironment,
 } from './windows-sign.mjs'
-import { resolveDesktopAutoUpdateConfig } from './desktop-auto-update-environment.mjs'
+import { resolveDesktopAutoUpdateConfig, resolveDesktopReleaseFeed, resolveDesktopUpdateChannel } from './desktop-auto-update-environment.mjs'
 import { resolveDesktopBuildCommit } from './desktop-build-commit.mjs'
 import { resolveDesktopBuildVersion } from './desktop-build-version.mjs'
 import { resolveDesktopPolicyEnvironment } from './desktop-policy-environment.mjs'
@@ -98,7 +98,14 @@ export function createElectronBuilderConfig(
   if (windowsSigner !== undefined) {
     installWindowsNsisBootstrapSigner({ sign: windowsSigner })
   }
-  const update = unsigned ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
+  // A configured release feed carries an unsigned build too, so a package
+  // published without signing credentials can still check for updates. An
+  // unsigned macOS application is excluded: Squirrel.Mac validates the code
+  // signature it installs, and the unsigned target emits no zip to fetch.
+  const releaseFeed = resolveDesktopReleaseFeed(env)
+  const update = releaseFeed !== undefined && !(unsigned && resolvedPlatform === 'darwin')
+    ? { publicUrl: releaseFeed.publicUrl, channel: resolveDesktopUpdateChannel(env) }
+    : unsigned ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
   if (preparedRuntime !== undefined) buildPaths.dsh = preparedRuntime
   // electron-builder merges extraMetadata into the packaged manifest, so a build version here reaches
   // the artifact names, the update feed, and the installed app.getVersion() the updater compares against.

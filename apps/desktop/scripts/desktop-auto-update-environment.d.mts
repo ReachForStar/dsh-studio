@@ -1,6 +1,15 @@
 /** Environment variable that selects the Desktop update deployment. */
 export const DESKTOP_AUTO_UPDATE_ENV: 'DSH_DESKTOP_AUTO_UPDATE_ENV'
 
+/** Environment variable naming a public release feed a build checks, such as a GitHub release's asset directory. */
+export const DESKTOP_UPDATE_RELEASES_URL: 'DSH_DESKTOP_UPDATE_RELEASES_URL'
+
+/** Public feed base a build checks instead of a Tencent COS deployment. */
+export interface DesktopReleaseFeed {
+  /** Feed directory, always ending in one slash. */
+  readonly publicUrl: string
+}
+
 /** Supported Desktop update deployment. */
 export type DesktopAutoUpdateEnvironment = 'test' | 'production'
 
@@ -91,6 +100,14 @@ export function resolveDesktopUploadConfig(
   platform: NodeJS.Platform,
   arch: string,
 ): DesktopUploadConfig
+
+/**
+ * Resolve the public feed a build checks without a Tencent COS deployment.
+ * @param env - Packaging environment.
+ * @returns Feed base ending in '/', or undefined when no feed is configured.
+ * @throws When the configured value is not an HTTPS URL without credentials, query, or fragment.
+ */
+export function resolveDesktopReleaseFeed(env: NodeJS.ProcessEnv): DesktopReleaseFeed | undefined
 
 /**
  * Resolve the packaged update channel, defaulting omitted local settings to nightly.

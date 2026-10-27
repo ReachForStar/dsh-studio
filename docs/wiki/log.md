@@ -579,3 +579,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - GitHub 不允许 prerelease 充当 Latest，而 rc.2 是 `prerelease=false`，因此把 rc.3 的 `prerelease` 改为 `false` 并设 `make_latest=true`。结果：`/releases/latest` 指向 `dsh-v0.2.1-rc.3`，标题 `dsh 0.2.1-rc.3（定制版）`。
 - 踩坑：本机 gh 2.4.0 对 `releases/tags/{tag}` 端点与 `--input` 均返回 404，PATCH 须按 release id 调用并用 `-F/-f` 字段传参。
 - 沉淀：更新[发布页](queries/release-dsh-0.2.1-rc.3.md)的签名决策与发布状态。
+
+## [2026-10-27] feat | 桌面未签名构建支持指向发布页的更新源
+
+- 新增 `DSH_DESKTOP_UPDATE_RELEASES_URL`（`resolveDesktopReleaseFeed`），接受带路径的 HTTPS 目录；`electron-builder-config.mjs` 改为：配置该地址且非「unsigned 的 macOS」时用它作 `publish`，其余维持原判断。unsigned macOS 排除的原因：Squirrel.Mac 校验待安装内容的签名，且未签名目标不产 zip。
+- 工作流把该变量设为 `https://github.com/${{ github.repository }}/releases/latest/download`，并把 `nightly*.yml` 作为 Release 资产上传。
+- 实测：`…/releases/download` 与 `…/releases/download/<文件>` 均 404，`…/releases/latest/download/<文件>` 为 200，故采用 latest 形态；本地 linux-x64 unsigned 打包产出 `nightly-linux.yml`（`path`=AppImage，sha512 与产物一致）与应用内 `app-update.yml`（`provider: generic`，url/channel 正确）。
+- 验证：typecheck 5 门通过；`apps/desktop/tests` 1872 项通过、2 项失败（已核实为既有红项，stash 本次改动后同样失败）；改动文件 oxlint 0 报错；打包文档中英同步并重记配对。
+- 沉淀：新建[桌面更新源指向发布页](queries/desktop-github-release-update-feed.md)，同步 index。

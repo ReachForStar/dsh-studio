@@ -5,6 +5,9 @@ import { valid } from 'semver'
 /** Environment variable that selects the Desktop update deployment. */
 export const DESKTOP_AUTO_UPDATE_ENV = 'DSH_DESKTOP_AUTO_UPDATE_ENV'
 
+/** Environment variable naming a public release feed a build checks, such as a GitHub release's asset directory. */
+export const DESKTOP_UPDATE_RELEASES_URL = 'DSH_DESKTOP_UPDATE_RELEASES_URL'
+
 /**
  * Resolve the channel embedded in the installer; omitted local settings retain nightly.
  * @param {NodeJS.ProcessEnv} env Packaging or upload settings.
@@ -14,6 +17,33 @@ export function resolveDesktopUpdateChannel(env) {
   const channel = env.DSH_DESKTOP_UPDATE_CHANNEL || 'nightly'
   if (channel !== 'nightly' && channel !== 'latest') throw new Error('desktop auto-update: invalid update channel')
   return channel
+}
+
+/**
+ * Resolve the public feed a build checks without a Tencent COS deployment.
+ *
+ * A release host serves the feed and its artifacts under a path rather than at
+ * a deployment root, so this accepts a directory URL where the COS origin does
+ * not. The trailing slash is what the updater appends the channel file name to.
+ * @param {NodeJS.ProcessEnv} env Packaging environment.
+ * @returns {{ publicUrl: string } | undefined} Feed base ending in '/', or undefined when no feed is configured.
+ * @throws {Error} When the configured value is not an HTTPS URL without credentials, query, or fragment.
+ */
+export function resolveDesktopReleaseFeed(env) {
+  const value = env[DESKTOP_UPDATE_RELEASES_URL]?.trim()
+  if (value === undefined || value === '') return undefined
+  let parsed
+  try {
+    parsed = new URL(value)
+  }
+  catch {
+    throw new Error(`desktop auto-update: ${DESKTOP_UPDATE_RELEASES_URL} must be an absolute HTTPS URL`)
+  }
+  if (parsed.protocol !== 'https:' || parsed.username !== '' || parsed.password !== ''
+    || parsed.search !== '' || parsed.hash !== '') {
+    throw new Error(`desktop auto-update: ${DESKTOP_UPDATE_RELEASES_URL} must be an absolute HTTPS URL without credentials, query, or fragment`)
+  }
+  return { publicUrl: `${parsed.origin}${parsed.pathname.endsWith('/') ? parsed.pathname : `${parsed.pathname}/`}` }
 }
 
 const UPDATE_ENVIRONMENTS = {

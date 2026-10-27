@@ -102,6 +102,35 @@ describe('installer preparation preserves application dependencies', () => {
     expect(config.artifactName).toBe('deepseek-harness-${version}-${os}-${arch}-unsigned.${ext}')
   })
 
+  it.each([['win32', 'x64'], ['linux', 'x64']] as const)('points an unsigned %s build at the configured release feed', async (platform, arch) => {
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: 'com.example.installer',
+      DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
+      DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }),
+      DSH_DESKTOP_TARGET_PLATFORM: platform,
+      DSH_DESKTOP_TARGET_ARCH: arch,
+      DSH_DESKTOP_UNSIGNED: '1',
+      DSH_DESKTOP_UPDATE_RELEASES_URL: 'https://github.com/owner/repo/releases/latest/download',
+    }, platform, arch)
+    expect(config.publish).toEqual([{ provider: 'generic', url: 'https://github.com/owner/repo/releases/latest/download/', channel: 'nightly' }])
+    expect(config.extraMetadata?.dshDesktopUpdateChannel).toBe('nightly')
+  })
+
+  it('leaves an unsigned macOS build without a feed because Squirrel.Mac verifies its signature', async () => {
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: 'com.example.installer',
+      DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
+      DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }),
+      DSH_DESKTOP_TARGET_PLATFORM: 'darwin',
+      DSH_DESKTOP_TARGET_ARCH: 'arm64',
+      DSH_DESKTOP_UNSIGNED: '1',
+      DSH_DESKTOP_UPDATE_RELEASES_URL: 'https://github.com/owner/repo/releases/latest/download',
+    }, 'darwin', 'arm64')
+    expect(config.publish).toBeNull()
+  })
+
   it('packages every preload entry point the shell loads', async () => {
     const { readdirSync, readFileSync } = await import('node:fs')
     const sourceDirectory = new URL('../src/', import.meta.url)

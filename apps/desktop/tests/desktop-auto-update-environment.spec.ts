@@ -5,10 +5,40 @@ import {
   resolveDesktopAutoUpdateConfig,
   resolveDesktopAutoUpdateEnvironment,
   resolveDesktopAutoUpdateTarget,
+  resolveDesktopReleaseFeed,
   resolveDesktopUploadConfig,
 } from '../scripts/desktop-auto-update-environment.mjs'
 
 const RELEASE_ID = '0123456789abcdef0123456789abcdef'
+
+describe('desktop release feed', () => {
+  it.each([undefined, '', '   '])('reports no configured feed for %j', (value) => {
+    expect(resolveDesktopReleaseFeed(value === undefined ? {} : { DSH_DESKTOP_UPDATE_RELEASES_URL: value })).toBeUndefined()
+  })
+
+  it('accepts a release host directory and ends it with one slash', () => {
+    expect(resolveDesktopReleaseFeed({ DSH_DESKTOP_UPDATE_RELEASES_URL: 'https://github.com/owner/repo/releases/latest/download' }))
+      .toEqual({ publicUrl: 'https://github.com/owner/repo/releases/latest/download/' })
+    expect(resolveDesktopReleaseFeed({ DSH_DESKTOP_UPDATE_RELEASES_URL: 'https://github.com/owner/repo/releases/latest/download/' }))
+      .toEqual({ publicUrl: 'https://github.com/owner/repo/releases/latest/download/' })
+  })
+
+  it('accepts a deployment root where the feed sits at the top level', () => {
+    expect(resolveDesktopReleaseFeed({ DSH_DESKTOP_UPDATE_RELEASES_URL: 'https://updates.example.com' }))
+      .toEqual({ publicUrl: 'https://updates.example.com/' })
+  })
+
+  it.each([
+    'http://github.com/owner/repo/releases/latest/download',
+    'https://user:secret@github.com/owner/repo',
+    'https://github.com/owner/repo?channel=nightly',
+    'https://github.com/owner/repo#fragment',
+    'github.com/owner/repo',
+    '/owner/repo',
+  ])('rejects %j', (value) => {
+    expect(() => resolveDesktopReleaseFeed({ DSH_DESKTOP_UPDATE_RELEASES_URL: value })).toThrow(/DSH_DESKTOP_UPDATE_RELEASES_URL/u)
+  })
+})
 
 describe('desktop auto-update environment', () => {
   it.each([undefined, 'test'])('requires a release ID for deployment %s', (deployment) => {

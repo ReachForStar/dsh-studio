@@ -61,6 +61,8 @@ Buffer.from(name, 'utf8').toString('hex')
 
 ## 签名与验证
 
+> 2026-10-27 决定：**不再推进平台原生签名**（不申请 Apple Developer ID 与 Windows 代码签名证书），只保留下面不需证书的 Sigstore 出处证明与校验和。以下“需要申请的材料”一节仅作记录，不待执行。
+
 ### 已具备：Sigstore 无密钥签名（不需购买证书）
 
 `.github/workflows/release-desktop.yml` 在构建后为每个安装包生成 `SHA256SUMS-<target>` 并调用 `actions/attest-build-provenance@v4.2.2`：工作流用自身的 OIDC 身份签名，证明记录写入仓库的证明存储，因此不购置证书、不保存签名私钥。作业权限需要 `id-token: write` 与 `attestations: write`（公共仓库免费）。
@@ -98,6 +100,10 @@ gh attestation verify <安装包> -R <owner>/<repo>   # 出处证明（需较新
 
 - Windows：`runs-on: dsh-win-package-trial`（自托管），凭据放在机器上 repo 外的 `packaging/secrets`，经 `apps/desktop/scripts/setup-windows-packaging.ps1` 初始化
 - macOS：`runs-on: [self-hosted, macOS, ARM64, dsh-mac-package-trial]`
+
+## 发布状态
+
+`dsh-v0.2.1-rc.3` 已设为仓库 Latest：GitHub 不允许 prerelease 充当 Latest，而 fork 的 `dsh-v0.2.1-rc.2` 是以非 prerelease 发布的面子 release，因此把 rc.3 的 `prerelease` 改为 `false` 并请求 `make_latest=true`（PATCH 必须按 release id 而非 `tags/{tag}` 调用：本机 gh 2.4.0 对 tags 端点与 `--input` 均返回 404）。结果是 `/releases/latest` 指向 `dsh-v0.2.1-rc.3`，标题为 `dsh 0.2.1-rc.3（定制版）`。与 fork 前两个 release 的非 prerelease 惯例一致。
 
 ## 验证（发布流程）
 

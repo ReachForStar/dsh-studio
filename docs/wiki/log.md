@@ -572,3 +572,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 重建与验证：`workflow_dispatch` 以 `release_tag=dsh-v0.2.1-rc.3` 重跑成功；Release 现有 10 个资产（5 个安装包 + npm zip + 4 个校验和文件）。五个安装包摘要各查到 1 条证明记录；下载 deb 实测 `sha256sum -c SHA256SUMS-linux-x64` 成功，校验和与已发布字节一致。
 - 平台原生签名仍未具备：macOS 仅 ad-hoc 签名（无 Developer ID、未公证），Windows 无代码签名证书，Linux 无 GPG 签名。所需申请材料与变量名记入[发布页](queries/release-dsh-0.2.1-rc.3.md#签名与验证)。
 - 验证：Release 说明已补「完整性校验与出处证明」小节（`gh api -X PATCH` 更新，本机 gh 2.4.0 的 `release edit` 不支持 `--notes-file`）。
+
+## [2026-10-27] chore | 0.2.1-rc.3 设为仓库 Latest 并停止平台原生签名
+
+- 用户决定停止推进平台原生签名（不申请 Apple Developer ID 与 Windows 代码签名证书）；保留已就绪的 Sigstore 出处证明与 SHA256SUMS 资产。
+- GitHub 不允许 prerelease 充当 Latest，而 rc.2 是 `prerelease=false`，因此把 rc.3 的 `prerelease` 改为 `false` 并设 `make_latest=true`。结果：`/releases/latest` 指向 `dsh-v0.2.1-rc.3`，标题 `dsh 0.2.1-rc.3（定制版）`。
+- 踩坑：本机 gh 2.4.0 对 `releases/tags/{tag}` 端点与 `--input` 均返回 404，PATCH 须按 release id 调用并用 `-F/-f` 字段传参。
+- 沉淀：更新[发布页](queries/release-dsh-0.2.1-rc.3.md)的签名决策与发布状态。

@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { officialClientBuildEnvironment, writeClientBuildRecord } from '../client-build-environment.ts'
 import { ON_DEMAND_BUNDLES } from '../../packages/util/official-bundles/src/bundles.ts'
 import { releaseFamily, type ReleaseMember } from './families.ts'
-import { compareVersions, nextVendorVersion, planShared, reachesPayload } from './bump.ts'
+import { compareVersions, nextVendorVersion, planShared, reachesPayload, sharedVersionRequest } from './bump.ts'
 
 /**
  * A release member standing in for a manifest on disk.
@@ -213,6 +213,45 @@ describe('release families', () => {
 
     expect(() => { dsh.verifyVersions(members) }).toThrow(/must share one version/)
     expect(() => { dsh.verifyVersions([members[0]!]) }).not.toThrow()
+  })
+
+  it('repairs a family left at mixed versions when the request is explicit', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-release-version-'))
+    roots.push(root)
+    write(join(root, 'package.json'), '{"version":"0.0.1"}\n')
+    const dsh = releaseFamily('dsh')
+    const members = [
+      member('packages/core/published', '@deepseek-ai/dsh-published'),
+      { ...member('packages/a2a/a2a', '@reachforstar/dsh-a2a'), version: '0.0.2' },
+    ]
+
+    const { planned, version } = planShared(dsh, root, members, '0.0.3')
+
+    expect(version).toBe('0.0.3')
+    expect(planned.map(entry => [entry.label, entry.from, entry.to])).toEqual([
+      ['package.json', '0.0.1', '0.0.3'],
+      ['packages/core/published', '0.0.1', '0.0.3'],
+      ['packages/a2a/a2a', '0.0.2', '0.0.3'],
+    ])
+  })
+
+  it('still requires agreement for a relative request', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-release-version-'))
+    roots.push(root)
+    write(join(root, 'package.json'), '{"version":"0.0.1"}\n')
+    const dsh = releaseFamily('dsh')
+    const members = [
+      member('packages/core/published', '@deepseek-ai/dsh-published'),
+      { ...member('packages/a2a/a2a', '@reachforstar/dsh-a2a'), version: '0.0.2' },
+    ]
+
+    expect(() => planShared(dsh, root, members, 'patch')).toThrow(/must share one version/)
+  })
+
+  it('reads one version argument and rejects a flag that landed after the separator', () => {
+    expect(sharedVersionRequest(['0.0.3'])).toBe('0.0.3')
+    expect(() => sharedVersionRequest([])).toThrow(/usage: release:dsh/)
+    expect(() => sharedVersionRequest(['0.0.3', '--dry-run'])).toThrow(/got extra --dry-run/)
   })
 
   it('accepts independent vendored versions and rejects an unpublishable one', () => {

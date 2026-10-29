@@ -137,7 +137,7 @@ export function compareVersions(left: string, right: string): number {
  * @returns The target version.
  */
 function nextSharedVersion(current: string, request: string): string {
-  if (!RELEASE_TYPES.includes(request as typeof RELEASE_TYPES[number])) {
+  if (!isRelativeRequest(request)) {
     if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(request)) {
       throw new Error(`usage: release:dsh <major|minor|patch|x.y.z>, got ${request}`)
     }
@@ -147,6 +147,34 @@ function nextSharedVersion(current: string, request: string): string {
   if (request === 'major') return `${String(major + 1)}.0.0`
   if (request === 'minor') return `${String(major)}.${String(minor + 1)}.0`
   return `${String(major)}.${String(minor)}.${String(patch + 1)}`
+}
+
+/**
+ * Whether a request advances from the family's current version.
+ * @param request - `major`, `minor`, `patch`, or an explicit version.
+ * @returns True for `major`, `minor`, and `patch`.
+ */
+function isRelativeRequest(request: string): boolean {
+  return RELEASE_TYPES.includes(request as typeof RELEASE_TYPES[number])
+}
+
+/**
+ * Read the dsh family's requested version from the command's positional arguments.
+ *
+ * pnpm inserts its own `--` ahead of forwarded arguments, and `parseArgs` ends
+ * option parsing there: `pnpm run release:dsh -- 0.0.1 --dry-run` delivers
+ * `--dry-run` as a second positional. Rejecting it keeps a flag that landed in
+ * the wrong place from being ignored.
+ * @param positionals - arguments remaining after the family's own flags.
+ * @returns The requested version or release type.
+ */
+export function sharedVersionRequest(positionals: readonly string[]): string {
+  const [request, ...extra] = positionals
+  if (request === undefined) throw new Error('usage: release:dsh <major|minor|patch|x.y.z>')
+  if (extra.length > 0) {
+    throw new Error(`release:dsh takes one version, got extra ${extra.join(' ')}; flags belong before the separator, as in: pnpm run release:dsh --dry-run -- ${request}`)
+  }
+  return request
 }
 
 /**
@@ -273,6 +301,11 @@ function privateDshVersions(root: string): PrivateDshVersion[] {
 /**
  * Plan the dsh family's rewrite: one version for every publishable member,
  * private package, and the root.
+ *
+ * A relative request advances from the family's current version, which only one
+ * uniform version can name, so it requires agreement. An explicit version is
+ * its own target and rewrites every member, which also repairs a family a merge
+ * left at mixed versions instead of refusing to run.
  * @param family - the dsh family.
  * @param root - repository root.
  * @param members - the family's members.
@@ -287,6 +320,7 @@ export function planShared(
 ): { planned: PlannedVersion[]; version: string } {
   const [first] = members
   if (first === undefined) throw new Error(`release family ${family.id} has no members`)
+  if (isRelativeRequest(request)) family.verifyVersions(members)
   const version = nextSharedVersion(first.version, request)
   // The workspace root carries the family version too: the workspace constraint
   // requires every member's version to equal the root's.
@@ -363,13 +397,11 @@ function main(): void {
   const family = releaseFamily(values.family)
   const root = process.cwd()
   const members = family.members(root)
-  family.verifyVersions(members)
 
   let planned: PlannedVersion[]
   let sharedVersion: string | undefined
   if (family.id === 'dsh') {
-    const request = positionals[0]
-    if (request === undefined) throw new Error('usage: release:dsh <major|minor|patch|x.y.z>')
+    const request = sharedVersionRequest(positionals)
     if (values.prerelease !== undefined) {
       throw new Error('release:dsh takes the prerelease in its version argument, as in 0.0.1-rc.1')
     }
@@ -377,6 +409,7 @@ function main(): void {
     planned = shared.planned
     sharedVersion = shared.version
   } else {
+    family.verifyVersions(members)
     if (positionals.length > 0) throw new Error('release:vendor takes no version: each package increments its own patch')
     if (values.prerelease !== undefined && !/^[0-9A-Za-z.-]+$/.test(values.prerelease)) {
       throw new Error(`--prerelease must be a semver prerelease identifier, got ${values.prerelease}`)

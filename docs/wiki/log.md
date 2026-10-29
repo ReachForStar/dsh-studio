@@ -654,3 +654,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 参数坑：`pnpm run release:dsh -- 0.2.2-alpha.2 --dry-run` 里的 `--dry-run` 落在 pnpm 插入的 `--` 之后，被 `parseArgs` 当作位置参数，于是“干跑”真的写了清单并提交（提交 `release(dsh): 0.2.2-alpha.2`，内容正确故保留）；干跑要写成 `pnpm run release:dsh --dry-run -- 0.2.2-alpha.2`。
 - 沉淀到 [fork 发布流程页](queries/fork-release-dsh-0.2.1-rc.2.md)的第 5、6 条，并更新[合并记录](queries/upstream-merge-2026-10-29.md)的待跟进条目。
 - 推送：`develop` 与 `master` 均为 `8d87fc6bdc9`。
+
+## [2026-10-29] fix | release:dsh 支持用显式版本修复家族并拒绝错位参数
+
+- 修掉上一节记的两个坑：`planShared` 只在相对版本（`major`/`minor`/`patch`）时要求家族同版本，显式版本直接把全部成员写到目标版本，因此能修复合并上游后的版本漂移；新增 `sharedVersionRequest` 让落在 `--` 之后的标志（如 `--dry-run`）报错，不再被静默忽略。
+- 验证：单元测试 42 项通过（新增 3 项）、typecheck 5 门通过、oxlint 对两个改动文件无发现；实跑验证了正确干跑、错位标志报错且不产生提交、以及把 `packages/xingchen/xingchen` 退回 `0.2.1-rc.4` 后显式版本列出修复而相对版本仍报 `must share one version`（验完已还原）。
+- 提交 `05974ff405 fix(release): 显式版本可修复家族版本不一致`；`scripts/release/bump.ts` 属上游文件，已记入[合并记录](queries/upstream-merge-2026-10-29.md)的待跟进，供下次上游合并保留改动。

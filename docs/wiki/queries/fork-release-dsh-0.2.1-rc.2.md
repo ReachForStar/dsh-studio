@@ -31,8 +31,10 @@ gh release create dsh-v0.2.1-rc.2 --title "…" --notes-file 正文.md 资产.zi
 2. **`workspace:^` 违反 packed manifest 校验**：`families.ts` 要求打包后的 `@deepseek-ai/dsh-*` 依赖恰等于家族版本；`workspace:^` 会展开成 `^0.2.1-rc.2` 被拒。上游包一律 `workspace:*`，fork 自研包 17 个 manifest 从 `workspace:^` 改齐。
 3. **pack 要求官方剖面构建记录**：默认 `build:artifacts` 内联本地 commit 与 dirty 标记，与 `officialClientBuildEnvironment`（要求恰好 `DSH_CLIENT_BUILD_PROFILE`/`COMMIT_HASH`/`TITLE`/`VERSION` 四个公开值）不符即拒。用 `pnpm run build:official`。
 4. **构建记录绑定 HEAD**：`DSH_CLIENT_COMMIT_HASH` 取自当前 HEAD，任何后续提交（如改 workspace 协议的修复提交）都会让记录里的 hash 落后。正确顺序是「所有修复提交完成 → 最终提交上 build:official → pack → tag 指向同一提交」；中途 pack 成功过也要重跑。
-5. **家族不同版本时 `release:dsh` 不能自教**：`bump.ts` 先调 `verifyVersions`、再计算计划，成员版本不一致时直接报「dsh release members must share one version」而不进入写入阶段（2026-10-29 合并上游 0.2.2-alpha.2 后重现：18 个自研包停在 `0.2.1-rc.4`，其余 370 个是 `0.2.2-alpha.2`）。先把清单里的 `version` 字段改成家族版本，再跑工具验证一致性。
-6. **`pnpm run` 的 `--dry-run` 必须写在 `--` 之前**：pnpm 会把参数落到脚本命令行时插入一个 `--`，而 `node:util` 的 `parseArgs` 在 `--` 处终止选项解析，因此 `pnpm run release:dsh -- 0.2.2-alpha.2 --dry-run` 会把 `--dry-run` 当成位置参数：它不会干跑，而是直接写清单并提交（真正干跑用 `pnpm run release:dsh --dry-run -- 0.2.2-alpha.2`）。
+5. **显式版本可以修复家族不一致**：`planShared` 只在相对版本（`major`/`minor`/`patch`）时调用 `verifyVersions`——相对版本需要一个统一基准；显式版本本身就是目标，会把全部成员写到该版本。因此合并上游后出现的版本漂移（如 2026-10-29：18 个自研包停在 `0.2.1-rc.4`，其余 370 个是 `0.2.2-alpha.2`）可以直接用 `release:dsh <显式版本>` 修复，不必先手工改清单。该改动落在上游文件 `scripts/release/bump.ts`，属 fork 本地改动，下次合并上游若该文件有更新需保留；`verify.ts`、`pack.ts`、`local-bundle-registry.ts` 仍各自调用 `verifyVersions`，语义未变。
+6. **位置放错的标志会报错而不是被忽略**：pnpm 转发参数时插入 `--`，而 `node:util` 的 `parseArgs` 在 `--` 处终止选项解析，因此 `pnpm run release:dsh -- 0.2.2-alpha.2 --dry-run` 会把 `--dry-run` 送成第二个位置参数。以前它被静默丢弃（“干跑”会真的写清单并提交）；现在 `sharedVersionRequest` 报 `release:dsh takes one version, got extra --dry-run`，并在消息里给出正确写法 `pnpm run release:dsh --dry-run -- <版本>`。
+
+本轮验证：单元测试 42 项通过（其中 3 项属新增）、`typecheck` 5 门通过、oxlint 对两个改动文件无发现；实跑三种情形与预期一致（正确写法的干跑输出 `release bump: dry run, nothing written`；错位标志报错且不产生提交；把 `packages/xingchen/xingchen` 退回 `0.2.1-rc.4` 后，显式版本列出该包 `-> 0.2.2-alpha.2` 且不报错，相对版本仍报 `must share one version`）。
 
 ## 附带清理
 

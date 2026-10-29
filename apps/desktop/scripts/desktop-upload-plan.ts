@@ -8,6 +8,7 @@ import { dump, load } from 'js-yaml'
 import type { DesktopPackageTargetName } from './package-target.ts'
 import {
   desktopBuildRecordFilename,
+  desktopLatestInstallerFilename,
   desktopUpdateMetadataFilename,
   resolveDesktopUploadConfig,
 } from './desktop-auto-update-environment.mjs'
@@ -289,7 +290,7 @@ export async function createDesktopUploadPlan(
       artifacts.push({ ...channelArtifact, filename: stableFilename, key: `${update.keyPrefix}/${stableFilename}` })
     }
   }
-  const latestFilename = `dsh-latest-${target.platform === 'darwin' ? 'macos' : target.platform === 'linux' ? 'linux' : 'windows'}-${target.arch}.${target.platform === 'darwin' ? 'dmg' : target.platform === 'linux' ? 'AppImage' : 'exe'}`
+  const latestFilename = desktopLatestInstallerFilename(targetName)
   const latestKey = `desktop/${latestFilename}`
   return {
     environment: update.environment,

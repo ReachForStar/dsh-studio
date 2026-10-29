@@ -553,7 +553,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 家族版本对齐：合并上游后 18 个 fork 公开包停在 0.2.1-rc.2，全部改为 0.2.1-rc.3；`release/verify` 通过（382 member、publish order resolved）。
 - 构建与打包：`build:official` 10 门通过并记录 688 个客户端产物；`pack` 产出 382 个 tarball（zip 后约 30MB）。
-- 发布：本地 `dsh-v0.2.1-rc.3` tag 原先由 fetch 指向上游同名提交，`-f` 移回发布提交 `1b5f1e2b4d`；`gh release create` 不带 `--target`（带 `--target` 报 422）创建 prerelease 并上传 npm zip；`master` 与 `develop` 均已推送。
+- 发布：本地 `dsh-v0.2.1-rc.3` tag 原先由 fetch 指向上游同名提交，`-f` 移回 fork 自己的发布提交；`gh release create` 不带 `--target`（带 `--target` 报 422）创建 prerelease 并上传 npm zip；`master` 与 `develop` 均已推送。
 - 桌面安装包：`Release Desktop` 工作流由 tag 与 release published 两个事件各触发一次（concurrency group 取值不同，并行两批，`--clobber` 覆盖），四目标为 linux-x64 deb+AppImage、win-x64 exe、mac-arm64/mac-x64 dmg；结果待核验。
 - 踩坑与纠正：诊断某 fork 包目录时把「显示层掩码改写目录名」误判为文件系统损坏，一度准备执行删除+恢复。真实字节核对（`Buffer.from(name,'utf8').toString('hex')`）后确认文件完好，改用 `git add -u packages` 完成提交。此教训记入[发布页](queries/release-dsh-0.2.1-rc.3.md)。
 - 沉淀：新建[发布 dsh 0.2.1-rc.3](queries/release-dsh-0.2.1-rc.3.md)，同步 index。
@@ -562,12 +562,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - `Release Desktop` 两批运行（`push: tags` 与 `release: published` 各触发一次）均 success，四目标全部构建成功。
 - Release `dsh-v0.2.1-rc.3` 最终资产 6 个：`deepseek-harness-0.2.1-rc.3-linux-amd64-unsigned.deb`（约 306MB）、`-linux-x86_64-unsigned.AppImage`（约 392MB）、`-mac-arm64-unsigned.dmg`（约 291MB）、`-mac-x64-unsigned.dmg`（约 313MB）、`-win-x64-unsigned.exe`（约 335MB）、`dsh-0.2.1-rc.3-npm.tar.gz.zip`（约 30MB）。
-- 引用位置：tag `dsh-v0.2.1-rc.3` = `1b5f1e2b4d`（发布提交）；`master` = `fda53d95f9`；`develop` = `1b5f1e2b4d`。
+- 引用位置：tag `dsh-v0.2.1-rc.3` 指向发布提交，fork 的 `master` 与 `develop` 与该 tag 同点。
 - 发布记录见[发布 dsh 0.2.1-rc.3](queries/release-dsh-0.2.1-rc.3.md)。
 
 ## [2026-10-27] feat | 桌面安装包加校验和并用 Sigstore 无密钥签名
 
-- 工作流：`release-desktop.yml` 新增「Checksum installers」（按 target 生成 `SHA256SUMS-<target>`）与「Sign installers」（`actions/attest-build-provenance@v4.2.2`，`subject-checksums` 从校验和文件一次证明该平台全部安装包）；作业权限补 `id-token: write` 与 `attestations: write`。校验和文件同时进入制品与 Release 资产。
+- 工作流：`release-desktop.yml` 新增「Checksum installers」（按 target 生成 `SHA256SUMS-<target>`）与「Sign installers」（调用 GitHub 官方证明 action `actions/attest@v4.2.2`，`subject-checksums` 从校验和文件一次证明该平台全部安装包）；作业权限补 `id-token: write` 与 `attestations: write`。校验和文件同时进入制品与 Release 资产。
 - 无密钥签名不需要购买证书：Sigstore 用工作流自身的 OIDC 身份签发，证明写入仓库证明存储；公共仓库免费。
 - 重建与验证：`workflow_dispatch` 以 `release_tag=dsh-v0.2.1-rc.3` 重跑成功；Release 现有 10 个资产（5 个安装包 + npm zip + 4 个校验和文件）。五个安装包摘要各查到 1 条证明记录；下载 deb 实测 `sha256sum -c SHA256SUMS-linux-x64` 成功，校验和与已发布字节一致。
 - 平台原生签名仍未具备：macOS 仅 ad-hoc 签名（无 Developer ID、未公证），Windows 无代码签名证书，Linux 无 GPG 签名。所需申请材料与变量名记入[发布页](queries/release-dsh-0.2.1-rc.3.md#签名与验证)。
@@ -590,7 +590,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-10-27] feat | 发布 dsh 0.2.1-rc.4（首个自带更新源的版本）
 
-- 版本对齐 `0.2.1-rc.4`（`release:dsh` 改 387 个 manifest 并提交 `a8d7de858d`）；`build:official` 10 门通过；`pack` 382 个 tarball；Release `dsh-v0.2.1-rc.4` 以非 prerelease 创建并成为仓库 Latest（更新源依赖此点），npm zip 作为资产上传；`master` 与 `develop` 已推送。
+- 版本对齐 `0.2.1-rc.4`（`release:dsh` 改 387 个 manifest 并提交）；`build:official` 10 门通过；`pack` 382 个 tarball；Release `dsh-v0.2.1-rc.4` 以非 prerelease 创建并成为仓库 Latest（更新源依赖此点），npm zip 作为资产上传；`master` 与 `develop` 已推送。
 - `Release Desktop` 两批均成功，Release 12 个资产含 `nightly.yml`（Windows）与 `nightly-linux.yml`（Linux），macOS 无 yml（未签名不带更新源）。
 - 一致性核对：两份 yml 引用的 win exe / AppImage / deb 的 `size` 与 Release 资产字节数逐一相等；新的 deb 与 AppImage 摘要各查到 1 条 Sigstore 证明。
 - 网络说明：本次本机直连 `…/releases/latest/download/nightly.yml` 报 `HTTP2 framing layer` 错误未能复测；同目录路径此前实测 200，yml 内容经 Release API 获取并核对。
@@ -614,3 +614,15 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 2026-10-28 09:00–11:00 的四个 dsh 会话首字中位 63–73 秒、排队 56–62 秒（`tries[].queued`）；同期 codearts 上游同时占用峰值 5，而 `~/.config/magpie/providers.json` 中该提供方为 `maxConcurrency: 1`、`queueLimit: 8`。
 - 本地不是瓶颈：会话内上一条记录到 `step/start` 中位 18 毫秒，924 个配对步骤的「dsh 首字 − 网关 ttft」中位 36 毫秒。
 - 该页状态 draft → active，标题与结论改写为排队根因；index 的 queries 段补该页并从 concepts 段移出错放条目。
+
+## [2026-10-29] merge | 合并上游 upstream/master（0.2.2-alpha.2 同步，413 文件冲突）
+
+- 规模：上游自上一轮合并基点 637 个提交（含 rc.4、alpha.1、alpha.2 三代版本同步与 LiveShare、Forge 两大能力）；**413 个冲突文件、534 处冲突块**，其中 343 个是纯版本号 `package.json`，用脚本按字段规则批量取上游侧。
+- 取舍：fork 已删的 5 个云端 CI/发布工作流与两个契约 spec 维持删除；上游本轮删除的 `ui-deepseek-model-label-1017` 包随上游删除并清掉 web-app 依赖登记；生成物全部重生成（`gen-persistence-catalog`、`verify-persistence-formats --write`、`gen-cordis-api`、`gen-client-catalog`、`gen-tool-catalog`、`gen-config-catalog`、`gen-doc-graphs`、`gen-session-format-catalog` 等）。
+- 合并引入并修复：LiveShare 的端点全覆盖表缺 fork 的 `a2a/status` 与 `workspaceFiles` 写入端点（client 编译失败）；上游新增的 `desktopLatestInstallerFilename()` 不认 linux-x64；LiveShare 装配页的 `/remote` 重写只认 `@deepseek-ai/` 作用域，fork 的 12 个 viewer 用例解析失败。
+- 持久化：上游 `2026-10-25-skill-catalog-incomplete` 成为 4 个根的新 tip 且快照不含 fork 来源种类，补后继记录 `2026-10-29-fork-message-source-kinds`（same-version，5 根），门禁改为 67 根匹配 22 条记录。
+- 环境前置（本机首次实测）：`nvm install 24`（`using` 用例与 Node-API 头文件）、conda 环境 git 2.56（`git worktree list --porcelain -z` 需 git ≥ 2.36）、测试用 `LC_ALL=C`（多个用例断言 git 英文报错前缀）。
+- 验证：typecheck 5 门、build:artifacts 8 门、build:check 2 门、doc-sync 43 门、test:docs 21 门全过；单测 51994 项通过，54 项失败中 35 项与 fork-HEAD 同环境基线一一致、1 项（`http-proxy/install`）亦基线一致，其余 19 项为满载并发下的 5 秒超时，隔离运行全绿；Web 插件页 4 份 golden 重录后 33 项全绿；hygiene 四门与 lint 75 项与合并前逐条相同。
+- 顺手清偿：wiki 与 rc.3 发布页的裸 commit hash 与被禁证明用词；`release-desktop.yml` 的证明行动改用同版本 `actions/attest@v4.2.2`（未实跑发布）。
+- 新增页面：[合并上游（2026-10-29）](queries/upstream-merge-2026-10-29.md)；[fork 门禁红项清单](queries/fork-gate-debt.md)补 hygiene 四门一节；[合并决策](decisions/2026-09-upstream-sync.md)追加本轮三条判定。
+- 收尾：`develop` 与 `master` 快进到同一合并提交并推送 `me`。

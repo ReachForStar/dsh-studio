@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh",
   "description": "dsh CLI: profile launch, plugin management, and configuration inspection",
-  "version": "0.2.1-rc.4",
+  "version": "0.2.2-alpha.2",
   "publishConfig": {
     "access": "public"
   },
@@ -99,6 +99,18 @@
     "@deepseek-ai/dsh-agent-preset": "workspace:*",
     "@deepseek-ai/dsh-experimental-voice-input-bundle": "workspace:*",
     "@deepseek-ai/dsh-experimental-auto-review": "workspace:*",
+    "@deepseek-ai/dsh-experimental-cot-translation-bundle": "workspace:*",
+    "@deepseek-ai/dsh-experimental-badge-skill-bundle": "workspace:*",
+    "@deepseek-ai/dsh-experimental-ralph-bundle": "workspace:*",
+    "@deepseek-ai/dsh-experimental-session-titles-bundle": "workspace:*",
+    "@deepseek-ai/dsh-experimental-terminal-bundle": "workspace:*",
+    "@deepseek-ai/dsh-experimental-liveshare": "workspace:*",
+    "@deepseek-ai/dsh-experimental-session-search": "workspace:*",
+    "@deepseek-ai/dsh-experimental-tool-worktree": "workspace:*",
+    "@deepseek-ai/dsh-cua-bundle": "workspace:*",
+    "@deepseek-ai/dsh-experimental-plugin-market-bundle": "workspace:*",
+    "@deepseek-ai/dsh-personalized-recommendations": "workspace:*",
+    "@deepseek-ai/dsh-experimental-forge-bundle": "workspace:*",
     "@deepseek-ai/dsh-browser-use": "workspace:*",
     "@deepseek-ai/dsh-computer-use": "workspace:*",
     "@deepseek-ai/dsh-experimental-browser-use-playwright-mcp": "workspace:*",
@@ -106,17 +118,7 @@
     "@deepseek-ai/dsh-pi-agent-loop": "workspace:*",
     "@reachforstar/dsh-tool-excalidraw": "workspace:*",
     "@reachforstar/dsh-tool-ssh": "workspace:*",
-    "@reachforstar/dsh-xingchen": "workspace:*",
-    "@deepseek-ai/dsh-experimental-cot-translation-bundle": "workspace:*",
-    "@deepseek-ai/dsh-experimental-badge-skill-bundle": "workspace:*",
-    "@deepseek-ai/dsh-experimental-ralph-bundle": "workspace:*",
-    "@deepseek-ai/dsh-experimental-session-titles-bundle": "workspace:*",
-    "@deepseek-ai/dsh-experimental-terminal-bundle": "workspace:*",
-    "@deepseek-ai/dsh-experimental-session-search": "workspace:*",
-    "@deepseek-ai/dsh-experimental-tool-worktree": "workspace:*",
-    "@deepseek-ai/dsh-cua-bundle": "workspace:*",
-    "@deepseek-ai/dsh-experimental-plugin-market-bundle": "workspace:*",
-    "@deepseek-ai/dsh-personalized-recommendations": "workspace:*"
+    "@reachforstar/dsh-xingchen": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-skill-badge": "workspace:*",

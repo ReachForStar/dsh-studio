@@ -3,7 +3,7 @@ title: fork 自研包的门禁红项清单
 type: query
 tags: [gates, doc-sync, lint, coverage, constraints, fork, 待办]
 created: 2026-09-18
-updated: 2026-10-27
+updated: 2026-10-29
 sources: []
 status: active
 ---
@@ -88,6 +88,19 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 ## 唯一未绿项：website 构建（本机环境）
 
 `pnpm run docs:build` 在本机报 `[vite:esbuild-transpile] remove C:\Users\...\Temp\esbuild-…: Access is denied`：esbuild 无法删除系统临时目录里的中间文件，vite 插件回调因此中断。同一条命令把 `TEMP`/`TMP`/`TMPDIR` 指向仓库内目录即可通过（`build complete` + 5388 条内部片段引用全部解析），说明失败只关乎临时目录权限，与文档内容无关。附带警告 `Unrecognized target environment "es2024"` 来自 esbuild 0.21.5 不认识该 target，不影响产物。上一节 2026-10-02 的日志里同一失败已存在，不是本轮引入。
+
+## hygiene 四门（2026-10-29 合并上游时盘点）
+
+`pnpm run hygiene` 的 4 个门在本机长期红，合并前后失败集合逐条相同（只有行号位移），因此不是上游合并引入的：
+
+| 门禁 | 报错 | 修复方向 |
+| --- | --- | --- |
+| `verify-product-use` | `pi-agent-loop`、`remote/fs-sftp`、`remote/subprocess-sftp`、`subagent/subagent-pi` 四个 fork 包无产品运行面使用；`official-bundles/src/bundles.ts` 里 `@deepseek-ai/dsh-tool-subagent-control/list-agents` 无工作区源码映射 | 按上游口径为四个包登记维护角色（或挂进剖面）；给该子路径补 `tsconfig.base.json` 别名并跑 `gen-tsconfig-paths` |
+| `verify-runtime-closure` | `standard`、`xingchen-qiming` 剖面与 python/sdk-runtime 依赖缺 fork 包（`tool-excalidraw`、`xingchen`、`tool-ssh`、`fs-sftp`、`ssh-local`、`subprocess-sftp`、`tool-a2a`） | 把 fork 私有包加入运行时闭包依赖表，或在生成闭包的清单里声明它们为可选 |
+| `verify-cordis-config` | `packages/browser-use/browser-use/cordis.patch.yml` 与 `computer-use` 同型 patch 引用的实验 MCP 包未写进各自 `package.json` 的 `dependencies`/`optionalDependencies` | 在两个包的 manifest 声明该实验 MCP 包（与 `OPTIONAL_BUNDLES` 里的登记保持一致） |
+| `verify-no-unknown-casts` | `scripts/no-unknown-casts.baseline.json` 整体来自上游，不含 fork 既有 `as unknown` 断言（`deploy/a2a/*`、`packages/a2a/*`、`subagent-pi`、`xingchen`、`apps/desktop/src/main.ts` 等 80 余处） | 按当前树一次性重生成基线，并同时评估能否用类型化取值替换——直接扩大基线等于把现有断言转正 |
+
+同一轮盘点出的两类环境噪声不属于仓库债务，但会反复伪装成合并回归：`LC_ALL` 非 C 时 forge 面板用例断言不到 git 英文报错前缀；并发满载下 git/子进程类用例的 5 秒预算不够（本轮 19 项，隔离运行全绿）。口径见[合并上游（2026-10-29）](upstream-merge-2026-10-29.md)。
 
 ## 复发预防
 

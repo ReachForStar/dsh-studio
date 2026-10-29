@@ -639,3 +639,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `ff4e4154b5`（上一节记录的 0.2.2-alpha.2 同步）此前只存在于 `agate-bunting` 工作树的游离 HEAD 上，未在任何分支或远端；本轮把它合入 `develop`，再快进 `master` 并推送 `me`。
 - 合并冲突只有 `docs/wiki/log.md` 一处：两侧各自向文件尾部追加日志，按追加式规则保留两条；`index.md` 自动合并。
 - 代码树与工作树中的合并结果一致，未改动上游同步的取舍与生成物。
+
+## [2026-10-29] query | 核对最新版本与上游同步
+
+- 上游最新发布标签 `dsh-v0.2.2-alpha.2`（提交 `f3803c9697`）已在 `master` 中，`master` 落后 `upstream/master` 为 0；根 `package.json` 与 `apps/desktop/package.json` 均为 `0.2.2-alpha.2`，即最新版本已同步。
+- 18 个 fork 自研包（`@reachforstar/*` 与 fork 新增的 `@deepseek-ai/dsh-pi-agent-loop`、`dsh-session-format-v4-to-v5`）仍为 `0.2.1-rc.4`，按用户要求本轮不做对齐；下一次发布仍需家族版本对齐。
+- 补记：`git fetch upstream master --tags` 会因 fork 与上游同名但指向不同的 4 个标签被拒。
+- [合并记录](queries/upstream-merge-2026-10-29.md)的环境前置与待跟进两节同步补上以上三点。

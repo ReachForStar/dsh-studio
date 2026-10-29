@@ -62,6 +62,7 @@ status: active
 - `native/system/scripts/build.ts` 从 `process.execPath` 的相对位置找 `include/node`，nvm 装的 Node 带该目录，而 `/opt/DeepSeek Harness/.../primary-runtime` 里那个不带；用带不到头文件的 Node 会让 `build:artifacts` 的 native 门失败并级联跳过 7 门。
 - conda 环境装 git 2.56（`/home/asus/envs/git-new`）。上游把工作树恢复逻辑改成 `git worktree list --porcelain -z` 后需要 git 2.36 才有的 `-z` 选项；系统 git 2.34.1 报「未知开关 `z`」，`worktree.spec.ts` 与 `checkout-safety.spec.ts` 整片失败。
 - 跑测试用 `LC_ALL=C`：forge 面板用例断言 git 的英文报错前缀（`fatal:`），本机中文 locale 下 git 输出「致命错误：」，13 个用例失败。
+- `git fetch upstream master --tags` 会被拒四个标签（`dsh-v0.1.1-rc.2`、`dsh-v0.2.1-rc.2`、`dsh-v0.2.1-rc.3`、`dsh-v0.2.1-rc.4`）：fork 自己的同名标签与上游指向不同提交，fetch 为避免覆盖而拒绝；新的发布标签（如 `dsh-v0.2.2-alpha.2`）正常取回。
 
 ## 验证结果
 
@@ -88,6 +89,8 @@ status: active
 
 ## 存疑或待跟进
 
+- 最新版本已与上游同步：仓库根 `package.json` 与 `apps/desktop/package.json` 均为 `0.2.2-alpha.2`，等于上游最新发布标签 `dsh-v0.2.2-alpha.2` 的版本，`master` 落后 `upstream/master` 为 0。
+- 18 个 fork 自研包仍为 `0.2.1-rc.4`（上一轮发布版本），与其余 370 个 `0.2.2-alpha.2` 不一致；fork 发布流程要求家族版本对齐（见 [fork 发布流程](fork-release-dsh-0.2.1-rc.2.md) 的「一次改 387 个 manifest」），下一次发布时需再对齐。
 - `actions/attest@v4.2.2` 替换后的桌面发布工作流需要一次真实 Release 才能确认证明记录与资产摘要仍然正确。
 - 快照道 4 个文件、Web 道 7 项失败仍是「按 v5 写入器全量刷新并评审」的遗留，需要单独一轮决策。
 - fork 私有包在 `verify-product-use`、`verify-runtime-closure`、`verify-cordis-config` 上的红项长期存在：`browser-use`/`computer-use` 的 `cordis.patch.yml` 引用了未在自己 `package.json` 声明的实验 MCP 包，四个 fork 包缺产品运行面登记。见 [fork 自研包的门禁红项清单](fork-gate-debt.md)。

@@ -614,3 +614,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 2026-10-28 09:00–11:00 的四个 dsh 会话首字中位 63–73 秒、排队 56–62 秒（`tries[].queued`）；同期 codearts 上游同时占用峰值 5，而 `~/.config/magpie/providers.json` 中该提供方为 `maxConcurrency: 1`、`queueLimit: 8`。
 - 本地不是瓶颈：会话内上一条记录到 `step/start` 中位 18 毫秒，924 个配对步骤的「dsh 首字 − 网关 ttft」中位 36 毫秒。
 - 该页状态 draft → active，标题与结论改写为排队根因；index 的 queries 段补该页并从 concepts 段移出错放条目。
+
+## [2026-10-29] query | 记录经 SOCKS5 推送 GitHub 的可用路径
+
+- 直连 GitHub 的 SSH（`ssh.github.com:443` 连接超时）与 HTTPS（gnutls 握手失败）均不可用；git 与环境变量都没有代理配置。
+- 可用路径为本机 clash-verge 的 SOCKS5 出口：`GIT_SSH_COMMAND="ssh -p 443 -o ProxyCommand='nc -X 5 -x 127.0.0.1:7890 %h %p'"`，`master` 与 `develop` 已按此推送并对账。
+- 新增[查询页](queries/github-push-via-socks-proxy.md)，index 的 queries 段同步。
+- 同轮收尾：`north-curlew` 工作树内容已在 `master`（`f1d9e03892`），工作树与其空壳父目录已删除，释放约 7 GB。

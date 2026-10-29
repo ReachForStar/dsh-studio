@@ -43,6 +43,7 @@ updated: 2026-10-27
 ## 查询沉淀 queries
 
 - [回复延迟：codearts 上游排队导致每步等待](queries/session-command-followup-latency.md) — 慢时段首字 63–73 秒中排队 56–62 秒（`tries[].queued`），源自 `codearts` 提供方 `maxConcurrency: 1`；本地开销中位 18 毫秒，同账号兄弟模型同日首字 7.9 秒。
+- [本机经 SOCKS5 代理推送 GitHub](queries/github-push-via-socks-proxy.md) — 直连 SSH 与 HTTPS 都不通时，用 `127.0.0.1:7890` 的 SOCKS5 加 `GIT_SSH_COMMAND` 完成推送；含只读核对与失败阶段分辨。
 - [本机（Windows）合并与门禁踩坑](queries/windows-merge-gates.md) — tsconfig project reference、bsdtar 盘符、双语配对与生成器分类等失败的现象/根因/解法；含 2026-09-26 轮的 AMSI 崩溃、git 时限竞态、分组复跑法与 unknown-cast 基线重生成。
 - [fork 客户端栈迁移到上游框架（2026-09-03）](queries/fork-client-stack-migration.md) — 自研 client runtime 退役、面板迁移与两条至今有效的 tsconfig 约定。
 - [fork Web UI 修复与快照通道（2026-09-04）](queries/fork-web-ui-repairs.md) — 设置刷新/SSH 面板/模型页按钮/Web 金样漂移的根因与修复。

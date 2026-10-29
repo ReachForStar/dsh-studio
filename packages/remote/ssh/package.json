@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-ssh",
   "description": "SSH/SFTP capability Service Definition: connection-definition registry, live connection handles, and the remote command/file vocabulary",
-  "version": "0.2.1-rc.4",
+  "version": "0.2.2-alpha.2",
   "publishConfig": {
     "access": "public"
   },

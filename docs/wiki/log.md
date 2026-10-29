@@ -602,3 +602,15 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - Windows 安装包内嵌配置：下载 `…win-x64-unsigned.exe` 后经 `7z` 两层解包（`$PLUGINSDIR/app-64.7z` → `resources/app-update.yml`），确认 `provider: generic`、feed 指向 `…/releases/latest/download/`、`channel: nightly`。
 - macOS 侧无 `nightly-mac.yml`，与未签名不带更新源的设计一致。
 - 沉淀：把[桌面更新源页](queries/desktop-github-release-update-feed.md)的“验证边界”改为“验证完成”。
+
+## [2026-10-29] query | 检查命令结束后的会话等待
+
+- 只读提取四份本机会话的事件时间；连续工具结果到下一步为 14–25 毫秒，部分步骤首个响应等待超过 60 秒。
+- [排查记录](queries/session-command-followup-latency.md)标为 draft；本地请求准备与远端等待尚未分离，未修改运行配置及产品代码。
+
+## [2026-10-29] query | 定位回复延迟：codearts 上游排队
+
+- 续[上一轮](queries/session-command-followup-latency.md)：本轮读到 magpie 网关逐请求日志（`~/.config/magpie/routing/`，四天 5500 条），把首字等待拆成排队与上游两段。
+- 2026-10-28 09:00–11:00 的四个 dsh 会话首字中位 63–73 秒、排队 56–62 秒（`tries[].queued`）；同期 codearts 上游同时占用峰值 5，而 `~/.config/magpie/providers.json` 中该提供方为 `maxConcurrency: 1`、`queueLimit: 8`。
+- 本地不是瓶颈：会话内上一条记录到 `step/start` 中位 18 毫秒，924 个配对步骤的「dsh 首字 − 网关 ttft」中位 36 毫秒。
+- 该页状态 draft → active，标题与结论改写为排队根因；index 的 queries 段补该页并从 concepts 段移出错放条目。

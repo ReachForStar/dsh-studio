@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-10-27
+updated: 2026-10-29
 ---
 
 # Wiki 索引
@@ -33,7 +33,7 @@ updated: 2026-10-27
 
 ## 决策 decisions
 
-- [合并上游 upstream/master（2026-09）](decisions/2026-09-upstream-sync.md) — 全量合并的来源取舍、`ctx.ssh` 让位、会话 v3 `backend` 字段、CI 与生成物处理。
+- [合并上游 upstream/master（2026-09）](decisions/2026-09-upstream-sync.md) — 全量合并的来源取舍、`ctx.ssh` 让位、会话 v3 `backend` 字段、CI 与生成物处理；后续轮次补充全覆盖表的补行口径、持久化后继记录与环境前置三项。
 - [实验能力可视化开关：沿用上游 OPTIONAL_BUNDLES 模式](decisions/2026-09-visual-experimental-toggle.md) — Browser Use / Computer Use / Auto review 成为可选 bundle，Web 插件页一键开关；用户专属配置不进 bundle。
 - [跨包运行时导出的重复安装分类（2026-09-19）](decisions/2026-09-19-runtime-export-classification.md) — 六条导出登记 safe 的逐条依据、分类与依赖分区的连带关系，以及四个客户端包 peerDependencies 收敛到 cordis 后的发布布局变化。
 - [星域专家席经 A2A 抵达（2026-09-19）](decisions/2026-09-19-xingchen-external-specialist-seats.md) — 已被当前本地/A2A 可选席位模式取代；保留早期三个方案的取舍与后果。
@@ -65,6 +65,7 @@ updated: 2026-10-27
 - [合并上游 upstream/master（2026-10-15）](queries/upstream-merge-2026-10.md) — 用合并前 HEAD 工作树作基线区分「合并引入/预存/偶发」的判定口径、本轮三类修复（v4 源准入词汇、vfs-example 夹具代际、corpus 策略规格自洽）与 fork 私有包在位核对。
 - [合并上游 upstream/master（2026-10-27，rc.3 同步）](queries/upstream-merge-2026-10-27.md) — 176 文件 / 441 块冲突：批量工具接口与 `Agent.model` 的 fork 适配、持久化 schema v1→v2 历史归档重编码、生成物重生成顺序、6 处合并丢失的 i18n 键，以及 88 条既有 lint 红项的归因；收尾快进 `master` 并推送 `me`。
 - [合并上游 upstream/master（2026-10-18）](queries/upstream-merge-2026-10-18.md) — 0.2.1-rc.2 增量合并：20 个冲突按来源取舍、系统提示词快照经 refresh 重生成、基线工作树不可用时降级为「夹具 + 因果源码零差异」代码证据判定，以及本轮红灯归因清单。
+- [合并上游 upstream/master（2026-10-29，0.2.2-alpha.2 同步）](queries/upstream-merge-2026-10-29.md) — 413 文件 / 534 块冲突（343 个纯版本号）：LiveShare 端点全覆盖表补 fork 端点、上游新函数不认 linux-x64、装配页 `/remote` 重写只认上游作用域、持久化后继记录补记与 Node/git/locale 三项环境前置。
 - [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建。
 - [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 蓝色鲸鱼及标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；含本机重打包的两个网络问题（坏代理拖垮 npm 下载、`@electron/get` 的 SHASUMS 行格式）与本地镜像做法；2026-10-27 补 Release 桌面包三触发（published / `dsh-v*` tag push / 手动 `release_tag` 补传）与按 target 校验非空。
 - [Cua Driver 检测补全与入口迁移（2026-10-27）](queries/cua-driver-detect-and-placement.md) — 检测补齐安装器写入的稳定路径（`~/.local/bin`、`~/.cua-driver/packages/current`、Windows `LOCALAPPDATA`）并按 `X_OK` 判定，check 路由回报 `path`；安装入口从插件卡片 footer 迁到「计算机操作」详情页，安装后自动重检。

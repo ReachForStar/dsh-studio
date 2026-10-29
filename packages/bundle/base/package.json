@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-base",
   "description": "The shared dsh core as a profile bundle: the first patch layer of base-backed profiles, inserting core rows over the empty profile root",
-  "version": "0.2.1-rc.4",
+  "version": "0.2.2-alpha.2",
   "publishConfig": {
     "access": "public"
   },
@@ -81,12 +81,6 @@
     "@deepseek-ai/dsh-session-telemetry-otel": "workspace:*",
     "@deepseek-ai/dsh-session-title": "workspace:*",
     "@deepseek-ai/dsh-session-title-first-prompt-llm": "workspace:*",
-    "@reachforstar/dsh-a2a": "workspace:*",
-    "@reachforstar/dsh-fs-sftp": "workspace:*",
-    "@reachforstar/dsh-ssh-local": "workspace:*",
-    "@reachforstar/dsh-subprocess-sftp": "workspace:*",
-    "@reachforstar/dsh-tool-a2a": "workspace:*",
-    "@reachforstar/dsh-tool-ssh": "workspace:*",
     "@deepseek-ai/dsh-skill": "workspace:*",
     "@deepseek-ai/dsh-skill-filesystem": "workspace:*",
     "@deepseek-ai/dsh-spill-local": "workspace:*",
@@ -136,7 +130,13 @@
     "@deepseek-ai/dsh-otel": "workspace:*",
     "@deepseek-ai/dsh-working-directory": "workspace:*",
     "@deepseek-ai/dsh-tool-working-directory": "workspace:*",
-    "@deepseek-ai/dsh-web-deepseek-api": "workspace:*"
+    "@deepseek-ai/dsh-web-deepseek-api": "workspace:*",
+    "@reachforstar/dsh-a2a": "workspace:*",
+    "@reachforstar/dsh-fs-sftp": "workspace:*",
+    "@reachforstar/dsh-ssh-local": "workspace:*",
+    "@reachforstar/dsh-subprocess-sftp": "workspace:*",
+    "@reachforstar/dsh-tool-a2a": "workspace:*",
+    "@reachforstar/dsh-tool-ssh": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"

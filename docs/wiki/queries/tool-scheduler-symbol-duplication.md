@@ -3,7 +3,7 @@ title: 工具调度符号丢失导致任何工具调用崩溃（2026-09-24）
 type: query
 tags: [tools, agent-loop, tsx, symbol, module-duplication, a2a, xingchen]
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-10-29
 sources: []
 status: active
 ---
@@ -25,7 +25,7 @@ turn/end   {"turn":2,"reason":{"kind":"error","error":{"message":"Cannot read pr
 
 ## 根因
 
-崩点在 `packages/core/agent-loop/src/tool-calls.ts:170`：
+崩点在 agent-loop 包当时的工具调用调度文件（`tool-calls.ts:170`）：
 
 ```ts ignore-check
 const prepared = await ctx.tools[TOOL_RUNTIME_SCHEDULER].prepare(call.exec)
@@ -66,8 +66,8 @@ export const TOOL_RUNTIME_SCHEDULER: unique symbol = Symbol.for('@deepseek-ai/ds
 
 ## 涉及模块
 
-- `packages/core/tools/src/index.ts`（符号定义与 `ToolRuntime` 实例字段）
-- `packages/core/agent-loop/src/tool-calls.ts`（调度入口，崩点）
+- `packages/core/tools/src/index.ts`（`ToolRuntime` 实例字段；当时的调度符号定义位置）
+- agent-loop 包当时的 `tool-calls.ts`（调度入口，崩点）
 - `packages/boot/app-boot/src/profile.ts`（按包名解析插件到 `lib/`）、tsconfig paths（把 `lib/` 内裸导入改写到 `src/`）
 - pi 后端自带工具（`bash` 等）不经该调度，故表现为"部分工具能用"
 
@@ -76,6 +76,10 @@ export const TOOL_RUNTIME_SCHEDULER: unique symbol = Symbol.for('@deepseek-ai/ds
 - 新增任何**跨包 `unique symbol`** 契约时改用 `Symbol.for('<package>.<name>')`；当前仓库此类导出只有这一处（已全量核对）。
 - 该现象在诊断上有个易认特征：报错是 `reading '<method>'` 而非 `reading 'Symbol(...)'`，说明取到的对象存在、只是符号键落在另一份副本上。
 - 运行期判定「是不是源码面/产物面混用」的最快手段：在可疑处打印 `Object.getOwnPropertySymbols(receiver)` 与目标符号的身份比较，再打印本模块的 `import.meta.url`。
+
+## 后续变化（2026-10-29 合并上游核对）
+
+上游已重构工具调度路径：`TOOL_RUNTIME_SCHEDULER` 符号在全仓源码中不存在，调度 prepare 入口现由 `packages/core/tools/src/batch.ts` 承担，agent-loop 包内也没有当时的 `tool-calls.ts`。因此本页的 `Symbol.for` 修法针对的是当时的代码形态，保留作为模块面混用的诊断经验；新增跨包符号契约仍需按「复发预防」一节走 `Symbol.for`。
 
 ## 彻底消除：启动方式必须与插件树同面（2026-09-24 追加）
 

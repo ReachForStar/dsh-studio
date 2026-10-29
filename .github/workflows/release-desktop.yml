@@ -117,10 +117,10 @@ jobs:
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/nightly*.yml
           if-no-files-found: error
       - name: Sign installers
-        uses: actions/attest-build-provenance@v4.2.2
+        uses: actions/attest@v4.2.2
         with:
           # One subject per installer, read from the digests the previous step
-          # computed, so every published file carries its own provenance.
+          # computed, so every published file carries its own attestation.
           subject-checksums: apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/SHA256SUMS-${{ matrix.target }}
       - name: Attach installers to the release
         if: env.RELEASE_TAG != ''

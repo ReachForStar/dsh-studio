@@ -66,8 +66,8 @@
   en: e713a4a11a15d13c
   zh: e713a4a11a15d13c
 /tool-schema-catalog/deepseek-ai-dsh-tool-ask-user/ask-user-question:
-  en: 2f86adf8ae823afb
-  zh: a5dad3d821e75e55
+  en: 664dae29d0eae65f
+  zh: 2efa5d3f2cb31bf9
 /tool-schema-catalog/deepseek-ai-dsh-tool-executor-ptc:
   en: 8c8643ef46fd075f
   zh: 8c8643ef46fd075f
@@ -369,8 +369,8 @@
   en: dea62d26fb18ff68
   zh: dea62d26fb18ff68
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo/todo-write:
-  en: f252137b940b38d1
-  zh: 25bd9c6b1ce783d8
+  en: 1c2bc533a75340df
+  zh: 81cd1b9019aa0e63
 /tool-schema-catalog/deepseek-ai-dsh-tool-working-directory:
   en: 1bdc4627ca4fff29
   zh: 1bdc4627ca4fff29
@@ -381,8 +381,8 @@
   en: d5f5679abe86e316
   zh: d5f5679abe86e316
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-worktree/create-worktree:
-  en: 3cf89e31f011ae9b
-  zh: 28e78b4fae2d075b
+  en: d8fe3c566ba2147c
+  zh: baf372cb9242670c
 /tool-schema-catalog/deepseek-ai-dsh-tool-workflow:
   en: bb38a9d29f46563c
   zh: bb38a9d29f46563c

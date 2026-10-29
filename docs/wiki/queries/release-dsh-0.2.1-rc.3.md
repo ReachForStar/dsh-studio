@@ -65,7 +65,7 @@ Buffer.from(name, 'utf8').toString('hex')
 
 ### 已具备：Sigstore 无密钥签名（不需购买证书）
 
-`.github/workflows/release-desktop.yml` 在构建后为每个安装包生成 `SHA256SUMS-<target>` 并调用 `actions/attest-build-provenance@v4.2.2`：工作流用自身的 OIDC 身份签名，证明记录写入仓库的证明存储，因此不购置证书、不保存签名私钥。作业权限需要 `id-token: write` 与 `attestations: write`（公共仓库免费）。
+`.github/workflows/release-desktop.yml` 在构建后为每个安装包生成 `SHA256SUMS-<target>` 并调用 GitHub 官方证明 action（`actions/attest@v4.2.2`，不传谓词时自动生成 SLSA 构建证明）：工作流用自身的 OIDC 身份签名，证明记录写入仓库的证明存储，因此不购置证书、不保存签名私钥。作业权限需要 `id-token: write` 与 `attestations: write`（公共仓库免费）。
 
 用户验证：
 

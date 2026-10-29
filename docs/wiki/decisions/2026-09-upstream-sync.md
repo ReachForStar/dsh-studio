@@ -3,7 +3,7 @@ title: 合并上游 upstream/master（2026-09）
 type: decision
 tags: [upstream-sync, merge, cordis, ssh, session-format]
 created: 2026-09-17
-updated: 2026-10-27
+updated: 2026-10-29
 sources: []
 status: active
 ---
@@ -73,6 +73,16 @@ fork 此前的逐日任务报告位于 `doc/`（11 份，2026-09-03 ~ 09-05）�
 2. **生成物的布局升级不能靠生成脚本自然产出**。上游把持久化 schema 从「schema 内联在 root/type 上」改为「顶层 nodes 表 + 摘要前缀键」，fork 的历史归档 `v4.schema.json` 仍是旧布局，`verify-persistence-formats` 报 `missing field nodes`。这类升级需要一次性重编码脚本（本轮把 63378 行压到 1036 行），而不是放宽校验或改历史数据。
 
 本轮细节见 [合并上游（2026-10-27）](../queries/upstream-merge-2026-10-27.md)。
+
+## 后续轮次：2026-10-29 合并上游
+
+策略不变（全量合并、按来源逐文件取舍、生成物一律重生成），新增三条可复用判定：
+
+1. **上游用「全覆盖表」约束新接口时，fork 自研面必须跟着补行**。本轮上游给 LiveShare 加了 `satisfies Record<RemoteEndpoint, ViewerEndpointClass>` 与同名 `AssertNever` 断言，fork 的四个 Remote 端点没有分类行就让 client 编译失败。这类约束比运行期拒答更早暴露，且报错直接指出缺哪些键；补行时按该表自身的分组语义选型（部署级诊断与写入类端点属 `owner-only`），不开新分类。
+2. **上游记录的快照排在 fork 记录之后时，补后继记录而不是改上游记录**。上一轮遇到的是 fork 记录与上游记录分叉（改上游记录的 `previous`），本轮是上游新记录已成为某些根的 tip 且其快照不含 fork 来源种类——用 `persistence-changes --record <id> --decision same-version` 生成后继即可。两种形态的判定都只看门禁给出的每根 tip。
+3. **环境前置是合并验证的一部分**。本轮实测确认三项必需条件：带 Node-API 头文件的 Node `>=24.9`（`using` 声明用例与 native 构建都依赖它）、git `>=2.36`（`git worktree list --porcelain -z`）、`LC_ALL=C`（多个用例断言 git 的英文报错前缀）。任一项不满就会造出大批「看起来像合并引入」的失败，先对齐环境再跑基线工作树对比。
+
+本轮细节见 [合并上游（2026-10-29）](../queries/upstream-merge-2026-10-29.md)。
 
 ## 后续轮次：2026-10-15 合并上游
 

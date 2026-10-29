@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-web-app",
   "description": "The dsh browser-surface bundle: the web patch layer over dsh-base plus the runtime glue plugin (frontend dist serving, bash runtime variables, URL line)",
-  "version": "0.2.1-rc.4",
+  "version": "0.2.2-alpha.2",
   "publishConfig": {
     "access": "public"
   },
@@ -95,12 +95,6 @@
     "@deepseek-ai/dsh-client-ui-layout": "workspace:*",
     "@deepseek-ai/dsh-client-ui-message-feedback": "workspace:*",
     "@deepseek-ai/dsh-client-ui-model-selection": "workspace:*",
-    "@reachforstar/dsh-a2a-host": "workspace:*",
-    "@reachforstar/dsh-a2a-status": "workspace:*",
-    "@reachforstar/dsh-client-ui-polish": "workspace:*",
-    "@reachforstar/dsh-client-ui-ssh": "workspace:*",
-    "@reachforstar/dsh-client-ui-a2a-status": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-deepseek-model-label-1017": "workspace:*",
     "@deepseek-ai/dsh-client-ui-open-in-app": "workspace:*",
     "@deepseek-ai/dsh-client-ui-permission-presets": "workspace:*",
     "@deepseek-ai/dsh-client-ui-plan": "workspace:*",
@@ -148,10 +142,6 @@
     "@deepseek-ai/dsh-host-frontend-static": "workspace:*",
     "@deepseek-ai/dsh-host-open-in-app": "workspace:*",
     "@deepseek-ai/dsh-host-plugin-inventory": "workspace:*",
-    "@reachforstar/dsh-host-ssh-remotes": "workspace:*",
-    "@reachforstar/dsh-tool-ssh": "workspace:*",
-    "@reachforstar/dsh-tool-excalidraw": "workspace:*",
-    "@reachforstar/dsh-xingchen": "workspace:*",
     "@deepseek-ai/dsh-host-webserver": "workspace:*",
     "@deepseek-ai/dsh-launch-environment": "workspace:*",
     "@deepseek-ai/dsh-message-feedback": "workspace:*",
@@ -205,7 +195,16 @@
     "@deepseek-ai/dsh-client-ui-settings-session-log": "workspace:*",
     "@deepseek-ai/dsh-harness-dev-context": "workspace:*",
     "@deepseek-ai/dsh-deliverable-file-references": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-file-drag": "workspace:*"
+    "@deepseek-ai/dsh-client-ui-file-drag": "workspace:*",
+    "@reachforstar/dsh-a2a-host": "workspace:*",
+    "@reachforstar/dsh-a2a-status": "workspace:*",
+    "@reachforstar/dsh-client-ui-polish": "workspace:*",
+    "@reachforstar/dsh-client-ui-ssh": "workspace:*",
+    "@reachforstar/dsh-client-ui-a2a-status": "workspace:*",
+    "@reachforstar/dsh-host-ssh-remotes": "workspace:*",
+    "@reachforstar/dsh-tool-ssh": "workspace:*",
+    "@reachforstar/dsh-tool-excalidraw": "workspace:*",
+    "@reachforstar/dsh-xingchen": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",

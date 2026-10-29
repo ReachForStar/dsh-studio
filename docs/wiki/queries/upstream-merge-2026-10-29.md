@@ -90,7 +90,7 @@ status: active
 ## 存疑或待跟进
 
 - 最新版本已与上游同步：仓库根 `package.json` 与 `apps/desktop/package.json` 均为 `0.2.2-alpha.2`，等于上游最新发布标签 `dsh-v0.2.2-alpha.2` 的版本，`master` 落后 `upstream/master` 为 0。
-- 18 个 fork 自研包仍为 `0.2.1-rc.4`（上一轮发布版本），与其余 370 个 `0.2.2-alpha.2` 不一致；fork 发布流程要求家族版本对齐（见 [fork 发布流程](fork-release-dsh-0.2.1-rc.2.md) 的「一次改 387 个 manifest」），下一次发布时需再对齐。
+- 版本对齐已补做：18 个 fork 自研包从 `0.2.1-rc.4` 改为 `0.2.2-alpha.2`（提交 `8d87fc6bdc`），`dsh` 家族全部成员现共享一个版本；做法与参数顺序的坑记在 [fork 发布流程](fork-release-dsh-0.2.1-rc.2.md)。
 - `actions/attest@v4.2.2` 替换后的桌面发布工作流需要一次真实 Release 才能确认证明记录与资产摘要仍然正确。
 - 快照道 4 个文件、Web 道 7 项失败仍是「按 v5 写入器全量刷新并评审」的遗留，需要单独一轮决策。
 - fork 私有包在 `verify-product-use`、`verify-runtime-closure`、`verify-cordis-config` 上的红项长期存在：`browser-use`/`computer-use` 的 `cordis.patch.yml` 引用了未在自己 `package.json` 声明的实验 MCP 包，四个 fork 包缺产品运行面登记。见 [fork 自研包的门禁红项清单](fork-gate-debt.md)。

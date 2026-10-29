@@ -3,7 +3,7 @@ title: fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑
 type: query
 tags: [release, 发布, 门禁, pack, tag]
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-29
 sources: []
 status: active
 ---
@@ -31,6 +31,8 @@ gh release create dsh-v0.2.1-rc.2 --title "…" --notes-file 正文.md 资产.zi
 2. **`workspace:^` 违反 packed manifest 校验**：`families.ts` 要求打包后的 `@deepseek-ai/dsh-*` 依赖恰等于家族版本；`workspace:^` 会展开成 `^0.2.1-rc.2` 被拒。上游包一律 `workspace:*`，fork 自研包 17 个 manifest 从 `workspace:^` 改齐。
 3. **pack 要求官方剖面构建记录**：默认 `build:artifacts` 内联本地 commit 与 dirty 标记，与 `officialClientBuildEnvironment`（要求恰好 `DSH_CLIENT_BUILD_PROFILE`/`COMMIT_HASH`/`TITLE`/`VERSION` 四个公开值）不符即拒。用 `pnpm run build:official`。
 4. **构建记录绑定 HEAD**：`DSH_CLIENT_COMMIT_HASH` 取自当前 HEAD，任何后续提交（如改 workspace 协议的修复提交）都会让记录里的 hash 落后。正确顺序是「所有修复提交完成 → 最终提交上 build:official → pack → tag 指向同一提交」；中途 pack 成功过也要重跑。
+5. **家族不同版本时 `release:dsh` 不能自教**：`bump.ts` 先调 `verifyVersions`、再计算计划，成员版本不一致时直接报「dsh release members must share one version」而不进入写入阶段（2026-10-29 合并上游 0.2.2-alpha.2 后重现：18 个自研包停在 `0.2.1-rc.4`，其余 370 个是 `0.2.2-alpha.2`）。先把清单里的 `version` 字段改成家族版本，再跑工具验证一致性。
+6. **`pnpm run` 的 `--dry-run` 必须写在 `--` 之前**：pnpm 会把参数落到脚本命令行时插入一个 `--`，而 `node:util` 的 `parseArgs` 在 `--` 处终止选项解析，因此 `pnpm run release:dsh -- 0.2.2-alpha.2 --dry-run` 会把 `--dry-run` 当成位置参数：它不会干跑，而是直接写清单并提交（真正干跑用 `pnpm run release:dsh --dry-run -- 0.2.2-alpha.2`）。
 
 ## 附带清理
 

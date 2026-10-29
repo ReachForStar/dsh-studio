@@ -646,3 +646,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 18 个 fork 自研包（`@reachforstar/*` 与 fork 新增的 `@deepseek-ai/dsh-pi-agent-loop`、`dsh-session-format-v4-to-v5`）仍为 `0.2.1-rc.4`，按用户要求本轮不做对齐；下一次发布仍需家族版本对齐。
 - 补记：`git fetch upstream master --tags` 会因 fork 与上游同名但指向不同的 4 个标签被拒。
 - [合并记录](queries/upstream-merge-2026-10-29.md)的环境前置与待跟进两节同步补上以上三点。
+
+## [2026-10-29] chore | 对齐 fork 自研包版本到 0.2.2-alpha.2
+
+- 18 个自研包（`@reachforstar/*` 与 fork 新增的 `@deepseek-ai/dsh-pi-agent-loop`、`dsh-session-format-v4-to-v5`）从 `0.2.1-rc.4` 改为 `0.2.2-alpha.2`，dsh 家族全部成员重新共享一个版本；改动只有 18 行 `version` 字段，锁文件无变化。
+- 顺序约束：`release:dsh` 先 `verifyVersions` 再计算计划，家族版本不一致时直接报错，不进入写入阶段，所以只能先手工对齐再让工具核对。
+- 参数坑：`pnpm run release:dsh -- 0.2.2-alpha.2 --dry-run` 里的 `--dry-run` 落在 pnpm 插入的 `--` 之后，被 `parseArgs` 当作位置参数，于是“干跑”真的写了清单并提交（提交 `release(dsh): 0.2.2-alpha.2`，内容正确故保留）；干跑要写成 `pnpm run release:dsh --dry-run -- 0.2.2-alpha.2`。
+- 沉淀到 [fork 发布流程页](queries/fork-release-dsh-0.2.1-rc.2.md)的第 5、6 条，并更新[合并记录](queries/upstream-merge-2026-10-29.md)的待跟进条目。
+- 推送：`develop` 与 `master` 均为 `8d87fc6bdc9`。

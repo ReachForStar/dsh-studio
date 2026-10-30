@@ -669,3 +669,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 验证：`typecheck` 5 门、`build` 10 门、`doc-sync` 43 门、`test:docs` 21 门全过；定向包测试 1838 项全过；全量 `test` 的 72 项失败逐项归类为上轮基线、git 版本、5 秒预算与并发竞态，无合并引入者；`test:expected` 只剩上轮已知的 `subagent-inheritance` 一项。
 - 复检 `hygiene` 12 门红项并归类，清单见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-10-30-复检hygiene-的-12-门红项)。
 - 细节见[合并记录](queries/upstream-merge-2026-10-30.md)。
+
+## [2026-10-30] fix | 清偿包元数据、客户端文案与文档相对路由三门禁
+
+- `verify-locale-metadata`：16 个 fork 包补 `locale/{en,zh,ja,es,fr,de,ru,pt}.json`（en 只写标题，其余语言各写标题与一句描述），manifest 补 `./locale/*.json` 导出与 `files` 条目。
+- `verify-client-ui-i18n`：`CuaDriverInstall.tsx` 的三处失败文案改为 `cuaDriverHttpStatus`/`cuaDriverExitCode`/`cuaDriverUnknownError`（8 语言），`ExcalidrawToolView.tsx` 的 `argsSummary` 接收 `t` 并改用 `excalidraw.argsChars`/`argsShapes`（zh/en）。
+- `verify-client-route-resolution`：四条 `/api/...` 路由改为文档相对的 `api/...`。
+- 踩坑：德语描述里的 `Git-/LaTeX-/SSH-` 被 `localeTokens` 提取成斜杠命令，导致占位符不一致；改写描述后通过。
+- 验证：三门通过，`typecheck` 5 门、`build` 10 门、`doc-sync` 43 门通过，两个客户端包 485 项测试通过。
+- 做法与规则见[三门禁清偿](queries/client-copy-and-locale-metadata.md)。

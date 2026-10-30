@@ -86,7 +86,7 @@ status: active
 - `pnpm run test:snapshot`：4 个文件 208 项失败（上一轮同 4 个文件 199 项），仍属[会话格式 v5](session-format-v5-landing.md)记下的「按 v5 写入器全量刷新并评审」遗留；差异形态为工具集与工具结果记录的漂移。
 - `pnpm run lint`：75 条既有红项，本轮改动的文件无红项（合并后新增的两条行超长已修）。
 - `pnpm run duplication`：75 个克隆；本轮新增的 `fs-sftp` 三方法曾与 `fs-local` 的同名实现、以及与 `editText` 的入口守卫重复，提取共享 helper 后剩余克隆都是合并前既有的形态（`readBytes`/`readByteRange`、`writeText`/`writeBytes`、`fs-sandbox` 与 `fs-sftp` 的 `checkedTarget`）。
-- `pnpm run hygiene`：12 门失败，全部为 fork 既有债务或上游 `publint` 现状，清单见 [fork 自研包的门禁红项清单](fork-gate-debt.md) 的 2026-10-30 段。
+- `pnpm run hygiene`：12 门失败（其中三门随后清偿），其余为 fork 既有债务或上游 `publint` 现状，清单见 [fork 自研包的门禁红项清单](fork-gate-debt.md) 的 2026-10-30 段。
 
 ## 与既有知识的关系
 
@@ -97,6 +97,6 @@ status: active
 ## 存疑或待跟进
 
 - 上游 `publint` 现状：`pnpm run publint` 对大量上游包（`a2a`、`acp`、`api/*`）报 `exports["./src/*"]` 与 `files` 不匹配，与 fork 无关，需要上游侧确认该门禁在 master 上的预期状态。
-- fork 自研包的 `locale/en.json` 全线缺失（`verify-locale-metadata` 报 16 个包），客户端文案仍有硬编码（`CuaDriverInstall.tsx` 的 `HTTP`/`Exit code`/`Unknown error`、`ui-polish` 的两个 `argsSummary` 返回值），绝对路由两条（`CuaDriverInstall.tsx`、`ui-polish/SshPanel.tsx`）——都是本轮新门禁抓出的既有债务。
+- ~~fork 自研包的 `locale/en.json` 全线缺失、客户端硬编码文案、绝对路由~~ **已清偿（2026-10-30）**：16 个包补齐 8 个发布语言的元数据与 manifest 导出，5 处文案与 4 条路由改走字典与文档相对形式，做法见[三门禁清偿](client-copy-and-locale-metadata.md)。
 - `verify-product-use`/`verify-runtime-closure`/`verify-cordis-config`/`verify-default-product-isolation`/`constraints`/`verify-package-dependencies` 的 fork 红项与上一轮所列相同，未扩大也未清偿。
 - 快照道 4 个文件、208 项失败仍需单独一轮「按 v5 写入器全量刷新并评审」。

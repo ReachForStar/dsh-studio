@@ -113,15 +113,15 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `verify-default-product-isolation` | `bundles.ts`/`xingchen-qiming.patch.yml`/两个实验 MCP 包进入默认产品面 | fork 既有 | 实验能力默认开启的登记问题 |
 | `verify-product-use` | `pi-agent-loop`、`fs-sftp`、`subprocess-sftp`、`subagent-pi` 无产品运行面使用 | fork 既有 | 与上一轮同 |
 | `verify-package-dependencies` | 29 处：`api/remotes` 与三个客户端包对 fork 包用 `workspace:*`、`cordis` 分区不齐、`@types/react` 包内多余 | fork 既有 | 修复方向是 `workspace:~` + devDependencies-only 分区 |
-| `verify-locale-metadata` | 16 个 fork 包的 `locale/en.json` 缺失 | fork 既有（本轮新门禁） | 需要为每个带 Config 的 fork 包补 `locale/{en,zh,…}.json` |
-| `verify-client-ui-i18n` | `CuaDriverInstall.tsx` 的 `HTTP`/`Exit code`/`Unknown error`，`ExcalidrawToolView.tsx` 的 `chars`/`shapes` | fork 既有（本轮新门禁） | 文案应走 locale 字典 |
-| `verify-client-route-resolution` | `CuaDriverInstall.tsx` 两条 `/api/computer-use/cua-driver/*`、`ui-polish/SshPanel.tsx` 的 `/api/ssh/sftp/upload` 不是文档相对路由 | fork 既有（本轮新门禁） | 改成 `api/…` 形式 |
+| ~~`verify-locale-metadata`~~ **已清偿（2026-10-30 客户端文案批）** | 16 个 fork 包的 `locale/en.json` 缺失 | 客户端文案批 | 已为每个包补 8 个发布语言的元数据与 manifest 导出，做法见[三门禁清偿](client-copy-and-locale-metadata.md) |
+| ~~`verify-client-ui-i18n`~~ **已清偿（2026-10-30 客户端文案批）** | `CuaDriverInstall.tsx` 的 `HTTP`/`Exit code`/`Unknown error`，`ExcalidrawToolView.tsx` 的 `chars`/`shapes` | 客户端文案批 | 三键 × 8 语言与两键 × 2 语言入字典，`argsSummary` 改为接收 `t` |
+| ~~`verify-client-route-resolution`~~ **已清偿（2026-10-30 客户端文案批）** | `CuaDriverInstall.tsx` 两条 `/api/computer-use/cua-driver/*`、`ui-polish/SshPanel.tsx` 的 `/api/ssh/sftp/upload|download` 不是文档相对路由 | 客户端文案批 | 四条路由改为 `api/…` 形式 |
 | `verify-no-unknown-casts` | `apps/desktop/src/main.ts`、`deploy/a2a/gateway/*` | fork 既有 | 基线来自上游，不含 fork 断言 |
 | `verify-cordis-config` | `browser-use`/`computer-use` 的 patch 引用未声明的实验 MCP 包 | fork 既有 | 与 `constraints` 同源 |
 | `verify-runtime-closure` | `standard`/`xingchen-qiming` 剖面缺 `tool-excalidraw`、`xingchen`、`tool-ssh` 等 fork 包 | fork 既有 | 与上一轮同 |
 | `vendor rescope` | 已修 | 上游格式迁移 | 上游把 `vendor/README.md` 改成 `- **V17 · …**`，`scripts/rescope-vendor.ts` 的 postcondition 仍期望旧编号文本；改 postcondition 后通过 |
 
-本轮新门禁（`publint` 之外的四门）不是合并引入的代码缺陷，而是上游把检查范围扩到 fork 自研面。清偿顺序建议：路由与硬编码文案（改动小、风险低）→ `locale/*.json` 生成 → 依赖分区 → 产品运行面登记。
+本轮新门禁（`publint` 之外的四门）不是合并引入的代码缺陷，而是上游把检查范围扩到 fork 自研面。**`verify-locale-metadata`、`verify-client-ui-i18n`、`verify-client-route-resolution` 三门已于 2026-10-30 清偿**（做法与两条踩坑见[三门禁清偿](client-copy-and-locale-metadata.md)）；剩余顺序建议：依赖分区 → 产品运行面登记。
 
 ## 复发预防
 

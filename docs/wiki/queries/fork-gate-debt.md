@@ -112,7 +112,7 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `constraints` | `@deepseek-ai/dsh` 依赖两个实验 MCP 包 | fork 既有 | 与 `OPTIONAL_BUNDLES` 的登记冲突，见下表 `verify-cordis-config` 同源 |
 | `verify-default-product-isolation` | `bundles.ts`/`xingchen-qiming.patch.yml`/两个实验 MCP 包进入默认产品面 | fork 既有 | 实验能力默认开启的登记问题 |
 | `verify-product-use` | `pi-agent-loop`、`fs-sftp`、`subprocess-sftp`、`subagent-pi` 无产品运行面使用 | fork 既有 | 与上一轮同 |
-| `verify-package-dependencies` | 29 处：`api/remotes` 与三个客户端包对 fork 包用 `workspace:*`、`cordis` 分区不齐、`@types/react` 包内多余 | fork 既有 | 修复方向是 `workspace:~` + devDependencies-only 分区 |
+| `verify-package-dependencies` | 29 处：`api/remotes` 与三个客户端包对 fork 包用 `workspace:*`、`@deepseek-ai/cordis` 分区不齐、`@types/react` 包内多余 | fork 既有 | 修复方向是 `workspace:~` + devDependencies-only 分区 |
 | ~~`verify-locale-metadata`~~ **已清偿（2026-10-30 客户端文案批）** | 16 个 fork 包的 `locale/en.json` 缺失 | 客户端文案批 | 已为每个包补 8 个发布语言的元数据与 manifest 导出，做法见[三门禁清偿](client-copy-and-locale-metadata.md) |
 | ~~`verify-client-ui-i18n`~~ **已清偿（2026-10-30 客户端文案批）** | `CuaDriverInstall.tsx` 的 `HTTP`/`Exit code`/`Unknown error`，`ExcalidrawToolView.tsx` 的 `chars`/`shapes` | 客户端文案批 | 三键 × 8 语言与两键 × 2 语言入字典，`argsSummary` 改为接收 `t` |
 | ~~`verify-client-route-resolution`~~ **已清偿（2026-10-30 客户端文案批）** | `CuaDriverInstall.tsx` 两条 `/api/computer-use/cua-driver/*`、`ui-polish/SshPanel.tsx` 的 `/api/ssh/sftp/upload|download` 不是文档相对路由 | 客户端文案批 | 四条路由改为 `api/…` 形式 |
@@ -130,5 +130,6 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - 行尾：仓库规范是 LF。用 PowerShell `Set-Content` 或其它默认写 CRLF 的工具改文档后，直接读工作区字节的门禁会看到漂移而 git 看不到；改完这类文件顺手核一次行尾。
 - 知识库页面里的 ```ts 代码块会被 `doc-typecheck` 编译：整段可运行的例子写 ```ts，源码摘录或伪代码写 ```ts ignore-check（该门禁对忽略比例有 50% 上限）。
 - fork 的 CI 不跑这些门禁，别把「CI 绿了」当成门禁通过。
+- wiki 页面里写 vendor 包名时要写定点名（如 `@deepseek-ai/cordis`），别用反引号或引号包住裸的上游包名：`rescope-vendor` 的 token 规则只看引号包裹，会把这种写法当成待改名的残留并让门禁失败。
 - `tsconfig.base.json` 的 `paths` 里，手写别名必须写在 `// BEGIN generated package aliases` **之前**：生成器假定自己的区块收尾 `paths`，末尾不写逗号；写在 `END` 之后的条目会让 `gen-tsconfig-paths` 产出非法 JSON。
 - 翻译配对存量较多时先 `verify-translation-pairing --write --all` 重记陈旧记录，再跑一次检查：记录问题会消失，剩下的就是真正的结构差异（表格行列数、链接目标、代码块内容）。mermaid 与代码块要求两侧逐字一致。

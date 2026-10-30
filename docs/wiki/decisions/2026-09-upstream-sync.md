@@ -3,7 +3,7 @@ title: 合并上游 upstream/master（2026-09）
 type: decision
 tags: [upstream-sync, merge, cordis, ssh, session-format]
 created: 2026-09-17
-updated: 2026-10-29
+updated: 2026-10-30
 sources: []
 status: active
 ---
@@ -83,6 +83,16 @@ fork 此前的逐日任务报告位于 `doc/`（11 份，2026-09-03 ~ 09-05）�
 3. **环境前置是合并验证的一部分**。本轮实测确认三项必需条件：带 Node-API 头文件的 Node `>=24.9`（`using` 声明用例与 native 构建都依赖它）、git `>=2.36`（`git worktree list --porcelain -z`）、`LC_ALL=C`（多个用例断言 git 的英文报错前缀）。任一项不满就会造出大批「看起来像合并引入」的失败，先对齐环境再跑基线工作树对比。
 
 本轮细节见 [合并上游（2026-10-29）](../queries/upstream-merge-2026-10-29.md)。
+
+## 后续轮次：2026-10-30 合并上游
+
+策略不变（全量合并、按来源逐文件取舍、生成物一律重生成），新增三条可复用判定：
+
+1. **上游把「新增必要抽象成员」加进核心接缝时，fork 自研 provider 必须补齐实现，并借机把重复实现提成共享 helper**。本轮 `ctx.fs` 新增 `patchText`/`deleteFile`/`moveFile`，`fs-sftp` 缺实现直接让 typecheck 失败；补齐时发现 hunk 应用在 `fs-local` 与 `fs-sftp` 各有一份，遂提为 `@deepseek-ai/dsh-fs` 的 `applyPatchOrThrow`，同时抽出 `checkedFile`/`readEditable`/`mutateText` 收敛 provider 内部守卫，`duplication` 不因新代码上升。
+2. **上游新增跨 profile 的一致性门禁时，用它的例外表登记 fork 的产品差异，不要让两侧组合趋同**。本轮 `desktop-tools.expected.e2e.ts` 比对 SDK 与 Desktop 的模型可见工具集，fork 的 SDK profile 有 ssh/sftp、Desktop 有画布工具；处理是逐条写入 `toolParityExceptions`（含 `standard` 与 `ptc` 两套）并说明理由，而不是把工具塞进另一侧改变产品面。
+3. **上游删除包或工作流会在门禁里留下两处残骸，处理方式不同**：被删包在本机的构建残留目录（只有 `lib/` 与 `node_modules/`、无跟踪文件）会让 `constraints` 报「expected a package here」，核对后清除；被删工作流的断言型 spec（如 `cua-helper/payload.spec.ts` 读 `release-publish.yml`）要改成断言该工作流不存在，而不是恢复工作流。
+
+本轮细节见 [合并上游（2026-10-30）](../queries/upstream-merge-2026-10-30.md)。
 
 ## 后续轮次：2026-10-15 合并上游
 

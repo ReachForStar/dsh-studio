@@ -3,7 +3,7 @@ title: fork 自研包的门禁红项清单
 type: query
 tags: [gates, doc-sync, lint, coverage, constraints, fork, 待办]
 created: 2026-09-18
-updated: 2026-10-29
+updated: 2026-10-30
 sources: []
 status: active
 ---
@@ -101,6 +101,27 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `verify-no-unknown-casts` | `scripts/no-unknown-casts.baseline.json` 整体来自上游，不含 fork 既有 `as unknown` 断言（`deploy/a2a/*`、`packages/a2a/*`、`subagent-pi`、`xingchen`、`apps/desktop/src/main.ts` 等 80 余处） | 按当前树一次性重生成基线，并同时评估能否用类型化取值替换——直接扩大基线等于把现有断言转正 |
 
 同一轮盘点出的两类环境噪声不属于仓库债务，但会反复伪装成合并回归：`LC_ALL` 非 C 时 forge 面板用例断言不到 git 英文报错前缀；并发满载下 git/子进程类用例的 5 秒预算不够（本轮 19 项，隔离运行全绿）。口径见[合并上游（2026-10-29）](upstream-merge-2026-10-29.md)。
+
+## 2026-10-30 复检：`hygiene` 的 12 门红项
+
+本轮合并上游后完整跑了 `pnpm run hygiene`（`doc-sync`、`typecheck`、`build` 全绿，`lint` 75 条既有），12 门失败。逐门归属：
+
+| 门禁 | 报错 | 归属 | 说明 |
+| --- | --- | --- | --- |
+| `publint` | `exports["./src/*"]` 与 `files` 不匹配，大量上游包（`a2a`、`acp`、`api/*`）同样命中 | 上游现状 | 与 fork 无关；上游 master 上该门禁即为红，需上游侧确认预期 |
+| `constraints` | `@deepseek-ai/dsh` 依赖两个实验 MCP 包 | fork 既有 | 与 `OPTIONAL_BUNDLES` 的登记冲突，见下表 `verify-cordis-config` 同源 |
+| `verify-default-product-isolation` | `bundles.ts`/`xingchen-qiming.patch.yml`/两个实验 MCP 包进入默认产品面 | fork 既有 | 实验能力默认开启的登记问题 |
+| `verify-product-use` | `pi-agent-loop`、`fs-sftp`、`subprocess-sftp`、`subagent-pi` 无产品运行面使用 | fork 既有 | 与上一轮同 |
+| `verify-package-dependencies` | 29 处：`api/remotes` 与三个客户端包对 fork 包用 `workspace:*`、`cordis` 分区不齐、`@types/react` 包内多余 | fork 既有 | 修复方向是 `workspace:~` + devDependencies-only 分区 |
+| `verify-locale-metadata` | 16 个 fork 包的 `locale/en.json` 缺失 | fork 既有（本轮新门禁） | 需要为每个带 Config 的 fork 包补 `locale/{en,zh,…}.json` |
+| `verify-client-ui-i18n` | `CuaDriverInstall.tsx` 的 `HTTP`/`Exit code`/`Unknown error`，`ExcalidrawToolView.tsx` 的 `chars`/`shapes` | fork 既有（本轮新门禁） | 文案应走 locale 字典 |
+| `verify-client-route-resolution` | `CuaDriverInstall.tsx` 两条 `/api/computer-use/cua-driver/*`、`ui-polish/SshPanel.tsx` 的 `/api/ssh/sftp/upload` 不是文档相对路由 | fork 既有（本轮新门禁） | 改成 `api/…` 形式 |
+| `verify-no-unknown-casts` | `apps/desktop/src/main.ts`、`deploy/a2a/gateway/*` | fork 既有 | 基线来自上游，不含 fork 断言 |
+| `verify-cordis-config` | `browser-use`/`computer-use` 的 patch 引用未声明的实验 MCP 包 | fork 既有 | 与 `constraints` 同源 |
+| `verify-runtime-closure` | `standard`/`xingchen-qiming` 剖面缺 `tool-excalidraw`、`xingchen`、`tool-ssh` 等 fork 包 | fork 既有 | 与上一轮同 |
+| `vendor rescope` | 已修 | 上游格式迁移 | 上游把 `vendor/README.md` 改成 `- **V17 · …**`，`scripts/rescope-vendor.ts` 的 postcondition 仍期望旧编号文本；改 postcondition 后通过 |
+
+本轮新门禁（`publint` 之外的四门）不是合并引入的代码缺陷，而是上游把检查范围扩到 fork 自研面。清偿顺序建议：路由与硬编码文案（改动小、风险低）→ `locale/*.json` 生成 → 依赖分区 → 产品运行面登记。
 
 ## 复发预防
 

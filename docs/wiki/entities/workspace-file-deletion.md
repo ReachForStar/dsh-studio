@@ -3,7 +3,7 @@ title: 工作区文件删除（ctx.fs.remove → workspaceFiles.delete → 右�
 type: entity
 tags: [文件系统, 客户端, ui-sidebar-files, workspaceFiles, 删除, 沙箱, 远端]
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-10-30
 sources: []
 status: active
 ---
@@ -31,6 +31,19 @@ ui-sidebar-files 行内删除按钮 → Modal 确认
 - **`fs-sftp`（fork）**：`conn.sftp.remove(target, { recursive })`；围栏同样落在父目录规范化路径上（远端 `pwd -P` 探测），未带 `recursive` 时先用 `sftp.list` 判空。
 - **`workspaceFiles.delete`**：`lstat` 检查存在性 → 在**父目录**上证明工作区包含性（`confinePath`）→ 委托 `ctx.fs.remove` → 把 `FS_NOT_EMPTY` 映射为 `workspace-file/not-empty`。方法名是 `delete` 而非 `remove`：客户端命名空间服务自己占用 `remove` 作挂载生命周期方法，遮蔽它会以 `client api: method "workspaceFiles/remove" conflicts with its namespace service` 让整个 `@deepseek-ai/dsh-api-remotes` 客户端插件启动失败（见下方踩坑）。
 - **`ui-sidebar-files`（上游包，fork 打补丁）**：行内删除控件（hover/聚焦显现）+ `Modal` 二次确认；确认前不发请求；成功后由 store 的 `removed` 动作丢掉该行、剪掉子树层与展开项，再重读父层；失败时弹窗保持打开并显示映射文案。`paths.ts` 抽出 `childPath`/`isUnder`（store 剪枝需要后者，避免 store↔face 循环导入）。
+
+## 2026-10-30 上游重写后的落点
+
+上游把 `ui-sidebar-files` 从「每 tab 一棵树」改成「每分栏一棵树」，并抽出受控工厂 `sidebar.files.tree`，删除链在客户端一侧随之换位：
+
+| 原落点 | 现落点 |
+| --- | --- |
+| `FilesBody.tsx` 的行内删除按钮 + `Modal` | 行控件进 `FileTree.tsx`（可选 `onDelete(entry, kind)`，`data-files-delete` 标记种类）；确认弹窗与失败文案进 `FileNavigator.tsx`（`removalFailureLine()`） |
+| 每 tab 的 `removed` 动作 | `store.ts` 的 `removed(paneId, parent, name)`，按分栏剪掉行、子树层与展开项 |
+| `paths.ts` 的 `childPath` | 保留并被 `store.ts` 与 `workspace-tree.ts` 共用，`isUnder` 取代内联的 `startsWith` 判子树 |
+| `filesFace.list + deleteEntry` | 新增 `createDelete(remote)` 绑定与 `FilesInjected.deleteEntry(paneId, …)`，`index.ts` 把它传给 `filesFace` |
+
+宿主侧（`ctx.fs.remove`、`workspaceFiles.delete`、`describe` 的只读约束）不变。
 
 ## 踩坑
 

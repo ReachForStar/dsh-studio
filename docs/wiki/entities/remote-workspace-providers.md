@@ -3,7 +3,7 @@ title: 远端工作区 provider（fs-sftp / subprocess-sftp）
 type: entity
 tags: [ssh, sftp, ctx.fs, ctx.subprocess, 远端工作区, fork]
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-10-30
 sources: []
 status: active
 ---
@@ -36,6 +36,16 @@ status: active
 - **子进程命令构造**：一条 shell 命令 `cd <cwd> 2>/dev/null || exit 126`，显式环境层经 `env` 工具（`-u` 先删再赋值，避免外层 `PATH` 未设置破坏后续 exec），最后 `exec <argv>`；收集输出复用 `subprocess-local` 的 `OutputCollector`（溢出文件落在 **Host** 临时目录）。
 - **终端**：PTY wrapper 先打印带令牌的 pid 行再 `exec` 命令，provider 读该行（5 秒预算）获知 pid；前台进程组扫 `/proc`（`/proc/<pid>/syscall` 可读时精确），否则回退 `ps -o tpgid=`；`signalForeground()` 把接缝五种信号映射为 POSIX 编号并对进程组发信号。
 - **无控制通道**：SSH exec 通道只有 stdin/stdout/stderr，`stdio.control: 'pipe'` 直接失败，不静默丢 fd 3。
+
+## 2026-10-30：`ctx.fs` 新增的三个成员
+
+上游给文件系统接缝加了三个必需抽象成员，`fs-sftp` 必须实现：
+
+- `patchText(target, hunks, expected?, signal?, policy?)`：读文本 → `applyPatchOrThrow` → 按源行尾风格原子写回；守卫失败报 `FS_STALE_VERSION`，hunk 不匹配报 `FS_PATCH_MISMATCH`。
+- `deleteFile(target, expected?, signal?, policy?)`：只接受普通文件，先取有界基线（`diffBasisMaxBytes`）再 `sftp.remove`。
+- `moveFile(source, destination, options, signal?, policy?)`：两端按字典序嵌套加锁，目标守卫在发布前检查，发布后删源；删源失败返回 `sourceDeleted: false` 与 `sourceFailure`，两端相同报 `FS_SAME_TARGET`。
+
+重复实现顺手收敛：hunk 应用提为 `@deepseek-ai/dsh-fs` 的 `applyPatchOrThrow`（`fs-local` 与 `fs-sftp` 共用），provider 内部抽出 `checkedFile`/`readEditable`/`mutateText`。
 
 ## 上下游依赖
 

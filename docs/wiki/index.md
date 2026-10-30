@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-10-29
+updated: 2026-10-30
 ---
 
 # Wiki 索引
@@ -33,7 +33,7 @@ updated: 2026-10-29
 
 ## 决策 decisions
 
-- [合并上游 upstream/master（2026-09）](decisions/2026-09-upstream-sync.md) — 全量合并的来源取舍、`ctx.ssh` 让位、会话 v3 `backend` 字段、CI 与生成物处理；后续轮次补充全覆盖表的补行口径、持久化后继记录与环境前置三项。
+- [合并上游 upstream/master（2026-09）](decisions/2026-09-upstream-sync.md) — 全量合并的来源取舍、`ctx.ssh` 让位、会话 v3 `backend` 字段、CI 与生成物处理；后续轮次补充全覆盖表的补行口径、持久化后继记录、环境前置三项，以及 2026-10-30 的新增必要抽象成员、跨 profile 一致性例外表、删包与删工作流的残骸处理。
 - [实验能力可视化开关：沿用上游 OPTIONAL_BUNDLES 模式](decisions/2026-09-visual-experimental-toggle.md) — Browser Use / Computer Use / Auto review 成为可选 bundle，Web 插件页一键开关；用户专属配置不进 bundle。
 - [跨包运行时导出的重复安装分类（2026-09-19）](decisions/2026-09-19-runtime-export-classification.md) — 六条导出登记 safe 的逐条依据、分类与依赖分区的连带关系，以及四个客户端包 peerDependencies 收敛到 cordis 后的发布布局变化。
 - [星域专家席经 A2A 抵达（2026-09-19）](decisions/2026-09-19-xingchen-external-specialist-seats.md) — 已被当前本地/A2A 可选席位模式取代；保留早期三个方案的取舍与后果。
@@ -50,7 +50,7 @@ updated: 2026-10-29
 - [实验能力试验 profile（web-lab）与上游实验插件启用情况](queries/web-lab-profile-and-experimental-plugins.md) — Browser Use / Computer Use / Auto review / 远端工作区各自的前置、验证结果与边界，含 patch 替换语义与 Web 工作区路径校验两个踩坑。
 - [pi 后端实现历程与去重/持久化修复（2026-09-05）](queries/pi-backend-implementation.md) — 四个实现阶段与两个用户可见缺陷的根因。
 - [A2A v1.0.1 符合性缺口清单（已修）](queries/a2a-v1.0.1-conformance-gaps.md) — 按规范原文逐条核对出的 7 处 MUST 级偏离（推送错误码、扩展卡能力、终态任务三处行为、`A2A-Version` 头、contextId/taskId 校验）与 4 处细节（列表排序、artifacts 省略、游标分页、historyLength），2026-09-18 已全部修复，含修法、错误码映射与复现命令。
-- [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率红项的现象、归属与修复方向；2026-10-03 已把 doc-sync 的 43 门清到 42 通过（唯一未绿是本机临时目录权限所致的 website 构建），余 lint / constraints / 覆盖率与依赖范围存量（fork CI 不跑这些门禁）。
+- [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率红项的现象、归属与修复方向；2026-10-30 复检补齐 `hygiene` 的 12 门清单（`publint` 属上游现状，其余为本轮新门禁抓出的 fork 既有债务）。
 - [CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md) — ui-polish 内嵌 Excalidraw 后 CJS 构建提升共享 `client.rolldown-runtime.js`，prologue 同步 require 模块表答不了；combo 携带同步闭包 + 相对 chunk 解析的修法与验证。
 - [Git/LaTeX 面板重写的缺陷与修复（2026-09-19）](queries/ui-polish-git-latex-defects.md) — 六个缺陷：加载中误报合并、嵌套仓库合并状态读错仓库、多仓库 cwd 回落、LaTeX 读写路径基准、空文件写入被拒、AI 写作默认 provider 空结果。
 - [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。
@@ -66,6 +66,7 @@ updated: 2026-10-29
 - [合并上游 upstream/master（2026-10-27，rc.3 同步）](queries/upstream-merge-2026-10-27.md) — 176 文件 / 441 块冲突：批量工具接口与 `Agent.model` 的 fork 适配、持久化 schema v1→v2 历史归档重编码、生成物重生成顺序、6 处合并丢失的 i18n 键，以及 88 条既有 lint 红项的归因；收尾快进 `master` 并推送 `me`。
 - [合并上游 upstream/master（2026-10-18）](queries/upstream-merge-2026-10-18.md) — 0.2.1-rc.2 增量合并：20 个冲突按来源取舍、系统提示词快照经 refresh 重生成、基线工作树不可用时降级为「夹具 + 因果源码零差异」代码证据判定，以及本轮红灯归因清单。
 - [合并上游 upstream/master（2026-10-29，0.2.2-alpha.2 同步）](queries/upstream-merge-2026-10-29.md) — 413 文件 / 534 块冲突（343 个纯版本号）：LiveShare 端点全覆盖表补 fork 端点、上游新函数不认 linux-x64、装配页 `/remote` 重写只认上游作用域、持久化后继记录补记与 Node/git/locale 三项环境前置。
+- [合并上游 upstream/master（2026-10-30）](queries/upstream-merge-2026-10-30.md) — 351 个提交、67 个冲突文件；`ctx.fs` 三个新抽象成员与 `fs-sftp` 补齐、`ui-sidebar-files` 重写后的删除功能重建、SDK/Desktop 工具一致性例外登记，以及 8 处合并引入缺陷的修法。
 - [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建。
 - [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 蓝色鲸鱼及标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；含本机重打包的两个网络问题（坏代理拖垮 npm 下载、`@electron/get` 的 SHASUMS 行格式）与本地镜像做法；2026-10-27 补 Release 桌面包三触发（published / `dsh-v*` tag push / 手动 `release_tag` 补传）与按 target 校验非空。
 - [Cua Driver 检测补全与入口迁移（2026-10-27）](queries/cua-driver-detect-and-placement.md) — 检测补齐安装器写入的稳定路径（`~/.local/bin`、`~/.cua-driver/packages/current`、Windows `LOCALAPPDATA`）并按 `X_OK` 判定，check 路由回报 `path`；安装入口从插件卡片 footer 迁到「计算机操作」详情页，安装后自动重检。

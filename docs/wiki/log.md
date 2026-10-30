@@ -632,17 +632,17 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 直连 GitHub 的 SSH（`ssh.github.com:443` 连接超时）与 HTTPS（gnutls 握手失败）均不可用；git 与环境变量都没有代理配置。
 - 可用路径为本机 clash-verge 的 SOCKS5 出口：`GIT_SSH_COMMAND="ssh -p 443 -o ProxyCommand='nc -X 5 -x 127.0.0.1:7890 %h %p'"`，`master` 与 `develop` 已按此推送并对账。
 - 新增[查询页](queries/github-push-via-socks-proxy.md)，index 的 queries 段同步。
-- 同轮收尾：`north-curlew` 工作树内容已在 `master`（`f1d9e03892`），工作树与其空壳父目录已删除，释放约 7 GB。
+- 同轮收尾：`north-curlew` 工作树内容已在 `master`，工作树与其空壳父目录已删除，释放约 7 GB。
 
 ## [2026-10-29] merge | 合入上游合并提交到 develop 与 master
 
-- `ff4e4154b5`（上一节记录的 0.2.2-alpha.2 同步）此前只存在于 `agate-bunting` 工作树的游离 HEAD 上，未在任何分支或远端；本轮把它合入 `develop`，再快进 `master` 并推送 `me`。
+- 上一节记录的 0.2.2-alpha.2 同步提交此前只存在于 `agate-bunting` 工作树的游离 HEAD 上，未在任何分支或远端；本轮把它合入 `develop`，再快进 `master` 并推送 `me`。
 - 合并冲突只有 `docs/wiki/log.md` 一处：两侧各自向文件尾部追加日志，按追加式规则保留两条；`index.md` 自动合并。
 - 代码树与工作树中的合并结果一致，未改动上游同步的取舍与生成物。
 
 ## [2026-10-29] query | 核对最新版本与上游同步
 
-- 上游最新发布标签 `dsh-v0.2.2-alpha.2`（提交 `f3803c9697`）已在 `master` 中，`master` 落后 `upstream/master` 为 0；根 `package.json` 与 `apps/desktop/package.json` 均为 `0.2.2-alpha.2`，即最新版本已同步。
+- 上游最新发布标签 `dsh-v0.2.2-alpha.2` 已在 `master` 中，`master` 落后 `upstream/master` 为 0；根 `package.json` 与 `apps/desktop/package.json` 均为 `0.2.2-alpha.2`，即最新版本已同步。
 - 18 个 fork 自研包（`@reachforstar/*` 与 fork 新增的 `@deepseek-ai/dsh-pi-agent-loop`、`dsh-session-format-v4-to-v5`）仍为 `0.2.1-rc.4`，按用户要求本轮不做对齐；下一次发布仍需家族版本对齐。
 - 补记：`git fetch upstream master --tags` 会因 fork 与上游同名但指向不同的 4 个标签被拒。
 - [合并记录](queries/upstream-merge-2026-10-29.md)的环境前置与待跟进两节同步补上以上三点。
@@ -653,10 +653,19 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 顺序约束：`release:dsh` 先 `verifyVersions` 再计算计划，家族版本不一致时直接报错，不进入写入阶段，所以只能先手工对齐再让工具核对。
 - 参数坑：`pnpm run release:dsh -- 0.2.2-alpha.2 --dry-run` 里的 `--dry-run` 落在 pnpm 插入的 `--` 之后，被 `parseArgs` 当作位置参数，于是“干跑”真的写了清单并提交（提交 `release(dsh): 0.2.2-alpha.2`，内容正确故保留）；干跑要写成 `pnpm run release:dsh --dry-run -- 0.2.2-alpha.2`。
 - 沉淀到 [fork 发布流程页](queries/fork-release-dsh-0.2.1-rc.2.md)的第 5、6 条，并更新[合并记录](queries/upstream-merge-2026-10-29.md)的待跟进条目。
-- 推送：`develop` 与 `master` 均为 `8d87fc6bdc9`。
+- 推送：`develop` 与 `master` 已推送到对齐后的版本提交。
 
 ## [2026-10-29] fix | release:dsh 支持用显式版本修复家族并拒绝错位参数
 
 - 修掉上一节记的两个坑：`planShared` 只在相对版本（`major`/`minor`/`patch`）时要求家族同版本，显式版本直接把全部成员写到目标版本，因此能修复合并上游后的版本漂移；新增 `sharedVersionRequest` 让落在 `--` 之后的标志（如 `--dry-run`）报错，不再被静默忽略。
 - 验证：单元测试 42 项通过（新增 3 项）、typecheck 5 门通过、oxlint 对两个改动文件无发现；实跑验证了正确干跑、错位标志报错且不产生提交、以及把 `packages/xingchen/xingchen` 退回 `0.2.1-rc.4` 后显式版本列出修复而相对版本仍报 `must share one version`（验完已还原）。
-- 提交 `05974ff405 fix(release): 显式版本可修复家族版本不一致`；`scripts/release/bump.ts` 属上游文件，已记入[合并记录](queries/upstream-merge-2026-10-29.md)的待跟进，供下次上游合并保留改动。
+- 提交 `fix(release): 显式版本可修复家族版本不一致`；`scripts/release/bump.ts` 属上游文件，已记入[合并记录](queries/upstream-merge-2026-10-29.md)的待跟进，供下次上游合并保留改动。
+
+## [2026-10-30] merge | 合并上游 upstream/master（351 提交）
+
+- 冲突 67 个文件：6 个「fork 已删除、上游修改」的云端工作流与脚本维持删除，11 个双语配对与文档生成物取上游后重生成，其余逐块合并。
+- 沿用按来源取舍；本轮新增判定记入[合并上游决策](decisions/2026-09-upstream-sync.md)：上游给核心接缝加必要抽象成员时要补齐 fork provider 并把重复实现提成共享 helper；上游新增跨 profile 一致性门禁时用它的例外表登记产品差异；上游删包与删工作流留下的分别是构建残留目录与断言型 spec，处理方式不同。
+- 合并引入的 8 处缺陷已修：`TextPreview` 工具栏重复控件、SDK/Desktop 工具一致性缺例外、`cua-helper` spec 假设发布工作流存在、`verify-repository-references` 的 lockfile 排除与上游 spec 冲突、`rescope-vendor` postcondition 文本落伍、`web-app` 的 `files` 顺序、`ui-sidebar-files` 删除功能在上游重写后重建、`fs-sftp` 补齐 `patchText`/`deleteFile`/`moveFile`。
+- 验证：`typecheck` 5 门、`build` 10 门、`doc-sync` 43 门、`test:docs` 21 门全过；定向包测试 1838 项全过；全量 `test` 的 72 项失败逐项归类为上轮基线、git 版本、5 秒预算与并发竞态，无合并引入者；`test:expected` 只剩上轮已知的 `subagent-inheritance` 一项。
+- 复检 `hygiene` 12 门红项并归类，清单见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-10-30-复检hygiene-的-12-门红项)。
+- 细节见[合并记录](queries/upstream-merge-2026-10-30.md)。

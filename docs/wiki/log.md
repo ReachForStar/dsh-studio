@@ -678,3 +678,4 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 踩坑：德语描述里的 `Git-/LaTeX-/SSH-` 被 `localeTokens` 提取成斜杠命令，导致占位符不一致；改写描述后通过。
 - 验证：三门通过，`typecheck` 5 门、`build` 10 门、`doc-sync` 43 门通过，两个客户端包 485 项测试通过。
 - 做法与规则见[三门禁清偿](queries/client-copy-and-locale-metadata.md)。
+- 顺带修掉 `rescope-vendor`：上游把 `vendor/README.md` 改成 V 编号加粗列表项后 postcondition 文本落伍；另发现 wiki 里用引号包住上游裸包名会被该门的 token 规则当成残留（写定点名或去引号即可）。

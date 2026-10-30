@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Capa de protocolo A2A",
+    "description": "Implementa la validación, codificación y transporte de tarjetas de agente y mensajes de tarea."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "A2A-Protokollschicht",
+    "description": "Implementiert Prüfung, Kodierung und Übertragung von Agentenkarten und Aufgabenmeldungen."
+  }
+}

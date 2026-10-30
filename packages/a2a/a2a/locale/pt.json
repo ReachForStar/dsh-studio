@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Camada de protocolo A2A",
+    "description": "Implementa a validação, a codificação e o transporte de cartões de agente e mensagens de tarefa."
+  }
+}

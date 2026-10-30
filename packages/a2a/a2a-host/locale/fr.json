@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Point d’entrée A2A de l’hôte",
+    "description": "Expose les agents de ce déploiement comme points A2A qui reçoivent des tâches et renvoient des résultats."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Host de espaços remotos",
+    "description": "Serviço host que fornece espaços de trabalho remotos por conexões SSH."
+  }
+}

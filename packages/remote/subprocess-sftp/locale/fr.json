@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Sous-processus distants",
+    "description": "Exécute des sous-processus dans des espaces distants via SSH."
+  }
+}

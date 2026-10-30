@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Gateway de estado A2A",
+    "description": "Reúne o estado dos pares A2A e das tarefas do barramento para o cliente."
+  }
+}

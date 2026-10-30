@@ -49,6 +49,9 @@ export const zh = {
   cuaDriverProgressLabel: '安装输出',
   cuaDriverError: '安装失败',
   cuaDriverRetry: '重试',
+  cuaDriverHttpStatus: '服务器返回 HTTP {status}',
+  cuaDriverExitCode: '安装程序以退出码 {code} 结束',
+  cuaDriverUnknownError: '未知错误',
   statusProblem: '异常',
   statusBeta: '实验性',
   reasonLabel: '原因',
@@ -359,6 +362,9 @@ export const en = {
   cuaDriverProgressLabel: 'Installation output',
   cuaDriverError: 'Installation failed',
   cuaDriverRetry: 'Retry',
+  cuaDriverHttpStatus: 'The server answered with HTTP {status}',
+  cuaDriverExitCode: 'The installer exited with code {code}',
+  cuaDriverUnknownError: 'Unknown error',
   statusProblem: 'Problem',
   statusBeta: 'Experimental',
   reasonLabel: 'Reason',
@@ -927,6 +933,9 @@ export const ja = {
   cuaDriverProgressLabel: 'インストール出力',
   cuaDriverError: 'インストールに失敗しました',
   cuaDriverRetry: '再試行',
+  cuaDriverHttpStatus: 'サーバーは HTTP {status} を返しました',
+  cuaDriverExitCode: 'インストーラーは終了コード {code} で終了しました',
+  cuaDriverUnknownError: '不明なエラー',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -1234,6 +1243,9 @@ export const es = {
   cuaDriverProgressLabel: 'Salida de instalación',
   cuaDriverError: 'La instalación falló',
   cuaDriverRetry: 'Reintentar',
+  cuaDriverHttpStatus: 'El servidor respondió con HTTP {status}',
+  cuaDriverExitCode: 'El instalador terminó con el código {code}',
+  cuaDriverUnknownError: 'Error desconocido',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -1541,6 +1553,9 @@ export const fr = {
   cuaDriverProgressLabel: 'Sortie d’installation',
   cuaDriverError: 'Échec de l’installation',
   cuaDriverRetry: 'Réessayer',
+  cuaDriverHttpStatus: 'Le serveur a répondu HTTP {status}',
+  cuaDriverExitCode: 'L’installateur s’est terminé avec le code {code}',
+  cuaDriverUnknownError: 'Erreur inconnue',
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -1848,6 +1863,9 @@ export const de = {
   cuaDriverProgressLabel: 'Installationsausgabe',
   cuaDriverError: 'Installation fehlgeschlagen',
   cuaDriverRetry: 'Erneut versuchen',
+  cuaDriverHttpStatus: 'Der Server antwortete mit HTTP {status}',
+  cuaDriverExitCode: 'Der Installer endete mit Code {code}',
+  cuaDriverUnknownError: 'Unbekannter Fehler',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -2155,6 +2173,9 @@ export const ru = {
   cuaDriverProgressLabel: 'Вывод установки',
   cuaDriverError: 'Установка не удалась',
   cuaDriverRetry: 'Повторить',
+  cuaDriverHttpStatus: 'Сервер ответил HTTP {status}',
+  cuaDriverExitCode: 'Установщик завершился с кодом {code}',
+  cuaDriverUnknownError: 'Неизвестная ошибка',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -2462,4 +2483,7 @@ export const pt = {
   cuaDriverProgressLabel: 'Saída da instalação',
   cuaDriverError: 'Falha na instalação',
   cuaDriverRetry: 'Tentar novamente',
+  cuaDriverHttpStatus: 'O servidor respondeu com HTTP {status}',
+  cuaDriverExitCode: 'O instalador terminou com o código {code}',
+  cuaDriverUnknownError: 'Erro desconhecido',
 } satisfies Record<keyof typeof en, string>

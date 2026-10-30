@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "A2A-Host-Endpunkt",
+    "description": "Stellt die Agenten dieser Installation als A2A-Endpunkte bereit, die Aufgaben annehmen und Ergebnisse zurückgeben."
+  }
+}

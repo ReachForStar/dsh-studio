@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "A2A-Status-Gateway",
+    "description": "Fasst den Status von A2A-Peers und Bus-Aufgaben für den Client zusammen."
+  }
+}

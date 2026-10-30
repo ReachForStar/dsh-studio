@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Backend pi",
+    "description": "Integra el entorno pi como segundo backend de ejecución de dsh."
+  }
+}

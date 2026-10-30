@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Interface d’état A2A",
+    "description": "Affiche dans la barre latérale l’état des pairs et des tâches A2A."
+  }
+}

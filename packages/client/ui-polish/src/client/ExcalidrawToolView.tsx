@@ -28,14 +28,20 @@ function previewSvgOf(meta: unknown): string | null {
   return typeof svg === 'string' ? svg : null
 }
 
-/** Build a short argument summary for the running/start card. */
-function argsSummary(toolName: string, argsRaw: string): string {
+/**
+  * Build a short argument summary for the running/start card.
+  * @param t - the ui-polish dictionary seat.
+  * @param toolName - the called Excalidraw tool.
+  * @param argsRaw - the call's raw JSON arguments.
+  * @returns the localized summary, or an empty string for unparseable drawings.
+  */
+function argsSummary(t: ExcalidrawToolViewProps['t'], toolName: string, argsRaw: string): string {
   if (toolName === 'excalidraw_write') {
-    return `${argsRaw.length} chars`
+    return t('excalidraw.argsChars', { count: argsRaw.length })
   }
   try {
     const parsed = JSON.parse(argsRaw) as { elements?: unknown[] }
-    return `${parsed.elements?.length ?? 0} shapes`
+    return t('excalidraw.argsShapes', { count: parsed.elements?.length ?? 0 })
   } catch {
     return ''
   }
@@ -67,7 +73,7 @@ export function ExcalidrawToolView(props: ExcalidrawToolViewProps) {
   }
 
   if (phase === 'start') {
-    const summary = argsSummary(toolName, block.argsRaw)
+    const summary = argsSummary(t, toolName, block.argsRaw)
     return (
       <div className={css.card} data-tool={toolName} data-state="running">
         <div className={css.row}>

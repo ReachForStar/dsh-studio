@@ -23,9 +23,11 @@
       "default": "./lib/types/kafka-detect.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
+    "locale/*.json",
     "lib/**/*.js",
     "lib/**/*.d.ts",
     "infra/kafka/docker-compose.yml"

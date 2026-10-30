@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Host für entfernte Arbeitsbereiche",
+    "description": "Hostdienst, der entfernte Arbeitsbereiche über SSH-Verbindungen bereitstellt."
+  }
+}

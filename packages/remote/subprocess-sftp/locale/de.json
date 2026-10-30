@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Entfernte Unterprozesse",
+    "description": "Führt Unterprozesse über SSH in entfernten Arbeitsbereichen aus."
+  }
+}

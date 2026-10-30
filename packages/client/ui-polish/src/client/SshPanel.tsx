@@ -640,7 +640,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     if (!selectedConn) return
     setDownloading(entry.name)
     try {
-      const url = `/api/ssh/sftp/download?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(entry.path)}`
+      const url = `api/ssh/sftp/download?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(entry.path)}`
       const response = await fetch(url)
       if (!response.ok) {
         const text = await response.text()
@@ -681,7 +681,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         for (const file of files) {
           const targetPath = joinPath(currentDir, file.name)
           const response = await fetch(
-            `/api/ssh/sftp/upload?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(targetPath)}`,
+            `api/ssh/sftp/upload?connectionId=${encodeURIComponent(selectedConn)}&path=${encodeURIComponent(targetPath)}`,
             { method: 'POST', body: file },
           )
           if (!response.ok) {

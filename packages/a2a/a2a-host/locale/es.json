@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Punto de entrada A2A del host",
+    "description": "Expone los agentes de esta instalación como puntos A2A que reciben tareas y devuelven resultados."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Passerelle d’état A2A",
+    "description": "Regroupe l’état des pairs A2A et des tâches du bus pour le client."
+  }
+}

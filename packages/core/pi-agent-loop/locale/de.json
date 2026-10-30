@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "pi-Backend",
+    "description": "Bindet die pi-Laufzeit als zweites Ausführungs-Backend von dsh ein."
+  }
+}

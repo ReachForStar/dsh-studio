@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Sistema de archivos SFTP",
+    "description": "Ofrece el sistema de archivos por SFTP para leer, escribir y modificar espacios remotos."
+  }
+}

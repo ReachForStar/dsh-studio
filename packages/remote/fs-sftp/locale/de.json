@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "SFTP-Dateisystem",
+    "description": "Stellt das Dateisystem über SFTP bereit, um entfernte Arbeitsbereiche zu lesen, zu schreiben und zu ändern."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Subprocesos remotos",
+    "description": "Ejecuta subprocesos en espacios remotos a través de SSH."
+  }
+}

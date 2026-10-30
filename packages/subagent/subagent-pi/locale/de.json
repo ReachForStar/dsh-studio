@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "pi-Unteragent",
+    "description": "Führt delegierte Aufgaben in einem Unteragenten des pi-Backends aus."
+  }
+}

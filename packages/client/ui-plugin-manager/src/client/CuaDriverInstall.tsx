@@ -32,9 +32,9 @@ export function CuaDriverSetup({ t }: { readonly t: Translate }): ReactNode {
   const check = useCallback(async (): Promise<void> => {
     setState({ phase: 'checking' })
     try {
-      const response = await fetch('/api/computer-use/cua-driver/check')
+      const response = await fetch('api/computer-use/cua-driver/check')
       if (!response.ok) {
-        setState({ phase: 'missing', detail: `HTTP ${String(response.status)}` })
+        setState({ phase: 'missing', detail: t('cuaDriverHttpStatus', { status: response.status }) })
         return
       }
       const result = await response.json() as DriverCheck
@@ -46,7 +46,7 @@ export function CuaDriverSetup({ t }: { readonly t: Translate }): ReactNode {
       if (!live.current) return
       setState({ phase: 'missing', detail: error instanceof Error ? error.message : String(error) })
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     live.current = true
@@ -57,9 +57,9 @@ export function CuaDriverSetup({ t }: { readonly t: Translate }): ReactNode {
   const install = useCallback(async (): Promise<void> => {
     setState({ phase: 'installing', lines: [] })
     try {
-      const response = await fetch('/api/computer-use/cua-driver/install', { method: 'POST' })
+      const response = await fetch('api/computer-use/cua-driver/install', { method: 'POST' })
       if (!response.ok || response.body === null) {
-        setState({ phase: 'error', message: `HTTP ${String(response.status)}` })
+        setState({ phase: 'error', message: t('cuaDriverHttpStatus', { status: response.status }) })
         return
       }
       const reader = response.body.getReader()
@@ -82,10 +82,10 @@ export function CuaDriverSetup({ t }: { readonly t: Translate }): ReactNode {
               ? { phase: 'installing', lines: [...prev.lines, message.line as string].slice(-40) }
               : prev)
           } else if (message.type === 'done') {
-            if (message.exitCode !== 0) setState({ phase: 'error', message: `Exit code ${String(message.exitCode)}` })
+            if (message.exitCode !== 0) setState({ phase: 'error', message: t('cuaDriverExitCode', { code: message.exitCode }) })
             else await check()
           } else if (message.type === 'error') {
-            setState({ phase: 'error', message: message.message ?? 'Unknown error' })
+            setState({ phase: 'error', message: message.message ?? t('cuaDriverUnknownError') })
           }
         }
       }
@@ -93,7 +93,7 @@ export function CuaDriverSetup({ t }: { readonly t: Translate }): ReactNode {
       if (!live.current) return
       setState({ phase: 'error', message: error instanceof Error ? error.message : String(error) })
     }
-  }, [check])
+  }, [check, t])
 
   if (state.phase === 'checking') {
     return <div className={css.cuaDriverStatus} role="status">{t('cuaDriverChecking')}</div>
@@ -130,7 +130,7 @@ export function CuaDriverSetup({ t }: { readonly t: Translate }): ReactNode {
     <div className={css.cuaDriverInstall}>
       <span className={css.cuaDriverWarning} role="status">
         {t('cuaDriverMissing')}
-        {state.detail === null ? null : `（${state.detail}）`}
+        {state.detail === null ? null : <span className={css.cuaDriverDetail}>{state.detail}</span>}
       </span>
       <button type="button" className={css.cuaDriverButton} onClick={() => { void install() }}>{t('cuaDriverInstall')}</button>
     </div>

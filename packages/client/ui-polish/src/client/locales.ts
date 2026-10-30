@@ -35,6 +35,8 @@ export const zh = {
   'excalidraw.writeTitle': '写入画布',
   'excalidraw.exportTitle': '导出画布',
   'excalidraw.toolFailed': '失败',
+  'excalidraw.argsChars': '{count} 个字符',
+  'excalidraw.argsShapes': '{count} 个图形',
   // Git panel.
   'git.tab': 'Git',
   'git.title': 'Git 面板',
@@ -287,6 +289,8 @@ export const en = {
   'excalidraw.writeTitle': 'Write scene',
   'excalidraw.exportTitle': 'Export canvas',
   'excalidraw.toolFailed': 'Failed',
+  'excalidraw.argsChars': '{count} chars',
+  'excalidraw.argsShapes': '{count} shapes',
   'git.tab': 'Git',
   'git.title': 'Git panel',
   'git.open': 'Git',

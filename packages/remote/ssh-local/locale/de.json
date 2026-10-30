@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "SSH-Verbindungsdienst",
+    "description": "Verwaltet lokal gespeicherte SSH-Verbindungen und stellt gemeinsame Sitzungen bereit."
+  }
+}

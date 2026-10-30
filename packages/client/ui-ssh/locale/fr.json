@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Panneau SSH",
+    "description": "Gère les connexions SSH et parcourt les fichiers distants dans la barre latérale."
+  }
+}

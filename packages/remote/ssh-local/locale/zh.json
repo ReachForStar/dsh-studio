@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "SSH 连接服务",
+    "description": "管理本机保存的 SSH 连接定义并提供共享会话。"
+  }
+}

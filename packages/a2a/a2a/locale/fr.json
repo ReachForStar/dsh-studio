@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Couche de protocole A2A",
+    "description": "Implémente la validation, l’encodage et le transport des fiches d’agent et des messages de tâche."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "SFTP 文件系统",
+    "description": "经 SFTP 提供文件系统能力，支持远端工作区的读写与变更。"
+  }
+}

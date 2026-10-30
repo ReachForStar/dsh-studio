@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Finitions d’interface",
+    "description": "Fournit une image de fond, un panneau de statistiques, des panneaux Git/LaTeX/SSH/canevas et le seuil de compaction."
+  }
+}

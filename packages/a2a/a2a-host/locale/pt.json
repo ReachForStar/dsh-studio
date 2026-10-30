@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Endpoint A2A do host",
+    "description": "Expõe os agentes desta instalação como endpoints A2A que recebem tarefas e devolvem resultados."
+  }
+}

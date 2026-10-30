@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Service de connexions SSH",
+    "description": "Gère les définitions SSH enregistrées localement et fournit des sessions partagées."
+  }
+}

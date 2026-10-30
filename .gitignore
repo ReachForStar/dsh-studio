@@ -55,3 +55,6 @@ worktrees/
 native/system/test/bin/
 .qmd/
 .arts/
+
+# Generated company-signed CUA release record.
+/packages/experimental/cua-macos/cua-helper.json

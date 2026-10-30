@@ -45,8 +45,11 @@
   en: 1598ac8a8bb9b6bf
   zh: fdd089c5ae7722cd
 /deepseek-ai-dsh-llm-pi-ai/understand-the-implementation/design-philosophy:
-  en: 2dcb48c145601bb5
-  zh: 4c81b0b62ee19ccd
+  en: d95f361f3e244b6f
+  zh: 49223029f44f3262
+/deepseek-ai-dsh-llm-pi-ai/understand-the-implementation/request-headers:
+  en: 615ca9834bf6544f
+  zh: 2d70b548f99000d1
 /deepseek-ai-dsh-llm-pi-ai/understand-the-implementation/source-map:
   en: 4f71a4384ba6056c
   zh: 7c8e6bfe0469783d

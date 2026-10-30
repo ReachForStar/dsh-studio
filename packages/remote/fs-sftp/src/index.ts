@@ -13,7 +13,8 @@ import type { Readable } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { FileSystem, FsError, FsTargetKey, FsVersion } from '@deepseek-ai/dsh-fs'
-import { applyLiteralEdit, createUtf8StreamDecoder, decodeUtf8, decodeUtf8Stream, detectLineEndings, isBinarySample, normalizeLineEndings, restoreLineEndings } from '@deepseek-ai/dsh-fs'
+import { applyLiteralEdit, applyPatchOrThrow, createUtf8StreamDecoder, decodeUtf8, decodeUtf8Stream, detectLineEndings, isBinarySample, normalizeLineEndings, restoreLineEndings } from '@deepseek-ai/dsh-fs'
+import type { PatchHunk } from '@deepseek-ai/dsh-fs-patch'
 import type { LineEndings } from '@deepseek-ai/dsh-fs'
 import { writableRoots } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
@@ -21,9 +22,11 @@ import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import { SshError } from '@reachforstar/dsh-ssh'
 import type { SshConnection, SshConnectionId, SshRunResult } from '@reachforstar/dsh-ssh'
 import type {
+  FsDeleteOutcome,
   FsDirEntry,
   FsEditOutcome,
   FsEditRequest,
+  FsMoveOutcome,
   FsInfo,
   FsPathInfo,
   FsRemoveOptions,
@@ -508,56 +511,38 @@ export class SftpFileSystem extends FileSystem {
   }
 
   override async editText(
+    target: FsTarget, edit: FsEditRequest, expected?: { version: FsVersionType },
+    signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsEditOutcome> {
+    return this.mutateText(target, expected, 'edit', sandboxPolicy, signal, ({ checked, original }) =>
+      applyLiteralEdit(original, edit.oldString, edit.newString, edit.replaceAll, checked.displayPath).content)
+  }
+
+  override async patchText(
+    target: FsTarget, hunks: readonly PatchHunk[], expected?: { version: FsVersionType },
+    signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsEditOutcome> {
+    return this.mutateText(target, expected, 'patch', sandboxPolicy, signal, ({ checked, original }) =>
+      applyPatchOrThrow(checked.displayPath, original, hunks))
+  }
+
+  override async deleteFile(
     target: FsTarget,
-    edit: FsEditRequest,
     expected?: { version: FsVersionType },
     signal?: AbortSignal,
     sandboxPolicy?: SandboxExecutionPolicy,
-  ): Promise<FsEditOutcome> {
+  ): Promise<FsDeleteOutcome> {
     return this.withLock(String(target.targetKey), async () => {
-      const checked = await this.checkedTarget(target, sandboxPolicy)
-      const path = this.processPath(checked)
-      const existing = await this.sftpStat(path, signal)
-      if (existing === undefined) throw new FsError(`cannot edit "${checked.displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
-      if (existing.type !== 'file') throw new FsError(`cannot edit "${checked.displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
-      if (expected !== undefined && existing.version !== expected.version) {
-        throw new FsError(`cannot edit "${checked.displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
-      }
+      const { path } = await this.checkedFile(target, expected, 'delete', sandboxPolicy, signal)
+      const before = await this.readDiffBasis(path, this.config.diffBasisMaxBytes)
+      if (signal?.aborted) throw new FsError('delete aborted', 'FS_ABORTED')
       const conn = await this.connection()
-      const file = await conn.sftp.openRead(path).catch((error: unknown) => {
-        throw this.translateError(error, 'edit')
-      })
-      guardStream(file.stream)
-      let raw: string
-      let lineEndings: LineEndings
       try {
-        const chunks: Buffer[] = []
-        let bytes = 0
-        for await (const chunk of file.stream) {
-          // Node Readable iterators are untyped; the SFTP stream emits Buffer chunks.
-          const buffer = chunk as Buffer
-          bytes += buffer.length
-          chunks.push(buffer)
-        }
-        const full = Buffer.concat(chunks, bytes)
-        if (full.includes(0)) throw new FsError(`cannot edit "${checked.displayPath}": binary file`, 'FS_NOT_TEXT')
-        raw = decodeUtf8(full, 'edit', checked.displayPath)
-        lineEndings = detectLineEndings(raw)
+        await conn.sftp.remove(path)
       } catch (error: unknown) {
-        throw this.translateError(error, 'edit')
-      } finally {
-        await file.close().catch(() => undefined)
+        throw this.translateError(error, 'delete', signal)
       }
-      const original = normalizeLineEndings(raw)
-      const edited = applyLiteralEdit(original, edit.oldString, edit.newString, edit.replaceAll, checked.displayPath)
-      const content = restoreLineEndings(edited.content, lineEndings)
-      await this.atomicWrite(path, Buffer.from(content, 'utf8'), existing.mode, false, signal, checked)
-      const after = await this.sftpStat(path, signal)
-      return {
-        version: after?.version ?? FsVersion(`missing:${path}`),
-        before: original,
-        after: edited.content,
-      }
+      return { before }
     })
   }
 
@@ -633,6 +618,232 @@ export class SftpFileSystem extends FileSystem {
       return { kind: existing.type }
     })
   }
+
+  override async moveFile(
+    source: FsTarget,
+    destination: FsTarget,
+    options: Parameters<FileSystem['moveFile']>[2],
+    signal?: AbortSignal,
+    sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsMoveOutcome> {
+    const sourceKey = String(source.targetKey)
+    const destinationKey = String(destination.targetKey)
+    if (sourceKey === destinationKey) {
+      throw new FsError(`cannot move "${source.displayPath}" to itself`, 'FS_SAME_TARGET')
+    }
+    // Both targets stay locked in lexical order, as the local provider does, so
+    // two crossing moves cannot deadlock.
+    const [first, second] = sourceKey < destinationKey ? [sourceKey, destinationKey] : [destinationKey, sourceKey]
+    return this.withLock(first, () => this.withLock(second, async () => {
+      const checkedSource = await this.checkedTarget(source, sandboxPolicy)
+      const checkedDestination = await this.checkedTarget(destination, sandboxPolicy)
+      const sourcePath = this.processPath(checkedSource)
+      const destinationPath = this.processPath(checkedDestination)
+      const sourceInfo = await this.requireFile(sourcePath, checkedSource.displayPath, options.expectedSource, 'move', signal)
+      const existing = await this.writeTarget(destinationPath, checkedDestination.displayPath, options.expectedDestination, signal)
+      const original = await this.readTextForEdit(sourcePath, checkedSource.displayPath, 'move', signal)
+      const after = options.hunks === undefined
+        ? original.content
+        : applyPatchOrThrow(checkedSource.displayPath, original.content, options.hunks)
+      const content = Buffer.from(restoreLineEndings(after, original.lineEndings), 'utf8')
+      const before = existing !== undefined && content.length < this.config.diffBasisMaxBytes
+        ? await this.readDiffBasis(destinationPath, this.config.diffBasisMaxBytes)
+        : null
+      if (signal?.aborted) throw new FsError('move aborted', 'FS_ABORTED')
+      // After this checkpoint the destination is published and both effects are
+      // reported, even if cancellation arrives.
+      await this.atomicWrite(destinationPath, content, sourceInfo.mode, false, undefined, checkedDestination)
+      const written = await this.sftpStat(destinationPath, signal)
+      const outcome: FsWriteOutcome = {
+        operation: existing === undefined ? 'create' : 'update',
+        version: written?.version ?? FsVersion(`missing:${destinationPath}`),
+        before,
+        after,
+      }
+      const sourceBefore = Buffer.byteLength(original.content, 'utf8') < this.config.diffBasisMaxBytes ? original.content : null
+      const conn = await this.connection()
+      try {
+        await conn.sftp.remove(sourcePath)
+      } catch (error: unknown) {
+        const failure = this.translateError(error, 'move', signal)
+        return { sourceBefore, destination: outcome, sourceDeleted: false, sourceFailure: { code: failure.code, message: failure.message } }
+      }
+      return { sourceBefore, destination: outcome, sourceDeleted: true }
+    }))
+  }
+
+  /**
+   * Read one remote file as editable text: binary files are rejected and the
+   * content comes back LF-normalized with the style write-back restores.
+   * @param path - the remote path to read.
+   * @param displayPath - the caller-facing path used in error messages.
+   * @param verb - the operation naming failures.
+   * @param signal - aborts the read (`FS_ABORTED`).
+   * @returns the LF-normalized content and its original line-ending style.
+   */
+  private async readTextForEdit(
+    path: string,
+    displayPath: string,
+    verb: string,
+    signal?: AbortSignal,
+  ): Promise<{ content: string; lineEndings: LineEndings }> {
+    const conn = await this.connection()
+    const file = await conn.sftp.openRead(path).catch((error: unknown) => {
+      throw this.translateError(error, verb, signal)
+    })
+    guardStream(file.stream)
+    try {
+      const chunks: Buffer[] = []
+      let bytes = 0
+      for await (const chunk of file.stream) {
+        // Node Readable iterators are untyped; the SFTP stream emits Buffer chunks.
+        const buffer = chunk as Buffer
+        bytes += buffer.length
+        chunks.push(buffer)
+      }
+      const full = Buffer.concat(chunks, bytes)
+      if (full.includes(0)) throw new FsError(`cannot ${verb} "${displayPath}": binary file`, 'FS_NOT_TEXT')
+      const raw = decodeUtf8(full, 'edit', displayPath)
+      return { content: normalizeLineEndings(raw), lineEndings: detectLineEndings(raw) }
+    } catch (error: unknown) {
+      throw this.translateError(error, verb, signal)
+    } finally {
+      await file.close().catch(() => undefined)
+    }
+  }
+
+  /**
+   * Run one locked text mutation: read the file, let `build` produce the new
+   * text, publish it atomically, and report the LF before/after bases.
+   * @param target - the resolved target to mutate.
+   * @param expected - the version guard; omitted for an unconditional mutation.
+   * @param verb - the operation naming failures.
+   * @param sandboxPolicy - the per-call mode and workspace root; omit for the deployment fallback.
+   * @param signal - aborts the read or the publication.
+   * @param build - produces the new text from the checked target and its content.
+   * @returns the mutation outcome, including the version it produced.
+   */
+  private async mutateText(
+    target: FsTarget,
+    expected: { version: FsVersionType } | undefined,
+    verb: string,
+    sandboxPolicy: SandboxExecutionPolicy | undefined,
+    signal: AbortSignal | undefined,
+    build: (editable: { checked: FsTarget; original: string }) => string,
+  ): Promise<FsEditOutcome> {
+    return this.withLock(String(target.targetKey), async () => {
+      const { checked, path, existing, original, lineEndings } = await this.readEditable(target, expected, verb, sandboxPolicy, signal)
+      const after = build({ checked, original })
+      await this.atomicWrite(path, Buffer.from(restoreLineEndings(after, lineEndings), 'utf8'), existing.mode, false, signal, checked)
+      const written = await this.sftpStat(path, signal)
+      return { version: written?.version ?? FsVersion(`missing:${path}`), before: original, after }
+    })
+  }
+
+  /**
+   * Fence one file target, require it, and read it as editable text.
+   * @param target - the resolved target to mutate.
+   * @param expected - the version guard; omitted for an unconditional mutation.
+   * @param verb - the operation naming failures.
+   * @param sandboxPolicy - the per-call mode and workspace root; omit for the deployment fallback.
+   * @param signal - aborts the canonicalizing round-trip and the read.
+   * @returns the checked target, its remote path, its metadata, and its editable text.
+   */
+  private async readEditable(
+    target: FsTarget,
+    expected: { version: FsVersionType } | undefined,
+    verb: string,
+    sandboxPolicy: SandboxExecutionPolicy | undefined,
+    signal?: AbortSignal,
+  ): Promise<{ checked: FsTarget; path: string; existing: SftpMeta; original: string; lineEndings: LineEndings }> {
+    const { checked, path, existing } = await this.checkedFile(target, expected, verb, sandboxPolicy, signal)
+    const { content: original, lineEndings } = await this.readTextForEdit(path, checked.displayPath, verb, signal)
+    return { checked, path, existing, original, lineEndings }
+  }
+
+  /**
+   * Fence one file target and require it, returning what the text mutations share.
+   * @param target - the resolved target to mutate.
+   * @param expected - the version guard; omitted for an unconditional mutation.
+   * @param verb - the operation naming failures.
+   * @param sandboxPolicy - the per-call mode and workspace root; omit for the deployment fallback.
+   * @param signal - aborts the canonicalizing round-trip.
+   * @returns the checked target, its remote path, and its metadata.
+   */
+  private async checkedFile(
+    target: FsTarget,
+    expected: { version: FsVersionType } | undefined,
+    verb: string,
+    sandboxPolicy: SandboxExecutionPolicy | undefined,
+    signal?: AbortSignal,
+  ): Promise<{ checked: FsTarget; path: string; existing: SftpMeta }> {
+    const checked = await this.checkedTarget(target, sandboxPolicy)
+    const path = this.processPath(checked)
+    const existing = await this.requireFile(path, checked.displayPath, expected, verb, signal)
+    return { checked, path, existing }
+  }
+
+  /**
+   * Require a regular file under an optional version guard.
+   * @param path - the remote path to inspect.
+   * @param displayPath - the caller-facing path used in error messages.
+   * @param expected - the version guard; omitted for an unconditional mutation.
+   * @param verb - the operation naming failures.
+   * @param signal - aborts the inspection.
+   * @returns the file's metadata.
+   */
+  private async requireFile(
+    path: string,
+    displayPath: string,
+    expected: { version: FsVersionType } | undefined,
+    verb: string,
+    signal?: AbortSignal,
+  ): Promise<SftpMeta> {
+    const existing = await this.sftpStat(path, signal)
+    // Missing targets report the stale code, as the local provider does.
+    if (existing === undefined || (expected !== undefined && existing.version !== expected.version)) {
+      throw new FsError(`cannot ${verb} "${displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
+    }
+    if (existing.type !== 'file') throw new FsError(`cannot ${verb} "${displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
+    return existing
+  }
+
+  /**
+   * Apply a move's destination guard before anything is published.
+   * @param path - the destination remote path.
+   * @param displayPath - the caller-facing destination path.
+   * @param expected - the destination write intent; omitted for unconditional.
+   * @param signal - aborts the inspection.
+   * @returns the existing destination metadata, or `undefined` for a create.
+   */
+  private async writeTarget(
+    path: string,
+    displayPath: string,
+    expected: FsWriteIntent | undefined,
+    signal?: AbortSignal,
+  ): Promise<SftpMeta | undefined> {
+    const existing = await this.sftpStat(path, signal)
+    if (existing !== undefined && existing.type !== 'file') {
+      throw new FsError(`cannot write "${displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
+    }
+    if (expected?.kind === 'replaceIfVersion') {
+      if (existing === undefined) throw new FsError(`cannot write "${displayPath}": file no longer exists`, 'FS_STALE_VERSION')
+      if (existing.version !== expected.version) {
+        throw new FsError(`cannot write "${displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
+      }
+    } else if (expected?.kind === 'createIfAbsent' && existing !== undefined) {
+      throw new FsError(`cannot overwrite existing "${displayPath}" without reading it first`, 'FS_NOT_OBSERVED')
+    }
+    return existing
+  }
+
+  /**
+   * Apply parsed hunks or report `FS_PATCH_MISMATCH`.
+   * @param target - the target being patched, for its display path.
+   * @param before - the LF-normalized text to patch.
+   * @param hunks - ordered hunks.
+   * @returns the patched text.
+   */
 
   /** Best-effort overwrite diff basis (bounded, null on any non-text/oversize). */
   private async readDiffBasis(path: string, maxBytes: number): Promise<string | null> {

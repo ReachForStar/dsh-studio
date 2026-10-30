@@ -14,12 +14,25 @@ import LocalSshService from '@reachforstar/dsh-ssh-local'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
 import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
+import { parsePatch } from '@deepseek-ai/dsh-fs-patch'
 import { FsTargetKey } from '@deepseek-ai/dsh-fs'
 import type { FsVersion } from '@deepseek-ai/dsh-fs'
 import { SftpFileSystem } from '../src/index.ts'
 import { TEST_SSH_PASSWORD, TEST_SSH_USERNAME, TestSshServer } from '../../ssh-local/tests/test-server.ts'
 
 const posixSuite = process.platform === 'win32' ? describe.skip : describe
+
+/**
+ * One parsed update hunk over a single line, as a caller would pass it.
+ * @param old - the line to replace.
+ * @param replacement - the line to write instead.
+ * @returns the operation's hunks.
+ */
+function hunks(old = 'old', replacement = 'new') {
+  const [operation] = parsePatch(`*** Begin Patch\n*** Update File: a\n@@\n-${old}\n+${replacement}\n*** End Patch`)
+  if (operation?.kind !== 'update') throw new Error('Expected update')
+  return operation.hunks
+}
 
 /** One booted provider + its remote (test-server-root) file helpers. */
 interface RemoteFs {
@@ -197,6 +210,97 @@ posixSuite('sftp filesystem provider', () => {
     expect(outcome.before).toBe('alpha\nbeta\n')
     expect(outcome.after).toBe('gamma\nbeta\n')
     expect(await remote.remoteRead('ws/e.txt')).toBe('gamma\r\nbeta\r\n')
+  })
+
+  it('patches parsed hunks under a version guard and preserves ending style', async () => {
+    await remote.remoteWrite('ws/p.txt', 'old\r\ntail\r\n')
+    const target = await remote.fs.resolve('ws/p.txt')
+    const version = (await remote.fs.stat(target))!.version
+    await expect(remote.fs.patchText(target, hunks(), { version: 'bogus' as FsVersion }))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    const outcome = await remote.fs.patchText(target, hunks(), { version })
+    expect(outcome.before).toBe('old\ntail\n')
+    expect(outcome.after).toBe('new\ntail\n')
+    expect(await remote.remoteRead('ws/p.txt')).toBe('new\r\ntail\r\n')
+  })
+
+  it('reports an unmatched hunk, a missing source, and a binary source on patch', async () => {
+    await remote.remoteWrite('ws/p2.txt', 'original\n')
+    const target = await remote.fs.resolve('ws/p2.txt')
+    await expect(remote.fs.patchText(target, hunks('old'))).rejects.toMatchObject({ code: 'FS_PATCH_MISMATCH' })
+    expect(await remote.remoteRead('ws/p2.txt')).toBe('original\n')
+    await expect(remote.fs.patchText(await remote.fs.resolve('ws/never.txt'), hunks()))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    await remote.remoteWrite('ws/bin.txt', new Uint8Array([1, 0, 2]))
+    await expect(remote.fs.patchText(await remote.fs.resolve('ws/bin.txt'), hunks()))
+      .rejects.toMatchObject({ code: 'FS_NOT_TEXT' })
+  })
+
+  it('deletes a guarded regular file and returns its bounded basis', async () => {
+    await remote.remoteWrite('ws/d.txt', 'gone\n')
+    const target = await remote.fs.resolve('ws/d.txt')
+    const version = (await remote.fs.stat(target))!.version
+    await expect(remote.fs.deleteFile(target, { version: 'bogus' as FsVersion })).rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    expect(await remote.fs.deleteFile(target, { version })).toEqual({ before: 'gone\n' })
+    expect(await remote.remoteExists('ws/d.txt')).toBe(false)
+    await expect(remote.fs.deleteFile(await remote.fs.resolve('ws/d.txt'))).rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    await mkdir(join(remote.root, 'ws', 'dir'), { recursive: true })
+    await expect(remote.fs.deleteFile(await remote.fs.resolve('ws/dir'))).rejects.toMatchObject({ code: 'FS_NOT_REGULAR_FILE' })
+  })
+
+  it('moves a source onto a destination and reports both effects', { timeout: 15_000 }, async () => {
+    await remote.remoteWrite('ws/src.txt', 'old\n')
+    await remote.remoteWrite('ws/dest.txt', 'dest\n')
+    const moved = await remote.fs.moveFile(await remote.fs.resolve('ws/src.txt'), await remote.fs.resolve('ws/dest.txt'), {})
+    expect(moved).toMatchObject({
+      sourceBefore: 'old\n',
+      sourceDeleted: true,
+      destination: { operation: 'update', before: 'dest\n', after: 'old\n' },
+    })
+    expect(await remote.remoteExists('ws/src.txt')).toBe(false)
+    expect(await remote.remoteRead('ws/dest.txt')).toBe('old\n')
+  })
+
+  it('applies hunks while moving and creates the destination', { timeout: 15_000 }, async () => {
+    await remote.remoteWrite('ws/src2.txt', 'old\n')
+    const created = await remote.fs.moveFile(await remote.fs.resolve('ws/src2.txt'), await remote.fs.resolve('ws/new.txt'), { hunks: hunks() })
+    expect(created).toMatchObject({ sourceDeleted: true, destination: { operation: 'create', before: null, after: 'new\n' } })
+    expect(await remote.remoteRead('ws/new.txt')).toBe('new\n')
+  })
+
+  it('refuses an identical move target before touching either path', async () => {
+    await remote.remoteWrite('ws/a.txt', 'a\n')
+    const source = await remote.fs.resolve('ws/a.txt')
+    await expect(remote.fs.moveFile(source, source, {})).rejects.toMatchObject({ code: 'FS_SAME_TARGET' })
+  })
+
+  it('reports a stale or directory move source', { timeout: 15_000 }, async () => {
+    await remote.remoteWrite('ws/b.txt', 'b\n')
+    await expect(remote.fs.moveFile(await remote.fs.resolve('ws/never.txt'), await remote.fs.resolve('ws/c.txt'), {}))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    await mkdir(join(remote.root, 'ws', 'dir-src'), { recursive: true })
+    await expect(remote.fs.moveFile(await remote.fs.resolve('ws/dir-src'), await remote.fs.resolve('ws/c.txt'), {}))
+      .rejects.toMatchObject({ code: 'FS_NOT_REGULAR_FILE' })
+  })
+
+  it('enforces the move destination guard', { timeout: 15_000 }, async () => {
+    await remote.remoteWrite('ws/d-src.txt', 'old\n')
+    await remote.remoteWrite('ws/d-dest.txt', 'dest\n')
+    const source = await remote.fs.resolve('ws/d-src.txt')
+    const destination = await remote.fs.resolve('ws/d-dest.txt')
+    const version = (await remote.fs.stat(destination))!.version
+    await expect(remote.fs.moveFile(source, destination, { expectedDestination: { kind: 'createIfAbsent' } }))
+      .rejects.toMatchObject({ code: 'FS_NOT_OBSERVED' })
+    await expect(remote.fs.moveFile(source, destination, { expectedDestination: { kind: 'replaceIfVersion', version: 'bogus' as FsVersion } }))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    // A missing destination under a version guard reports the stale code, and a
+    // directory destination is refused as a non-regular file.
+    await expect(remote.fs.moveFile(source, await remote.fs.resolve('ws/gone.txt'), {
+      expectedDestination: { kind: 'replaceIfVersion', version } }))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    await mkdir(join(remote.root, 'ws', 'dir-dest'), { recursive: true })
+    await expect(remote.fs.moveFile(source, await remote.fs.resolve('ws/dir-dest'), {}))
+      .rejects.toMatchObject({ code: 'FS_NOT_REGULAR_FILE' })
   })
 
   it('removes a file, an empty directory, and (only when asked) a directory tree', async () => {

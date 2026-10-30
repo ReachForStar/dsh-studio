@@ -7,6 +7,8 @@
  * @module @deepseek-ai/dsh-fs/text
  */
 
+import { applyHunks } from '@deepseek-ai/dsh-fs-patch'
+import type { PatchHunk } from '@deepseek-ai/dsh-fs-patch'
 import { FsError } from './types.ts'
 
 /** First bytes sampled for the binary (NUL-byte) rejection. */
@@ -95,6 +97,27 @@ export function applyLiteralEdit(
 
 function notTextError(verb: 'read' | 'edit', displayPath: string): FsError {
   return new FsError(`cannot ${verb} "${displayPath}": invalid UTF-8 text`, 'FS_NOT_TEXT')
+}
+
+/**
+ * Apply parsed hunks to LF-normalized text, or report the seam's patch failure.
+ *
+ * Every backend that patches text shares this step, so an unmatched hunk
+ * reports the same `FS_PATCH_MISMATCH` code and the same location as the others.
+ * @param displayPath - the caller-facing path named in the failure.
+ * @param before - the LF-normalized text to patch.
+ * @param hunks - ordered hunks from `parsePatch`.
+ * @returns the patched text.
+ */
+export function applyPatchOrThrow(displayPath: string, before: string, hunks: readonly PatchHunk[]): string {
+  const result = applyHunks(before, hunks)
+  if (!result.ok) {
+    throw new FsError(
+      `cannot patch "${displayPath}": hunk at patch line ${result.failure.hunkLineNumber} (${result.failure.stage}) does not match`,
+      'FS_PATCH_MISMATCH',
+    )
+  }
+  return result.after
 }
 
 /**

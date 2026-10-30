@@ -31,17 +31,17 @@
 | `@deepseek-ai/dsh-tool-present` | `present` | `ctx.workingDirectory`、`ctx.tools`, `ctx.fs`, `ctx.agents` | `tool/call`, `deliverables/presented 在成功的最终结果之后`, `tool/result` | - | 交付归调用方 Session 所有；Web ui-deliverables 提供源文件打开与卡片。 |
 | `@deepseek-ai/dsh-tool-pwsh` | `pwsh` | `ctx.workingDirectory`、`ctx.tools`、`ctx.shell`、`ctx.systemPrompt`、`ctx.shellEnv`、`ctx.jobs for run_in_background and the job-backed foreground path` | `tool/call`、`tool/result` | - | pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费方（由 `@deepseek-ai/dsh-pwsh-local` 等 PowerShell 执行器为 `ctx.shell` 提供后端）；除沙箱接口外，它逐项对应 bash 工具调用。使用 `run_in_background` 的运行会注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具收集／停止；托管的 `DSH_*` 环境来自 `@deepseek-ai/dsh-shell-env`。每次调用都在新进程中运行，不使用持久 PTY 会话。路径采用原生 `C:\...` 形式，变量采用 `$env:NAME`。 |
 | `@deepseek-ai/dsh-tool-cordis` | `cordis_inspect_list`, `cordis_inspect_query` | `ctx.tools`, `ctx.cordisInspect` | `tool/call`, `tool/result` | - | 创造模式提供两个只读运行时检查工具。Cordis host runner 提供检查注册表；Client 查询需要已连接页面。持久化变更编写为组合包，再通过 plugin_manager 安装。 |
-| `@reachforstar/dsh-tool-ssh` | `sftp_list`、`sftp_mkdir`、`sftp_read`、`sftp_rename`、`sftp_rm`、`sftp_stat`、`sftp_write`、`ssh_connect`、`ssh_connections`、`ssh_disconnect`、`ssh_exec`、`ssh_test` | `ctx.tools`、`ctx.ssh`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`settings/document-updated (ssh definition saves)` | - | ssh 工具是 SSH/SFTP 能力 seam 面向模型的消费方，提供连接管理、远程命令执行和 SFTP 传输／浏览。定义与记住的主机密钥持久化在 `ssh` settings 命名空间；主机密钥默认按 accept-new 校验，秘密不会出现在结果中。 |
+| `@reachforstar/dsh-tool-ssh` | `sftp_list`, `sftp_mkdir`, `sftp_read`, `sftp_rename`, `sftp_rm`, `sftp_stat`, `sftp_write`, `ssh_connect`, `ssh_connections`, `ssh_disconnect`, `ssh_exec`, `ssh_test` | `ctx.tools`, `ctx.ssh`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `settings/document-updated (ssh definition saves)` | - | SSH 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh_connect/ssh_connections/ssh_disconnect/ssh_test）、远程命令执行（ssh_exec），以及 SFTP 传输与浏览（sftp_list/stat/read/write/mkdir/rm/rename）。定义与记住的主机密钥保存在 `ssh` 设置命名空间；主机密钥默认校验（accept-new），结果中永不出现机密。 |
 | `@deepseek-ai/dsh-tool-bash-persistent` | `bash` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 bash 工具；部署组合提供 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 pwsh 工具，持久 bash 工具的 Windows 对应物；部署组合提供 pwsh 方言的 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`、`ctx.fs` | `tool/call`、`fs/observed after view presence/absence, edit absence, or successful mutation`、`tool/result` | - | 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。 |
-| `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`、`excalidraw_export`、`excalidraw_read`、`excalidraw_write` | `ctx.tools`、`ctx.workspaceRegistry` | `tool/call`、`tool/result` | - | 白板场景工具从调用 agent 的会话推导目标工作区；没有归属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 `@reachforstar/dsh-client-ui-polish` 的 Web 画布标签页共享。 |
-| `@reachforstar/dsh-tool-a2a` | `a2a_peers`、`a2a_send` | `ctx.tools`、`ctx.a2a` | `tool/call`、`tool/result` | - | a2a_peers 列出已配置的 peer 名字，a2a_send 按名字向其中一个发送消息，可续接此前的任务或上下文；端点永远不由模型指定，因此采集 schema 时不需要可达的 peer。 |
-| `@deepseek-ai/dsh-tool-fs` | `edit`、`read`、`read_image`、`write` | `ctx.workingDirectory`、`ctx.tools`、`ctx.fs`、`ctx.systemPrompt`、`ctx.attachments (image-tool registration)`、`ctx.llm + an image-capable route (image-tool execution)` | `tool/call`、`fs/write-intent or fs/edit-intent for mutations`、`fs/observed after read presence/absence or successful file operation`、`durable attachment (read_image)`、`tool/result` | - | 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。 |
+| `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`, `excalidraw_export`, `excalidraw_read`, `excalidraw_write` | `ctx.tools`, `ctx.workspaceRegistry` | `tool/call`, `tool/result` | - | 白板场景工具从调用方 agent 的会话推导目标工作区；没有所属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 @reachforstar/dsh-client-ui-polish 中的 Web 画布标签页共用。 |
+| `@reachforstar/dsh-tool-a2a` | `a2a_peers`, `a2a_send` | `ctx.tools`, `ctx.a2a` | `tool/call`, `tool/result` | - | a2a_peers 列出已配置的对端名称，a2a_send 按名称寻址其中一个，并可选继续先前的任务或上下文；模型从不指定端点，因此采集不需要可达的对端。 |
+| `@deepseek-ai/dsh-tool-fs` | `apply_patch`、`edit`、`read`、`read_image`、`write` | `ctx.workingDirectory`、`ctx.tools`、`ctx.fs`、`ctx.systemPrompt`、`ctx.attachments (image-tool registration)`、`ctx.llm + an image-capable route (image-tool execution)` | `tool/call`、`fs/write-intent, fs/edit-intent, or fs/delete-intent for mutations`、`fs/observed after read presence/absence or successful file operation`、`durable attachment (read_image)`、`tool/result` | - | 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。`apply_patch` 仅在 `applyPatch: true` 时注册；目录为了记录其 schema 而开启该开关，而随发行版交付的组合在各自的 `tool-fs` 行上保持关闭。 |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`、`grep` | `ctx.workingDirectory`、`ctx.tools`、`ctx.subprocess`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | glob 和 grep 是无条件可用的发现工具，通过 ctx.subprocess spawn 随包提供的 ripgrep 二进制文件（`@vscode/ripgrep`），并作为普通前台调用运行，绝不作为后台任务；无需在宿主机安装 `rg`，也不经过 shell 层。本目录使用 `sampleOverCapGlobResults: true`；部署必须显式选择该行为。结果超过上限时，会通过可选的 ctx.spillStore 后端保存完整的格式化列表；在共置部署中，如果后端公开本地路径，返回的定位信息可供后续读取／搜索。 |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`、`terminal_list`、`terminal_open`、`terminal_read`、`terminal_send`、`terminal_signal` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`ctx.systemPrompt`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | 这 6 个终端工具需要选择启用，用于补充一次性 bash／文件系统工具。`terminal_send(run_in_background: true)` 会注册到 `ctx.jobs`；schema 不包含 TUI、具名按键序列、BEL、调整尺寸、自动启动和跨 agent 共享。 |
 | `@deepseek-ai/dsh-tool-goal` | `create_goal`、`get_goal`、`update_goal` | `ctx.tools`、`ctx.agents`、`ctx.goals`、`ctx.systemPrompt`、`a calling Agent in an authorized open turn` | `tool/call`、`goal/change for mutations`、`tool/result` | - | create、edit、pause 和 resume 要求直接来自人类的根权限；complete 和 blocked 也接受确切的当前 Goal Round。blocked 的默认下限是 3 个获准的 Round。 |
-| `@deepseek-ai/dsh-tool-schedule` | `schedule_create`、`schedule_delete`、`schedule_list`、`schedule_update` | `ctx.tools`、`ctx.schedule` | `tool/call`、Schedule storage domain 创建、更新或删除、`tool/result` | - | preset 或 Agent scope 挂载本包；由 preset 决定哪些 agent 获得这四个管理工具。每次调用都作用于调用方 Agent 的 Session。接受 after_seconds、显式绝对 at、有界固定速率 every_seconds、带显式 IANA 时区的每日与每周本地时间，以及作为五字段表达式的 cron。管理使用宿主 storage domain；到期消息会恢复原 Session。 |
+| `@deepseek-ai/dsh-tool-schedule` | `schedule_create`、`schedule_edit`、`schedule_list`、`schedule_view` | `ctx.tools`、`ctx.schedule`、`ctx.systemPrompt` | `tool/call`、Schedule storage domain 创建、更新或删除、`tool/result` | - | preset 或 Agent scope 挂载本包，并决定哪些 Agent 获得工具。管理工具按 id 跨会话读写 Host 的任务。任务保存 RFC 5545 重复规则，执行位置可选已有会话、首次创建后复用的会话或每次运行新建的会话。委派子 Agent 不能调用这些工具。 |
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.workingDirectory`、`ctx.tools`、`ctx.lsp`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，因此其模型可见 schema 在更换提供方时保持稳定。运行时要求已注册提供方，例如 `@deepseek-ai/dsh-lsp-stdio`；如果没有提供方，查询会返回结构化 `LSP_UNAVAILABLE` 错误，而不会改变 schema。 |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents every fresh round)` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 固定的前台工作流会在每个 Round 启动一个全新的结构化子级；模型只能选择不可变目标和可选的 Round 上限。 |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.workingDirectory`、`ctx.tools`、`ctx.agents`、`ctx.skills` | `tool/call`、`tool/result`、`user/message replacement catalogs via agent.inject()` | - | - |
@@ -892,7 +892,7 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 
 ### `sftp_list`
 
-通过 SFTP 列出单个远程目录（不递归）。条目报告类型、大小、修改时间和权限模式。
+通过 SFTP 列出一个远程目录（非递归）。条目报告类型、大小、mtime 与 mode。
 
 ```json
 {
@@ -914,11 +914,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_mkdir`
 
-通过 SFTP 创建单个远程目录。带 `recursive` 时，缺失的父目录也一并创建。
+通过 SFTP 创建一个远程目录。带 `recursive` 时同时创建缺失的父目录。
 
 ```json
 {
@@ -944,11 +944,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_read`
 
-通过 SFTP 把单个远程文件下载到本地路径。除非设置 `overwrite`，本地文件必须不存在；传输失败会删除不完整的本地文件。
+通过 SFTP 把一个远程文件下载到本地路径。除非设置 `overwrite`，本地文件必须不存在；传输失败会删除残留的部分文件。
 
 ```json
 {
@@ -979,11 +979,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_rename`
 
-通过 SFTP 重命名或移动单个远程路径。
+通过 SFTP 重命名或移动一个远程路径。
 
 ```json
 {
@@ -1010,11 +1010,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_rm`
 
-通过 SFTP 删除单个远程文件或目录。目录需要 `recursive: true` 并按深度优先删除；符号链接只解除链接，绝不跟随。
+通过 SFTP 删除一个远程文件或目录。目录要求 `recursive: true` 并按深度优先删除；符号链接被解除链接，从不跟随。
 
 ```json
 {
@@ -1040,11 +1040,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_stat`
 
-通过 SFTP 获取单个远程路径的状态，不跟随符号链接。
+通过 SFTP 查看一个远程路径的元数据，不跟随符号链接。
 
 ```json
 {
@@ -1066,11 +1066,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_write`
 
-通过 SFTP 把单个本地文件上传到远程路径。远程目录必须已存在（先使用 sftp_mkdir）。
+通过 SFTP 把一个本地文件上传到远程路径。远程目录必须已存在（先用 sftp_mkdir）。
 
 ```json
 {
@@ -1097,11 +1097,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_connect`
 
-保存新的 SSH 连接定义（或传入其 id 更新已有定义）。定义持久化在用户设置中，供 ssh_exec 与 sftp_* 工具使用；结果中绝不返回秘密。用 ssh_connections 列出已保存的连接。
+保存新的 SSH 连接定义（或传入 id 更新已有定义）。该定义持久化在用户设置中，可被 ssh_exec 与 sftp_* 工具使用；结果中永不返回机密。用 ssh_connections 列出已保存的连接。
 
 ```json
 {
@@ -1161,11 +1161,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_connections`
 
-列出全部已保存的 SSH 连接定义（不含秘密的视图）。把返回的 id 或名称用作 ssh_exec 与 sftp_* 工具的 `connection` 参数。
+列出全部已保存的 SSH 连接定义（不含机密）。把返回的 id 或名称用作 ssh_exec 与 sftp_* 工具的 `connection` 参数。
 
 ```json
 {
@@ -1174,11 +1174,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_disconnect`
 
-关闭某个已保存连接对应的共享连接。后续的 ssh_exec/sftp_* 调用会自动重连。
+关闭某个已保存连接共享的会话。之后的 ssh_exec/sftp_* 调用会自动重连。
 
 ```json
 {
@@ -1195,11 +1195,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_exec`
 
-在已保存的 SSH 连接上执行命令并返回其 stdout/stderr。每次调用都使用全新的远程 shell：调用之间不保留任何状态（当前目录、变量）——传入 `cwd` 而不是使用 `cd`。非零退出码报告为 `[exit code: N]`；超时的命令会被终止并报告为 `[timed out ...]`。过长输出会截断保留尾部并加上截断标记。
+在已保存的 SSH 连接上执行命令，返回其 stdout/stderr。每次调用在新的远程 shell 中运行：cwd、变量等状态不会在调用间保留，用 `cwd` 参数代替 `cd`。非零退出码以 `[exit code: N]` 报告；超时的命令被终止并以 `[timed out ...]` 报告。过长输出截断为尾部并附截断标记。
 
 ```json
 {
@@ -1229,11 +1229,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_test`
 
-探测某个已保存连接：建立连接、运行探测命令、再次关闭。报告往返时延或失败原因。
+探测一个已保存连接：连接、运行探测命令，再关闭。报告往返延迟或失败原因。
 
 ```json
 {
@@ -1250,10 +1250,9 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-来源：[`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
-ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh_connect/ssh_connections/ssh_disconnect/ssh_test）、远程命令执行（ssh_exec）以及 SFTP 传输与浏览（sftp_list/stat/read/write/mkdir/rm/rename）。定义与记住的主机密钥持久化在 `ssh` 设置命名空间；主机密钥默认按 accept-new 校验，结果中绝不出现秘密。
-
+The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: connection management (ssh_connect/ssh_connections/ssh_disconnect/ssh_test), remote command execution (ssh_exec), and SFTP transfer/browse (sftp_list/stat/read/write/mkdir/rm/rename). Definitions and remembered host keys persist in the `ssh` settings namespace; host keys verify by default (accept-new) and secrets never appear in results.
 
 <a id="deepseek-aidsh-tool-bash-persistent"></a>
 
@@ -1423,7 +1422,7 @@ ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh
 
 ### `excalidraw_draw`
 
-在当前工作区的 Excalidraw 画布（共享白板）上绘制形状。用高层描述表达形状——无需 Excalidraw 内部字段。可用于绘制图示、流程图，或在画布上演算问题（例如几何）。`action: "append"` 追加到现有场景；`action: "replace"` 先清空画布。支持的元素 `type` 取值："rectangle"、"ellipse"、"diamond"、"text"（内容放在 `text`）、"arrow"、"line"（可选把 `points` 写成 [[x1,y1],[x2,y2],...]，否则使用贯穿该框的对角线）。坐标单位为画布像素（左上角为原点）。
+在当前工作区的 Excalidraw 画布（共享白板）上绘制图形。用高层次描述图形，无需了解 Excalidraw 内部结构。用于绘制图示、流程图或在画布上推演问题（例如几何）。`action: "append"` 追加到现有场景；`action: "replace"` 先清空画布。支持的元素 `type` 取值："rectangle"、"ellipse"、"diamond"、"text"（内容放在 `text`）、"arrow"、"line"（可选给出 `points` 为 [[x1,y1],[x2,y2],...]，否则使用贯穿边框的对角线）。坐标为画布像素（原点在左上角）。
 
 ```json
 {
@@ -1505,11 +1504,11 @@ ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh
 }
 ```
 
-来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
 ### `excalidraw_export`
 
-把当前工作区的 Excalidraw 画布导出为工作区内的 SVG 图片文件（纯 node 侧渲染——无需浏览器）。读取画布标签页显示的同一场景，并在 `<workspace>/<path>` 写出矢量 SVG（默认 `.dsh/excalidraw/export.svg`）。用它持久化模型绘制的图示，以便查看、提交或在别处转换。SVG 使用平面填充与描边（无手绘纹理）；文本保留其内容与字号。
+把当前工作区的 Excalidraw 画布导出为工作区内的 SVG 图片文件（纯 node 侧渲染，无需浏览器）。读取画布标签页展示的同一场景，并把矢量 SVG 写到 `<workspace>/<path>`（默认 `.dsh/excalidraw/export.svg`）。用于持久化模型绘制的图示，便于查看、提交或在别处转换。SVG 使用平涂填充与描边（无手绘质感）；文本保留其内容与字号。
 
 ```json
 {
@@ -1527,11 +1526,11 @@ ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh
 }
 ```
 
-来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
 ### `excalidraw_read`
 
-读取当前工作区的 Excalidraw 画布场景。返回摘要（按类型统计的元素数、文本元素、主题）、便于推断画布内容的紧凑 `elements` 列表（id/type/x/y/width/height/text），以及场景较小时 `sceneJson` 中的完整场景 JSON 字符串。用 `excalidraw_draw` 添加形状，或用 `excalidraw_write` 替换场景。
+读取当前工作区的 Excalidraw 画布场景。返回摘要（按类型统计的元素数量、文本元素、主题）、紧凑的 `elements` 列表（id/type/x/y/width/height/text）以便推断画布内容，以及场景较小时放在 `sceneJson` 的完整场景 JSON 字符串。用 `excalidraw_draw` 添加图形，或用 `excalidraw_write` 替换场景。
 
 ```json
 {
@@ -1540,11 +1539,11 @@ ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh
 }
 ```
 
-来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
 ### `excalidraw_write`
 
-用完整场景 JSON 字符串覆盖当前工作区的 Excalidraw 画布场景（即 `excalidraw_read` 的 `sceneJson` 产生的结构：含 `elements` 与 `appState` 的对象）。画布标签页渲染的正是这个文件。场景文件缺失时会创建。
+用完整的场景 JSON 字符串覆盖当前工作区的 Excalidraw 画布场景（即 `excalidraw_read` 的 `sceneJson` 所产生的结构：含 `elements` 与 `appState` 的对象）。画布标签页渲染的正是这个文件。缺失的场景文件会被创建。
 
 ```json
 {
@@ -1561,9 +1560,9 @@ ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh
 }
 ```
 
-来源：[`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
-白板场景工具从调用方 agent 的会话推导目标工作区；没有归属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 @reachforstar/dsh-client-ui-polish 的 Web 画布标签页共用。
+The whiteboard scene tools derive the target workspace from the calling agent's session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish.
 
 <a id="reachforstardsh-tool-a2a"></a>
 
@@ -1571,7 +1570,7 @@ ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh
 
 ### `a2a_peers`
 
-列出本部署可调用的远程 A2A agent，包含每个 peer 的寻址名称、其已发布 agent card 中的显示名，以及它接受的技能。当你尚不知道存在哪些 peer 时，先调用它再调用 `a2a_send`。某个 peer 的 card 读取失败时，会列在该 peer 旁报告，而不是让整份列表失败。
+列出本部署可调用的远程 A2A 代理，以及各自的寻址名称、已发布 agent 卡中的显示名和接受的能力（skill）。当不知道有哪些对端时，先调用它再调用 `a2a_send`。某个对端的 agent 卡读不到时，会在该对端旁报告，而不是让整个列表失败。
 
 ```json
 {
@@ -1580,13 +1579,13 @@ ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh
 }
 ```
 
-来源：[`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
 
 ### `a2a_send`
 
-向远程 A2A agent 发送一个任务并返回其答复。用 `a2a_peers` 报告的名称或某个端点 URL 来寻址 peer。peer 在它自己的环境中工作：可以在那里读写文件，但看不到当前工作区。传入此前调用返回的 `contextId` 可续接同一会话，从而保留 peer 之前的轮次；省略它则开始新会话。
+向远程 A2A 代理发送一个任务并返回其答复。用 `a2a_peers` 报告的名称或端点 URL 寻址对端。对端在自己的环境中工作：它可以在那里读写文件，但看不到本工作区。把上一次调用返回的 `contextId` 传回去可继续同一段对话，对端因此保留先前的轮次；省略则开始新的对话。
 
-选择 peer 应在哪个技能下工作，例如代码评审或编码；`a2a_peers` 列出每个 peer 接受的内容，省略时 peer 使用其默认技能。`mode: "direct"` 等待答复，可能需要数分钟——优先委派一个完整的工作单元，而不是许多次小往返。`mode: "bus"` 发布任务并在被认领后立即返回：用于超出本轮生命周期的工作，需要同时取得答复时加上 `wait: true`。
+选择对端应在哪个能力（skill）下工作，例如代码审查或编码；`a2a_peers` 会列出每个对端接受的能力，省略时对端使用其默认值。`mode: "direct"` 等待答复，可能需要数分钟，优先委派完整的工作单元，而不是多次小往返。`mode: "bus"` 发布任务并在任务被领取后立即返回：用于超出本轮次的工作，若同时需要答复则加上 `wait: true`。
 
 ```json
 {
@@ -1636,14 +1635,34 @@ ssh 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh
 }
 ```
 
-来源：[`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
 
-a2a_peers 列出已配置的 peer 名称，a2a_send 按名称寻址其中一个，并可选续接此前的任务或上下文；模型从不指定端点，因此采集 schema 时不需要可达的 peer。
-
+a2a_peers lists the configured peer names and a2a_send addresses one by name, optionally continuing an earlier task or context; the model never names an endpoint, so the harvest needs no reachable peer.
 
 <a id="deepseek-aidsh-tool-fs"></a>
 
 ## `@deepseek-ai/dsh-tool-fs`
+
+### `apply_patch`
+
+用一个 Codex 风格补丁新增、更新、删除或移动 UTF-8 文本文件；变更跨越多个文件或分离区域时，优先于多次 edit 调用。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "input": {
+      "type": "string",
+      "description": "Codex patch text: start with *** Begin Patch and end with *** End Patch. Use *** Add File: path with + lines; *** Update File: path, optionally followed by *** Move to: path, with @@ or @@ context and space-prefixed context, + added, or - removed lines; *** End of File anchors the last hunk to the file end. Use *** Delete File: path to delete. Paths are relative to the Session working directory. Read existing files before updating, deleting, or moving them."
+    }
+  },
+  "required": [
+    "input"
+  ]
+}
+```
+
+来源： [`packages/fs/tool-fs/src/index.ts`](../packages/fs/tool-fs/src/index.ts)
 
 ### `edit`
 
@@ -1756,7 +1775,7 @@ a2a_peers 列出已配置的 peer 名称，a2a_send 按名称寻址其中一个�
 
 来源：[`packages/fs/tool-fs/src/index.ts`](../packages/fs/tool-fs/src/index.ts)
 
-先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。
+先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。`apply_patch` 仅在 `applyPatch: true` 时注册；目录为了记录其 schema 而开启该开关，而随发行版交付的组合在各自的 `tool-fs` 行上保持关闭。
 
 <a id="deepseek-aidsh-tool-fs-search"></a>
 
@@ -2083,134 +2102,48 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
 
 ### `schedule_create`
 
-在当前会话中创建一条提醒，到期时投递 prompt。请恰好提供一个时间参数：after_seconds、at、every_seconds、daily、weekly 或 cron。时区中不存在的本地时间会被跳过；重复出现的本地时间只在较早的时刻触发一次。停机后，重复提醒只投递最近错过的一次。崩溃后可能重复投递。
+创建定时任务。rrule 的每次触发都会将 prompt 作为用户的定时消息投递到目标会话。结果包含任务 id 和下一次触发时间：scheduledAt 为 UTC 时间，scheduledAtLocal 为 rrule 所在时区的时间。停机后只补发最近一次错过的触发。崩溃后可能重复投递。
 
 ```json
 {
   "type": "object",
   "properties": {
-    "prompt": {
-      "type": "string",
-      "description": "Reminder content to present when the target becomes due."
-    },
     "title": {
       "type": "string",
-      "description": "Concise task name in the user's language, at most 120 characters. Name only the core action and subject; keep essential target identifiers such as PR numbers and branch names. Do not include execution frequency (e.g. daily, hourly), scheduled dates/times, time zones, task status, or configuration and execution details (e.g. read-only mode, profile-tag filters), even when embedded in the requested or existing title. Do not append parenthetical notes. Put scheduling information in the timing parameters and execution instructions in prompt."
+      "description": "Task name of at most 120 characters in the user's language: action plus object. Omit timing, status, ids, and bracketed suffixes."
     },
-    "after_seconds": {
-      "type": "number",
-      "description": "Delay in whole seconds."
+    "prompt": {
+      "type": "string",
+      "description": "Instruction delivered at each occurrence."
     },
-    "every_seconds": {
-      "type": "number",
-      "description": "Fixed-rate interval in whole seconds, at least 60, aligned to the creation time; changing it with schedule_update re-aligns it to the save time."
+    "rrule": {
+      "type": "string",
+      "description": "Supported RFC 5545 subset: one DTSTART line, a newline, and one RRULE line. DTSTART ends in Z for UTC or carries TZID with an IANA time zone; a fixed offset such as UTC+5 is Etc/GMT-5, with the sign reversed. DTSTART must name an existing local time. A TZID rule keeps local clock time across daylight-saving changes; generated nonexistent local times are skipped, and repeated ones occur once, at the earlier instant. DTSTART may be in the past; delivery starts with the first occurrence after creation. A one-time delivery is RRULE:FREQ=DAILY;COUNT=1. No SECONDLY; BYSECOND takes one value. COUNT is at most 1000; use UNTIL for longer rules. MINUTELY and HOURLY accept no BY parts, so select clock times with DAILY or WEEKLY plus BYHOUR and BYMINUTE. BYMONTHDAY and ordinal BYDAY require MONTHLY or YEARLY; BYYEARDAY and BYWEEKNO require YEARLY. Ordinal BYDAY cannot combine with BYWEEKNO. Each FREQ period allows at most 10080 candidates before BYSETPOS, which accepts at most 31 values. UNTIL is a UTC instant ending in Z. Example: \"DTSTART;TZID=Asia/Singapore:20260901T080000\\nRRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1\""
     },
-    "daily": {
-      "type": "object",
-      "description": "Every day at a local time.",
-      "additionalProperties": false,
-      "properties": {
-        "time": {
-          "type": "string",
-          "description": "HH:mm:ss with optional 1-3 fractional digits, for example 23:00:00."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        }
-      },
-      "required": [
-        "time",
-        "time_zone"
+    "target": {
+      "type": "string",
+      "description": "this_session delivers to this session; new_once delivers to the same new session every time, opened at the first delivery; new opens a different new session for every delivery. New sessions use this session's working directory and preset. With this_session or new_once, a delivery waits until the previous one finishes, and only the latest occurrence that passed meanwhile is delivered. Use this_session for reminders and for follow-ups to this conversation; use new_once or new for independent work, such as a recurring report, and whenever the user asks for a new conversation.",
+      "enum": [
+        "this_session",
+        "new_once",
+        "new"
       ]
-    },
-    "weekly": {
-      "type": "object",
-      "description": "On the given weekdays at a local time.",
-      "additionalProperties": false,
-      "properties": {
-        "time": {
-          "type": "string",
-          "description": "HH:mm:ss with optional 1-3 fractional digits, for example 09:00:00."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        },
-        "weekdays": {
-          "type": "array",
-          "description": "ISO weekdays, Monday 1 through Sunday 7, without repetitions.",
-          "items": {
-            "type": "integer"
-          }
-        }
-      },
-      "required": [
-        "time",
-        "time_zone",
-        "weekdays"
-      ]
-    },
-    "cron": {
-      "type": "object",
-      "description": "Five-field Vixie cron expression in a time zone.",
-      "additionalProperties": false,
-      "properties": {
-        "expression": {
-          "type": "string",
-          "description": "minute hour day-of-month month day-of-week, for example \"*/15 9-17 * * 1-5\". When both day fields are restricted, a date matches if either one matches."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        }
-      },
-      "required": [
-        "expression",
-        "time_zone"
-      ]
-    },
-    "at": {
-      "oneOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "date": {
-              "type": "string"
-            },
-            "time": {
-              "type": "string"
-            },
-            "time_zone": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "date",
-            "time",
-            "time_zone"
-          ]
-        }
-      ],
-      "description": "Absolute target: an RFC 3339 date-time with offset, or a local date, time, and IANA time_zone."
     }
   },
   "required": [
+    "title",
     "prompt",
-    "title"
+    "rrule",
+    "target"
   ]
 }
 ```
 
-来源：[`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
+源码： [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
 
-### `schedule_delete`
+### `schedule_edit`
 
-删除当前会话中的一条提醒，活动或已结束的均可。删除不会撤回已经入队的提醒消息。
+按 id 更新、暂停、恢复或删除一个定时任务。删除不会撤回已排队的消息。
 
 ```json
 {
@@ -2218,33 +2151,84 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
   "properties": {
     "id": {
       "type": "string",
-      "description": "Exact schedule id."
+      "description": "Task id."
+    },
+    "action": {
+      "type": "string",
+      "description": "update applies the provided fields, at least one; delete removes the task.",
+      "enum": [
+        "update",
+        "delete"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "description": "Task name of at most 120 characters in the user's language: action plus object. Omit timing, status, ids, and bracketed suffixes."
+    },
+    "prompt": {
+      "type": "string",
+      "description": "New instruction delivered at each occurrence."
+    },
+    "rrule": {
+      "type": "string",
+      "description": "New recurrence in the schedule_create rrule format."
+    },
+    "target": {
+      "type": "string",
+      "description": "Omit to retain the destination and its creation settings. Providing target replaces them; new_once reserves a different Session. New targets capture this Session's working directory and preset. Choices are the same as schedule_create.",
+      "enum": [
+        "this_session",
+        "new_once",
+        "new"
+      ]
+    },
+    "active": {
+      "type": "boolean",
+      "description": "false pauses the task; true resumes only if its timing has a future occurrence. Otherwise provide a new rrule."
+    },
+    "expectedUpdatedAt": {
+      "type": "string",
+      "description": "updatedAt from the latest result that returned this task; if the task changed after that result, the result is schedule_conflict and nothing changes."
     }
   },
   "required": [
-    "id"
+    "id",
+    "action"
   ]
 }
 ```
 
-来源：[`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
+源码： [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
 
 ### `schedule_list`
 
-列出当前会话中的活动提醒。
+列出定时任务，包括从其他会话创建的任务。活动任务排在前面，按 scheduledAt 排序。
 
 ```json
 {
   "type": "object",
-  "properties": {}
+  "properties": {
+    "active": {
+      "type": "boolean",
+      "description": "true for active tasks only; false for paused and ended tasks only; omitted for all tasks."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Page size from 1 to 500; defaults to 100."
+    },
+    "offset": {
+      "type": "integer",
+      "description": "Number of tasks to skip; defaults to 0."
+    }
+  }
 }
 ```
 
-来源：[`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
+源码： [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
 
-### `schedule_update`
+### `schedule_view`
 
-原地修改一条提醒并保留其 id。提供新的 title、prompt，或至多一个时间参数；未提供的字段保持原值。需要相对延迟时请新建一条提醒。
+按 id 查看一个定时任务。
 
 ```json
 {
@@ -2252,112 +2236,7 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
   "properties": {
     "id": {
       "type": "string",
-      "description": "Schedule id returned by schedule_list."
-    },
-    "title": {
-      "type": "string",
-      "description": "New task name; follow the schedule_create title rules."
-    },
-    "prompt": {
-      "type": "string",
-      "description": "New reminder content."
-    },
-    "every_seconds": {
-      "type": "number",
-      "description": "Fixed-rate interval in whole seconds, at least 60, aligned to the creation time; changing it with schedule_update re-aligns it to the save time."
-    },
-    "daily": {
-      "type": "object",
-      "description": "Every day at a local time.",
-      "additionalProperties": false,
-      "properties": {
-        "time": {
-          "type": "string",
-          "description": "HH:mm:ss with optional 1-3 fractional digits, for example 23:00:00."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        }
-      },
-      "required": [
-        "time",
-        "time_zone"
-      ]
-    },
-    "weekly": {
-      "type": "object",
-      "description": "On the given weekdays at a local time.",
-      "additionalProperties": false,
-      "properties": {
-        "time": {
-          "type": "string",
-          "description": "HH:mm:ss with optional 1-3 fractional digits, for example 09:00:00."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        },
-        "weekdays": {
-          "type": "array",
-          "description": "ISO weekdays, Monday 1 through Sunday 7, without repetitions.",
-          "items": {
-            "type": "integer"
-          }
-        }
-      },
-      "required": [
-        "time",
-        "time_zone",
-        "weekdays"
-      ]
-    },
-    "cron": {
-      "type": "object",
-      "description": "Five-field Vixie cron expression in a time zone.",
-      "additionalProperties": false,
-      "properties": {
-        "expression": {
-          "type": "string",
-          "description": "minute hour day-of-month month day-of-week, for example \"*/15 9-17 * * 1-5\". When both day fields are restricted, a date matches if either one matches."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        }
-      },
-      "required": [
-        "expression",
-        "time_zone"
-      ]
-    },
-    "at": {
-      "oneOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "date": {
-              "type": "string"
-            },
-            "time": {
-              "type": "string"
-            },
-            "time_zone": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "date",
-            "time",
-            "time_zone"
-          ]
-        }
-      ],
-      "description": "Absolute target: an RFC 3339 date-time with offset, or a local date, time, and IANA time_zone."
+      "description": "Task id."
     }
   },
   "required": [
@@ -2366,9 +2245,9 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
 }
 ```
 
-Source: [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
+源码： [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
 
-preset 或 Agent scope 挂载本包；由 preset 决定哪些 agent 获得这四个管理工具。每次调用都作用于调用方 Agent 的 Session。接受 after_seconds、显式绝对 at、有界固定速率 every_seconds、带显式 IANA 时区的每日与每周本地时间，以及作为五字段表达式的 cron。管理使用宿主 storage domain；到期消息会恢复原 Session。
+preset 或 Agent scope 挂载本包，并决定哪些 Agent 获得工具。管理工具按 id 跨会话读写 Host 的任务。任务保存 RFC 5545 重复规则，执行位置可选已有会话、首次创建后复用的会话或每次运行新建的会话。委派子 Agent 不能调用这些工具。
 
 <a id="deepseek-aidsh-tool-lsp"></a>
 
@@ -3257,7 +3136,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 ### `todo_write`
 
-记录并更新任务列表，用于规划多步骤工作并展示进度；简单的单步骤任务无需使用。开始前为每个具体步骤添加一项 todo。只要工作尚未完成，就将正在处理的 todo 标记为 `in_progress`，仅在工作并行运行时同时标记多项。某项 todo 完成后立即标记为 `completed`。在本轮结束前，用当前状态调用一次 todo_write，使可见列表反映实际已完成的工作。
+记录并更新任务列表，用于规划多步骤工作并展示进度；简单的单步骤任务无需使用。开始前为每个具体步骤添加一项 todo。只要工作尚未完成，就将正在处理的 todo 标记为 `in_progress`，仅在工作并行运行时同时标记多项。某项 todo 完成后立即标记为 `completed`。
 
 ```json
 {

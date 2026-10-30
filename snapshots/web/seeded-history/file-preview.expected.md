@@ -3,4 +3,5 @@
 - button "Edit"
 - button "Read the file again"
 - button "Show file location"
+- button "Show file tree"
 - text: alpha

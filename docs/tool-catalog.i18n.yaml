@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: d2ad227065a9236b
-  zh: b1d706dded9b26a0
+  en: 6c9eaba84a79463a
+  zh: 654f1c75769905b4
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -112,40 +112,40 @@
   zh: 337b0058c2a92239
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-list:
   en: 657b667432b173fc
-  zh: cb172c77b1c0a3ed
+  zh: fce42c5db1c16cc3
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-mkdir:
   en: 5832e7a25161c138
-  zh: b13c3446a458e6c8
+  zh: 3706b34cc3ef765c
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-read:
   en: 375978f6c905b429
-  zh: d03f6b8c984fcc92
+  zh: 9ee297da7e3de5d2
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-rename:
   en: 5e7b9cd62ecc76b1
-  zh: 2b081b1a625cd244
+  zh: 3f2c33297d966864
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-rm:
   en: 300d99cd32340052
-  zh: 41fa4bb2f7f079de
+  zh: 2b8e81e36d9bf118
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-stat:
   en: 452e126074149a54
-  zh: 8376a19b032403b7
+  zh: 559dea8d7e7c1dac
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-write:
   en: d8abaf0e89e52892
-  zh: 8e8a8bb1704a0f6f
+  zh: e7aea573c1b6fc07
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-connect:
   en: 874f08bad8059979
-  zh: e7921dc70bdae532
+  zh: 6e55dcb51fee2707
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-connections:
   en: cb3e5706d05d559b
-  zh: bd926708428edb7a
+  zh: dda3a66bcd498055
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-disconnect:
   en: fc83c860af4b4f20
-  zh: 22d9a51f24b5cd80
+  zh: 5a2d34bbf230ebce
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-exec:
   en: b447fa1ce9e143c3
-  zh: 74cff25046a3c62b
+  zh: fb32705a210120ca
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-test:
   en: 22be175096446d1b
-  zh: 115e6cf512c05678
+  zh: 09f9d0a94f297025
 /tool-schema-catalog/deepseek-ai-dsh-tool-bash-persistent:
   en: bdd9e88c49029e05
   zh: bdd9e88c49029e05
@@ -169,28 +169,31 @@
   zh: 37cc604a46a408a1
 /tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-draw:
   en: a2f88f99e830562e
-  zh: 80ed7bc42e726a96
+  zh: 4b758862f923c4e3
 /tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-export:
   en: 67605ac51cb8559b
-  zh: 0c495dfe3eb70fa3
+  zh: 31ad0b86b44d7ddb
 /tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-read:
   en: 19f3e1c323b5371b
-  zh: b1f03458a0e3c69b
+  zh: 4948476144834423
 /tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-write:
   en: 8e35eadfbfce0a3b
-  zh: 231a49d321e58400
+  zh: 00c056427f5c81ec
 /tool-schema-catalog/reachforstar-dsh-tool-a2a:
   en: 934cd98fc1da38cc
   zh: 934cd98fc1da38cc
 /tool-schema-catalog/reachforstar-dsh-tool-a2a/a2a-peers:
   en: f6102c9fce7264b1
-  zh: 423329f15e6e9844
+  zh: 55b34002479b4ce9
 /tool-schema-catalog/reachforstar-dsh-tool-a2a/a2a-send:
   en: 8e6abedeafa55039
-  zh: 329f3d24a0062195
+  zh: 4af46596b4401781
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs:
   en: 07d595ce1f1a5184
   zh: 07d595ce1f1a5184
+/tool-schema-catalog/deepseek-ai-dsh-tool-fs/apply-patch:
+  en: 882f2fa9fac236d6
+  zh: e8320796a5cb038f
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs/edit:
   en: 5b6a252adde51af6
   zh: 7aa172a5d8b9cbd2
@@ -201,8 +204,8 @@
   en: f6f7a1140066ce04
   zh: d528e01a0939795a
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs/write:
-  en: f80700c5d57e8d87
-  zh: fb7cccbba0d8d486
+  en: af50ae531075cf26
+  zh: 974da3c5fbfa5959
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs-search:
   en: 703fea005ce84c50
   zh: 703fea005ce84c50
@@ -249,17 +252,17 @@
   en: 9fd2eccb1ee51372
   zh: 9fd2eccb1ee51372
 /tool-schema-catalog/deepseek-ai-dsh-tool-schedule/schedule-create:
-  en: 606fc2b8d62ba044
-  zh: 7523e106168c2ab2
-/tool-schema-catalog/deepseek-ai-dsh-tool-schedule/schedule-delete:
-  en: 5fc994535c95cd6b
-  zh: 1910b545d7b92379
+  en: 7237e492f01fb8fb
+  zh: 2fd2bea81919baf6
+/tool-schema-catalog/deepseek-ai-dsh-tool-schedule/schedule-edit:
+  en: 08db239b9e1c3e8f
+  zh: c3860a8f20a01965
 /tool-schema-catalog/deepseek-ai-dsh-tool-schedule/schedule-list:
-  en: 5bcfc051e364df29
-  zh: b77e60c123800eb1
-/tool-schema-catalog/deepseek-ai-dsh-tool-schedule/schedule-update:
-  en: b9f4691532157a1d
-  zh: 8a0597790dc5f999
+  en: e2c657d431fd02a8
+  zh: 7651bf05938eff69
+/tool-schema-catalog/deepseek-ai-dsh-tool-schedule/schedule-view:
+  en: 008cd46ab3c05305
+  zh: 8ef5a0f40640013e
 /tool-schema-catalog/deepseek-ai-dsh-tool-lsp:
   en: 32982123b1f0e5bc
   zh: 32982123b1f0e5bc
@@ -370,7 +373,7 @@
   zh: dea62d26fb18ff68
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo/todo-write:
   en: 1c2bc533a75340df
-  zh: 81cd1b9019aa0e63
+  zh: 25bd9c6b1ce783d8
 /tool-schema-catalog/deepseek-ai-dsh-tool-working-directory:
   en: 1bdc4627ca4fff29
   zh: 1bdc4627ca4fff29

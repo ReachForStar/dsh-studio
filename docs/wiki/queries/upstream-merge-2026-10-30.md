@@ -99,4 +99,5 @@ status: active
 - 上游 `publint` 现状：`pnpm run publint` 对大量上游包（`a2a`、`acp`、`api/*`）报 `exports["./src/*"]` 与 `files` 不匹配，与 fork 无关，需要上游侧确认该门禁在 master 上的预期状态。
 - ~~fork 自研包的 `locale/en.json` 全线缺失、客户端硬编码文案、绝对路由~~ **已清偿（2026-10-30）**：16 个包补齐 8 个发布语言的元数据与 manifest 导出，5 处文案与 4 条路由改走字典与文档相对形式，做法见[三门禁清偿](client-copy-and-locale-metadata.md)。
 - `verify-product-use`/`verify-runtime-closure`/`verify-cordis-config`/`verify-default-product-isolation`/`constraints`/`verify-package-dependencies` 的 fork 红项与上一轮所列相同，未扩大也未清偿。
+- 版本号核对：合并后 18 个 fork 独有包、391 个 dsh 家族成员与上游 master 根版本 `0.2.2-alpha.2` 一致（`release:verify --family dsh` 通过），与上游同路径的包逐一比对无差异，本轮无需改动；核对方法见 [fork 发布流程](fork-release-dsh-0.2.1-rc.2.md#2026-10-30-版本同步复核)。
 - 快照道 4 个文件、208 项失败仍需单独一轮「按 v5 写入器全量刷新并评审」。

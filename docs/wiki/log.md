@@ -679,3 +679,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 验证：三门通过，`typecheck` 5 门、`build` 10 门、`doc-sync` 43 门通过，两个客户端包 485 项测试通过。
 - 做法与规则见[三门禁清偿](queries/client-copy-and-locale-metadata.md)。
 - 顺带修掉 `rescope-vendor`：上游把 `vendor/README.md` 改成 V 编号加粗列表项后 postcondition 文本落伍；另发现 wiki 里用引号包住上游裸包名会被该门的 token 规则当成残留（写定点名或去引号即可）。
+
+## [2026-10-30] query | 核对 fork 版本与上游同步
+
+- 结论：无需改动。根 `package.json` 与 391 个 dsh 家族成员（含 18 个 fork 独有包）全部为 `0.2.2-alpha.2`，与上游 master 根版本及最新标签 `dsh-v0.2.2-alpha.2` 一致。
+- 逐一比对与上游同路径的包、vendor 9 个成员与 native/python 的 manifest，无版本差异；fork 包不含 `engines.dsh` 或固定版本字面量。
+- `release:verify --family dsh` 与 `--family vendor` 均通过；核对命令记入[fork 发布流程](queries/fork-release-dsh-0.2.1-rc.2.md#2026-10-30-版本同步复核)。

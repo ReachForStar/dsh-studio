@@ -3,7 +3,7 @@ title: fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑
 type: query
 tags: [release, 发布, 门禁, pack, tag]
 created: 2026-10-18
-updated: 2026-10-29
+updated: 2026-10-30
 sources: []
 status: active
 ---
@@ -39,6 +39,27 @@ gh release create dsh-v0.2.1-rc.2 --title "…" --notes-file 正文.md 资产.zi
 ## 附带清理
 
 `dist/npm/` 曾在 fork 早期提交里带入 231 个 0.1.1 时代 tarball。上游已不跟踪 `dist`（`.gitignore` 含 `/dist/`），且 `release:pack` 每次清空重建输出目录，故取消跟踪（`git rm -r --cached`），连同协议修复一起提交。
+
+## 2026-10-30 版本同步复核
+
+合并上游（2026-10-30）之后核对一次，结论是**无需改动**：
+
+- 根 `package.json` 与 `apps/cli`、`apps/desktop` 等 391 个 dsh 家族成员全部为 `0.2.2-alpha.2`，等于上游 master 的根版本，也等于上游最新发布标签 `dsh-v0.2.2-alpha.2`。
+- 18 个 fork 独有包（`@reachforstar/*` 与 `@deepseek-ai/dsh-pi-agent-loop`、`@deepseek-ai/dsh-session-format-v4-to-v5`）同在这个版本上。
+- 与上游同路径的包逐一比对版本无差异；vendor 的 9 个成员与 native、python 的 manifest 同样一致。
+- fork 包没有 `engines.dsh` 或固定版本字面量（依赖一律 `workspace:*` 或 `workspace:~`），没有需要跟随上游的版本声明。
+- `node --import tsx scripts/release/verify.ts --family dsh` 通过并列出 391 个成员，`--family vendor` 通过并列出 9 个成员。
+
+核对命令：
+
+```sh
+git fetch upstream --prune
+git show upstream/master:package.json | grep '"version"'
+git tag -l "dsh-v*" --sort=-v:refname | head -3
+node --import tsx scripts/release/verify.ts --family dsh
+```
+
+`git fetch upstream master --tags` 仍会被 4 个同名标签拒绝（fork 与上游指向不同提交），核对版本不需要带 `--tags`。
 
 ## 涉及模块
 

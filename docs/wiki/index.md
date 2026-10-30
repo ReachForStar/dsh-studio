@@ -68,7 +68,7 @@ updated: 2026-10-30
 - [合并上游 upstream/master（2026-10-18）](queries/upstream-merge-2026-10-18.md) — 0.2.1-rc.2 增量合并：20 个冲突按来源取舍、系统提示词快照经 refresh 重生成、基线工作树不可用时降级为「夹具 + 因果源码零差异」代码证据判定，以及本轮红灯归因清单。
 - [合并上游 upstream/master（2026-10-29，0.2.2-alpha.2 同步）](queries/upstream-merge-2026-10-29.md) — 413 文件 / 534 块冲突（343 个纯版本号）：LiveShare 端点全覆盖表补 fork 端点、上游新函数不认 linux-x64、装配页 `/remote` 重写只认上游作用域、持久化后继记录补记与 Node/git/locale 三项环境前置。
 - [合并上游 upstream/master（2026-10-30）](queries/upstream-merge-2026-10-30.md) — 351 个提交、67 个冲突文件；`ctx.fs` 三个新抽象成员与 `fs-sftp` 补齐、`ui-sidebar-files` 重写后的删除功能重建、SDK/Desktop 工具一致性例外登记，以及 8 处合并引入缺陷的修法。
-- [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建。
+- [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建；2026-10-30 复核家族 391 个成员与上游同版本，无需改动
 - [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 蓝色鲸鱼及标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；含本机重打包的两个网络问题（坏代理拖垮 npm 下载、`@electron/get` 的 SHASUMS 行格式）与本地镜像做法；2026-10-27 补 Release 桌面包三触发（published / `dsh-v*` tag push / 手动 `release_tag` 补传）与按 target 校验非空。
 - [Cua Driver 检测补全与入口迁移（2026-10-27）](queries/cua-driver-detect-and-placement.md) — 检测补齐安装器写入的稳定路径（`~/.local/bin`、`~/.cua-driver/packages/current`、Windows `LOCALAPPDATA`）并按 `X_OK` 判定，check 路由回报 `path`；安装入口从插件卡片 footer 迁到「计算机操作」详情页，安装后自动重检。
 - [任务列表跨轮次消失与状态不回写（2026-10-27）](queries/todo-list-lifetime-and-status.md) — `todos` 投影不再在 `turn/start` 清空（`stateVersion` 2→3），列表跨轮次保留；状态仍归模型 `todo_write` 全量重写，描述追加轮次结束前回写纪律。

@@ -127,10 +127,9 @@ function runCommand(command: string, args: readonly string[], cwd: string, timeo
  * Resolve a TeX distribution executable: first by plain name (PATH), then by
  * probing the standard Windows TeX Live layout (both .exe and .bat forms).
  * @param name - executable name (e.g. xelatex, tlmgr, kpsewhich).
- * @returns the command string to spawn.
- * @throws when the executable is not found anywhere.
+ * @returns the command string to spawn, or null when TeX is not installed.
  */
-async function findEngine(name: string): Promise<string> {
+async function locateEngine(name: string): Promise<string | null> {
   // A candidate is usable only when `--version` exits 0. A missing `.bat` probed through the shell
   // still resolves runCommand (cmd.exe starts, then reports the absent file with a non-zero exit),
   // so exit-code checking here is what keeps a stray TeX Live tree without a real binary from being
@@ -155,23 +154,42 @@ async function findEngine(name: string): Promise<string> {
       if (await probe(candidate)) return candidate
     }
   }
-  throw new Error(`latex panel: ${name} not found (install TeX Live or add it to PATH)`)
+  return null
 }
 
-/** The cached xelatex location (resolved once). */
-let xelatexPath: string | undefined
-async function xelatex(): Promise<string> {
+/**
+ * Resolve a TeX executable for a step that cannot run without it.
+ * @param name - executable name.
+ * @returns the command string to spawn.
+ * @throws when the executable is not found anywhere.
+ */
+async function requireEngine(name: string): Promise<string> {
+  const found = await locateEngine(name)
+  if (found === null) throw new Error(`latex panel: ${name} not found (install TeX Live or add it to PATH)`)
+  return found
+}
+
+/** The cached xelatex location; null when no TeX distribution is installed. */
+let xelatexPath: string | null | undefined
+async function xelatexIfInstalled(): Promise<string | null> {
   if (xelatexPath === undefined) {
-    xelatexPath = await findEngine('xelatex')
+    xelatexPath = await locateEngine('xelatex')
   }
   return xelatexPath
+}
+
+/** The xelatex location for a compile, which cannot run without TeX. */
+async function xelatex(): Promise<string> {
+  const found = await xelatexIfInstalled()
+  if (found === null) throw new Error('latex panel: xelatex not found (install TeX Live or add it to PATH)')
+  return found
 }
 
 /** The cached tlmgr location (resolved once). */
 let tlmgrPath: string | undefined
 async function tlmgr(): Promise<string> {
   if (tlmgrPath === undefined) {
-    tlmgrPath = await findEngine('tlmgr')
+    tlmgrPath = await requireEngine('tlmgr')
   }
   return tlmgrPath
 }
@@ -180,7 +198,7 @@ async function tlmgr(): Promise<string> {
 let bibtexPath: string | undefined
 async function bibtex(): Promise<string> {
   if (bibtexPath === undefined) {
-    bibtexPath = await findEngine('bibtex')
+    bibtexPath = await requireEngine('bibtex')
   }
   return bibtexPath
 }
@@ -779,7 +797,8 @@ export async function compileProject(
 // ---------------------------------------------------------------------------
 
 /** TeX packages the panel cares about (kpsewhich probe). */
-async function probePackage(engine: string, file: string): Promise<boolean> {
+async function probePackage(engine: string | null, file: string): Promise<boolean> {
+  if (engine === null) return false
   const candidates = ['kpsewhich', `${dirname(engine)}kpsewhich.exe`]
   for (const candidate of candidates) {
     try {
@@ -1103,7 +1122,7 @@ export async function handleLatexRequest(
         } catch {
           projectFonts = []
         }
-        const engine = await xelatex()
+        const engine = await xelatexIfInstalled()
         json(res, 200, {
           fonts: projectFonts,
           packages: {

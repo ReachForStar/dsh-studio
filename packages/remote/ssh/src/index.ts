@@ -75,7 +75,7 @@ const SshAuthSchema = z.union([
  * provider composes this into its own volatile Config so the registry persists
  * through the profile entry and surfaces in the settings editor.
  */
-export const SshConnectionsSchema = z.array(z.object({
+export const SshConnectionsSchema: z<SshStoredDefinition[]> = z.array(z.object({
   id: z.string(),
   name: z.string(),
   host: z.string(),
@@ -87,7 +87,7 @@ export const SshConnectionsSchema = z.array(z.object({
 }))
 
 /** At-rest schema of the remembered host-key map (`host:port` → fingerprint). */
-export const SshKnownHostsSchema = z.dict(z.string())
+export const SshKnownHostsSchema: z<Record<string, string>> = z.dict(z.string())
 
 /** At-rest schema of the definition registry section (ids unbranded on disk). */
 export const SshSettingsSchema: z<SshSettingsSection> = z.object({

@@ -696,3 +696,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 插件化结论：整包能力（ui-polish、tool-excalidraw、subagent-pi、llm-amax 及 16 个 `@reachforstar/*` 中的 A2A/SSH/星域包）可插件化；会话格式 v5、`ctx.fs` 新成员、`ToolCallCommonProps.openView`、宽度滑块本地槽、桌面外壳与构建发布脚本必须留 fork。
 - 验证：`typecheck` 5 门、`build`、`doc-sync`、17 个生成脚本通过；全量 `test` 55118 项通过，20 项失败归因为本机 git 2.34.1 不支持 `worktree -z` 与 5 秒超时，换 git 2.56.0 后相关包全过。
 - 已推送 `me/develop` 与 `me/master`；细节见[合并记录](queries/upstream-merge-2026-11-08.md)。
+
+## [2026-11-08] feat | 九个插件包同步到 dsh-client-ui-polish
+
+- 从 fork 搬入 9 个 `@reachforstar/*` 包到 `ReachForStar/dsh-client-ui-polish`（提交 `b8ac7bb`，234 个文件）：`ui-polish`、`tool-excalidraw`、`subagent-pi`、`ssh`、`ssh-local`、`host-ssh-remotes`、`subprocess-sftp`、`tool-ssh`、`client-ui-ssh`；`llm-amax` 沿用既有副本。
+- 基线从 `0.1.1-rc.2` 升到 `0.2.2-rc.1`：依赖统一改写为已发布版本，客户端改用拆分后的 `dsh-client-store`/`dsh-client-connection`/`dsh-client-ui-slots`，每个包独立 `tsconfig*`、`tsdown.config.ts`、`cordis.patch.yml` 与 `build`/`typecheck`/`test` 脚本。
+- 三处必须绕开已发布接口：`dsh-api-remotes` 的转发 allowlist 无 `ssh/*`，SSH PTY 订阅改走 host 侧 SSE 路由 `/ssh-events`；`ToolCallCommonProps` 无 `openView`，Excalidraw 卡片只渲染标题与缩略图；`compactIfNeeded` 无第 4 参数，插件版不含自动压缩阈值。
+- `fs-sftp` 未搬：依赖 fork 给 `ctx.fs` 新增的 `remove`/`writeBytes` 与 `@deepseek-ai/dsh-fs` 拆出的文本工具函数，`0.2.2-rc.1` 没有这些导出。
+- 验证：插件仓库 10 包测试全绿（327 项）、`pnpm -r run typecheck` 与 `build` 通过、全仓 Markdown 无失效相对链接。
+- 另修 `packages/remote/ssh` 的 `SshConnectionsSchema`/`SshKnownHostsSchema` 显式类型标注（TS2883），已随 `fix(ssh)` 提交推送。

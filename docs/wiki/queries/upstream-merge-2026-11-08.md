@@ -12,7 +12,7 @@ status: active
 
 ## 问题
 
-把上游 `upstream/master` 自上一轮基点 `ce7073d5125` 起的 926 个提交并入 fork 的 `develop`（fork 侧同期 300 个非合并提交），并按三项要求收尾：
+把上游 `upstream/master` 自上一轮同步基点起的 926 个提交并入 fork 的 `develop`（fork 侧同期 300 个非合并提交），并按三项要求收尾：
 
 1. 同步上游、合回本地并推送。
 2. 逐条核对 fork 既有 bug 修复是否已被上游修复：已修则采用上游实现，未修则保留 fork 修复。
@@ -64,37 +64,37 @@ status: active
 
 ### 第 2 项：fork 既有修复的归属
 
-判定方法：对每个 fork 修复提交取 `--unified=0` 的改动行，到 `upstream/master`（`fcc0ad4621`）同路径文件里核对；文件不存在表示该包为 fork 独有；行为层面的结论另外读上游源码确认。
+判定方法：对每个 fork 修复提交取 `--unified=0` 的改动行，到上游 `upstream/master` 同路径文件里核对；文件不存在表示该包为 fork 独有；行为层面的结论另外读上游源码确认。
 
-| fork 提交 | 修复内容 | 上游状态 | 采用 |
-| --- | --- | --- | --- |
-| `6242e5febb` | `gen-cordis-catalog` 重复 `ToolCallId` 映射 | 上游已删除该行（`ToolCallId: 'core.md'` 不存在） | 上游 |
-| `8fcad26785` | `compile-referenced-projects` 堆内存 4096 → 8192 | 上游已是 8192 | 上游 |
-| `d2e58b6e7e` | 工具调度符号丢失（改 `Symbol.for`）+ 拆除会话流视图 | 上游删除 `ToolRuntimeScheduler` 接缝，修复对象已不存在 | 上游（自然消失） |
-| `81f077824d` | 持久化历史分叉 + `assistant/peer-message` 来源种类 | 上游 `SESSION_FORMAT_VERSION = 4`，无 v5 与 peer-message | fork |
-| `20091ba685` | 任务列表跨轮次被清空（`stateVersion` 2→3） | 上游仍为 `stateVersion: 2` | fork |
-| `c06113a1ab` | 桌面 A2A 状态页 Kafka 不可用（compose 经 stdin） | 桌面为 fork 包 | fork |
-| `c5491e0abe` | 桌面客户端文件缺失 + Linux 图标 | 桌面为 fork 包 | fork |
-| `6ebe393597` | 画布导出与工具卡标签页切换 | `ToolCallCommonProps.openView` 为 fork 独有 | fork |
-| `654c1b10a9` | HTTP 桥接背压监听器泄漏 | 上游同文件无该改动 | fork |
-| `62a7c9fefb` | 星域预设被入站 A2A 状态隐藏 | xingchen 为 fork 独有包 | fork |
-| `dc0c30b483` | SSH 面板表格容器样式 | fork 包 | fork |
-| `c427446b26` | SFTP 下载 400（路由缺 `requestBody`） | fork 包 | fork |
-| `e694ded953` | remote 模块解析失败与 zod 依赖缺失 | 上游同位置已有部分改动 | fork 增量保留 |
-| `445b8858af` | 桌面启动继承 `ELECTRON_RUN_AS_NODE` | 桌面为 fork 包 | fork |
-| `de642c3cc5` | `api-remotes` 客户端 bundle 解析 a2a-status | fork 包 | fork |
-| `adfcc6974d` | kafka-detect 模块加载崩溃 | fork 包 | fork |
-| `c80a6a9c72` | 插件 config undefined 报错 | 上游同文件无该改动 | fork |
-| `adb9f4af5b` | 会话重载允许 assistant 空 model 来源 | `pi-agent-loop` 为 fork 包 | fork |
-| `f9f1b21a95` | CJS 客户端包共享 runtime chunk 导致 web boot 失败 | fork 构建产物问题 | fork |
-| `f38b722cfa` | 文档预览插件加载失败 + 构建期 builtin 守卫 | fork 包 | fork |
-| `6f5761f42a` | 无内置目录网关的运行期模型解析 | 上游同文件无该改动 | fork |
-| `c5a1104d0f` | pi 会话 resume 丢历史与错用 dsh 后端 | `pi-agent-loop` 为 fork 包 | fork |
-| `344a6cc65d` | 自动压缩在轮次中途调用空闲专用接口 | 上游同文件无该改动 | fork |
-| `f67fd026ad` | AMAX 网关拒绝 developer role | `llm-pi-ai` 为 fork 包 | fork |
-| `4e9734e0d1` | AMAX 取模型名称回退为 id | fork 包 | fork |
-| `4a8dcefcdd` | Web SSH 设置与文档门禁 | fork 包 | fork |
-| `6b40d38160` | Web 设置页 e2e 快照与状态测试 | fork 包 | fork |
+| 修复内容 | 上游状态 | 采用 |
+| --- | --- | --- |
+| `gen-cordis-catalog` 重复 `ToolCallId` 映射 | 上游已删除该行（`ToolCallId: 'core.md'` 不存在） | 上游 |
+| `compile-referenced-projects` 堆内存 4096 → 8192 | 上游已是 8192 | 上游 |
+| 工具调度符号丢失（改 `Symbol.for`）+ 拆除会话流视图 | 上游删除 `ToolRuntimeScheduler` 接缝，修复对象已不存在 | 上游（自然消失） |
+| 持久化历史分叉 + `assistant/peer-message` 来源种类 | 上游 `SESSION_FORMAT_VERSION = 4`，无 v5 与 peer-message | fork |
+| 任务列表跨轮次被清空（`stateVersion` 2→3） | 上游仍为 `stateVersion: 2` | fork |
+| 桌面 A2A 状态页 Kafka 不可用（compose 经 stdin） | 桌面为 fork 包 | fork |
+| 桌面客户端文件缺失 + Linux 图标 | 桌面为 fork 包 | fork |
+| 画布导出与工具卡标签页切换 | `ToolCallCommonProps.openView` 为 fork 独有 | fork |
+| HTTP 桥接背压监听器泄漏 | 上游同文件无该改动 | fork |
+| 星域预设被入站 A2A 状态隐藏 | xingchen 为 fork 独有包 | fork |
+| SSH 面板表格容器样式 | fork 包 | fork |
+| SFTP 下载 400（路由缺 `requestBody`） | fork 包 | fork |
+| remote 模块解析失败与 zod 依赖缺失 | 上游同位置已有部分改动 | fork 增量保留 |
+| 桌面启动继承 `ELECTRON_RUN_AS_NODE` | 桌面为 fork 包 | fork |
+| `api-remotes` 客户端 bundle 解析 a2a-status | fork 包 | fork |
+| kafka-detect 模块加载崩溃 | fork 包 | fork |
+| 插件 config undefined 报错 | 上游同文件无该改动 | fork |
+| 会话重载允许 assistant 空 model 来源 | `pi-agent-loop` 为 fork 包 | fork |
+| CJS 客户端包共享 runtime chunk 导致 web boot 失败 | fork 构建产物问题 | fork |
+| 文档预览插件加载失败 + 构建期 builtin 守卫 | fork 包 | fork |
+| 无内置目录网关的运行期模型解析 | 上游同文件无该改动 | fork |
+| pi 会话 resume 丢历史与错用 dsh 后端 | `pi-agent-loop` 为 fork 包 | fork |
+| 自动压缩在轮次中途调用空闲专用接口 | 上游同文件无该改动 | fork |
+| AMAX 网关拒绝 developer role | `llm-pi-ai` 为 fork 包 | fork |
+| AMAX 取模型名称回退为 id | fork 包 | fork |
+| Web SSH 设置与文档门禁 | fork 包 | fork |
+| Web 设置页 e2e 快照与状态测试 | fork 包 | fork |
 
 结论：27 项里只有 3 项由上游解决，其余 24 项保留 fork 实现。
 
@@ -146,6 +146,23 @@ status: active
 
 因此第 3 项的答案是：**部分可以**。界面增强、工具、子智能体、模型提供方与 A2A/SSH 这些整包能力可以插件化；持久化格式、能力接缝、工具卡契约、宽度滑块与桌面外壳必须留在 fork。
 
+### 插件仓库 CI 的六处修复
+
+插件仓库在干净 runner 上暴露了本地装不出来的六处缺口，逐个修掉后 `ci` 全绿（`42455059834`）：
+
+| 症状 | 根因 | 修复 |
+| --- | --- | --- |
+| `ui-polish` prepare 报 TS7016：`js-yaml` 无声明文件 | 包内 `git-service.ts` 引入 `js-yaml`，但只声明了运行时依赖 | 补 `@types/js-yaml` 到 devDependencies |
+| `pnpm install` 报 `ERR_PNPM_IGNORED_BUILDS` | pnpm 11 默认不跑依赖的构建脚本，`ssh2`/`cpu-features` 需原生绑定 | `allowBuilds` 放行 `ssh2`、`cpu-features` |
+| 根 `tsdown.client.ts` 找不到 `lightningcss`、`tsdown` | 脚本直接 import 两个包，根 manifest 未声明；本地靠父目录或 `.pnpm/node_modules` 命中 | 根 devDependencies 显式声明 |
+| `ui-polish` 声明生成报 TS2883，`Config` 引用越界 | 同一 workspace 里 `schemastery` 同时存在 3.18.1 与 3.19.0 | overrides 固定 `@deepseek-ai/schemastery: 3.19.0` |
+| `subagent-pi` 测试报 `Cannot find package 'tsx'` | 测试用 `import.meta.resolve('tsx')` 取 loader，包内未声明 | 包 devDependencies 补 `tsx` |
+| `ui-polish` 字体列表在 CI 返回 500 | `/latex/fonts` 的 `list` 分支先 `await xelatex()`，无 TeX 的 runner 直接抛错 | 字体列表改用可缺省的引擎解析，编译类路径保持 fail-loud（fork 已同步同一修复） |
+
+前五处是「本地能过、干净环境不过」的依赖声明缺口，共同前提是克隆目录在 fork 仓库内时，Node 会向上命中 fork 的 `node_modules`。验收必须在 fork 之外克隆（本次用 `/data/d/dsh-plugin-ci-check`）再 `pnpm install --frozen-lockfile`。
+
+第六处是真实产品缺陷：面板在没装 TeX 的机器上连项目字体都列不出来。复现方式是把 `PATH` 指向空目录再跑 `tests/latex-service.host.spec.ts`：修复前 `installs and lists project fonts` 失败，修复后 28 项全过。
+
 ## 涉及模块
 
 - 合并范围：全仓 3271 个文件。
@@ -173,5 +190,7 @@ status: active
 - 合并前先确认 `git --version`：`worktree`/`client-ui-forge` 需要 `-z` 支持（≥ 2.36）。本机默认 git 2.34.1，测试前把 `/home/asus/envs/git-new/bin` 放进 `PATH`。
 - 上游迁走包目录后要删除残留的 `lib/`、`node_modules/`，否则 `transform-corpus` 会把旧构建产物当成基线失败。
 - 双语配对记录只能用 `verify-translation-pairing --write <pair>` 重录，不要手改 `.i18n.yaml`。
-- 判断「上游是否已修」不能只看提交标题：`d2e58b6e7e` 的修复对象被上游删除，属于自然消失，不是等价修复。
+- 判断「上游是否已修」不能只看提交标题：工具调度符号丢失那项的修复对象被上游删除，属于自然消失，不是等价修复。
 - 插件化评估先看接缝归属：Service Definition 在核心包内的改动一律不能插件化，只有纯消费公开槽与服务的能力可以。
+- 插件仓库验收要在 fork 之外克隆后跑 `pnpm install --frozen-lockfile`；在 fork 目录内安装会命中 fork 的 `node_modules`，掩盖缺失的依赖声明。
+- 依赖缺失类问题按「包内是否声明」排查，不要靠提升目录里的偶然存在蒙混；声明式依赖是干净 runner 上唯一可靠来源。

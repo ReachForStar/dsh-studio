@@ -38,7 +38,7 @@ import { LatexPanel } from './LatexPanel.tsx'
 import { ExcalidrawPanel } from './ExcalidrawPanel.tsx'
 import { ExcalidrawToolView } from './ExcalidrawToolView.tsx'
 import { SshPanel, type SshPanelInjected, type SshPanelRpcResult } from './SshPanel.tsx'
-import { en, zh, type PolishKey } from './locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh, type PolishKey } from './locales.ts'
 
 export type { BackgroundRowComponentProps, BackgroundRowInjected } from './BackgroundRow.tsx'
 export type { BackgroundRowState } from './settings-store.ts'
@@ -115,7 +115,7 @@ export function apply(ctx: ClientContext): void {
   }, 'ui-polish: ambient background overrides')
   ctx.effect(() => () => { background.dispose() }, 'ui-polish: background dispose')
 
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-polish: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-polish: dictionaries')
   const t = ctx.locale.bind(NS)
 
   const store = createBackgroundRowStore()

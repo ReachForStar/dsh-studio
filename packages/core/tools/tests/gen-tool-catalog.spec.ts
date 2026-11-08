@@ -32,13 +32,13 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       'cordis_inspect_query',
       'create_goal', 'create_worktree', 'edit', 'excalidraw_draw', 'excalidraw_export', 'excalidraw_read', 'excalidraw_write',
       'exit_plan_mode', 'get_goal', 'glob', 'grep',
-      'interrupt_agent', 'interrupt_agent', 'job_kill', 'job_list', 'job_output',
-      'list_agents', 'list_agents', 'list_mcp_resource_templates', 'list_mcp_resources',
+      'interrupt_agent', 'job_kill', 'job_list', 'job_output',
+      'list_agents', 'list_mcp_resource_templates', 'list_mcp_resources',
       'list_subagent_models', 'load_workspace_dependencies', 'lsp', 'plugin_manager', 'plugin_market', 'present', 'propose_action', 'pwsh', 'pwsh', 'ralph',
       'read', 'read_image', 'read_mcp_resource', 'run_code', 'schedule_create', 'schedule_edit',
-      'schedule_list', 'schedule_view', 'send_message', 'send_message', 'session_event_read', 'session_event_search',
+      'schedule_list', 'schedule_view', 'send_message', 'session_event_read', 'session_event_search',
       'session_event_trace', 'session_search', 'session_trace', 'sftp_list', 'sftp_mkdir', 'sftp_read', 'sftp_rename',
-      'sftp_rm', 'sftp_stat', 'sftp_write', 'skill', 'spawn_teammate', 'ssh_connect', 'ssh_connections',
+      'sftp_rm', 'sftp_stat', 'sftp_write', 'skill', 'ssh_connect', 'ssh_connections',
       'ssh_disconnect', 'ssh_exec', 'ssh_test',
       'stagehand_act', 'stagehand_extract', 'stagehand_navigate', 'stagehand_observe', 'stagehand_screenshot', 'stagehand_tabs',
       'str_replace_editor', 'subagent', 'subagent_oar', 'team_task_create',
@@ -81,6 +81,7 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       interrupt_agent: 'packages/subagent/tool-subagent-control/src/index.ts',
       list_agents: 'packages/subagent/tool-subagent-control/src/list-agents.ts',
       send_message: 'packages/subagent/tool-subagent-control/src/index.ts',
+      wait_agent: 'packages/subagent/tool-subagent-control/src/wait-agent.ts',
     })
   })
 

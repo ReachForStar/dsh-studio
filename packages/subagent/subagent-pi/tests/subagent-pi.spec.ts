@@ -8,6 +8,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SubagentRuntime from '@deepseek-ai/dsh-subagent'
 import type {
   SubprocessHandle,
@@ -486,6 +487,8 @@ describe('provider runs against a scripted Pi RPC child', () => {
     contexts.push(ctx)
     // The subagent seam resolves the child cwd through ctx.workingDirectory.
     await mountWorkingDirectoryFixture(ctx)
+    // SubagentRuntime injects the projection registry; the seam does not mount it.
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(SubagentRuntime)
     await ctx.plugin(LocalSubprocessRuntime)
     const spawn = ctx.subprocess.spawn.bind(ctx.subprocess)

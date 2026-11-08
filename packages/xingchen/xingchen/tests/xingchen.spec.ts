@@ -347,16 +347,13 @@ describe('本机专家席（默认）', () => {
     expect(test.subagents.startActivation).toHaveBeenCalledTimes(1)
     const [spec] = test.subagents.startActivation.mock.calls[0] as [{
       provider: string
-      request: {
-        prompt: { type: string; text: string }[]
-        parent: Agent
-      }
+      prompt: { type: string; text: string }[]
+      parent: Agent
     }]
     expect(spec.provider).toBe('spawn')
-    const request = spec.request
-    expect(request.parent).toBe(test.agent)
-    expect(request.prompt[0]?.text).toContain('你是天权')
-    expect(request.prompt[0]?.text).toContain('评估这个 diff')
+    expect(spec.parent).toBe(test.agent)
+    expect(spec.prompt[0]?.text).toContain('你是天权')
+    expect(spec.prompt[0]?.text).toContain('评估这个 diff')
   })
 
   it('工具委派返回本机席位的回答', async () => {
@@ -427,10 +424,10 @@ describe('本机专家席（默认）', () => {
     const { agent } = stubAgent(ctx, `xingchen-seat-${Math.random()}`)
     await ctx.agents.register(agent)
     await ctx.commands.execute(agent, '/planning 排期', [], signal)
-    const request = (subagents.startActivation.mock.calls[0]?.[0] as {
-      request: { agentOptions?: { provider: string; model: string } }
-    }).request
-    expect(request.agentOptions).toEqual({ provider: 'amax', model: 'qwen-3.8-27B' })
+    const spec = subagents.startActivation.mock.calls[0]?.[0] as {
+      agentOptions?: { provider: string; model: string }
+    }
+    expect(spec.agentOptions).toEqual({ provider: 'amax', model: 'qwen-3.8-27B' })
     // A malformed model route fails activation instead of silently running the
     // parent's route. A fresh context is required: Cordis reuses the activation
     // of a plugin already mounted on this one.
@@ -775,8 +772,8 @@ describe('自动路由：专家消息不经路由代理的工具调用', () => {
     const test = await harness(a2aStub(), 'auto', { autoRoute: { enabled: true } })
     const admitted = await runStep(test.ctx, test.agent, userStep('这个 bug 崩溃了，帮我复现根因'))
     expect(test.subagents.startActivation).toHaveBeenCalledTimes(1)
-    const [spec] = test.subagents.startActivation.mock.calls[0] as [{ request: { prompt: { text: string }[] } }]
-    expect(spec.request.prompt[0]?.text).toContain('你是瑶光')
+    const [spec] = test.subagents.startActivation.mock.calls[0] as [{ prompt: { text: string }[] }]
+    expect(spec.prompt[0]?.text).toContain('你是瑶光')
     expect(seatReplies(test.session)).toEqual([expect.objectContaining({ role: 'yaoguang', text: '本机专家回答' })])
     // The message still reaches the model: withholding it would end the turn
     // with no model call at all.

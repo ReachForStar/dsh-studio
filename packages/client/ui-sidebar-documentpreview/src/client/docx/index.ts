@@ -3,7 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '../index.ts'
 import type { DocumentPreviewDefinition } from '../document/registry.ts'
 import { DocxBody } from './DocxBody.tsx'
-import { en, zh } from './locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
 
 /** Word implementation identity, shared by metadata and the keyed slot. */
 export const DOCX_BODY_ID = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/docx'
@@ -37,7 +37,7 @@ export function docxBodyDefinition(title: () => string): DocumentPreviewDefiniti
  */
 export function apply(ctx: Context): void {
   const t = ctx.locale.bind('sidebarDocx')
-  ctx.effect(() => ctx.locale.register('sidebarDocx', { zh, en }), 'document-docx: dictionaries')
+  ctx.effect(() => ctx.locale.register('sidebarDocx', { zh, en, ja, es, fr, de, ru, pt }), 'document-docx: dictionaries')
   ctx.effect(() => ctx.documentPreviews.register(docxBodyDefinition(() => t('title'))), 'document-docx: metadata')
   ctx.effect(() => ctx.slots.inject('sidebar.right.tab.document', () => ctx.slots.register(
     { name: 'sidebar.right.tab.document', key: DOCX_BODY_ID, locale: 'sidebarDocx' }, DocxBody,

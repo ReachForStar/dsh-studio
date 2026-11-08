@@ -7,6 +7,7 @@ import { mountWorkingDirectoryFixture } from '../../subagent/tests/working-direc
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SubagentRuntime from '@deepseek-ai/dsh-subagent'
 import type { SubprocessHandle } from '@deepseek-ai/dsh-subprocess'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
@@ -60,6 +61,8 @@ async function realHarness(): Promise<RealHarness> {
   contexts.push(ctx)
   // The subagent seam resolves the child cwd through ctx.workingDirectory.
   await mountWorkingDirectoryFixture(ctx)
+  // SubagentRuntime injects the projection registry; the seam does not mount it.
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SubagentRuntime)
   await ctx.plugin(LocalSubprocessRuntime)
   const handles: SubprocessHandle[] = []

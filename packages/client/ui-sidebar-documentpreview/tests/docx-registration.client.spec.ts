@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DocumentPreviewRegistry } from '../src/client/document/registry.ts'
 import { DocxBody } from '../src/client/docx/DocxBody.tsx'
 import { apply, BINARY_DOCX_EXTENSIONS, DOCX_BODY_ID, DOCX_EXTENSIONS, docxBodyDefinition } from '../src/client/docx/index.ts'
-import { en, zh } from '../src/client/docx/locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh } from '../src/client/docx/locales.ts'
 
 let dispose: (() => Promise<void>) | undefined
 afterEach(async () => { await dispose?.(); dispose = undefined })
@@ -49,7 +49,7 @@ describe('docx registration', () => {
     await fiber.await()
     expect(registry.candidates('report.docx').map(entry => entry.id)).toEqual([DOCX_BODY_ID])
     expect(registry.getSnapshot()[0]?.title()).toBe(en.title)
-    expect(dictionaries.get('sidebarDocx')).toEqual({ zh, en })
+    expect(dictionaries.get('sidebarDocx')).toEqual({ zh, en, ja, es, fr, de, ru, pt })
     expect(register).toHaveBeenCalledExactlyOnceWith(
       { name: 'sidebar.right.tab.document', key: DOCX_BODY_ID, locale: 'sidebarDocx' },
       DocxBody,

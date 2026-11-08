@@ -3,7 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '../index.ts'
 import type { DocumentPreviewDefinition } from '../document/registry.ts'
 import { VideoBody } from './VideoBody.tsx'
-import { en, zh } from './locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
 
 /** Video implementation identity, shared by metadata and the keyed slot. */
 export const VIDEO_BODY_ID = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/video'
@@ -42,7 +42,7 @@ export function videoBodyDefinition(title: () => string): DocumentPreviewDefinit
  */
 export function apply(ctx: Context): void {
   const t = ctx.locale.bind('sidebarVideo')
-  ctx.effect(() => ctx.locale.register('sidebarVideo', { zh, en }), 'document-video: dictionaries')
+  ctx.effect(() => ctx.locale.register('sidebarVideo', { zh, en, ja, es, fr, de, ru, pt }), 'document-video: dictionaries')
   ctx.effect(() => ctx.documentPreviews.register(videoBodyDefinition(() => t('title'))), 'document-video: metadata')
   ctx.effect(() => ctx.slots.inject('sidebar.right.tab.document', () => ctx.slots.register(
     { name: 'sidebar.right.tab.document', key: VIDEO_BODY_ID, locale: 'sidebarVideo' }, VideoBody,

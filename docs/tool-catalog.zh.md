@@ -25,19 +25,19 @@
 | `@deepseek-ai/dsh-experimental-browser-use-stagehand-native` | `stagehand_act`、`stagehand_extract`、`stagehand_navigate`、`stagehand_observe`、`stagehand_screenshot`、`stagehand_tabs` | `ctx.browserUse`、`ctx.agents`、`ctx.tools`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-action-cards` | `propose_action` | `ctx.tools`、`ctx.agents`、`ctx.sessionProjections`、`ctx.remoteAccess` | `tool/call`、`tool/result`、`plugin:action-cards/decision`、`user/message` | - | 只向加载过已注册卡片种类 Skill 的 Agent 声明；各种类的包注册自己的动作，个性化推荐 Bundle 提供随产品发布的种类。 |
 | `@deepseek-ai/dsh-tool-ask-user` | `ask_user_question` | `ctx.tools`、`ctx.userQuestions` | `tool/call`、`tool/result after an answer or timeout`、`late user/message` | - | ask_user_question 默认保持原有阻塞行为；设置 `mode: timed` 后才启用前台超时与 pending 结果，同时问题仍可回答；timed 模式内 `timeout: -1` 让本次调用无限期阻塞。 |
-| `@deepseek-ai/dsh-tool-executor-ptc` | `run_code` | `ctx.workingDirectory (Agent executions)`、`ctx.tools`、`ctx.ptcRuntime`、`ctx.systemPrompt` | `tool/call`、`one tool/ptc-dispatch-start + tool/ptc-dispatch pair per bridged sub-call`、`tool/result` | - | PTC 执行器只向模型公开 run_code，并在运行时语言生成的 SDK 中声明其他可见能力。程序绑定按提交顺序进入共享的受守卫工具流水线；并行安全的函数体最多重叠 maxParallelSubCalls 个，嵌套结果保持与外层程序关联。 |
+| `@deepseek-ai/dsh-tool-executor-ptc` | `run_code` | `ctx.workingDirectory (Agent executions)`、`ctx.tools`、`ctx.ptcRuntime`、`ctx.systemPrompt` | `tool/call`、`one tool/ptc-dispatch-start + tool/ptc-dispatch pair per bridged sub-call`、`tool/result` | - | PTC 执行器只向模型公开 run_code，并在运行时语言生成的 SDK 中声明其他可见能力。程序绑定按提交顺序进入共享的受守卫工具流水线；并行安全的函数体最多重叠 maxParallelSubCalls 个，嵌套结果保持与外层程序关联。最终超时时间与 maxSubCallsPerMinute 决定调用总额度；超限会终止程序。 |
 | `@deepseek-ai/dsh-plan-mode` | `exit_plan_mode` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agents`、`ctx.userQuestions (execution time, opportunistic)` | `tool/call`、`plan/mode inactive on an approved review`、`tool/result` | - | 规划未激活时，exit_plan_mode 仍保留在面向模型的 schema 中，这样状态转换不会在规划策略变更之外额外造成工具目录变动。其执行路径会拒绝规划模式之外的调用；在规划模式下，它通过用户交互 seam 提交计划（批准／根据反馈继续规划），批准后会在步骤边界记录规划模式已停用。 |
 | `@deepseek-ai/dsh-tool-bash` | `bash` | `ctx.workingDirectory`、`ctx.tools`、`ctx.shell`、`ctx.systemPrompt`、`ctx.shellEnv`、`ctx.jobs for run_in_background and the job-backed foreground path` | `tool/call`、`tool/result` | - | bash 工具是 bash 执行器 seam 面向模型的消费方。组合中有 job 注册表时，每次调用一启动就注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具（来自 `@deepseek-ai/dsh-tool-jobs`）收集／停止；没有注册表或 `enableRunInBackground: false` 时，工具注册不带 `run_in_background` 参数的纯前台 schema。 |
 | `@deepseek-ai/dsh-tool-present` | `present` | `ctx.workingDirectory`、`ctx.tools`, `ctx.fs`, `ctx.agents` | `tool/call`, `deliverables/presented 在成功的最终结果之后`, `tool/result` | - | 交付归调用方 Session 所有；Web ui-deliverables 提供源文件打开与卡片。 |
 | `@deepseek-ai/dsh-tool-pwsh` | `pwsh` | `ctx.workingDirectory`、`ctx.tools`、`ctx.shell`、`ctx.systemPrompt`、`ctx.shellEnv`、`ctx.jobs for run_in_background and the job-backed foreground path` | `tool/call`、`tool/result` | - | pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费方（由 `@deepseek-ai/dsh-pwsh-local` 等 PowerShell 执行器为 `ctx.shell` 提供后端）；除沙箱接口外，它逐项对应 bash 工具调用。使用 `run_in_background` 的运行会注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具收集／停止；托管的 `DSH_*` 环境来自 `@deepseek-ai/dsh-shell-env`。每次调用都在新进程中运行，不使用持久 PTY 会话。路径采用原生 `C:\...` 形式，变量采用 `$env:NAME`。 |
 | `@deepseek-ai/dsh-tool-cordis` | `cordis_inspect_list`, `cordis_inspect_query` | `ctx.tools`, `ctx.cordisInspect` | `tool/call`, `tool/result` | - | 创造模式提供两个只读运行时检查工具。Cordis host runner 提供检查注册表；Client 查询需要已连接页面。持久化变更编写为组合包，再通过 plugin_manager 安装。 |
-| `@reachforstar/dsh-tool-ssh` | `sftp_list`, `sftp_mkdir`, `sftp_read`, `sftp_rename`, `sftp_rm`, `sftp_stat`, `sftp_write`, `ssh_connect`, `ssh_connections`, `ssh_disconnect`, `ssh_exec`, `ssh_test` | `ctx.tools`, `ctx.ssh`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `settings/document-updated (ssh definition saves)` | - | SSH 工具是 SSH/SFTP 能力接缝面向模型的消费方：连接管理（ssh_connect/ssh_connections/ssh_disconnect/ssh_test）、远程命令执行（ssh_exec），以及 SFTP 传输与浏览（sftp_list/stat/read/write/mkdir/rm/rename）。定义与记住的主机密钥保存在 `ssh` 设置命名空间；主机密钥默认校验（accept-new），结果中永不出现机密。 |
+| `@reachforstar/dsh-tool-ssh` | `sftp_list`, `sftp_mkdir`, `sftp_read`, `sftp_rename`, `sftp_rm`, `sftp_stat`, `sftp_write`, `ssh_connect`, `ssh_connections`, `ssh_disconnect`, `ssh_exec`, `ssh_test` | `ctx.tools`, `ctx.ssh`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `settings/document-updated (ssh definition saves)` | - | ssh 工具是 SSH/SFTP 能力 seam 面向模型的消费方：连接管理（ssh_connect/ssh_connections/ssh_disconnect/ssh_test）、远程命令执行（ssh_exec）以及 SFTP 传输与浏览（sftp_list/stat/read/write/mkdir/rm/rename）。连接定义与已记住的主机密钥持久化在 `ssh` 设置命名空间中；主机密钥默认校验（accept-new），结果中绝不出现密钥。 |
 | `@deepseek-ai/dsh-tool-bash-persistent` | `bash` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 bash 工具；部署组合提供 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 pwsh 工具，持久 bash 工具的 Windows 对应物；部署组合提供 pwsh 方言的 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`、`ctx.fs` | `tool/call`、`fs/observed after view presence/absence, edit absence, or successful mutation`、`tool/result` | - | 基于文件系统 seam 的独立查看／创建／唯一字面量替换／按行插入工具；可与任何 shell 或终端接口组合。 |
-| `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`, `excalidraw_export`, `excalidraw_read`, `excalidraw_write` | `ctx.tools`, `ctx.workspaceRegistry` | `tool/call`, `tool/result` | - | 白板场景工具从调用方 agent 的会话推导目标工作区；没有所属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 @reachforstar/dsh-client-ui-polish 中的 Web 画布标签页共用。 |
-| `@reachforstar/dsh-tool-a2a` | `a2a_peers`, `a2a_send` | `ctx.tools`, `ctx.a2a` | `tool/call`, `tool/result` | - | a2a_peers 列出已配置的对端名称，a2a_send 按名称寻址其中一个，并可选继续先前的任务或上下文；模型从不指定端点，因此采集不需要可达的对端。 |
-| `@deepseek-ai/dsh-tool-fs` | `apply_patch`、`edit`、`read`、`read_image`、`write` | `ctx.workingDirectory`、`ctx.tools`、`ctx.fs`、`ctx.systemPrompt`、`ctx.attachments (image-tool registration)`、`ctx.llm + an image-capable route (image-tool execution)` | `tool/call`、`fs/write-intent, fs/edit-intent, or fs/delete-intent for mutations`、`fs/observed after read presence/absence or successful file operation`、`durable attachment (read_image)`、`tool/result` | - | 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。`apply_patch` 仅在 `applyPatch: true` 时注册；目录为了记录其 schema 而开启该开关，而随发行版交付的组合在各自的 `tool-fs` 行上保持关闭。 |
+| `@reachforstar/dsh-tool-excalidraw` | `excalidraw_draw`, `excalidraw_export`, `excalidraw_read`, `excalidraw_write` | `ctx.tools`, `ctx.workspaceRegistry` | `tool/call`, `tool/result` | - | 白板场景工具从调用 agent 的会话推导目标工作区；没有所属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 @reachforstar/dsh-client-ui-polish 的 Web 画布标签页共用。 |
+| `@reachforstar/dsh-tool-a2a` | `a2a_peers`, `a2a_send` | `ctx.tools`, `ctx.a2a` | `tool/call`, `tool/result` | - | a2a_peers 列出已配置的对端名称，a2a_send 按名称寻址其中一个，可选择继续之前的任务或上下文；模型从不指定端点，因此工具清单的采集不需要可达的对端。 |
+| `@deepseek-ai/dsh-tool-fs` | `apply_patch`、`edit`、`read`、`read_image`、`write` | `ctx.workingDirectory`、`ctx.tools`、`ctx.fs`、`ctx.systemPrompt`、`ctx.attachments (image-tool registration)`、`ctx.llm + an image-capable route (image-tool execution)` | `tool/call`、`fs/write-intent, fs/edit-intent, or fs/delete-intent for mutations`、`fs/observed after read presence/absence or successful file operation`、`durable attachment (read_image)`、`tool/result` | - | 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。随发行版交付的组合保持该行禁用，因此除非部署启用它，修改都是无条件的。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。`apply_patch` 仅在 `applyPatch: true` 时注册；目录为了记录其 schema 而开启该开关。`dsh-base` 与 Web 的 `standard` preset 开启它；Web 的 `ptc`、`cordis` preset 以及 PTC overlay 显式写出 `applyPatch: false`。 |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`、`grep` | `ctx.workingDirectory`、`ctx.tools`、`ctx.subprocess`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | glob 和 grep 是无条件可用的发现工具，通过 ctx.subprocess spawn 随包提供的 ripgrep 二进制文件（`@vscode/ripgrep`），并作为普通前台调用运行，绝不作为后台任务；无需在宿主机安装 `rg`，也不经过 shell 层。本目录使用 `sampleOverCapGlobResults: true`；部署必须显式选择该行为。结果超过上限时，会通过可选的 ctx.spillStore 后端保存完整的格式化列表；在共置部署中，如果后端公开本地路径，返回的定位信息可供后续读取／搜索。 |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`、`terminal_list`、`terminal_open`、`terminal_read`、`terminal_send`、`terminal_signal` | `ctx.workingDirectory`、`ctx.tools`、`ctx.terminals`、`ctx.systemPrompt`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | 这 6 个终端工具需要选择启用，用于补充一次性 bash／文件系统工具。`terminal_send(run_in_background: true)` 会注册到 `ctx.jobs`；schema 不包含 TUI、具名按键序列、BEL、调整尺寸、自动启动和跨 agent 共享。 |
 | `@deepseek-ai/dsh-tool-goal` | `create_goal`、`get_goal`、`update_goal` | `ctx.tools`、`ctx.agents`、`ctx.goals`、`ctx.systemPrompt`、`a calling Agent in an authorized open turn` | `tool/call`、`goal/change for mutations`、`tool/result` | - | create、edit、pause 和 resume 要求直接来自人类的根权限；complete 和 blocked 也接受确切的当前 Goal Round。blocked 的默认下限是 3 个获准的 Round。 |
@@ -47,13 +47,13 @@
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.workingDirectory`、`ctx.tools`、`ctx.agents`、`ctx.skills` | `tool/call`、`tool/result`、`user/message replacement catalogs via agent.inject()` | - | - |
 | `@deepseek-ai/dsh-tool-session-query` | `session_event_read`、`session_event_search`、`session_event_trace`、`session_search`、`session_trace` | `ctx.tools`、`ctx.systemPrompt`、`ctx.sessionQuery`、`a calling Agent for workspace authority` | `tool/call`、`tool/result` | - | 这 5 个只读工具会隐藏提供方游标，并根据不可变的调用 agent 会话为每个结果授权。该包需要选择启用；需要强制截止时间或限制行内输出的组合还会挂载通用超时或 spill 策略。 |
 | `@deepseek-ai/dsh-experimental-tool-subagent-oar` | `subagent_oar` | `ctx.tools`, `ctx.subagents` | `tool/call`, `tool/result`, `parent subagent catalog and completion notices` | - | subagent_oar 工具在为外部提供方配置的别名之间选择。本目录展示 Codex 和 Claude Code 别名；每个部署自行选择提供方。原生模型和权限设置由所选提供方的配置决定。 |
-| `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`、`subagent` | `ctx.tools`、`ctx.subagents`、`ctx.systemPrompt`、`ctx.sessionProjections`、`用于模型发现和所选路由校验的 ctx.llm` | `tool/call`、`tool/result`、`child session events through the chosen provider` | `subagent`、`subagent_fork` | 加载时的 `toolName` 选择委派名称（默认为 `subagent`）；`modelSelection` 增加可选路由字段。`modelDiscovery` 默认关闭，每个作用域由一个实例注册共享发现工具。Web 与 Desktop preset 启用 spawn 发现和路由字段，并为 `subagent_fork` 保持路由字段关闭。Host 设置服务为每个新顶层 Session 记录授权；子 Session 继承该授权。没有已记录策略时，发现和显式选择只允许当前父级路由。每次委派都会立即返回子代理 id；本地子代理接受后续消息，外部后端自动汇报单次执行结果。 |
-| `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`、`list_agents`、`send_message` | `ctx.tools`、`ctx.subagents`、`ctx.agents` | `tool/call`、`tool/result`、`child session events through ctx.subagents` | - | 这些是用于发现、中断托管 subagent 和向本地子代理发送消息的全局命名工具：绑定提供方的 `tool-subagent` 实例注册不同的委派工具；本包的一个实例注册 `send_message`、`interrupt_agent` 和 `list_agents`。 |
+| `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`、`subagent` | `ctx.tools`、`ctx.subagents`、`ctx.systemPrompt`、`ctx.sessionProjections`、`用于模型发现和所选路由校验的 ctx.llm` | `tool/call`、`tool/result`、`child session events through the chosen provider` | `subagent`、`subagent_fork` | 加载时的 `toolName` 选择委派名称（默认为 `subagent`）；`modelSelection` 增加可选路由字段。`modelDiscovery` 默认关闭，每个作用域由一个实例注册共享发现工具。Web 与 Desktop preset 启用 spawn 发现和路由字段，并为 `subagent_fork` 保持路由字段关闭。Host 设置服务为每个新顶层 Session 记录授权；子 Session 继承该授权。没有已记录策略时，发现和显式选择只允许当前父级路由。每次委派都会立即返回子代理的名称；本地子代理接受后续消息，外部后端自动汇报单次执行结果。 |
+| `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`、`list_agents`、`send_message`、`wait_agent` | `ctx.tools`、`ctx.subagents`、`ctx.agents` | `tool/call`、`tool/result`、`child session events through ctx.subagents` | - | 共享控制工具发现并联系 subagent 树中的 Agent，中断有权控制的后代，并等待调用者收件箱中的输入。绑定提供方的 `tool-subagent` 实例提供委派工具。 |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令与 PTY 发送 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
-| `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`、`list_agents`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/task`、`agent/inbox/spliced`、`user/message on inbox claim`、`tool/result` | - | 这 9 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
+| `@deepseek-ai/dsh-tool-agent-team` | `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `ctx.subagents`, `an exact live Team member Agent` | `tool/call`, `team/task`, `tool/result` | - | 四个任务板工具共享 subagent 树的根 Session。在根 Session 开启 Team 模式，会在标准 subagent 委派和控制工具之外增加任务板指导。标准 subagent 控制工具提供必需身份，不受 Team 模式影响。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-working-directory` | `working_directory` | `ctx.tools`, `ctx.workingDirectory` | `tool/call`, `working-directory/change`, `user context for directory changes`, `tool/result` | - | 读取或改变调用方 Session 的目录。已有 shell 和进程保留自己的目录；原始元数据和权限根目录保持不变。 |
-| `@deepseek-ai/dsh-experimental-tool-worktree` | `create_worktree` | `ctx.tools`, `ctx.worktrees`, `a calling Agent` | `tool/call`, `Git branch and checkout`, `working-directory/change`, `tool/result` | - | 仅通过显式实验组合加载。在现有写权限下从固定的本地提交创建新分支与检出目录，再改变 Session 工作目录。离开时保留分支与检出目录。 |
+| `@deepseek-ai/dsh-experimental-tool-worktree` | `create_worktree` | `ctx.tools`, `ctx.worktrees`, `a calling Agent` | `tool/call`, `Git branch and checkout`, `working-directory/change`, `tool/result` | - | 在 Web 和 Desktop 上通过变更请求与工作树组合包启用；其他 profile 可以选择独立组合包。在现有写权限下从固定的本地提交创建新分支与检出目录，再改变 Session 工作目录。离开时保留分支与检出目录。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
@@ -668,7 +668,7 @@ ask_user_question 默认保持原有阻塞行为；设置 `mode: timed` 后才�
 
 来源：[`packages/core/tool-executor-ptc/src/ptc.ts`](../packages/core/tool-executor-ptc/src/ptc.ts)
 
-PTC 执行器只向模型公开 run_code，并在运行时语言生成的 SDK 中声明其他可见能力。程序绑定按提交顺序进入共享的受守卫工具流水线；并行安全的函数体最多重叠 maxParallelSubCalls 个，嵌套结果保持与外层程序关联。
+PTC 执行器只向模型公开 run_code，并在运行时语言生成的 SDK 中声明其他可见能力。程序绑定按提交顺序进入共享的受守卫工具流水线；并行安全的函数体最多重叠 maxParallelSubCalls 个，嵌套结果保持与外层程序关联。最终超时时间与 maxSubCallsPerMinute 决定调用总额度；超限会终止程序。
 
 <a id="deepseek-aidsh-plan-mode"></a>
 
@@ -892,7 +892,7 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 
 ### `sftp_list`
 
-通过 SFTP 列出一个远程目录（非递归）。条目报告类型、大小、mtime 与 mode。
+通过 SFTP 列出某个远程目录（非递归）。每项报告类型、大小、修改时间与权限位。
 
 ```json
 {
@@ -914,11 +914,11 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_mkdir`
 
-通过 SFTP 创建一个远程目录。带 `recursive` 时同时创建缺失的父目录。
+通过 SFTP 创建某个远程目录。设置 `recursive` 时一并创建缺失的父目录。
 
 ```json
 {
@@ -944,11 +944,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_read`
 
-通过 SFTP 把一个远程文件下载到本地路径。除非设置 `overwrite`，本地文件必须不存在；传输失败会删除残留的部分文件。
+通过 SFTP 把某个远程文件下载到本地路径。未设置 `overwrite` 时本地文件必须不存在；传输失败会删除残留的部分本地文件。
 
 ```json
 {
@@ -979,11 +979,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_rename`
 
-通过 SFTP 重命名或移动一个远程路径。
+通过 SFTP 重命名或移动某个远程路径。
 
 ```json
 {
@@ -1010,11 +1010,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_rm`
 
-通过 SFTP 删除一个远程文件或目录。目录要求 `recursive: true` 并按深度优先删除；符号链接被解除链接，从不跟随。
+通过 SFTP 删除某个远程文件或目录。删除目录需要 `recursive: true`，并按深度优先删除；符号链接只解除链接，绝不跟随。
 
 ```json
 {
@@ -1040,11 +1040,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_stat`
 
-通过 SFTP 查看一个远程路径的元数据，不跟随符号链接。
+通过 SFTP 读取某个远程路径的状态，不跟随符号链接。
 
 ```json
 {
@@ -1066,11 +1066,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `sftp_write`
 
-通过 SFTP 把一个本地文件上传到远程路径。远程目录必须已存在（先用 sftp_mkdir）。
+通过 SFTP 把某个本地文件上传到远程路径。远程目录必须已存在（先使用 sftp_mkdir）。
 
 ```json
 {
@@ -1097,11 +1097,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_connect`
 
-保存新的 SSH 连接定义（或传入 id 更新已有定义）。该定义持久化在用户设置中，可被 ssh_exec 与 sftp_* 工具使用；结果中永不返回机密。用 ssh_connections 列出已保存的连接。
+保存新的 SSH 连接定义（传入 id 则更新已有连接）。连接定义持久化在用户设置中，可供 ssh_exec 与 sftp_* 工具使用；结果中绝不返回密钥。用 ssh_connections 列出已保存的连接。
 
 ```json
 {
@@ -1161,11 +1161,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_connections`
 
-列出全部已保存的 SSH 连接定义（不含机密）。把返回的 id 或名称用作 ssh_exec 与 sftp_* 工具的 `connection` 参数。
+列出所有已保存的 SSH 连接定义（不含密钥的视图）。把返回的 id 或名称用作 ssh_exec 与 sftp_* 工具的 `connection` 参数。
 
 ```json
 {
@@ -1174,11 +1174,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_disconnect`
 
-关闭某个已保存连接共享的会话。之后的 ssh_exec/sftp_* 调用会自动重连。
+关闭某个已保存连接对应的共享连接。后续 ssh_exec/sftp_* 调用会自动重连。
 
 ```json
 {
@@ -1195,11 +1195,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_exec`
 
-在已保存的 SSH 连接上执行命令，返回其 stdout/stderr。每次调用在新的远程 shell 中运行：cwd、变量等状态不会在调用间保留，用 `cwd` 参数代替 `cd`。非零退出码以 `[exit code: N]` 报告；超时的命令被终止并以 `[timed out ...]` 报告。过长输出截断为尾部并附截断标记。
+在已保存的 SSH 连接上执行命令，并返回其 stdout/stderr。每次调用都在全新的远程 shell 中运行：调用之间不保留任何状态（工作目录、变量）——应传入 `cwd` 而不是使用 `cd`。非零退出以 `[exit code: N]` 报告；超过超时的命令会被终止并以 `[timed out ...]` 报告。过长的输出会截取末尾并附带截断标记。
 
 ```json
 {
@@ -1229,11 +1229,11 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
 ### `ssh_test`
 
-探测一个已保存连接：连接、运行探测命令，再关闭。报告往返延迟或失败原因。
+探测某个已保存连接：建立连接、运行探测命令，然后再次关闭。报告往返延迟或失败原因。
 
 ```json
 {
@@ -1250,9 +1250,9 @@ Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/sr
 }
 ```
 
-Source: [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
+来源： [`packages/remote/tool-ssh/src/index.ts`](../packages/remote/tool-ssh/src/index.ts)
 
-The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: connection management (ssh_connect/ssh_connections/ssh_disconnect/ssh_test), remote command execution (ssh_exec), and SFTP transfer/browse (sftp_list/stat/read/write/mkdir/rm/rename). Definitions and remembered host keys persist in the `ssh` settings namespace; host keys verify by default (accept-new) and secrets never appear in results.
+ssh 工具是 SSH/SFTP 能力 seam 面向模型的消费方：连接管理（ssh_connect/ssh_connections/ssh_disconnect/ssh_test）、远程命令执行（ssh_exec）以及 SFTP 传输与浏览（sftp_list/stat/read/write/mkdir/rm/rename）。连接定义与已记住的主机密钥持久化在 `ssh` 设置命名空间中；主机密钥默认校验（accept-new），结果中绝不出现密钥。
 
 <a id="deepseek-aidsh-tool-bash-persistent"></a>
 
@@ -1422,7 +1422,7 @@ The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: co
 
 ### `excalidraw_draw`
 
-在当前工作区的 Excalidraw 画布（共享白板）上绘制图形。用高层次描述图形，无需了解 Excalidraw 内部结构。用于绘制图示、流程图或在画布上推演问题（例如几何）。`action: "append"` 追加到现有场景；`action: "replace"` 先清空画布。支持的元素 `type` 取值："rectangle"、"ellipse"、"diamond"、"text"（内容放在 `text`）、"arrow"、"line"（可选给出 `points` 为 [[x1,y1],[x2,y2],...]，否则使用贯穿边框的对角线）。坐标为画布像素（原点在左上角）。
+在当前工作区的 Excalidraw 画布（共享白板）上绘制图形。用高层描述说明图形即可——无需了解 Excalidraw 内部结构。可用它绘制示意图、流程图，或在画布上推演问题（例如几何）。`action: "append"` 在现有场景上追加；`action: "replace"` 先清空画布。支持的元素 `type`："rectangle"、"ellipse"、"diamond"、"text"（内容放在 `text` 中）、"arrow"、"line"（可选择用 [[x1,y1],[x2,y2],...] 给出 `points`，否则使用横跨图形的对角线）。坐标以画布像素为单位（左上角为原点）。
 
 ```json
 {
@@ -1504,11 +1504,11 @@ The ssh tools are the model-facing consumers of the SSH/SFTP capability seam: co
 }
 ```
 
-Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+来源： [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
 ### `excalidraw_export`
 
-把当前工作区的 Excalidraw 画布导出为工作区内的 SVG 图片文件（纯 node 侧渲染，无需浏览器）。读取画布标签页展示的同一场景，并把矢量 SVG 写到 `<workspace>/<path>`（默认 `.dsh/excalidraw/export.svg`）。用于持久化模型绘制的图示，便于查看、提交或在别处转换。SVG 使用平涂填充与描边（无手绘质感）；文本保留其内容与字号。
+把当前工作区的 Excalidraw 画布导出为工作区内的 SVG 图像文件（纯 Node 侧渲染——不需要浏览器）。读取画布标签页展示的同一场景，并把矢量 SVG 写到 `<workspace>/<path>`（默认 `.dsh/excalidraw/export.svg`）。可用它保存模型绘制的图形，以便查看、提交或在别处转换。SVG 使用纯色填充与描边（不含手绘纹理）；文本保留其内容与字号。
 
 ```json
 {
@@ -1526,11 +1526,11 @@ Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalid
 }
 ```
 
-Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+来源： [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
 ### `excalidraw_read`
 
-读取当前工作区的 Excalidraw 画布场景。返回摘要（按类型统计的元素数量、文本元素、主题）、紧凑的 `elements` 列表（id/type/x/y/width/height/text）以便推断画布内容，以及场景较小时放在 `sceneJson` 的完整场景 JSON 字符串。用 `excalidraw_draw` 添加图形，或用 `excalidraw_write` 替换场景。
+读取当前工作区的 Excalidraw 画布场景。返回摘要（按类型统计的元素数量、文本元素、主题）、便于推断画布内容的精简 `elements` 列表（id/type/x/y/width/height/text），以及场景较小时 `sceneJson` 中的完整场景 JSON 字符串。用 `excalidraw_draw` 添加图形，或用 `excalidraw_write` 替换整个场景。
 
 ```json
 {
@@ -1539,11 +1539,11 @@ Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalid
 }
 ```
 
-Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+来源： [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
 ### `excalidraw_write`
 
-用完整的场景 JSON 字符串覆盖当前工作区的 Excalidraw 画布场景（即 `excalidraw_read` 的 `sceneJson` 所产生的结构：含 `elements` 与 `appState` 的对象）。画布标签页渲染的正是这个文件。缺失的场景文件会被创建。
+用完整的场景 JSON 字符串覆盖当前工作区的 Excalidraw 画布场景（即 `excalidraw_read` 的 `sceneJson` 产生的结构：包含 `elements` 与 `appState` 的对象）。画布标签页渲染的正是该文件。场景文件缺失时会创建。
 
 ```json
 {
@@ -1560,9 +1560,9 @@ Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalid
 }
 ```
 
-Source: [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
+来源： [`packages/fs/tool-excalidraw/src/index.ts`](../packages/fs/tool-excalidraw/src/index.ts)
 
-The whiteboard scene tools derive the target workspace from the calling agent's session; a call without an owning workspace is rejected. The scene file convention (`.dsh/excalidraw/scene.json`) is shared with the web canvas tab in @reachforstar/dsh-client-ui-polish.
+白板场景工具从调用 agent 的会话推导目标工作区；没有所属工作区的调用会被拒绝。场景文件约定（`.dsh/excalidraw/scene.json`）与 @reachforstar/dsh-client-ui-polish 的 Web 画布标签页共用。
 
 <a id="reachforstardsh-tool-a2a"></a>
 
@@ -1570,7 +1570,7 @@ The whiteboard scene tools derive the target workspace from the calling agent's 
 
 ### `a2a_peers`
 
-列出本部署可调用的远程 A2A 代理，以及各自的寻址名称、已发布 agent 卡中的显示名和接受的能力（skill）。当不知道有哪些对端时，先调用它再调用 `a2a_send`。某个对端的 agent 卡读不到时，会在该对端旁报告，而不是让整个列表失败。
+列出本部署可以调用的远程 A2A 智能体，包括各自的寻址名称、发布 agent card 中的显示名称，以及它接受的技能。尚不清楚存在哪些对端时，先于 `a2a_send` 调用本工具。某个对端的 card 无法读取时，会在该对端旁单独报告，而不是让整个列表失败。
 
 ```json
 {
@@ -1579,13 +1579,13 @@ The whiteboard scene tools derive the target workspace from the calling agent's 
 }
 ```
 
-Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+来源： [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
 
 ### `a2a_send`
 
-向远程 A2A 代理发送一个任务并返回其答复。用 `a2a_peers` 报告的名称或端点 URL 寻址对端。对端在自己的环境中工作：它可以在那里读写文件，但看不到本工作区。把上一次调用返回的 `contextId` 传回去可继续同一段对话，对端因此保留先前的轮次；省略则开始新的对话。
+向远程 A2A 智能体发送一个任务并返回其答复。可用 `a2a_peers` 报告的名称或端点 URL 寻址对端。对端在自己的环境中工作：它可以读写那里的文件，但看不到本工作区。传入此前调用返回的 `contextId` 可继续同一段对话，使对端保留先前的轮次；省略则开启新对话。
 
-选择对端应在哪个能力（skill）下工作，例如代码审查或编码；`a2a_peers` 会列出每个对端接受的能力，省略时对端使用其默认值。`mode: "direct"` 等待答复，可能需要数分钟，优先委派完整的工作单元，而不是多次小往返。`mode: "bus"` 发布任务并在任务被领取后立即返回：用于超出本轮次的工作，若同时需要答复则加上 `wait: true`。
+选择对端应在其下工作的技能，例如代码评审或编码；`a2a_peers` 列出每个对端接受的技能，省略时对端使用其默认值。`mode: "direct"` 会等待答复，可能耗时数分钟——优先委派完整的工作单元，而不是多次小往返。`mode: "bus"` 发布任务并在任务被认领后立即返回：用于会超出本轮的工作，同时还需要答复时加上 `wait: true`。
 
 ```json
 {
@@ -1635,9 +1635,9 @@ Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/inde
 }
 ```
 
-Source: [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
+来源： [`packages/a2a/tool-a2a/src/index.ts`](../packages/a2a/tool-a2a/src/index.ts)
 
-a2a_peers lists the configured peer names and a2a_send addresses one by name, optionally continuing an earlier task or context; the model never names an endpoint, so the harvest needs no reachable peer.
+a2a_peers 列出已配置的对端名称，a2a_send 按名称寻址其中一个，可选择继续之前的任务或上下文；模型从不指定端点，因此工具清单的采集不需要可达的对端。
 
 <a id="deepseek-aidsh-tool-fs"></a>
 
@@ -1645,7 +1645,7 @@ a2a_peers lists the configured peer names and a2a_send addresses one by name, op
 
 ### `apply_patch`
 
-用一个 Codex 风格补丁新增、更新、删除或移动 UTF-8 文本文件；变更跨越多个文件或分离区域时，优先于多次 edit 调用。
+用一个补丁新增、更新、删除或移动 UTF-8 文本文件；变更跨越多个文件或分离区域时，优先于多次 edit 调用。
 
 ```json
 {
@@ -1653,7 +1653,7 @@ a2a_peers lists the configured peer names and a2a_send addresses one by name, op
   "properties": {
     "input": {
       "type": "string",
-      "description": "Codex patch text: start with *** Begin Patch and end with *** End Patch. Use *** Add File: path with + lines; *** Update File: path, optionally followed by *** Move to: path, with @@ or @@ context and space-prefixed context, + added, or - removed lines; *** End of File anchors the last hunk to the file end. Use *** Delete File: path to delete. Paths are relative to the Session working directory. Read existing files before updating, deleting, or moving them."
+      "description": "Patch text: start with *** Begin Patch and end with *** End Patch. Use *** Add File: path with + lines; *** Update File: path, optionally followed by *** Move to: path, with @@ or @@ context and space-prefixed context, + added, or - removed lines; *** End of File anchors the last hunk to the file end. Use *** Delete File: path to delete. Paths are relative to the Session working directory."
     }
   },
   "required": [
@@ -1775,7 +1775,7 @@ a2a_peers lists the configured peer names and a2a_send addresses one by name, op
 
 来源：[`packages/fs/tool-fs/src/index.ts`](../packages/fs/tool-fs/src/index.ts)
 
-先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。`apply_patch` 仅在 `applyPatch: true` 时注册；目录为了记录其 schema 而开启该开关，而随发行版交付的组合在各自的 `tool-fs` 行上保持关闭。
+先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。随发行版交付的组合保持该行禁用，因此除非部署启用它，修改都是无条件的。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。`apply_patch` 仅在 `applyPatch: true` 时注册；目录为了记录其 schema 而开启该开关。`dsh-base` 与 Web 的 `standard` preset 开启它；Web 的 `ptc`、`cordis` preset 以及 PTC overlay 显式写出 `applyPatch: false`。
 
 <a id="deepseek-aidsh-tool-fs-search"></a>
 
@@ -2594,7 +2594,7 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 ### `subagent_oar`
 
-将上下文完整的任务委派给已配置的外部 agent。每次调用选择一个运行时。subagent 在独立上下文中工作，无法看到当前对话。工具返回子级 id，后续完成通知包含其最终回答。subagent 不接受后续消息。并发启动相互独立的任务，并在其运行期间继续其他有用工作。只剩等待结果时结束当前轮次，不要轮询。
+将上下文完整的任务委派给已配置的外部 agent。每次调用选择一个运行时。subagent 在独立上下文中工作，无法看到当前对话。工具返回子级的名称，后续完成通知包含其最终回答。subagent 不接受后续消息。并发启动相互独立的任务，并在其运行期间继续其他有用工作。只剩等待结果时结束当前轮次，不要轮询。
 
 ```json
 {
@@ -2611,6 +2611,10 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
     "description": {
       "type": "string",
       "description": "A short description of the delegated task, for display."
+    },
+    "name": {
+      "type": "string",
+      "description": "Optional short name for the subagent, unique among the subagents you create: lower-case letters, digits, and hyphens, starting with a letter, at most 32 characters; lead is reserved for the root agent. Omitted names default to agent-1, agent-2, and so on."
     },
     "prompt": {
       "type": "string",
@@ -2639,7 +2643,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 ### `list_subagent_models`
 
-查询 subagent 可用的模型，不更改当前 Agent。无参数：提供方；`provider`：允许的模型；`provider` + `model`：该模型及其推理强度。选择子级提供方和模型前先在此查询选项，再将返回的 id 用于委派。
+查询允许为 subagent 显式选择的路由。无参数：提供方；`provider`：允许的模型；`provider` + `model`：该模型及其推理强度。选择子级提供方和模型前先在此查询选项，再将返回的 id 用于委派。
 
 ```json
 {
@@ -2661,7 +2665,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 ### `subagent`
 
-将一项自包含任务委派给 subagent（在自身上下文中工作的独立 agent），用它卸载聚焦且独立的工作，例如研究、限定范围的实现或分析，以免消耗当前对话的上下文。subagent 会返回结果，但不会返回中间步骤。此工具启动独立管理的 subagent 并立即返回其 id。运行时会在任务结束时通知你。子代理通过 `send_message` 汇报结果；你可以使用 `send_message` 在运行时引导它，或在结束后继续对话。
+将一项自包含任务委派给 subagent（在自身上下文中工作的独立 agent），用它卸载聚焦且独立的工作，例如研究、限定范围的实现或分析，以免消耗当前对话的上下文。subagent 会返回结果，但不会返回中间步骤。此工具启动独立管理的 subagent 并立即返回其名称。如果它结束时你仍在线，运行时会自动递送其完成通知。通知包含最终回答，除非子任务在结束前刚给你发过消息。你可以使用 `send_message` 在运行时引导它，或在结束后继续对话。
 
 ```json
 {
@@ -2673,7 +2677,11 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
     },
     "description": {
       "type": "string",
-      "description": "A short (3-5 word) description of the delegated task, for display."
+      "description": "A short (3-5 word) description of the delegated task, for display. Use the language of the user's current request."
+    },
+    "name": {
+      "type": "string",
+      "description": "Optional short name for the subagent, unique among the subagents you create: lower-case letters, digits, and hyphens, starting with a letter, at most 32 characters; lead is reserved for the root agent. Omitted names default to agent-1, agent-2, and so on."
     },
     "prompt": {
       "type": "string",
@@ -2689,7 +2697,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 来源：[`packages/subagent/tool-subagent/src/index.ts`](../packages/subagent/tool-subagent/src/index.ts)
 
-加载时的 `toolName` 选择委派名称（默认为 `subagent`）；`modelSelection` 增加可选路由字段。`modelDiscovery` 默认关闭，每个作用域由一个实例注册共享发现工具。Web 与 Desktop preset 启用 spawn 发现和路由字段，并为 `subagent_fork` 保持路由字段关闭。Host 设置服务为每个新顶层 Session 记录授权；子 Session 继承该授权。没有已记录策略时，发现和显式选择只允许当前父级路由。每次委派都会立即返回子代理 id；本地子代理接受后续消息，外部后端自动汇报单次执行结果。
+加载时的 `toolName` 选择委派名称（默认为 `subagent`）；`modelSelection` 增加可选路由字段。`modelDiscovery` 默认关闭，每个作用域由一个实例注册共享发现工具。Web 与 Desktop preset 启用 spawn 发现和路由字段，并为 `subagent_fork` 保持路由字段关闭。Host 设置服务为每个新顶层 Session 记录授权；子 Session 继承该授权。没有已记录策略时，发现和显式选择只允许当前父级路由。每次委派都会立即返回子代理的名称；本地子代理接受后续消息，外部后端自动汇报单次执行结果。
 
 <a id="deepseek-aidsh-tool-subagent-control"></a>
 
@@ -2697,19 +2705,19 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 ### `interrupt_agent`
 
-根据 agent id 请求取消后台 agent 的当前轮次。目标可以是你的直接子级，也可以是在你下方创建的更深层 agent。对于本地 agent，只有当前轮次会停止：已经排队发给该 agent 的消息会一直搁置到后续的 send_message；它启动的 agent 会继续运行；该 agent 本身仍可接受后续操作。外部执行会永久停止，无法接收后续消息。停止请求被接受后，此调用立即返回，因此目标可能还会短暂运行；中断一个已经完成的 agent 是可接受的空操作。
+请求 subagent 停止当前工作。此调用不等待其停止即返回。之后可以用 send_message 继续本地 subagent 的对话。外部执行会永久停止，无法接收后续消息。它启动的 subagent 会继续运行。
 
 ```json
 {
   "type": "object",
   "properties": {
-    "agent_id": {
+    "agent": {
       "type": "string",
-      "description": "The id of an agent created under you: your direct child or a deeper descendant."
+      "description": "The name of an agent created under you: your direct child or a deeper descendant."
     }
   },
   "required": [
-    "agent_id"
+    "agent"
   ]
 }
 ```
@@ -2718,21 +2726,12 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 ### `list_agents`
 
-按持久 ID 和标签列出调用方目录中可继续的直接子代理。使用此工具回忆已启动的子代理，不要轮询完成状态；完成时会收到通知。状态来自在线注册表：running 表示当前正在工作；inactive 表示当前没有执行轮次，无论子代理已加载还是需要恢复，并不表示任务完成、成功、失败或正在等待其他代理。`send_message` 可在最近的步骤边界引导正在运行的子代理，或启动、恢复非活跃子代理的轮次；任何状态下的直接子级都可作为 `send_message` 的候选目标。列表快照不保证投递成功，`send_message` 仍进行权威检查，且可能失败。
+列出整棵 subagent 树：根代理和所有可达的可继续后代，包括调用方自身。行包含名称、描述和状态。后代的名称是其相对根的路径，例如 reviewer/checker。可以向树中任意其他代理发送消息。running 表示正在工作；inactive 表示当前没有轮次在执行，不表示任务完成、成功或失败。corrupt、unsupported 或 unavailable 表示该行自身的后代目录无法读取，该行本身仍是可发送消息的成员。自身仍在线时，直属子代理结束会收到通知，无需反复查询其状态。使用 send_message 继续对话。
 
 ```json
 {
   "type": "object",
-  "properties": {
-    "scope": {
-      "type": "string",
-      "description": "children (default) lists direct children, which accept send_message in any status. descendants lists the whole tree below you with each entry's parent session id and depth; entries deeper than 1 accept only interrupt_agent.",
-      "enum": [
-        "children",
-        "descendants"
-      ]
-    }
-  }
+  "properties": {}
 }
 ```
 
@@ -2740,15 +2739,15 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 ### `send_message`
 
-根据 agent id 向直接可继续 child 发送消息。如果你是驻留的可继续 child，也可以把自己的直接 parent 作为目标。如果目标仍在工作，消息会 steer 其最近的 step；如果目标处于 idle，消息会启动一个轮次。此调用不会返回该 agent 的答案，只会确认消息已投递。调用失败表示消息**未**投递。
+向代理发消息。工作中的代理在下一步骤接收消息，空闲代理用消息启动新轮次。返回投递确认。
 
 ```json
 {
   "type": "object",
   "properties": {
-    "agent_id": {
+    "agent": {
       "type": "string",
-      "description": "The agent id of your direct continuable child, or your direct parent when you are a resident continuable child."
+      "description": "The name of another agent in your subagent tree, as shown by list_agents."
     },
     "message": {
       "type": "string",
@@ -2756,7 +2755,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
     }
   },
   "required": [
-    "agent_id",
+    "agent",
     "message"
   ]
 }
@@ -2764,7 +2763,25 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 来源：[`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts)
 
-这些是用于发现、中断托管 subagent 和向本地子代理发送消息的全局命名工具：绑定提供方的 `tool-subagent` 实例注册不同的委派工具；本包的一个实例注册 `send_message`、`interrupt_agent` 和 `list_agents`。
+### `wait_agent`
+
+等待下一步可处理的输入，包括 Agent 消息、完成通知和用户引导。有新的待处理输入时立即返回。`timedOut: false` 表示有新输入待处理。待处理输入会在代码执行结束后交付给模型。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "timeout_ms": {
+      "type": "integer",
+      "description": "Wait duration in milliseconds, from 10000 through 3600000. Defaults to 30000."
+    }
+  }
+}
+```
+
+来源：[`packages/subagent/tool-subagent-control/src/wait-agent.ts`](../packages/subagent/tool-subagent-control/src/wait-agent.ts)
+
+共享控制工具发现并联系 subagent 树中的 Agent，中断有权控制的后代，并等待调用者收件箱中的输入。绑定提供方的 `tool-subagent` 实例提供委派工具。
 
 <a id="deepseek-aidsh-tool-jobs"></a>
 
@@ -2839,108 +2856,9 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 与任务种类无关的后台任务控制器：后台 bash 命令与 PTY 发送 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。
 
-<a id="deepseek-aidsh-experimental-tool-agent-team"></a>
+<a id="deepseek-aidsh-tool-agent-team"></a>
 
-## `@deepseek-ai/dsh-experimental-tool-agent-team`
-
-### `interrupt_agent`
-
-中断一名 teammate 的当前 turn，同时保留其待处理 inbox。仅 Team Lead 可用。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "target": {
-      "type": "string",
-      "description": "Teammate target returned by spawn_teammate or list_agents."
-    }
-  },
-  "required": [
-    "target"
-  ]
-}
-```
-
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
-
-### `list_agents`
-
-列出 Lead 与所有持久 teammate，以及可用于寻址的 target 和当前可用状态。inactive 表示没有轮次在执行，不表示任务结果。provisioning 与 failed 描述成员创建状态。
-
-```json
-{
-  "type": "object",
-  "properties": {}
-}
-```
-
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
-
-### `send_message`
-
-向另一名 Team member 发送一条消息。running target 会在最近的步骤边界收到消息；inactive target 会启动或恢复一个 turn。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "target": {
-      "type": "string",
-      "description": "Member target returned by spawn_teammate or list_agents, including lead."
-    },
-    "message": {
-      "type": "string",
-      "description": "Self-contained message for the target."
-    }
-  },
-  "required": [
-    "target",
-    "message"
-  ]
-}
-```
-
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
-
-### `spawn_teammate`
-
-创建一名具名、持久的 teammate。只有 Team Lead 可以调用此工具。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "name": {
-      "type": "string",
-      "description": "Unique lower-kebab-case teammate name."
-    },
-    "description": {
-      "type": "string",
-      "description": "Short description of the delegated responsibility."
-    },
-    "prompt": {
-      "type": "string",
-      "description": "Complete initial task for the teammate."
-    },
-    "context": {
-      "type": "string",
-      "description": "fresh starts without Lead history; fork inherits completed Lead turns. Defaults to fresh.",
-      "enum": [
-        "fresh",
-        "fork"
-      ]
-    }
-  },
-  "required": [
-    "name",
-    "description",
-    "prompt"
-  ]
-}
-```
-
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
+## `@deepseek-ai/dsh-tool-agent-team`
 
 ### `team_task_create`
 
@@ -2980,7 +2898,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 }
 ```
 
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
+来源：[`packages/team/tool-agent-team/src/index.ts`](../packages/team/tool-agent-team/src/index.ts)
 
 ### `team_task_get`
 
@@ -3001,7 +2919,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 }
 ```
 
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
+来源：[`packages/team/tool-agent-team/src/index.ts`](../packages/team/tool-agent-team/src/index.ts)
 
 ### `team_task_list`
 
@@ -3022,7 +2940,11 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
     },
     "owner": {
       "type": "string",
-      "description": "Optional member target from spawn_teammate or list_agents, matching ownerName; use unowned for tasks without an owner."
+      "description": "Optional owner agent name filter; cannot be combined with unowned."
+    },
+    "unowned": {
+      "type": "boolean",
+      "description": "Filter tasks by whether they have no owner; cannot be combined with owner."
     },
     "ready": {
       "type": "boolean",
@@ -3040,7 +2962,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 }
 ```
 
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
+来源：[`packages/team/tool-agent-team/src/index.ts`](../packages/team/tool-agent-team/src/index.ts)
 
 ### `team_task_update`
 
@@ -3096,7 +3018,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
     },
     "owner": {
       "type": "string",
-      "description": "Member target from spawn_teammate or list_agents for Lead-only reassign; omit to unassign."
+      "description": "Agent name of the root or any continuable descendant for root-only reassign; omit to unassign."
     }
   },
   "required": [
@@ -3107,28 +3029,9 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 }
 ```
 
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
+来源：[`packages/team/tool-agent-team/src/index.ts`](../packages/team/tool-agent-team/src/index.ts)
 
-### `wait_agent`
-
-等待本次调用开始后下一次 teammate 状态、消息或共享任务变更。它绝不会唤醒 inactive member；若没有其他 member 正在 running 或 provisioning，则立即返回 noProgress。唤醒或超时后应重新列出状态，而不是轮询。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "timeout_ms": {
-      "type": "integer",
-      "description": "Wait duration in milliseconds, from 10000 through 3600000. Defaults to 30000."
-    }
-  }
-}
-```
-
-来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
-
-这 10 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。
-
+四个任务板工具共享 subagent 树的根 Session。在根 Session 开启 Team 模式，会在标准子代理委派和控制工具之外增加任务板指导。标准子代理控制工具提供必需身份，不受 Team 模式影响。
 
 <a id="deepseek-aidsh-tool-todo"></a>
 
@@ -3136,7 +3039,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 ### `todo_write`
 
-记录并更新任务列表，用于规划多步骤工作并展示进度；简单的单步骤任务无需使用。开始前为每个具体步骤添加一项 todo。只要工作尚未完成，就将正在处理的 todo 标记为 `in_progress`，仅在工作并行运行时同时标记多项。某项 todo 完成后立即标记为 `completed`。
+记录并更新任务列表，用于规划多步骤工作并展示进度；简单的单步骤任务无需使用。开始前为每个具体步骤添加一项 todo。只要工作尚未完成，就将正在处理的 todo 标记为 `in_progress`，仅在工作并行运行时同时标记多项。某项 todo 完成后立即标记为 `completed`。在本轮结束前，用当前状态再调用一次 todo_write，使可见列表反映实际完成的工作。
 
 ```json
 {
@@ -3230,7 +3133,7 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
 
 来源：[`packages/experimental/tool-worktree/src/index.ts`](../packages/experimental/tool-worktree/src/index.ts)
 
-仅通过显式实验组合加载。在现有写权限下从固定的本地提交创建新分支与检出目录，再改变 Session 工作目录。离开时保留分支与检出目录。
+在 Web 和 Desktop 上通过变更请求与工作树组合包启用；其他 profile 可以选择独立组合包。在现有写权限下从固定的本地提交创建新分支与检出目录，再改变 Session 工作目录。离开时保留分支与检出目录。
 
 <a id="deepseek-aidsh-tool-workflow"></a>
 
@@ -3380,7 +3283,7 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
   "properties": {
     "queries": {
       "type": "array",
-      "description": "1–4 search queries; their results are merged.",
+      "description": "1–10 search queries; their results are merged.",
       "items": {
         "type": "string"
       }

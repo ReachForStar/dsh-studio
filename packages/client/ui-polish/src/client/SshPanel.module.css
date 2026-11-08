@@ -60,8 +60,10 @@
   transition: border-color 150ms ease-out, background-color 150ms ease-out, opacity 150ms ease-out;
 }
 
-.button:hover:not(:disabled) {
-  border-color: var(--dsw-alias-accent);
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    border-color: var(--dsw-alias-accent);
+  }
 }
 
 .button:focus-visible {
@@ -122,8 +124,10 @@
   transition: border-color 150ms ease-out, opacity 150ms ease-out;
 }
 
-.closeButton:hover:not(:disabled) {
-  border-color: var(--dsw-alias-accent);
+@media (hover: hover) {
+  .closeButton:hover:not(:disabled) {
+    border-color: var(--dsw-alias-accent);
+  }
 }
 
 .closeButton:focus-visible {
@@ -172,9 +176,11 @@
   transition: background-color 150ms ease-out, color 150ms ease-out;
 }
 
-.crumb:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .crumb:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
 }
 
 .crumb:focus-visible {
@@ -269,8 +275,10 @@
   cursor: pointer;
 }
 
-.dirRow:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .dirRow:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .rowActions {
@@ -289,9 +297,11 @@
   transition: border-color 150ms ease-out, background-color 150ms ease-out, color 150ms ease-out, opacity 150ms ease-out;
 }
 
-.actionBtn:hover:not(:disabled) {
-  border-color: var(--dsw-alias-accent);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .actionBtn:hover:not(:disabled) {
+    border-color: var(--dsw-alias-accent);
+    color: var(--dsw-alias-label-primary);
+  }
 }
 
 .actionBtn:focus-visible {
@@ -334,9 +344,11 @@
   color: var(--dsw-alias-error);
 }
 
-.actionBtn.danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--dsw-alias-error) 12%, transparent);
-  color: var(--dsw-alias-error);
+@media (hover: hover) {
+  .actionBtn.danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--dsw-alias-error) 12%, transparent);
+    color: var(--dsw-alias-error);
+  }
 }
 
 /* Inline file-detail card: metadata read from sftpStat. */

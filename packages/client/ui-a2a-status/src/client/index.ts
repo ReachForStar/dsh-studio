@@ -10,7 +10,7 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@reachforstar/dsh-a2a-status/remote'
 import { A2aStatusSection, type A2aStatusSectionInjected } from './A2aStatusSection.tsx'
 import { A2aStatusStore, type A2aStatusRemoteFace } from './a2a-status-store.ts'
-import { en, zh, type A2aStatusLocaleKey } from './locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh, type A2aStatusLocaleKey } from './locales.ts'
 
 export type { A2aStatusSectionInjected, A2aStatusSectionProps } from './A2aStatusSection.tsx'
 export type { A2aStatusState, A2aStatusRemoteFace } from './a2a-status-store.ts'
@@ -39,7 +39,7 @@ export const inject = ['slots', 'locale', 'remote', 'remote.a2a']
 
 /** 注册 a2a 服务状态指示器并暴露状态 store。 */
 export function apply(ctx: Context): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-a2a-status: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-a2a-status: dictionaries')
 
   const t = ctx.locale.bind(NS)
   const remote: A2aStatusRemoteFace = {

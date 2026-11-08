@@ -57,8 +57,10 @@
   transition: border-color 150ms ease-out, background-color 150ms ease-out, opacity 150ms ease-out;
 }
 
-.export:hover:not(:disabled) {
-  border-color: var(--dsw-alias-accent);
+@media (hover: hover) {
+  .export:hover:not(:disabled) {
+    border-color: var(--dsw-alias-accent);
+  }
 }
 
 .export:focus-visible {

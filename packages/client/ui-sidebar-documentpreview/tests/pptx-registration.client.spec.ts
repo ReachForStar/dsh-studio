@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DocumentPreviewRegistry } from '../src/client/document/registry.ts'
 import { PptxBody } from '../src/client/pptx/PptxBody.tsx'
 import { apply, BINARY_PPTX_EXTENSIONS, PPTX_BODY_ID, PPTX_EXTENSIONS, pptxBodyDefinition } from '../src/client/pptx/index.ts'
-import { en, zh } from '../src/client/pptx/locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh } from '../src/client/pptx/locales.ts'
 
 let dispose: (() => Promise<void>) | undefined
 afterEach(async () => { await dispose?.(); dispose = undefined })
@@ -49,7 +49,7 @@ describe('pptx registration', () => {
     await fiber.await()
     expect(registry.candidates('deck.pptx').map(entry => entry.id)).toEqual([PPTX_BODY_ID])
     expect(registry.getSnapshot()[0]?.title()).toBe(en.title)
-    expect(dictionaries.get('sidebarPptx')).toEqual({ zh, en })
+    expect(dictionaries.get('sidebarPptx')).toEqual({ zh, en, ja, es, fr, de, ru, pt })
     expect(register).toHaveBeenCalledExactlyOnceWith(
       { name: 'sidebar.right.tab.document', key: PPTX_BODY_ID, locale: 'sidebarPptx' },
       PptxBody,

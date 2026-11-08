@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 6c9eaba84a79463a
-  zh: 654f1c75769905b4
+  en: c8cff1da3a4a7a6d
+  zh: c0b316402523de1e
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -72,8 +72,8 @@
   en: 8c8643ef46fd075f
   zh: 8c8643ef46fd075f
 /tool-schema-catalog/deepseek-ai-dsh-tool-executor-ptc/run-code:
-  en: a5d49232a604a2fb
-  zh: 720040d11a3e31c2
+  en: 7917e16cbc2c366f
+  zh: c39eb0420544f04a
 /tool-schema-catalog/deepseek-ai-dsh-plan-mode:
   en: b500b530845e26a9
   zh: b500b530845e26a9
@@ -112,40 +112,40 @@
   zh: 337b0058c2a92239
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-list:
   en: 657b667432b173fc
-  zh: fce42c5db1c16cc3
+  zh: 68e5a0a0917270fa
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-mkdir:
   en: 5832e7a25161c138
-  zh: 3706b34cc3ef765c
+  zh: 5010f12818b48624
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-read:
   en: 375978f6c905b429
-  zh: 9ee297da7e3de5d2
+  zh: 138b5ce78db6026b
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-rename:
   en: 5e7b9cd62ecc76b1
-  zh: 3f2c33297d966864
+  zh: f30236599be15c9e
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-rm:
   en: 300d99cd32340052
-  zh: 2b8e81e36d9bf118
+  zh: e8c583cfd0a9a4a9
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-stat:
   en: 452e126074149a54
-  zh: 559dea8d7e7c1dac
+  zh: 0b1249b24729a8b9
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-write:
   en: d8abaf0e89e52892
-  zh: e7aea573c1b6fc07
+  zh: 93fb717b60ca8f00
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-connect:
   en: 874f08bad8059979
-  zh: 6e55dcb51fee2707
+  zh: 9ca794155e60b300
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-connections:
   en: cb3e5706d05d559b
-  zh: dda3a66bcd498055
+  zh: 5c5ab094278dbaff
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-disconnect:
   en: fc83c860af4b4f20
-  zh: 5a2d34bbf230ebce
+  zh: 017a983c01feebdf
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-exec:
   en: b447fa1ce9e143c3
-  zh: fb32705a210120ca
+  zh: aaf97866e15bdbba
 /tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-test:
   en: 22be175096446d1b
-  zh: 09f9d0a94f297025
+  zh: ac23dd40954b6610
 /tool-schema-catalog/deepseek-ai-dsh-tool-bash-persistent:
   en: bdd9e88c49029e05
   zh: bdd9e88c49029e05
@@ -169,31 +169,31 @@
   zh: 37cc604a46a408a1
 /tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-draw:
   en: a2f88f99e830562e
-  zh: 4b758862f923c4e3
+  zh: b50c716a57258276
 /tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-export:
   en: 67605ac51cb8559b
-  zh: 31ad0b86b44d7ddb
+  zh: 2cef1d17bace4a4c
 /tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-read:
   en: 19f3e1c323b5371b
-  zh: 4948476144834423
+  zh: a1dda26805b969c5
 /tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-write:
   en: 8e35eadfbfce0a3b
-  zh: 00c056427f5c81ec
+  zh: b297896781da8994
 /tool-schema-catalog/reachforstar-dsh-tool-a2a:
   en: 934cd98fc1da38cc
   zh: 934cd98fc1da38cc
 /tool-schema-catalog/reachforstar-dsh-tool-a2a/a2a-peers:
   en: f6102c9fce7264b1
-  zh: 55b34002479b4ce9
+  zh: 9345461aec29f5f2
 /tool-schema-catalog/reachforstar-dsh-tool-a2a/a2a-send:
   en: 8e6abedeafa55039
-  zh: 4af46596b4401781
+  zh: 5b0ee38be2e4f90a
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs:
   en: 07d595ce1f1a5184
   zh: 07d595ce1f1a5184
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs/apply-patch:
-  en: 882f2fa9fac236d6
-  zh: e8320796a5cb038f
+  en: 50b4939c9a1d96ac
+  zh: e733cc1156e2853c
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs/edit:
   en: 5b6a252adde51af6
   zh: 7aa172a5d8b9cbd2
@@ -204,8 +204,8 @@
   en: f6f7a1140066ce04
   zh: d528e01a0939795a
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs/write:
-  en: af50ae531075cf26
-  zh: 974da3c5fbfa5959
+  en: 22e7c232e157a1e2
+  zh: 176da52cdd4765a9
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs-search:
   en: 703fea005ce84c50
   zh: 703fea005ce84c50
@@ -303,29 +303,32 @@
   en: 8daafae6faf7898e
   zh: 8daafae6faf7898e
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-subagent-oar/subagent-oar:
-  en: 6283c3023d6ea436
-  zh: 9c018b8c12a3f1e7
+  en: 4936c61a65f8cdb2
+  zh: 5a1bfbb9738a62a9
 /tool-schema-catalog/deepseek-ai-dsh-tool-subagent:
   en: 841abe0dd5913ea7
   zh: 841abe0dd5913ea7
 /tool-schema-catalog/deepseek-ai-dsh-tool-subagent/list-subagent-models:
-  en: 207228068bc61885
-  zh: 36e9344ee1af8869
+  en: 0e21650bbe8c71c7
+  zh: fe4033efb38d51a3
 /tool-schema-catalog/deepseek-ai-dsh-tool-subagent/subagent:
-  en: 140c965c2b04d02f
-  zh: 95495dad5c77046d
+  en: 9912eeda5bc40b43
+  zh: 0cb70f9a0d923bee
 /tool-schema-catalog/deepseek-ai-dsh-tool-subagent-control:
   en: ab82e130c3413f04
   zh: ab82e130c3413f04
 /tool-schema-catalog/deepseek-ai-dsh-tool-subagent-control/interrupt-agent:
-  en: 9190a32df5e10ddd
-  zh: 48e1b05956d63e26
+  en: a622b15cc2598d51
+  zh: ece4b2af6a11c49c
 /tool-schema-catalog/deepseek-ai-dsh-tool-subagent-control/list-agents:
-  en: ae22e8543d123c39
-  zh: 0991a73ef49bcdea
+  en: 8d50c6e19c9517ab
+  zh: 6ae97d046c5915db
 /tool-schema-catalog/deepseek-ai-dsh-tool-subagent-control/send-message:
-  en: 9d180d8811903366
-  zh: d63f94cffcb952d1
+  en: b53326fedeab850d
+  zh: ecb75b6ce31da009
+/tool-schema-catalog/deepseek-ai-dsh-tool-subagent-control/wait-agent:
+  en: 4b95d11b610d34ca
+  zh: 9b0d9b6012be30d8
 /tool-schema-catalog/deepseek-ai-dsh-tool-jobs:
   en: 9be673b1604d0114
   zh: 9be673b1604d0114
@@ -336,44 +339,29 @@
   en: 0c37fb1fed979d72
   zh: 5ea9d07f5a4a8a6c
 /tool-schema-catalog/deepseek-ai-dsh-tool-jobs/job-output:
-  en: 1e084359a8cd42b3
-  zh: 3f6c245dbbb2b920
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team:
-  en: 6b1106f417b50db6
-  zh: 6b1106f417b50db6
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/interrupt-agent:
-  en: c3c7af05ceb9f8c9
-  zh: ec379e0b42110c6a
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/list-agents:
-  en: f9457f033f75f00a
-  zh: a2d60ec44118c34c
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/send-message:
-  en: ec50e6a0b86aecc6
-  zh: 29c8728536a5adf1
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/spawn-teammate:
-  en: 02d6cc746e234b99
-  zh: 49bc60ac098bca48
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/team-task-create:
-  en: 91e84febe063c3bd
-  zh: 550555d0f44f603b
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/team-task-get:
-  en: 1c6ae0aba0b8041d
-  zh: f8d634387b74121d
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/team-task-list:
-  en: 2084d494aae8798a
-  zh: e4c136c91028a7b1
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/team-task-update:
-  en: 2eac7360ba68b1bd
-  zh: b5d676bf288c245e
-/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/wait-agent:
-  en: e70c77a45832bb28
-  zh: 7d03bec294b65452
+  en: 2977f731fb90d147
+  zh: 4f422613ff720055
+/tool-schema-catalog/deepseek-ai-dsh-tool-agent-team:
+  en: 3f1a9c3509853972
+  zh: 3f1a9c3509853972
+/tool-schema-catalog/deepseek-ai-dsh-tool-agent-team/team-task-create:
+  en: ac9ed819b705b4b8
+  zh: 306477d2d457369a
+/tool-schema-catalog/deepseek-ai-dsh-tool-agent-team/team-task-get:
+  en: bca1abf330638c19
+  zh: 903bfa977f75c046
+/tool-schema-catalog/deepseek-ai-dsh-tool-agent-team/team-task-list:
+  en: 8001eda7e9ff6a25
+  zh: 2414761029f21404
+/tool-schema-catalog/deepseek-ai-dsh-tool-agent-team/team-task-update:
+  en: 9acd1c5b2fac9853
+  zh: 3bd81e9cd1f1c28d
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo:
   en: dea62d26fb18ff68
   zh: dea62d26fb18ff68
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo/todo-write:
   en: 1c2bc533a75340df
-  zh: 25bd9c6b1ce783d8
+  zh: 5833464472c868f6
 /tool-schema-catalog/deepseek-ai-dsh-tool-working-directory:
   en: 1bdc4627ca4fff29
   zh: 1bdc4627ca4fff29
@@ -384,8 +372,8 @@
   en: d5f5679abe86e316
   zh: d5f5679abe86e316
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-worktree/create-worktree:
-  en: d8fe3c566ba2147c
-  zh: baf372cb9242670c
+  en: 41950f76db71e7f7
+  zh: 654d2e5505ff3d3c
 /tool-schema-catalog/deepseek-ai-dsh-tool-workflow:
   en: bb38a9d29f46563c
   zh: bb38a9d29f46563c

@@ -201,10 +201,15 @@ export function ConversationContent(props: ConversationContentProps) {
         widthLabel={t('width.slider')}
         widthValueText={width => t('width.sliderValue', { width: String(Math.round(width)) })}
       />
-      <div className={css.scrollBody} data-conversation-scroll="">
-        {sessionId === undefined ? null : <Views />}
-        {composerSeat}
-      </div>
+      {/* The frame wraps the scroll body in every phase, so leaving the home keeps the composer mounted. */}
+      {renderSlot('conversation.hero.frame', { hero: hero && props.variant !== 'embedded' }, {
+        children: (
+          <div className={css.scrollBody} data-conversation-scroll="">
+            {sessionId === undefined ? null : <Views />}
+            {composerSeat}
+          </div>
+        ),
+      })}
     </div>
   )
 }

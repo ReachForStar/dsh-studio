@@ -28,8 +28,10 @@
   cursor: pointer;
 }
 
-.tool:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .tool:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .tool:disabled {

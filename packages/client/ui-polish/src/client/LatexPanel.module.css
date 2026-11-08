@@ -54,8 +54,10 @@
   cursor: pointer;
 }
 
-.btn:hover:not(:disabled) {
-  border-color: var(--dsw-alias-accent, #888);
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    border-color: var(--dsw-alias-accent, #888);
+  }
 }
 
 .btn:disabled {
@@ -128,8 +130,10 @@
   text-overflow: ellipsis;
 }
 
-.treeFile:hover {
-  background: var(--dsw-alias-fill-secondary, rgba(128, 128, 128, 0.08));
+@media (hover: hover) {
+  .treeFile:hover {
+    background: var(--dsw-alias-fill-secondary, rgba(128, 128, 128, 0.08));
+  }
 }
 
 .treeFile[data-current="1"] {

@@ -61,8 +61,10 @@
   cursor: pointer;
 }
 
-.chip:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .chip:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .upstream {
@@ -123,9 +125,11 @@
   cursor: pointer;
 }
 
-.iconBtn:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .iconBtn:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
 }
 
 .iconBtn:disabled {
@@ -180,9 +184,11 @@
   cursor: pointer;
 }
 
-.menuItem:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .menuItem:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
 }
 
 .menuItem:disabled {
@@ -235,10 +241,12 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-.ghostBtn:hover:not(:disabled),
-.smallBtn:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .ghostBtn:hover:not(:disabled),
+  .smallBtn:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
 }
 
 .primaryBtn {
@@ -247,8 +255,10 @@
   color: #fff;
 }
 
-.primaryBtn:hover:not(:disabled) {
-  filter: brightness(1.08);
+@media (hover: hover) {
+  .primaryBtn:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
 }
 
 .dangerBtn {
@@ -256,8 +266,10 @@
   color: var(--dsw-alias-state-error-primary);
 }
 
-.dangerBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+@media (hover: hover) {
+  .dangerBtn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+  }
 }
 
 .ghostBtn:disabled,
@@ -348,8 +360,10 @@
   cursor: pointer;
 }
 
-.groupHead:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .groupHead:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .chev {
@@ -380,8 +394,10 @@
   cursor: pointer;
 }
 
-.fileRow:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .fileRow:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .statusBadge {
@@ -424,12 +440,16 @@
   flex: none;
 }
 
-.fileRow:hover .fileActions {
-  display: inline-flex;
+@media (hover: hover) {
+  .fileRow:hover .fileActions {
+    display: inline-flex;
+  }
 }
 
-.fileRow:hover .fileDir {
-  display: none;
+@media (hover: hover) {
+  .fileRow:hover .fileDir {
+    display: none;
+  }
 }
 
 .rowBtn {
@@ -447,9 +467,11 @@
   cursor: pointer;
 }
 
-.rowBtn:hover:not(:disabled) {
-  background: var(--dsw-alias-border-l2);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .rowBtn:hover:not(:disabled) {
+    background: var(--dsw-alias-border-l2);
+    color: var(--dsw-alias-label-primary);
+  }
 }
 
 .rowBtn:disabled {
@@ -509,8 +531,10 @@
   cursor: pointer;
 }
 
-.historyToggle:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .historyToggle:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .historyBody {
@@ -563,8 +587,10 @@
   cursor: default;
 }
 
-.commitRow:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .commitRow:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .commitSubj {
@@ -856,8 +882,10 @@
   user-select: none;
 }
 
-.groupBulk:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .groupBulk:hover {
+    text-decoration: underline;
+  }
 }
 
 /* Untracked directory tree ---------------------------------------------------- */
@@ -878,8 +906,10 @@
   border-radius: var(--dsw-radius-sm);
 }
 
-.treeDir:hover {
-  background: var(--dsw-alias-fill-secondary, rgba(128, 128, 128, 0.08));
+@media (hover: hover) {
+  .treeDir:hover {
+    background: var(--dsw-alias-fill-secondary, rgba(128, 128, 128, 0.08));
+  }
 }
 
 .treeFileIndent {

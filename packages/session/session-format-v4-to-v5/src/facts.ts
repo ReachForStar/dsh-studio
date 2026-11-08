@@ -70,17 +70,37 @@ export function childCatalogFact(source: SessionFormatJsonObject): SessionFormat
  * @returns validated catalog payload.
  */
 export function catalogFact(value: SessionFormatJsonValue, subject = 'subagent/catalog'): SessionFormatJsonObject {
-  if (!isSessionFormatJsonObject(value) || (value['version'] !== 0 && value['version'] !== 1 && value['version'] !== 2)
-    || typeof value['childId'] !== 'string'
-    || (value['mode'] !== 'continuable' && value['mode'] !== 'one-shot' && value['mode'] !== 'external' && value['mode'] !== 'unknown')
-    || ((value['version'] === 2) !== (value['mode'] === 'external'))
-    || (value['version'] === 0 && value['mode'] === 'unknown')
-    || (value['mode'] === 'continuable' && typeof value['label'] !== 'string')
-    || (value['label'] !== undefined && typeof value['label'] !== 'string')) {
+  if (!isSessionFormatJsonObject(value) || !isReleasedCatalogFact(value)) {
     throw new SessionFormatError(`${subject} requires a supported versioned catalog fact`)
   }
   sessionFormatCount(value['childCreatedAt'], 'catalog child creation time')
   return value
+}
+
+/**
+ * Whether a catalog fact belongs to a released payload version. V0 records local
+ * modes, V1 adds unknown children, V2 records external executions, and V3 adds
+ * each child's name.
+ * @param value - catalog payload already known to be a JSON object.
+ * @returns true when the version and mode pairing is one a released writer emitted.
+ */
+function isReleasedCatalogFact(value: SessionFormatJsonObject): boolean {
+  if (typeof value['childId'] !== 'string') return false
+  if (value['label'] !== undefined && typeof value['label'] !== 'string') return false
+  const mode = value['mode']
+  switch (value['version']) {
+    case 0:
+      return mode === 'one-shot' || (mode === 'continuable' && typeof value['label'] === 'string')
+    case 1:
+      return mode === 'one-shot' || mode === 'unknown' || (mode === 'continuable' && typeof value['label'] === 'string')
+    case 2:
+      return mode === 'external'
+    case 3:
+      return typeof value['name'] === 'string'
+        && (mode === 'external' || (mode === 'continuable' && typeof value['label'] === 'string'))
+    default:
+      return false
+  }
 }
 
 /**

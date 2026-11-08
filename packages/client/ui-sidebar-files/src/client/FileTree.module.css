@@ -68,14 +68,21 @@
   height: 14px;
 }
 
-.item:hover .rowDelete,
+@media (hover: hover) {
+  .item:hover .rowDelete {
+    opacity: 1;
+  }
+}
+
 .rowDelete:focus-visible {
   opacity: 1;
 }
 
-.rowDelete:hover {
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .rowDelete:hover {
+    color: var(--dsw-alias-label-primary);
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 /* Local Components can render nothing; empty wrappers must not take row space. */

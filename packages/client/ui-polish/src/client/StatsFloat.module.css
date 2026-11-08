@@ -30,8 +30,10 @@
   transition: opacity 120ms ease, border-radius 120ms ease;
 }
 
-.root:hover {
-  opacity: 1;
+@media (hover: hover) {
+  .root:hover {
+    opacity: 1;
+  }
 }
 
 .root:focus-visible {

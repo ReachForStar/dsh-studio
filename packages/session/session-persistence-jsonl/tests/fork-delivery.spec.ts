@@ -1,6 +1,6 @@
 /** Fork history retains delivery ownership without requiring a source relationship. */
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { Session, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
+import SessionStore, { SESSION_FORMAT_VERSION, Session, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -20,7 +20,7 @@ async function fixture(compression: 'none' | 'zstd') {
   async function persist(session: Session) {
     const writer = await ctx.sessionPersistence.create(session.header, { inheritedEventCount: session.inheritedEventCount })
     try { await writer.append(session.snapshotEvents()) } finally { await writer.close() }
-    return generationLogPath(root, undefined, session.id, 4, compression)
+    return generationLogPath(root, undefined, session.id, SESSION_FORMAT_VERSION, compression)
   }
   return { ctx, persist }
 }
@@ -29,7 +29,7 @@ function delivered(session: Session): void {
   const start = session.append('turn/start', { turn: 1 })
   session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
   session.append('session-log-deepseek/delivery-accepted', {
-    sessionId: session.id, sessionFormatVersion: 4, throughSeq: start.seq,
+    sessionId: session.id, sessionFormatVersion: SESSION_FORMAT_VERSION, throughSeq: start.seq,
   })
 }
 
@@ -70,7 +70,7 @@ describe.each(['none', 'zstd'] as const)('fork delivery persistence (%s)', (comp
     const invalidTarget = damage === 'inherited-through' ? source : ctx.sessions.fork(source, undefined, SessionId('child'))
     invalidTarget.append('session-log-deepseek/delivery-accepted', {
       sessionId: damage === 'foreign-own' ? source.id : invalidTarget.id,
-      sessionFormatVersion: 4,
+      sessionFormatVersion: SESSION_FORMAT_VERSION,
       throughSeq: damage === 'foreign-own' ? SessionSeq(0) : SessionSeq(invalidTarget.seq),
     })
     const child = damage === 'inherited-through' ? ctx.sessions.fork(source) : invalidTarget

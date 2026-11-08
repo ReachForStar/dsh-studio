@@ -19,6 +19,60 @@ export const en = {
   unsupported: 'Video preview requires the complete file contents.',
 } satisfies Record<VideoPreviewKey, string>
 
+/** Japanese mirror. */
+export const ja = {
+  title: '動画',
+  preview: '動画プレビュー：{name}',
+  loading: '読み込み中…',
+  failed: 'この動画を再生できませんでした',
+  unsupported: '動画プレビューにはファイル全体の内容が必要です',
+} satisfies Record<VideoPreviewKey, string>
+
+/** Spanish mirror. */
+export const es = {
+  title: 'Vídeo',
+  preview: 'Vista previa del vídeo: {name}',
+  loading: 'Leyendo…',
+  failed: 'No se pudo reproducir este vídeo.',
+  unsupported: 'La vista previa del vídeo requiere el contenido completo del archivo.',
+} satisfies Record<VideoPreviewKey, string>
+
+/** French mirror. */
+export const fr = {
+  title: 'Vidéo',
+  preview: 'Aperçu vidéo : {name}',
+  loading: 'Lecture…',
+  failed: 'Impossible de lire cette vidéo.',
+  unsupported: "L'aperçu vidéo nécessite le contenu complet du fichier.",
+} satisfies Record<VideoPreviewKey, string>
+
+/** German mirror. */
+export const de = {
+  title: 'Video',
+  preview: 'Videovorschau: {name}',
+  loading: 'Wird gelesen…',
+  failed: 'Dieses Video konnte nicht wiedergegeben werden.',
+  unsupported: 'Die Videovorschau benötigt den vollständigen Dateiinhalt.',
+} satisfies Record<VideoPreviewKey, string>
+
+/** Russian mirror. */
+export const ru = {
+  title: 'Видео',
+  preview: 'Предпросмотр видео: {name}',
+  loading: 'Чтение…',
+  failed: 'Не удалось воспроизвести это видео.',
+  unsupported: 'Для предпросмотра видео требуется полное содержимое файла.',
+} satisfies Record<VideoPreviewKey, string>
+
+/** Portuguese mirror. */
+export const pt = {
+  title: 'Vídeo',
+  preview: 'Prévia do vídeo: {name}',
+  loading: 'Lendo…',
+  failed: 'Não foi possível reproduzir este vídeo.',
+  unsupported: 'A visualização do vídeo exige o conteúdo completo do arquivo.',
+} satisfies Record<VideoPreviewKey, string>
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Video preview selection, accessible name, and status text. */

@@ -248,7 +248,7 @@ export class PiLoop extends Service implements AgentFactory {
     }
 
     const detachSession = this.ctx.sessions.enter(agent.session)
-    const detachAgent = this.ctx.agents.enter(agent, undefined)
+    const detachAgent = this.ctx.agents.enter(agent)
     this.ctx.sessions.announce(agent.session)
     await this.ctx.agents.announce(agent, source)
 

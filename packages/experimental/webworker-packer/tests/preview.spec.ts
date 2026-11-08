@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createSessionFormatCatalogWithChildren, sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog'
-import { sessionFormatLogFilename } from '@deepseek-ai/dsh-session-format'
+import { sessionFormatLogFilename, parseSessionFormatLogFilename } from '@deepseek-ai/dsh-session-format'
 import { packPreviewFixture } from '../src/preview.ts'
 import { packVfsOverlay } from '../src/pack.ts'
 import { previewFixtures } from '../src/repository.ts'
@@ -54,8 +54,14 @@ describe('Node preparation of Preview Session data', () => {
       if (original.files[path] !== undefined) {
         expect(projected.files[path]).toEqual(original.files[path])
       } else {
-        const sourcePath = path.replace(/\/session\.v\d+\.jsonl$/u, '/session.v3.jsonl')
-        expect(current).toEqual(restore(original.files[sourcePath]))
+        // The packer migrates the newest predecessor generation beside each Session.
+        const directory = path.slice(0, path.lastIndexOf('/') + 1)
+        const predecessor = Object.keys(original.files)
+          .filter(candidate => candidate.startsWith(directory))
+          .map(candidate => ({ candidate, version: parseSessionFormatLogFilename(candidate.slice(directory.length)) }))
+          .filter((entry): entry is { candidate: string; version: number } => entry.version !== undefined)
+          .sort((left, right) => right.version - left.version)[0]!
+        expect(current).toEqual(restore(original.files[predecessor.candidate]))
       }
       expect(JSON.parse(text(projected.files[path]).split('\n')[0]!)).toMatchObject({ version: currentVersion })
     }

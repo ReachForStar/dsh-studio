@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DocumentPreviewRegistry } from '../src/client/document/registry.ts'
 import { VideoBody } from '../src/client/video/VideoBody.tsx'
 import { apply, BINARY_VIDEO_EXTENSIONS, VIDEO_BODY_ID, VIDEO_EXTENSIONS, videoBodyDefinition } from '../src/client/video/index.ts'
-import { en, zh } from '../src/client/video/locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh } from '../src/client/video/locales.ts'
 
 let dispose: (() => Promise<void>) | undefined
 afterEach(async () => { await dispose?.(); dispose = undefined })
@@ -51,7 +51,7 @@ describe('video registration', () => {
       expect(registry.candidates(`CLIP.${extension}`).map(entry => entry.id)).toEqual([VIDEO_BODY_ID])
     }
     expect(registry.getSnapshot()[0]?.title()).toBe(en.title)
-    expect(dictionaries.get('sidebarVideo')).toEqual({ zh, en })
+    expect(dictionaries.get('sidebarVideo')).toEqual({ zh, en, ja, es, fr, de, ru, pt })
     expect(register).toHaveBeenCalledExactlyOnceWith(
       { name: 'sidebar.right.tab.document', key: VIDEO_BODY_ID, locale: 'sidebarVideo' },
       VideoBody,

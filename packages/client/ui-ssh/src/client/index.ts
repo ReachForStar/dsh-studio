@@ -13,7 +13,7 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@reachforstar/dsh-host-ssh-remotes/remote'
 import { SshSection, type SshSectionInjected } from './SshSection.tsx'
 import { SshConnectionsStore, type SshRemoteFace } from './ssh-store.ts'
-import { en, zh, type SshLocaleKey } from './locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh, type SshLocaleKey } from './locales.ts'
 
 export type { SshSectionInjected, SshSectionProps } from './SshSection.tsx'
 export type { SshConnectionsState, SshRemoteFace } from './ssh-store.ts'
@@ -34,7 +34,7 @@ export const inject = ['slots', 'locale', 'remote', 'remote.ssh']
 
 /** Contribute the SSH connection-management section to Web Settings. */
 export function apply(ctx: Context): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-ssh: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-ssh: dictionaries')
 
   const t = ctx.locale.bind(NS)
   const remote: SshRemoteFace = {

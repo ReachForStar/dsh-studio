@@ -3,7 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '../index.ts'
 import type { DocumentPreviewDefinition } from '../document/registry.ts'
 import { PptxBody } from './PptxBody.tsx'
-import { en, zh } from './locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
 
 /** PowerPoint implementation identity, shared by metadata and the keyed slot. */
 export const PPTX_BODY_ID = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/pptx'
@@ -37,7 +37,7 @@ export function pptxBodyDefinition(title: () => string): DocumentPreviewDefiniti
  */
 export function apply(ctx: Context): void {
   const t = ctx.locale.bind('sidebarPptx')
-  ctx.effect(() => ctx.locale.register('sidebarPptx', { zh, en }), 'document-pptx: dictionaries')
+  ctx.effect(() => ctx.locale.register('sidebarPptx', { zh, en, ja, es, fr, de, ru, pt }), 'document-pptx: dictionaries')
   ctx.effect(() => ctx.documentPreviews.register(pptxBodyDefinition(() => t('title'))), 'document-pptx: metadata')
   ctx.effect(() => ctx.slots.inject('sidebar.right.tab.document', () => ctx.slots.register(
     { name: 'sidebar.right.tab.document', key: PPTX_BODY_ID, locale: 'sidebarPptx' }, PptxBody,

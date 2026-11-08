@@ -117,8 +117,10 @@ export function assertReleasedV5Relationships(artifact: SessionFormatArtifact, k
     assertV5DeveloperData(event)
     assertV5MessageSources(event)
     const deliveryId = validateDeliveryAccepted(event, 5)
+    // The inherited prefix is the source's own history, so a marker naming the
+    // source stays valid whether or not this fork declares a parent Session.
     if (deliveryId !== undefined
-      && !(artifact.header.parentSession !== undefined && event.seq < artifact.inheritedEventCount)
+      && event.seq >= artifact.inheritedEventCount
       && deliveryId !== artifact.header.id) {
       throw new SessionFormatError('current-generation delivery marker names the wrong Session')
     }

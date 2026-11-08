@@ -8,6 +8,7 @@ export const desktopPackageWorkflows = {
   'win-x64': '.github/workflows/windows-package.yml',
 } as const
 
+// fork 扩展：Linux 安装包由 release-desktop.yml 统一产出，不经单平台打包工作流，故不在此列。
 const targetSchema = z.enum(['mac-arm64', 'mac-x64', 'win-x64'])
 
 /** Machine labels are unique; a scalar target is shorthand for a one-element target list. */

@@ -596,11 +596,9 @@ export class XingchenService extends Service {
       label: XINGCHEN_ROLE_NAMES[role],
       delivery: 'caller',
       signal: signal ?? new AbortController().signal,
-      request: {
-        prompt: [{ type: 'text', text }],
-        parent,
-        ...(seat.model === undefined ? {} : { agentOptions: seat.model }),
-      },
+      prompt: [{ type: 'text', text }],
+      parent,
+      ...(seat.model === undefined ? {} : { agentOptions: seat.model }),
     })
     // A local seat can stall — a composition whose child never drives a turn,
     // for instance — and a dispatch that waits forever leaves the command with

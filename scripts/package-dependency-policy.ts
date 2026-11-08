@@ -55,6 +55,8 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
   '@deepseek-ai/dsh-computer-use/brand': ['ComputerUseProviderName'],
   '@deepseek-ai/dsh-credentials': ['credentialKey'],
   '@deepseek-ai/dsh-deque': ['Deque'],
+  // Builds a dispatcher from the resolved proxy policy; the caller owns and closes it.
+  '@deepseek-ai/dsh-http-proxy': ['createRouteDispatcher'],
   // The Liveshare wire codec and identity helpers are stateless functions over caller-owned values.
   '@deepseek-ai/dsh-experimental-liveshare-protocol': [
     'LIVESHARE_CAPABILITIES', 'LIVESHARE_PROTOCOL_VERSION', 'parseRelayFrame', 'parseShareAccessState',
@@ -63,7 +65,9 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
   ],
   '@deepseek-ai/dsh-fs': ['FsVersion'],
   '@deepseek-ai/dsh-home-paths': ['dshHomePath'],
-  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createAssistantMessage', 'createUserMessage'],
+  // The shipped profile templates are plain data; a consumer reads their bundle names only.
+  '@deepseek-ai/dsh-official-bundles': ['PROFILE_TEMPLATES'],
+  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals'],
   '@deepseek-ai/dsh-session': ['SessionId'],
   '@deepseek-ai/dsh-session-format': ['sessionFormatLogFilename'],
   '@deepseek-ai/dsh-storage-domain': ['defineDomain'],

@@ -35,7 +35,9 @@ export function packPreviewFixture(trees: readonly ImageTree[]): PackOverlayResu
     if (!isSessionFormatJsonObject(header) || header['version'] !== source.version || header['id'] !== source.id) {
       throw new Error(`preview fixture: ${source.path} disagrees with its Session header`)
     }
-    const catalog = source.version <= 3 ? historicalSessionFormatCatalog : sessionFormatCatalog
+    const catalog = source.version < sessionFormatCatalog.currentVersion
+      ? historicalSessionFormatCatalog
+      : sessionFormatCatalog
     const restore = catalog.createRestore(header, { recovery: 'strict', validation: 'current' })
     const events: unknown[] = rows.map(row => JSON.parse(row) as unknown)
     for (const event of events) restore.decodeRow(event)

@@ -67,8 +67,8 @@ export function createElectronBuilderConfig(
   if (skipNotarization && (unsigned || resolvedPlatform !== 'darwin')) throw new Error('Skipping notarization requires a signed macOS build')
   const packagesMacOS = targetPlatform === 'darwin' || (targetPlatform === undefined && hostPlatform === 'darwin')
   const packagesWindows = resolvedPlatform === 'win32'
-  const policy = unsigned && env.DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN === undefined
-    && env.DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN === undefined ? undefined : resolveDesktopPolicyEnvironment(env)
+  // An unsigned build carries no mandatory-update policy, on any platform.
+  const policy = unsigned ? undefined : resolveDesktopPolicyEnvironment(env)
   if (resolvedPlatform === 'win32') installWindowsDirectoryInstaller()
   const macOSSigning = packagesMacOS && !unsigned ? resolveMacOSSigningEnvironment(env) : undefined
   if (packagesMacOS && !unsigned && !skipNotarization) resolveMacOSNotarizationEnvironment(env)
@@ -78,7 +78,10 @@ export function createElectronBuilderConfig(
   let dshDestination
   let windowsCode = []
   const unpack = ['**/*.{node,dylib,dll,so,exe}', '**/*.so.*', '**/spawn-helper', '**/@vscode/ripgrep-*/bin/rg',
-    `**/node_modules/@deepseek-ai/libreoffice-kit-${resolvedPlatform}-${resolvedArch}/**/*`]
+    `**/node_modules/@deepseek-ai/libreoffice-kit-${resolvedPlatform}-${resolvedArch}/**/*`,
+    // LaunchServices opens the Computer Use helper as an application, so every file of its bundles stays on disk.
+    // Both architectures ship: they form one notarized payload whose manifest staging verifies as a whole.
+    '**/node_modules/@deepseek-ai/dsh-experimental-cua-macos/native/bin/**/*']
   const windowsSigner = packagesWindows && !unsigned
     ? createWindowsTokenSigner({
         certificateFile: env.DSH_DESKTOP_WINDOWS_CER_FILE,
@@ -111,7 +114,6 @@ export function createElectronBuilderConfig(
   // the artifact names, the update feed, and the installed app.getVersion() the updater compares against.
   const productVersion = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).version
   const buildVersion = resolveDesktopBuildVersion(env, productVersion)
-  if (update?.channel === 'latest' && buildVersion.includes('-')) throw new Error('desktop package: latest requires a stable version')
   const packaged = resolveDesktopBuildCommit(env)
   return {
     appId,

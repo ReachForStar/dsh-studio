@@ -6,16 +6,12 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
-    - tab "Git"
-    - tab "Canvas"
-    - tab "LaTeX"
-    - tab "SSH"
   - button "More conversation views"
-- slider "Adjust the conversation content width": "896"
 - text: Reply with a one-sentence description of event sourcing, then stop. {{clock}}
 - button "Copy"
 - status: Failed
 - button "Failed" [disabled] [expanded]
+- button "Injected context"
 - group:
   - status: Retried model request (2/2) · {{duration}}
 - status:
@@ -25,5 +21,5 @@
 - button "Add files or run commands"
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
-- button "Send message" [disabled]
-- button "1 turns · 1 steps"
+- button "Continue generating"
+- text: 1 turns 1 steps

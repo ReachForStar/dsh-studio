@@ -111,7 +111,7 @@ status: active
 | `@reachforstar/dsh-subagent-pi` | host 子智能体提供方 |
 | `@reachforstar/dsh-llm-amax` | host 模型提供方（fork 已并入 `llm-pi-ai`，只在插件仓库独立存在） |
 
-**B. 已是独立 Cordis 插件，但只在 fork 内组合**
+**B. 已是独立 Cordis 插件，本次已同步进插件仓库**
 
 16 个 `@reachforstar/*` 包都是非 private 的独立包，通过 preset patch 组合，不依赖 fork 对 harness 的补丁：
 
@@ -120,7 +120,18 @@ status: active
 - 星域：`dsh-xingchen`
 - 另外三个已在 A 类
 
-这些包可以按同样方式抽到插件仓库，代价是把 `workspace:*` 改成已发布版本、并跟随官方 0.2.2 的客户端 API 迁移（`dsh-client-runtime` 已拆分）。
+本次同步了 9 个包到 `ReachForStar/dsh-client-ui-polish`（提交 `b8ac7bb`）：`ui-polish`、`tool-excalidraw`、`subagent-pi`、`ssh`、`ssh-local`、`host-ssh-remotes`、`subprocess-sftp`、`tool-ssh`、`client-ui-ssh`。`llm-amax` 沿用插件仓库既有副本。
+
+同步代价与两条硬约束：
+
+- 依赖改写为已发布版本：`@deepseek-ai/cordis` → `~4.1.0`、`@deepseek-ai/schemastery` → `~3.19.0`、`cordis-plugin-*` → `^1.1.0`、其余 `@deepseek-ai/*` → `0.2.2-rc.1`、`@reachforstar/*` → `workspace:^`。客户端跟随官方 0.2.2 的拆分，改用 `dsh-client-store`、`dsh-client-connection`、`dsh-client-ui-slots`。
+- `fs-sftp` 无法同步：它依赖 fork 给 `ctx.fs` 新增的 `remove`/`writeBytes` 与 `@deepseek-ai/dsh-fs` 拆出的 text 工具函数，`0.2.2-rc.1` 没有这些导出。A2A 与星域包未纳入本次范围。
+
+移植时另有三处必须绕开已发布接口的缺口：
+
+- 发布版 `dsh-api-remotes` 的转发 allowlist 不含任何 `ssh/*` 条目，`ui-polish` 的 SSH PTY 订阅改为 host 侧自建 SSE 路由 `/ssh-events`，客户端用 `EventSource` 消费。
+- 发布版 `ToolCallCommonProps` 没有 `openView`，`ExcalidrawToolView` 只渲染标题、参数摘要与 SVG 缩略图。
+- 发布版 `compactIfNeeded` 没有第 4 个参数，插件版 `ui-polish` 不含「自动压缩阈值」功能。
 
 **C. 必须留在 fork 补丁，不能插件化**
 
@@ -147,7 +158,8 @@ status: active
 - `pnpm run typecheck`：5 门全过。
 - `pnpm run build`：通过（`build:artifacts` + `build:check`）。
 - `pnpm run doc-sync`：通过；17 个生成脚本全部重生成成功。
-- 全量 `pnpm run test`：55118 项通过，20 项失败全部归因为环境与基线（见下），无合并引入者。
+- 全量 `pnpm run test`：55118 项通过，20 项失败分布在 5 个文件，全部是 5 秒超时。
+- 把这 5 个文件单独复跑：217/218 通过；唯一失败是 `controller.host.spec.ts` 断言 git 报错前缀 `fatal: `，未设 `LC_ALL=C` 时 git 输出中文「致命错误」，加上 `LC_ALL=C` 后该用例通过。超时与语言环境都属本机条件，无合并引入的失败。
 - `verify-package-readme-model-experience`、`verify-persistence-changes`、`verify-persistence-formats --write`、`verify-translation-pairing`（1259 对）、`verify-md-links`（2575 文件）通过。
 - 推送 `develop` 与 `master` 前的 `typecheck` 钩子均通过。
 

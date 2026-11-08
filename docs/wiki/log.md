@@ -685,3 +685,14 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 结论：无需改动。根 `package.json` 与 391 个 dsh 家族成员（含 18 个 fork 独有包）全部为 `0.2.2-alpha.2`，与上游 master 根版本及最新标签 `dsh-v0.2.2-alpha.2` 一致。
 - 逐一比对与上游同路径的包、vendor 9 个成员与 native/python 的 manifest，无版本差异；fork 包不含 `engines.dsh` 或固定版本字面量。
 - `release:verify --family dsh` 与 `--family vendor` 均通过；核对命令记入[fork 发布流程](queries/fork-release-dsh-0.2.1-rc.2.md#2026-10-30-版本同步复核)。
+
+## [2026-11-08] merge | 合并上游 upstream/master（926 提交）
+
+- 基点 `ce7073d5125`，上游 `fcc0ad4621`（含 `dsh-v0.2.2-alpha.3`、`dsh-v0.2.2-rc.1`），fork 侧 300 个非合并提交。
+- 148 个冲突文件按来源取舍：fork 已删除的维持删除、上游单方改动取上游、双方都改的逐块合并、生成物先取上游再重生成。合并提交 3271 个文件、+93922/−59092。
+- 重点取舍：宽度控制保留 fork 滑块并吸收上游 `conversation.hero.frame` 槽与 `widthControls` 本地槽；桌面更新通道保留 `latest`/`linux-x64` 并采纳 `stable` 与 `publishChannel`；`startActivation` 参数按上游扁平化；locale 统一 8 语种。
+- 合并引入的 8 处缺陷已修：v5 delivery 归属只校验本 Session 新增事件、webworker-packer 前驱版本按文件名取最高、`vfs-example` 夹具升级到 v5、删除上游迁走包的旧 `lib/` 残留、文档预览注册测试同步 8 语种、8 个 CSS Module 的 `:hover` 包媒体查询、`subagent-pi` 测试补装 `SessionProjectionRegistry`、双语配对与 catalog 重录。
+- 归属核对 27 项 fork 修复：仅 `6242e5febb`（重复 `ToolCallId`）、`8fcad26785`（8192 堆）与 `d2e58b6e7e`（上游删除 `ToolRuntimeScheduler`，修复对象消失）由上游解决，其余 24 项保留 fork。
+- 插件化结论：整包能力（ui-polish、tool-excalidraw、subagent-pi、llm-amax 及 16 个 `@reachforstar/*` 中的 A2A/SSH/星域包）可插件化；会话格式 v5、`ctx.fs` 新成员、`ToolCallCommonProps.openView`、宽度滑块本地槽、桌面外壳与构建发布脚本必须留 fork。
+- 验证：`typecheck` 5 门、`build`、`doc-sync`、17 个生成脚本通过；全量 `test` 55118 项通过，20 项失败归因为本机 git 2.34.1 不支持 `worktree -z` 与 5 秒超时，换 git 2.56.0 后相关包全过。
+- 已推送 `me/develop` 与 `me/master`；细节见[合并记录](queries/upstream-merge-2026-11-08.md)。

@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-10-30
+updated: 2026-11-09
 ---
 
 # Wiki 索引
@@ -20,6 +20,7 @@ updated: 2026-10-30
 - [工作区文件删除（ctx.fs.remove → workspaceFiles.delete → 右侧栏文件树）](entities/workspace-file-deletion.md) — 四层删除链的各层要点、父目录围栏与 `FS_NOT_EMPTY`，以及 `workspaceFiles/remove` 与客户端命名空间服务撞名导致整包启动失败、改方法名后必须重建两侧产物的踩坑。
 - [星域多智能体协作（dsh-xingchen）](entities/xingchen-multi-agent.md) — 四角色划分、本地与 A2A 席位的配置判断、派发入口、会话投影与现有预设接线；2026-10-27 新增 `autoRoute` 自动路由（`enabled` + `holdRole`）接入 `agent/pre-step`。
 - [本地 A2A 联调栈（deploy/a2a）](entities/local-a2a-stack.md) — 一条命令拉起 Kafka + 三网关 + Web；已运行则跳过、Kafka 停了自动重启、配置单一来源（`A2A_CONFIG`）与运行期日志位置；Linux 上 `sg docker` 提权、网关 `npm ci` 前置、9310 双占用让位规则。
+- [论文阅读器（ui-paper-reader）](entities/ui-paper-reader.md) — 右侧栏 PDF 阅读页：宿主 `/paper-reader` 路由与落盘目录、PDF.js Worker 与内联资源、归一化高亮几何、选中菜单三项动作（提问走 `inputActions` 填草稿不发送）与 8 语言文案。
 
 ## 概念 concepts
 

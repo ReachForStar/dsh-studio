@@ -712,3 +712,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 前五处是依赖声明缺口，本地在 fork 目录内安装时会命中 fork 的 `node_modules`，必须在 fork 之外克隆后 `pnpm install --frozen-lockfile` 才能复现。
 - 第六处是产品缺陷：没装 TeX 的机器上字体面板连项目字体都列不出来。修复已同步回 fork 并合并到 `master`，插件仓库同修复推送后 `ci` 运行 `42455059834` 通过。
 - 无 TeX 场景用 `PATH=<空目录>` 复现：修复前 `installs and lists project fonts` 失败，修复后 28 项全过。
+
+## [2026-11-09] feat | 右侧栏论文阅读器（ui-paper-reader）
+
+- 新建 `packages/client/ui-paper-reader`（`@reachforstar/dsh-client-ui-paper-reader` 0.2.2-alpha.2）：右侧栏 `paperReader` 标签页，上传 PDF 后由 PDF.js 按原始排版渲染，保留字体与图片。
+- 宿主 `/paper-reader` 前缀路由承载列表/上传/读取/删除与注释读写；`Config` 暴露 `directory`（默认 `~/.dsh/profiles/web/papers`）与 `maxBytes`（默认 100 MiB）。
+- 选中文字弹出悬浮菜单：高亮（归一化矩形，缩放不漂移）、添加笔记、在会话中提问（按界面语言生成模板并引用选中原文，经 `inputActions` 填入草稿，不发送）。
+- 样式按 `ui-theme` 样式规范收敛：菜单改用 `MenuSurface`、圆角走 `--dsw-radius-*`、悬停包 `@media (hover: hover)`、边框 0.5px hairline、elevated 滚动容器 rebind 滚动条变量。
+- 验证：11 个 spec / 131 项测试全绿，`src/**` 逐文件覆盖 100%；`build --scope artifacts` 8 门与 `--scope check` 2 门通过；相关 12 项 verify 门禁通过。
+- 已知红项：`DSH_SNAPSHOT=replay` 在本机基线即红（ui-polish 的 `client.rolldown-runtime.js` 在 assembled boot 脚手架无同步 chunk），与本包无关，已记入页面待确认。

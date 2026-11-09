@@ -3,10 +3,12 @@
 // the conversation header or input. Durable figures ride the sessionStats and
 // tokenUsage projections (the window fold below is only the fallback for
 // assemblies without the sessionStats unit). Collapsed by default to a compact
-// cost capsule; clicking expands the full readout.
+// cost capsule; clicking expands the full readout: total cost, the month's
+// spend against the budget, the current session's token timeline, per-session
+// tokens and cost, per-model shares, and the host process's CPU and memory.
 
-import { memo, useMemo, useState } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import { memo, useEffect, useMemo, useState } from 'react'
+import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: merges the chat target into ConversationViewSnapshotMap and the
 // session hooks (useSession/useProjection/useSessions/useWorkspaces) into dock
 // slot props.
@@ -17,6 +19,8 @@ import type { ConversationNode } from '@deepseek-ai/dsh-client-ui-conversation/c
 import type {} from '@deepseek-ai/dsh-session-stats/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
+import type { ProcessStats } from '../types.ts'
+import { budgetStatus, monthlySpend } from './budget.ts'
 import {
   accumulateCost,
   billedInputTokens,
@@ -25,7 +29,20 @@ import {
   type CostTotals,
   type RateCardData,
 } from './cost.ts'
+import { buildTimeline, spanLabel } from './stats-timeline.ts'
+import { sessionUsageRows, type UsageRow, type WatchedUsage } from './session-usage.ts'
+import type { createBudgetRowStore } from './settings-store.ts'
 import css from './StatsFloat.module.css'
+
+/** Poll interval for the runtime readout while the card is expanded. */
+const RUNTIME_POLL_MS = 2_000
+
+/** Locale keys labelling one bucket width. */
+const SPAN_KEYS = {
+  minute: 'stats.timelineSpanMinute',
+  hour: 'stats.timelineSpanHour',
+  day: 'stats.timelineSpanDay',
+} as const
 
 /** Compact token count: 517 / 12.2K / 517K / 1.2M (one decimal under three digits). */
 export function formatTokens(n: number): string {
@@ -47,6 +64,25 @@ export function formatDuration(ms: number): string {
 /** Compact throughput: 152 / 12.4 tok/s (one decimal under ten). */
 export function formatTokensPerSecond(rate: number): string {
   return `${rate >= 10 ? Math.round(rate) : Math.round(rate * 10) / 10} tok/s`
+}
+
+/** Compact byte size: 512 B / 12.3 MB / 1.4 GB. */
+export function formatBytes(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let value = bytes
+  let unit = 0
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+  return `${Math.round(value * 10) / 10} ${units[unit] as string}`
+}
+
+/** Compact uptime: 42s / 7m / 2h15m. */
+export function formatUptime(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  if (seconds < 3_600) return `${Math.floor(seconds / 60)}m`
+  return `${Math.floor(seconds / 3_600)}h${Math.floor(seconds % 3_600 / 60)}m`
 }
 
 /** Cache-hit share of prompt-side input over the whole durable log. */
@@ -113,11 +149,8 @@ export function messageCosts(nodes: readonly ConversationNode[]): MessageCostInp
   return messages
 }
 
-/** The token buckets one session reports through the list row's projections. */
-type ListedUsage = { readonly tokenUsage?: TokenUsageProjection }
-
 /** Session list rows addressed by id, as the list store keeps them. */
-export type WorkspaceSessionRows = Readonly<Record<string, { readonly projectionValues?: ListedUsage } | undefined>>
+export type WorkspaceSessionRows = Readonly<Record<string, UsageRow | undefined>>
 
 /** The empty bucket total a workspace sum starts from. */
 const ZERO_USAGE: TokenUsageProjection = {
@@ -145,15 +178,6 @@ function estimatedTotals(usage: TokenUsageProjection, at: number, card: RateCard
   return { ...parts, total: parts.input + parts.cache + parts.output, models: [] }
 }
 
-/** What the caller knows about the one session it is watching. */
-export interface WatchedSession {
-  readonly sessionId: SessionId
-  /** Live token projection of that session, newer than the row the list carries. */
-  readonly usage?: TokenUsageProjection
-  /** Message-priced totals of that session, when its settled nodes are held. */
-  readonly totals?: CostTotals
-}
-
 /**
  * Sum the tokens every session in one workspace reports.
  *
@@ -169,7 +193,7 @@ export interface WatchedSession {
 export function workspaceUsage(
   sessionIds: readonly SessionId[],
   rows: WorkspaceSessionRows,
-  watched: WatchedSession,
+  watched: WatchedUsage,
 ): { usage: TokenUsageProjection; sessions: number } {
   let usage = ZERO_USAGE
   let sessions = 0
@@ -209,7 +233,7 @@ export function workspaceUsage(
 export function workspaceCost(
   sessionIds: readonly SessionId[],
   rows: WorkspaceSessionRows,
-  watched: WatchedSession,
+  watched: WatchedUsage,
   at: number,
   card: RateCardData,
 ): CostTotals {
@@ -281,16 +305,43 @@ function windowStats(nodes: readonly ConversationNode[]): WindowStats {
   return { turns: turns.size, steps, llmMs, toolMs, ttftMs, ttftSteps }
 }
 
-/** Full component props: dock standard hooks + the ui-polish locale seat + the rate card. */
-export type StatsFloatProps = PropsRuntime<'conversation.composer.dock'> & PropsLocale<'ui-polish'> & {
-  /** The rate card pricing the float (the user card, or the built-in seed). */
-  card: RateCardData
-}
+/** Full component props: dock standard hooks + the ui-polish locale seat, budget store, and rate card. */
+export type StatsFloatProps = PropsRuntime<'conversation.composer.dock'> & PropsLocale<'ui-polish'>
+  & PropsStore<ReturnType<typeof createBudgetRowStore>>
+  & {
+    /** The rate card pricing the float (the user card, or the built-in seed). */
+    card: RateCardData
+  }
 
 export const StatsFloat = memo(function StatsFloat({
-  useConversation, useProjection, useSessions, useWorkspaces, sessionId, t, card,
+  useConversation, useProjection, useSessions, useWorkspaces, useStore, sessionId, t, card,
 }: StatsFloatProps) {
   const [expanded, setExpanded] = useState(false)
+  const [runtime, setRuntime] = useState<ProcessStats | null>(null)
+  const [runtimeFailed, setRuntimeFailed] = useState(false)
+  const budget = useStore(s => s.budget)
+  // Runtime readout: poll while expanded, stop (and abort) on collapse.
+  useEffect(() => {
+    if (!expanded) return
+    const controller = new AbortController()
+    const poll = async (): Promise<void> => {
+      try {
+        const response = await fetch('/stats/process', { signal: controller.signal })
+        if (!response.ok) throw new Error(`ui-polish: stats HTTP ${response.status}`)
+        setRuntime(await response.json() as ProcessStats)
+        setRuntimeFailed(false)
+      } catch {
+        // An aborted poll belongs to a collapsed card and reports nothing.
+        if (!controller.signal.aborted) setRuntimeFailed(true)
+      }
+    }
+    void poll()
+    const timer = window.setInterval(() => { void poll() }, RUNTIME_POLL_MS)
+    return () => {
+      controller.abort()
+      window.clearInterval(timer)
+    }
+  }, [expanded])
   const settledNodes = useConversation(s => s.views.get('chat')?.legacy.nodes ?? [])
   const usage = useProjection('tokenUsage')
   const projected = useProjection('sessionStats')
@@ -308,7 +359,7 @@ export const StatsFloat = memo(function StatsFloat({
   // Cost prices the session on screen message by message (each at its own
   // model's rate and settle time) and the rest from the totals they report.
   const messages = useMemo(() => messageCosts(settledNodes), [settledNodes])
-  const watched: WatchedSession = {
+  const watched: WatchedUsage = {
     sessionId,
     ...usage === undefined ? {} : { usage },
     ...messages.length === 0 ? {} : { totals: accumulateCost(messages, card) },
@@ -353,9 +404,20 @@ export const StatsFloat = memo(function StatsFloat({
     }
   }
   if (groups.length === 0 && costDisplay === null) return null
-  // 展示分三层：总花费为主视觉，token/缓存为次级指标，模型拆分为可读条目。
-  const tokenChips: { key: 'stats.input' | 'stats.output' | 'stats.cache'; value: string }[] = reported !== undefined
+  const now = Date.now()
+  const scopeIds = workspaceSessionIds ?? [sessionId]
+  const timeline = buildTimeline(messages, now, card)
+  const sessionUsages = sessionUsageRows(scopeIds, rows, watched, now, card)
+  const budgetView = budgetStatus(monthlySpend(scopeIds, rows, watched, messages, now, card), budget)
+  const budgetShown = budgetView.budget !== null || formatCost(budgetView.spent) !== '¥0.00'
+  // Three visual tiers: total cost leads, token/cache figures follow, and the
+  // per-model split reads as labelled rows.
+  const tokenChips: { key: 'stats.tokensTotal' | 'stats.input' | 'stats.output' | 'stats.cache'; value: string }[] = reported !== undefined
     ? [
+      {
+        key: 'stats.tokensTotal' as const,
+        value: formatTokens(billedInputTokens(reported.usage) + reported.usage.outputTokens),
+      },
       { key: 'stats.input' as const, value: formatTokens(billedInputTokens(reported.usage)) },
       { key: 'stats.output' as const, value: formatTokens(reported.usage.outputTokens) },
       { key: 'stats.cache' as const, value: formatTokens(reported.usage.cacheReadTokens) },
@@ -376,6 +438,17 @@ export const StatsFloat = memo(function StatsFloat({
   const modelTotal = costDisplay === null
     ? 0
     : costDisplay.totals.models.reduce((sum, entry) => sum + entry.cost, 0)
+  // Timeline bars: one bar per bucket, height proportional to its token total.
+  const timelineMax = timeline === null
+    ? 1
+    : Math.max(1, ...timeline.buckets.map(bucket => bucket.tokens))
+  const timelineTokens = timeline === null
+    ? 0
+    : timeline.buckets.reduce((sum, bucket) => sum + bucket.tokens, 0)
+  const timelineCost = timeline === null
+    ? 0
+    : timeline.buckets.reduce((sum, bucket) => sum + bucket.cost, 0)
+  const span = timeline === null ? null : spanLabel(timeline.span)
   return (
     <div
       className={css.root}
@@ -453,6 +526,62 @@ export const StatsFloat = memo(function StatsFloat({
                 ))}
               </div>
             )}
+            {budgetShown && (
+              <div className={css.budget}>
+                <div className={css.budgetHead}>
+                  <span>{t('stats.monthly', { cost: formatCost(budgetView.spent) })}</span>
+                  {budgetView.budget !== null && (
+                    <span>{t('stats.budget', { budget: formatCost(budgetView.budget) })}</span>
+                  )}
+                </div>
+                {budgetView.ratio !== null && (
+                  <div className={css.budgetBar} aria-hidden>
+                    <span
+                      className={`${css.budgetFill} ${budgetView.over ? css.budgetOver : ''}`}
+                      style={{ width: `${Math.min(100, Math.round(budgetView.ratio * 100))}%` }}
+                    />
+                  </div>
+                )}
+                {budgetView.over && budgetView.budget !== null && (
+                  <div className={css.budgetWarn}>
+                    {t('stats.budgetOver', { over: formatCost(budgetView.spent - budgetView.budget) })}
+                  </div>
+                )}
+              </div>
+            )}
+            {timeline !== null && span !== null && (
+              <div className={css.section}>
+                <div className={css.sectionTitle}>{t('stats.timeline')}</div>
+                <div className={css.timelineBars} aria-hidden>
+                  {timeline.buckets.map(bucket => (
+                    <span
+                      key={bucket.start}
+                      className={css.timelineBar}
+                      style={{ height: `${bucket.tokens === 0 ? 0 : Math.max(4, Math.round(bucket.tokens / timelineMax * 100))}%` }}
+                    />
+                  ))}
+                </div>
+                <div className={css.sectionMeta}>
+                  <span>{t(SPAN_KEYS[span.unit], { count: span.count })}</span>
+                  <span>{t('stats.timelineSummary', { tokens: formatTokens(timelineTokens), cost: formatCost(timelineCost) })}</span>
+                </div>
+              </div>
+            )}
+            {sessionUsages.length > 1 && (
+              <div className={css.section}>
+                <div className={css.sectionTitle}>{t('stats.sessions')}</div>
+                <ul className={css.sessionList}>
+                  {sessionUsages.map(row => (
+                    <li key={row.sessionId} className={css.sessionRow}>
+                      <span className={css.sessionName} title={row.title}>{row.title}</span>
+                      {row.current && <span className={css.currentTag}>{t('stats.currentSession')}</span>}
+                      <span className={css.sessionTokens}>{formatTokens(row.tokens)}</span>
+                      <span className={css.sessionCost}>{formatCost(row.cost)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {costDisplay !== null && costDisplay.totals.models.length > 0 && modelTotal > 0 && (
               <div className={css.models}>
                 <span className={css.modelsTitle}>{t('stats.models')}</span>
@@ -470,6 +599,36 @@ export const StatsFloat = memo(function StatsFloat({
             {groups.length > 0 && (
               <div className={css.meta}>
                 {groups.map(group => <span key={group} className={css.metaItem}>{group}</span>)}
+              </div>
+            )}
+            {(runtime !== null || runtimeFailed) && (
+              <div className={css.section}>
+                <div className={css.sectionTitle}>{t('stats.process')}</div>
+                {runtimeFailed && <div className={css.runtimeError}>{t('stats.processError')}</div>}
+                {runtime !== null && (
+                  <div className={css.runtimeGrid}>
+                    <span className={css.runtimeLabel}>{t('stats.processCpu')}</span>
+                    <span className={css.runtimeValue}>{t('stats.percentValue', { percent: Math.round(runtime.cpuPercent) })}</span>
+                    <span className={css.runtimeLabel}>{t('stats.processMemory')}</span>
+                    <span className={css.runtimeValue}>{formatBytes(runtime.rssBytes)}</span>
+                    <span className={css.runtimeLabel}>{t('stats.processUptime')}</span>
+                    <span className={css.runtimeValue}>{formatUptime(runtime.uptimeSeconds)}</span>
+                    <span className={css.runtimeLabel}>{t('stats.systemLoad')}</span>
+                    <span className={css.runtimeValue}>
+                      {t('stats.systemLoadValue', {
+                        load: runtime.system.load1.toFixed(2),
+                        cores: runtime.system.cpuCount,
+                      })}
+                    </span>
+                    <span className={css.runtimeLabel}>{t('stats.systemMemory')}</span>
+                    <span className={css.runtimeValue}>
+                      {t('stats.memoryValue', {
+                        used: formatBytes(runtime.system.totalMemBytes - runtime.system.freeMemBytes),
+                        total: formatBytes(runtime.system.totalMemBytes),
+                      })}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </>

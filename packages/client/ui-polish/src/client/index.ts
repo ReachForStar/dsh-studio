@@ -24,12 +24,15 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the SSH Remote methods and forwarded PTY event declarations.
 import type {} from '@reachforstar/dsh-host-ssh-remotes/remote'
 import type {} from '@reachforstar/dsh-host-ssh-remotes/types'
-import { BACKGROUND_SETTINGS_NAMESPACE, COMPACTION_RATIO_FIELD, type PolishSettings } from '../background-settings.ts'
+import { BACKGROUND_SETTINGS_NAMESPACE, COMPACTION_RATIO_FIELD, MONTHLY_BUDGET_FIELD, type PolishSettings } from '../background-settings.ts'
 import { BackgroundRuntime } from './background-runtime.ts'
 import { BackgroundRow, type BackgroundRowInjected } from './BackgroundRow.tsx'
+import { BudgetRow, type BudgetRowInjected } from './BudgetRow.tsx'
 import { CompactionRow, type CompactionRowInjected } from './CompactionRow.tsx'
 import { PricingRow, type PricingRowInjected } from './PricingRow.tsx'
-import { createBackgroundRowStore, createCompactionRowStore, createPricingRowStore } from './settings-store.ts'
+import {
+  createBackgroundRowStore, createBudgetRowStore, createCompactionRowStore, createPricingRowStore,
+} from './settings-store.ts'
 import { PricingRuntime } from './pricing-store.ts'
 import { SEED_RATE_CARD } from './cost.ts'
 import { StatsFloat } from './StatsFloat.tsx'
@@ -211,15 +214,61 @@ export function apply(ctx: ClientContext): void {
     },
   }, PricingRow))
 
+  // Monthly budget row: the CNY cap the stats float compares this calendar
+  // month's estimated spend against. A store handle mounts in one scope, so the
+  // root settings row and the session-scoped dock each hold their own; one
+  // writer keeps both in step.
+  const budgetRowStore = createBudgetRowStore()
+  const budgetDockStore = createBudgetRowStore()
+  let budgetRowBound: BoundActions<typeof budgetRowStore> | undefined
+  const budgetDockBounds = new Map<string, BoundActions<typeof budgetDockStore>>()
+  let budgetRevision = 0
+  let monthlyBudget: number | null = host.getSnapshot().value?.monthlyBudget ?? null
+  const syncBudget = (): void => {
+    budgetRevision += 1
+    budgetRowBound?.sync(monthlyBudget, budgetRevision)
+    for (const actions of budgetDockBounds.values()) actions.sync(monthlyBudget, budgetRevision)
+  }
+  const adoptBudget = (): void => {
+    monthlyBudget = host.getSnapshot().value?.monthlyBudget ?? null
+    syncBudget()
+  }
+  ctx.effect(() => host.subscribe(adoptBudget), 'ui-polish: budget row adopt')
+  const budgetInject = (actions: BoundActions<typeof budgetRowStore>): BudgetRowInjected => {
+    budgetRowBound = actions
+    syncBudget()
+    return {
+      setBudget: (value) => {
+        monthlyBudget = value
+        if (value === null) void host.unset(MONTHLY_BUDGET_FIELD)
+        else void host.set(MONTHLY_BUDGET_FIELD, value)
+        syncBudget()
+      },
+    }
+  }
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
+    id: 'polish-budget',
+    order: 60,
+    store: budgetRowStore,
+    locale: NS,
+    inject: budgetInject,
+  }, BudgetRow))
+
   ctx.slots.inject('conversation.composer.dock', function* () {
     yield ctx.slots.register({
       name: 'conversation.composer.dock',
       id: 'polish-stats',
       order: 0,
+      store: budgetDockStore,
       locale: NS,
-      inject: (): { card: ReturnType<PricingRuntime['getCard']> } => ({
-        card: pricing.getCard(),
-      }),
+      inject: (sessionId: string, actions: BoundActions<typeof budgetDockStore>): {
+        card: ReturnType<PricingRuntime['getCard']>
+      } => {
+        budgetDockBounds.set(sessionId, actions)
+        syncBudget()
+        return { card: pricing.getCard() }
+      },
     }, StatsFloat)
   })
 

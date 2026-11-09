@@ -8,6 +8,7 @@
   "include": [
     "src/background-settings.ts",
     "src/css-modules.d.ts",
+    "src/types.ts",
     "src/client/**/*",
     "src/client/**/*.json"
   ],

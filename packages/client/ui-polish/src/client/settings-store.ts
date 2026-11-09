@@ -99,3 +99,35 @@ export function createPricingRowStore(): EngineStoreHandle<PricingRowState, Pric
     },
   })
 }
+
+/** Monthly budget store state: the chosen CNY budget, or null for none. */
+export interface BudgetRowState {
+  /** Monthly budget in CNY, or null when unset. */
+  budget: number | null
+  /** Runtime revision; -1 until first sync so revision 0 lands as a change. */
+  revision: number
+}
+
+/** Declared action shape giving the exported factory a stable return type. */
+type BudgetRowActions = {
+  sync: (draft: BudgetRowState, budget: number | null, revision: number) => void
+}
+
+/**
+ * Declares the monthly budget state and write surface. The plugin's
+ * apply-world change listener is the only writer; both the settings row and
+ * the stats float read via props.useStore.
+ * @returns the store handle.
+ */
+export function createBudgetRowStore(): EngineStoreHandle<BudgetRowState, BudgetRowActions> {
+  return defineStore({
+    init: (): BudgetRowState => ({ budget: null, revision: -1 }),
+    actions: {
+      sync: (d, budget: number | null, revision: number) => {
+        if (revision <= d.revision) return
+        d.budget = budget
+        d.revision = revision
+      },
+    },
+  })
+}

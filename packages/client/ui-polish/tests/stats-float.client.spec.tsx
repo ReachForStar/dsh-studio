@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 /** StatsFloat: projection figures, window-fold fallback, and the cost row. */
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { ConversationNode } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import { StatsFloat, formatDuration, formatTokens, formatTokensPerSecond, messageCosts, workspaceCost, workspaceUsage, type StatsFloatProps } from '../src/client/StatsFloat.tsx'
+import { StatsFloat, formatBytes, formatDuration, formatTokens, formatTokensPerSecond, formatUptime, messageCosts, workspaceCost, workspaceUsage, type StatsFloatProps } from '../src/client/StatsFloat.tsx'
 import { SEED_RATE_CARD } from '../src/client/cost.ts'
 import { zh } from '../src/client/locales.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -21,7 +21,11 @@ const SESSION = 's-current' as SessionId
 const OTHER_SESSION = 's-other' as SessionId
 
 /** One session-list row as the dock reads it. */
-type Row = { projectionValues?: { tokenUsage?: TokenUsageProjection } }
+type Row = {
+  displayTitle?: string
+  updatedAt?: number
+  projectionValues?: { tokenUsage?: TokenUsageProjection }
+}
 
 /** A chat target whose nodes feed StatsFloat through the conversation views. */
 function chatView(nodes: readonly ConversationNode[]): ChatSnapshot {
@@ -57,7 +61,7 @@ const store = <T,>(state: T): ((selector: (value: T) => unknown) => unknown) => 
 function props(
   source: { getSnapshot(): ConversationSnapshot; subscribe(fn: () => void): () => void },
   values: Record<string, unknown>,
-  over: { workspace?: SessionId[] | 'unlisted'; rows?: Record<string, Row> } = {},
+  over: { workspace?: SessionId[] | 'unlisted'; rows?: Record<string, Row>; budget?: number | null } = {},
 ): StatsFloatProps {
   const sessionIds = over.workspace === undefined || over.workspace === 'unlisted'
     ? [SESSION]
@@ -70,6 +74,7 @@ function props(
     useProjection: projections(values),
     useSessions: store({ byId: over.rows ?? {}, ids: sessionIds, current: SESSION, phase: 'ready' }),
     useWorkspaces: store({ items, phase: 'ready' }),
+    useStore: store({ budget: over.budget ?? null, revision: 0 }),
     sessionId: SESSION,
     t,
     card: SEED_RATE_CARD,
@@ -87,7 +92,10 @@ const sessionStats = (over: Record<string, number>): Record<string, number> => (
 const assistant = (over: Record<string, unknown>): ConversationNode =>
   ({ kind: 'assistant', seq: 1, time: 1_000, turn: 1, step: 1, blocks: [], ...over }) as unknown as ConversationNode
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('format helpers', () => {
   it('formats token counts compactly', () => {
@@ -283,7 +291,11 @@ describe('StatsFloat', () => {
     const view = render(<StatsFloat {...props(source, {
       tokenUsage: { uncachedInputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 7 },
     })} />)
-    expect(view.container.textContent).toContain('输出 7')
+    expect(view.container.textContent).toContain('总 token 7')
+    fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+    // No prompt-side tokens, so no cache-hit group and no cache chip.
+    expect(view.container.textContent).not.toContain('缓存命中')
+    expect(view.container.textContent).toContain('输出7')
   })
 
   it('sums every session the workspace holds, and prices the rest at the card default', () => {
@@ -393,5 +405,152 @@ describe('StatsFloat', () => {
     fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
     expect(view.container.textContent).toContain('2 轮 · 2 步')
     expect(view.container.textContent).toContain('LLM 3s')
+  })
+})
+
+describe('StatsFloat detail sections', () => {
+  const now = Date.now()
+
+  it('formats byte sizes and uptimes', () => {
+    expect(formatBytes(512)).toBe('512 B')
+    expect(formatBytes(12.3 * 1024 * 1024)).toBe('12.3 MB')
+    expect(formatBytes(1.4 * 1024 * 1024 * 1024)).toBe('1.4 GB')
+    expect(formatUptime(42)).toBe('42s')
+    expect(formatUptime(7 * 60)).toBe('7m')
+    expect(formatUptime(2 * 3_600 + 15 * 60)).toBe('2h15m')
+  })
+
+  it('shows the current session timeline and the per-session rows', () => {
+    const node = assistant({
+      messageId: 'm-1', time: now - 1_000,
+      usage: { inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      requestConfig: { provider: 'deepseek', model: 'default' },
+    })
+    const { source } = makeSource([node])
+    const view = render(<StatsFloat {...props(
+      source,
+      {
+        sessionStats: sessionStats({ turns: 1, steps: 1 }),
+        tokenUsage: { uncachedInputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+      {
+        workspace: [SESSION, OTHER_SESSION],
+        rows: {
+          [OTHER_SESSION]: {
+            displayTitle: 'Other',
+            projectionValues: {
+              tokenUsage: { uncachedInputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+            },
+          },
+        },
+      },
+    )} />)
+    fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+
+    expect(view.container.textContent).toContain('当前会话用量时间线')
+    expect(view.container.textContent).toContain('每格 5 分钟')
+    expect(view.container.textContent).toContain('会话明细')
+    expect(view.container.textContent).toContain('Other')
+    expect(view.container.textContent).toContain('当前')
+  })
+
+  it('shows month-to-date spend against the budget', () => {
+    const { source } = makeSource()
+    const view = render(<StatsFloat {...props(
+      source,
+      { tokenUsage: { uncachedInputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 } },
+      { budget: 2 },
+    )} />)
+    fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+
+    expect(view.container.textContent).toContain('本月花费 ¥1.50')
+    expect(view.container.textContent).toContain('预算 ¥2.00')
+  })
+
+  it('flags an overspent budget', () => {
+    const { source } = makeSource()
+    const view = render(<StatsFloat {...props(
+      source,
+      { tokenUsage: { uncachedInputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 } },
+      { budget: 1 },
+    )} />)
+    fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+
+    expect(view.container.textContent).toContain('超出预算 ¥0.50')
+  })
+
+  it('renders the runtime readout from the process route', async () => {
+    const sample = {
+      pid: 7, cpuPercent: 25, rssBytes: 100 * 1024 * 1024, heapUsedBytes: 10, uptimeSeconds: 3_900,
+      system: {
+        cpuCount: 8, load1: 1.25, load5: 1, load15: 0.5,
+        totalMemBytes: 8 * 1024 * 1024 * 1024, freeMemBytes: 6 * 1024 * 1024 * 1024,
+      },
+      sampledAt: now,
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => sample })))
+    const { source } = makeSource()
+    const view = render(<StatsFloat {...props(source, { tokenUsage: USAGE })} />)
+    fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+
+    await vi.waitFor(() => { expect(view.container.textContent).toContain('进程 CPU') })
+    expect(view.container.textContent).toContain('25%')
+    expect(view.container.textContent).toContain('100 MB')
+    expect(view.container.textContent).toContain('1h5m')
+    expect(view.container.textContent).toContain('1.25 / 8 核')
+    expect(view.container.textContent).toContain('2 GB / 8 GB')
+  })
+
+  it('reports a failed runtime readout', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503, json: async () => ({}) })))
+    const { source } = makeSource()
+    const view = render(<StatsFloat {...props(source, { tokenUsage: USAGE })} />)
+    fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+
+    await vi.waitFor(() => { expect(view.container.textContent).toContain('运行状态读取失败') })
+  })
+
+  it('stops polling and ignores an aborted request on collapse', async () => {    let started = 0
+    vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => {
+      started += 1
+      return new Promise((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => { reject(new Error('aborted')) })
+      })
+    }))
+    const { source } = makeSource()
+    const view = render(<StatsFloat {...props(source, { tokenUsage: USAGE })} />)
+    const card = view.container.querySelector('[data-ui-polish-stats]') as HTMLElement
+    fireEvent.click(card)
+    await vi.waitFor(() => { expect(started).toBe(1) })
+    fireEvent.click(card)
+    await vi.waitFor(() => { expect(card.getAttribute('data-expanded')).toBe('false') })
+    // The in-flight poll rejects only because it was aborted; that is not a failure.
+    await new Promise((resolve) => { setTimeout(resolve, 0) })
+    fireEvent.click(card)
+    await vi.waitFor(() => { expect(started).toBe(2) })
+    expect(view.container.textContent).not.toContain('运行状态读取失败')
+  })
+
+  it('polls again on the interval while expanded', async () => {
+    vi.useFakeTimers()
+    try {
+      const sample = {
+        pid: 7, cpuPercent: 0, rssBytes: 1, heapUsedBytes: 1, uptimeSeconds: 1,
+        system: { cpuCount: 1, load1: 0, load5: 0, load15: 0, totalMemBytes: 1, freeMemBytes: 1 },
+        sampledAt: 0,
+      }
+      const fetchMock = vi.fn(async () => ({ ok: true, json: async () => sample }))
+      vi.stubGlobal('fetch', fetchMock)
+      const { source } = makeSource()
+      const view = render(<StatsFloat {...props(source, { tokenUsage: USAGE })} />)
+      fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

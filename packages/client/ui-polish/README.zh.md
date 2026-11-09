@@ -47,7 +47,7 @@ kind: "package-reference"
 Web GUI 打磨插件，浏览器半 + 小型 host 半——无需改动核心包即可获得的几项增强：
 
 - **全局背景图片。** 插件拥有自己的 `ui-polish` settings 命名空间，将图片绘制到 body（`cover` / 固定 / 居中），并给 document 打上 `data-ds-bg-image` 标记。注入的全局样式表在属性存在时把基础 token（`--dsw-alias-bg-base`、`--dsw-specific-sidebar-fill`）覆盖为透明，使结构性表面——应用框架、会话区、详情区、侧边栏——让位于图片；需要对比度的内容元素（卡片、代码块、按钮）保留自身填充。General 设置行的上传（含大小/类型校验）、预览与移除由该行提供。图片以**磁盘文件**持久化（在 `/bg/current` 提供）——settings 文档只存短 URL，绝不存数兆 base64——重启后依然有效且不撑大设置文件。
-- **工作区统计费用浮层。** 一个 `conversation.composer.dock` 项以 `position: fixed` 钉在视口右上角，展示当前会话的持久 `sessionStats` 数据（无该投影的装配回退到窗口折叠），外加**其工作区下全部会话**的 token 与花费：每个会话通过会话列表中其行携带的投影值上报 token，当前会话则用其实时投影。花费按会话计价——本客户端持有已结算消息的会话按每条消息自身的模型与结算时间计费（因此 deepseek 这类分时模型在高峰/低谷价间切换，按长度分档的模型选取覆盖输入长度的档位），仅通过投影得知的会话按卡的 `default` 费率估算，因为线上投影只带分桶总量、没有模型归属；因此按模型的拆分行仅在只有一个会话参与时显示。卡片以工作区总额为主视觉，其下用一条占比条把总额拆成输入 / 缓存 / 输出三档，并在图例里给出各自的精确金额；token 三段以 chip 呈现；每个有贡献的模型单列一行，带自己的占比条与小计；计时与缓存命中率等放在最后作为最安静的一行。收起时是一枚胶囊，只带总额与 token 三段。**费率卡**（每 100 万 token 人民币价）是内置 `src/client/model-pricing.json` 种子，由 amaxsmp 网关价格一次性换算而来；General 设置中的**模型费率卡**行以 JSON 编辑并持久化到 settings 文档，因此自定义卡重启后依然有效并立即重新计价。未知模型回退到卡的 `default` 项。
+- **工作区统计费用浮层。** 一个 `conversation.composer.dock` 项以 `position: fixed` 钉在视口右上角，展示当前会话的持久 `sessionStats` 数据（无该投影的装配回退到窗口折叠），外加**其工作区下全部会话**的 token 与花费：每个会话通过会话列表中其行携带的投影值上报 token，当前会话则用其实时投影。花费按会话计价——本客户端持有已结算消息的会话按每条消息自身的模型与结算时间计费（因此 deepseek 这类分时模型在高峰/低谷价间切换，按长度分档的模型选取覆盖输入长度的档位），仅通过投影得知的会话按卡的 `default` 费率估算，因为线上投影只带分桶总量、没有模型归属；因此按模型的拆分行仅在只有一个会话参与时显示。卡片以工作区总额为主视觉，其下用一条占比条把总额拆成输入 / 缓存 / 输出三档，并在图例里给出各自的精确金额；总 token 与 token 三段以 chip 呈现；每个有贡献的模型单列一行，带自己的占比条与小计；计时与缓存命中率等放在最后作为最安静的一行。展开后还显示**本月估算花费与月度预算的对比**、**当前会话的 token 时间线**（5 分钟 / 1 小时 / 1 天一格，最多 24 格）、多会话参与时的**各会话 token 与花费行**，以及 host 进程（上次轮询以来的 CPU、常驻内存、运行时长）与机器负载、内存的**运行状态读数**，卡片展开期间每两秒轮询一次。收起时是一枚胶囊，只带总额与 token 三段。**费率卡**（每 100 万 token 人民币价）是内置 `src/client/model-pricing.json` 种子，由 amaxsmp 网关价格一次性换算而来；General 设置中的**模型费率卡**行以 JSON 编辑并持久化到 settings 文档，因此自定义卡重启后依然有效并立即重新计价。未知模型回退到卡的 `default` 项。General 设置中的**月度预算**行保存本月花费对比所用的 CNY 上限；留空表示不设预算。
 - **SSH/SFTP 面板。** 一个 `conversation.view` 标签页，提供已保存连接选择、远程命令探测、交互式 PTY 与 SFTP 目录/文件操作。控制操作使用生成的 `ssh` Remote 命名空间；PTY 输出与退出使用共享 Remote Event 流；文件传输使用经过认证的 Host Fetch 路由。
 - **Git 面板。** 一个 `conversation.view` 标签页（轨迹标签之后的第一个视图标签），覆盖浏览器当前工作区内发现的每个仓库：分支与领先/落后、按冲突 / 暂存 / 更改 / 未跟踪分组的工作树变更（含逐文件 diff 抽屉，图片并排对比并可全屏）、可用 LLM 按可编辑提交规则生成信息的提交框，以及历史提交图。操作包括暂存、取消暂存、放弃、删除、提交（及提交并推送）、撤销提交、推送、拉取、分支切换与新建、储藏、重置、清除，以及完成或中止合并。
 - **LaTeX 面板。** 一个 `conversation.view` 标签页，基于本机 TeX 发行版提供类似 Overleaf 的流程：项目发现、文件树、`.tex` 就地编辑、xelatex 编译（经 ctex/xeCJK 支持中英文，引用文献时自动跑 bibtex）、缓存结果的 PDF 实时预览、项目字体安装、`tlmgr` 包安装、构建产物清理，以及针对整份文件或当前选区的 LLM 写作助手。编译将项目镜像到临时目录，工作区不会残留构建产物。
@@ -110,6 +110,7 @@ node 半通过 `ctx.inject` 等待可选的 `settings` 与 `webServer` 服务，
 | `backgroundImage` | `string`（URL） | 缺省 | 已服务的背景图（`/bg/current`）或旧式 data URL；缺省即清除背景。 |
 | `compactionThresholdRatio` | `number`（0.5–0.8） | 缺省（harness 0.8） | node 半请求会话压缩服务压缩时的压力比例。 |
 | `modelPricing` | `string`（JSON） | 缺省（内置种子卡） | 为统计浮层计价的用户编辑费率卡；见下节“模型费率卡”。 |
+| `monthlyBudget` | `number`（≥0） | 缺省（不设预算） | 统计浮层对比本月估算花费所用的 CNY 上限。 |
 
 背景图与压缩阈值字段来自原独立插件；费率卡是整合包的扩展（见下一节）。
 
@@ -119,7 +120,7 @@ node 半通过 `ctx.inject` 等待可选的 `settings` 与 `webServer` 服务，
 
 ## Host 路由
 
-node 半在 host webserver 上注册四个前缀；每个请求都携带工作区 `cwd`（GET 在 query、POST 在 JSON body），按请求对照活动工作区注册表解析：
+node 半在 host webserver 上注册五个前缀；每个请求都携带工作区 `cwd`（GET 在 query、POST 在 JSON body），按请求对照活动工作区注册表解析：
 
 | 路由 | 方法 | 用途 |
 |---|---|---|
@@ -138,18 +139,20 @@ node 半在 host webserver 上注册四个前缀；每个请求都携带工作�
 | `/latex/pdf` | GET `?cwd&dir&main` | 上次成功编译的缓存 PDF。 |
 | `/bg/current` `/bg/upload` `/bg` | GET/POST/DELETE | 已持久化的背景图文件、上传与删除。 |
 | `/scene/current` `/scene/write` | POST `{cwd, scene}` | 工作区 Excalidraw 场景 JSON，或覆盖它。 |
+| `/stats/process` | GET | 进程 CPU（上次轮询以来）、常驻与堆内存、运行时长，以及机器负载与机器内存。 |
 
-`git` 通过 `execFile` 以数组参数运行——不经 shell，因此路径与提交信息永不进入 shell。包含 `..` 或路径分隔符的路径被拒绝，未知 `cwd` 回退到 host 进程目录（浏览器标签页随后显示非仓库提示）。
+`git` 通过 `execFile` 以数组参数运行——不经 shell，因此路径与提交信息永不进入 shell。包含 `..` 或路径分隔符的路径被拒绝，未知 `cwd` 回退到 host 进程目录（浏览器标签页随后显示非仓库提示）。进程统计路由每次请求采样一次 host 进程与机器，CPU 百分比覆盖同一 webserver fiber 上一次采样以来的区间。
 
 ## Slots
 
-浏览器半注册进五个 slot：
+浏览器半注册进下列 slot：
 
 | Slot | id | 用途 |
 |---|---|---|
 | `settings.general.item` | `polish-background` | 背景图上传 / 预览 / 移除。 |
 | `settings.general.item` | `polish-compaction` | 自动压缩阈值选择。 |
 | `settings.general.item` | `polish-pricing` | 模型费率卡 JSON 编辑器。 |
+| `settings.general.item` | `polish-budget` | 统计浮层所用的月度预算。 |
 | `conversation.composer.dock` | `polish-stats` | 工作区统计费用浮层（钉在视口）。 |
 | `conversation.view` | `git` | Git 面板（仓库、状态、diff、提交、推送、日志）。 |
 | `conversation.view` | `latex` | LaTeX 项目编辑器，含 xelatex 编译与 PDF 预览。 |
@@ -175,6 +178,7 @@ node 半在 host webserver 上注册四个前缀；每个请求都携带工作�
 - **依赖本机 TeX**——LaTeX 面板用本机 TeX 发行版（`xelatex`、`bibtex`、`tlmgr`）编译；缺少发行版时报引擎缺失错误，而非降级预览。
 - **背景上传上限**——图片上限 10MB（提供的是磁盘文件副本；settings 文档只保留 URL）。
 - **包体积**——Excalidraw 画布标签页将白板库内联进 client bundle（未压缩约 12 MB），整个插件包较重；画布标签页是该体积的唯一消费者。
+- **月度归属**——线上 token 投影不带逐消息时间戳，因此除当前会话外的会话在其列表行本月更新时，把上报的全部投影计入本月；当前会话因本地持有已结算消息而精确。
 
 <a id="dev-note"></a>
 ### 开发备注

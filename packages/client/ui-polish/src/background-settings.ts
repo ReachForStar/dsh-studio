@@ -15,6 +15,9 @@ export const COMPACTION_RATIO_FIELD = 'compactionThresholdRatio'
 /** Field carrying the user-edited model rate card as JSON text (absent = the built-in seed card). */
 export const MODEL_PRICING_FIELD = 'modelPricing'
 
+/** Field carrying the monthly spend budget in CNY (absent = no budget). */
+export const MONTHLY_BUDGET_FIELD = 'monthlyBudget'
+
 /**
  * Upload cap for the background image in bytes. The image is persisted as a
  * file on disk (served at `/bg/current`); the bound keeps the on-disk file and
@@ -30,6 +33,8 @@ export interface PolishSettings {
   compactionThresholdRatio?: number
   /** User-edited model rate card as JSON text; absent = the built-in seed card. */
   modelPricing?: string
+  /** Monthly spend budget in CNY; absent = no budget is shown. */
+  monthlyBudget?: number
 }
 
 /** Durable schema; also the wire envelope the browser scope validates against. */
@@ -38,11 +43,12 @@ export const PolishSettingsSchema: z<PolishSettings> = z.object({
   [BACKGROUND_IMAGE_FIELD]: z.string(),
   [COMPACTION_RATIO_FIELD]: z.number().min(0.5).max(0.8),
   [MODEL_PRICING_FIELD]: z.string(),
+  [MONTHLY_BUDGET_FIELD]: z.number().min(0),
 })
 
 /**
- * Live plugin Config: the same three fields marked volatile so the settings
- * forms own them on this profile entry and edits apply without a restart.
+ * Live plugin Config: the same fields marked volatile so the settings forms own
+ * them on this profile entry and edits apply without a restart.
  */
 export interface Config {
   /** Served background image URL (or a legacy data URL); absent when none is set. */
@@ -51,15 +57,17 @@ export interface Config {
   [COMPACTION_RATIO_FIELD]: Volatile<number | undefined>
   /** User-edited model rate card as JSON text; absent = the built-in seed card. */
   [MODEL_PRICING_FIELD]: Volatile<string | undefined>
+  /** Monthly spend budget in CNY; absent = no budget is shown. */
+  [MONTHLY_BUDGET_FIELD]: Volatile<number | undefined>
 }
 
 /**
- * Live plugin Config schema: the same three fields marked volatile so the
- * settings forms own them on this profile entry and edits apply without a
- * restart.
+ * Live plugin Config schema: the same fields marked volatile so the settings
+ * forms own them on this profile entry and edits apply without a restart.
  */
 export const Config = z.object({
   [BACKGROUND_IMAGE_FIELD]: z.string().volatile(),
   [COMPACTION_RATIO_FIELD]: z.number().min(0.5).max(0.8).volatile(),
   [MODEL_PRICING_FIELD]: z.string().volatile(),
+  [MONTHLY_BUDGET_FIELD]: z.number().min(0).volatile(),
 })

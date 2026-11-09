@@ -21,10 +21,11 @@ import { apply, inject, NS } from '@reachforstar/dsh-client-ui-polish/client'
 import type { BackgroundRowInjected } from '@reachforstar/dsh-client-ui-polish/client'
 import { BACKGROUND_SETTINGS_NAMESPACE, PolishSettingsSchema } from '../src/background-settings.ts'
 import { BackgroundRow } from '../src/client/BackgroundRow.tsx'
+import { BudgetRow } from '../src/client/BudgetRow.tsx'
 import { CompactionRow } from '../src/client/CompactionRow.tsx'
 import { PricingRow } from '../src/client/PricingRow.tsx'
 import { StatsFloat } from '../src/client/StatsFloat.tsx'
-import type { createBackgroundRowStore } from '../src/client/settings-store.ts'
+import type { createBackgroundRowStore, createBudgetRowStore } from '../src/client/settings-store.ts'
 
 const GENERAL = 'settings.general.item'
 const DOCK = 'conversation.composer.dock'
@@ -35,10 +36,14 @@ async function bench() {
   const locale = new LocaleRuntime(ctx)
   ctx.provide('locale', locale)
   let backgroundImage: string | undefined
+  let monthlyBudget: number | undefined
   const namespace = () => ({
     ns: BACKGROUND_SETTINGS_NAMESPACE,
     schema: PolishSettingsSchema.toJSON(),
-    value: backgroundImage === undefined ? {} : { backgroundImage },
+    value: {
+      ...(backgroundImage === undefined ? {} : { backgroundImage }),
+      ...(monthlyBudget === undefined ? {} : { monthlyBudget }),
+    },
     applies: 'live' as const,
     secrets: [],
     revision: 0,
@@ -47,10 +52,14 @@ async function bench() {
     ok: true as const,
     value: { writable: true, hasDocument: true, namespaces: [namespace()] },
   }))
-  const mutate = vi.fn(async (_ns: string, ops: { value: unknown }[]) => {
-    const raw = ops[0]!.value
-    // oxlint-disable-next-line typescript/no-base-to-string -- settings values are strings or null
-    backgroundImage = raw === null ? undefined : String(raw)
+  const mutate = vi.fn(async (_ns: string, ops: { op: string; path: string[]; value?: string | number | null }[]) => {
+    const operation = ops[0]!
+    const raw = operation.value
+    if (operation.path[0] === 'monthlyBudget') {
+      monthlyBudget = raw === undefined || raw === null ? undefined : Number(raw)
+    } else {
+      backgroundImage = raw === undefined || raw === null ? undefined : String(raw)
+    }
     return { ok: true as const, value: namespace() }
   })
   const sshMethod = async (..._args: unknown[]) => ({ ok: true as const, value: {} })
@@ -106,7 +115,7 @@ describe('ui-polish apply', () => {
     const b = await bench()
     const fiber = b.ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
-    expect(b.slots.entries(GENERAL).map(e => e.options.id)).toEqual(['polish-background', 'polish-compaction', 'polish-pricing'])
+    expect(b.slots.entries(GENERAL).map(e => e.options.id)).toEqual(['polish-background', 'polish-compaction', 'polish-pricing', 'polish-budget'])
     expect(b.slots.entries(DOCK).map(e => e.options.id)).toEqual(['polish-stats'])
     expect(b.slots.entries('conversation.view').map(e => e.options.id)).toEqual(['git', 'excalidraw', 'latex', 'ssh'])
     expect(b.slots.entries(GENERAL).find(e => e.component === BackgroundRow)!.locale).toBe(NS)
@@ -132,6 +141,28 @@ describe('ui-polish apply', () => {
     await vi.waitFor(() => { expect(instance.getSnapshot().backgroundImage).toBe('data:image/png;base64,QUJD') })
     await fiber.dispose()
     expect(document.body.hasAttribute('data-ds-bg-image')).toBe(false)
+  })
+
+  it('the budget row inject persists and syncs the dock store', async () => {
+    const b = await bench()
+    const fiber = b.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+    const row = b.slots.entries(GENERAL).find(e => e.component === BudgetRow)!
+    const rowInstance = (row.store as ReturnType<typeof createBudgetRowStore>).create()
+    const dock = b.slots.entries(DOCK).find(e => e.component === StatsFloat)!
+    const dockInstance = (dock.store as ReturnType<typeof createBudgetRowStore>).create()
+    // Both scopes receive the same writer; each mount syncs its own handle.
+    const dockInject = dock.inject as unknown as (session: string, a: typeof dockInstance.actions) => unknown
+    dockInject('session-1', dockInstance.actions)
+    const face = (row.inject as unknown as (
+      a: typeof rowInstance.actions,
+    ) => { setBudget: (v: number | null) => void })(rowInstance.actions)
+    face.setBudget(50)
+    await vi.waitFor(() => { expect(rowInstance.getSnapshot().budget).toBe(50) })
+    await vi.waitFor(() => { expect(dockInstance.getSnapshot().budget).toBe(50) })
+    face.setBudget(null)
+    await vi.waitFor(() => { expect(rowInstance.getSnapshot().budget).toBeNull() })
+    await fiber.dispose()
   })
 
   it('makes every page surface transparent for the background image, except the canvas panel', async () => {

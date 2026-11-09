@@ -29,6 +29,7 @@ import { handleExcalidrawRequest } from './excalidraw-service.ts'
 import { handleGitRequest, type GitCwdResolver, workspaceCwdResolver } from './git-service.ts'
 import { createCommitMessageBridge } from './git-llm.ts'
 import { handleLatexRequest } from './latex-service.ts'
+import { createProcessStatsProbe, handleProcessStatsRequest } from './process-stats.ts'
 
 export {
   BACKGROUND_IMAGE_FIELD, BACKGROUND_SETTINGS_NAMESPACE, Config, MAX_BACKGROUND_IMAGE_BYTES,
@@ -98,5 +99,13 @@ export function apply(ctx: Context, config: Config): void {
       path: '/scene',
       handler: (req, res) => handleExcalidrawRequest(resolveWorkspaceCwd(), req, res),
     }), 'ui-polish: excalidraw scene route')
+    // Runtime readout for the stats float: process CPU/memory plus machine
+    // load. One probe per webserver fiber keeps the CPU interval between polls.
+    const processStats = createProcessStatsProbe()
+    serverCtx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/stats/process',
+      handler: (req, res) => { handleProcessStatsRequest(processStats, req, res) },
+    }), 'ui-polish: process stats route')
   })
 }

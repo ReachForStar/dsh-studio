@@ -1,6 +1,6 @@
 /** Background row store: snapshot-mirror action and the revision guard. */
 import { describe, expect, it } from 'vitest'
-import { createBackgroundRowStore } from '../src/client/settings-store.ts'
+import { createBackgroundRowStore, createBudgetRowStore } from '../src/client/settings-store.ts'
 
 describe('createBackgroundRowStore', () => {
   it('init shape: no background image, revision at -1', () => {
@@ -24,5 +24,20 @@ describe('createBackgroundRowStore', () => {
     store.actions.sync('data:image/png;base64,y', 3)
     expect(store.getSnapshot().backgroundImage).toBe('data:image/png;base64,x')
     expect(store.getSnapshot().revision).toBe(3)
+  })
+})
+
+describe('createBudgetRowStore', () => {
+  it('init shape: no budget, revision at -1', () => {
+    expect(createBudgetRowStore().create().getSnapshot()).toEqual({ budget: null, revision: -1 })
+  })
+
+  it('sync mirrors the budget and drops stale writes', () => {
+    const store = createBudgetRowStore().create()
+    store.actions.sync(50, 0)
+    expect(store.getSnapshot()).toEqual({ budget: 50, revision: 0 })
+    store.actions.sync(80, 2)
+    store.actions.sync(null, 1)
+    expect(store.getSnapshot()).toEqual({ budget: 80, revision: 2 })
   })
 })

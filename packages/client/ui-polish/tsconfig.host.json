@@ -14,7 +14,9 @@
     "src/git-service.ts",
     "src/index.ts",
     "src/latex-service.ts",
-    "src/llm-route.ts"
+    "src/llm-route.ts",
+    "src/process-stats.ts",
+    "src/types.ts"
   ],
   "references": [
     {

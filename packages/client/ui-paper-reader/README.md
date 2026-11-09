@@ -16,6 +16,7 @@ Use this package to read uploaded papers inside a right-Sidebar tab. The browser
 - [Use this package](#use-this-package)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
 
 -----
 
@@ -50,3 +51,13 @@ No direct effect; the draft enters a model request only when the user submits it
 - The reader has no search, table of contents, or page-jump control; it draws every page in one scrolling column and rasterizes a page once it nears the viewport.
 - Uploading never merges entries: uploading the same file twice creates two library entries, and deleting an entry removes its annotations with it.
 - The annotation document is rewritten whole on every change, so two browser tabs editing one paper overwrite each other's list.
+
+<a id="dev-note"></a>
+### Dev Note
+
+<details>
+<summary>Working context for maintainers — click to expand</summary>
+
+None.
+
+</details>

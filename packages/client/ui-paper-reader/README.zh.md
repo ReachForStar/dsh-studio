@@ -16,6 +16,7 @@ kind: "package-reference"
 - [使用本包](#use-this-package)
 - [模型体验](#model-experience)
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
 
 -----
 
@@ -50,3 +51,13 @@ kind: "package-reference"
 - 阅读器没有搜索、目录或跳页控件；它在一条滚动列里绘制全部页面，页面接近视口时才光栅化。
 - 上传不做合并：同一文件上传两次会得到两个论文条目，删除条目会同时删除它的注释。
 - 注释文档每次改动都整体重写，因此两个浏览器标签同时编辑同一篇论文时，后写入的列表会覆盖前一个。
+
+<a id="dev-note"></a>
+### 开发备注
+
+<details>
+<summary>供维护者参考的工作上下文——点击展开</summary>
+
+无。
+
+</details>

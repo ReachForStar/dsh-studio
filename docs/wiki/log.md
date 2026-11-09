@@ -721,3 +721,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 样式按 `ui-theme` 样式规范收敛：菜单改用 `MenuSurface`、圆角走 `--dsw-radius-*`、悬停包 `@media (hover: hover)`、边框 0.5px hairline、elevated 滚动容器 rebind 滚动条变量。
 - 验证：11 个 spec / 131 项测试全绿，`src/**` 逐文件覆盖 100%；`build --scope artifacts` 8 门与 `--scope check` 2 门通过；相关 12 项 verify 门禁通过。
 - 已知红项：`DSH_SNAPSHOT=replay` 在本机基线即红（ui-polish 的 `client.rolldown-runtime.js` 在 assembled boot 脚手架无同步 chunk），与本包无关，已记入页面待确认。
+
+## [2026-11-09] feat | 统计浮层扩展：预算、时间线、会话成本与运行状态
+
+- `StatsFloat` 在既有工作区口径上补齐：总 token、会话数、本月估算花费与月度预算对比、当前会话 token 时间线（5 分钟 / 1 小时 / 1 天自适应，最多 24 桶）、多会话时的各会话 token 与成本行，以及展开期间每 2 秒轮询的宿主进程 CPU/常驻内存/运行时长与机器负载/内存。
+- 新模块：`stats-timeline.ts`（分桶纯函数）、`session-usage.ts`（会话汇总）、`budget.ts`（月度花费与预算对比）、`BudgetRow.tsx`（General 设置行）、`process-stats.ts`（host 采样与 `/stats/process` 处理）、`types.ts`（`ProcessStats`/`SystemStats`）。
+- 预算设置键 `monthlyBudget` 进入 `PolishSettingsSchema`；因一个 store handle 只能挂一个作用域，`client/index.ts` 用 `budgetRowStore` + `budgetDockStore` 两个 handle 共享单一写入者，dock 侧按 `sessionId` 记录 bound actions。
+- 口径取舍：非当前会话的投影不带模型归属，按费率卡 `default` 估算，且其整份投影在列表行本月更新时计入本月；时间线只覆盖当前会话的已结算消息。
+- 验证：`ui-polish` 17 个 spec / 168 项全绿；`test:gui` 789 文件 / 13 548 项通过；`build --scope artifacts` 8 门与 `--scope check` 2 门通过；`verify-client-ui-i18n`、`verify-locale-metadata`、`doc-quick` 21 门通过。
+- 另修 `ui-paper-reader` README 缺 `Dev Note` 章节（`doc-standard` 红项），两份 README 与 `README.i18n.yaml` 一并重录。

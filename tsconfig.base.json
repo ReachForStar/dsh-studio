@@ -150,6 +150,8 @@
       "@reachforstar/dsh-a2a-status/typert": ["./packages/a2a/a2a-status/lib/typert.host.d.ts"],
       "@reachforstar/dsh-client-ui-a2a-status": ["./packages/client/ui-a2a-status/src/index.ts"],
       "@reachforstar/dsh-client-ui-a2a-status/client": ["./packages/client/ui-a2a-status/src/client/index.ts"],
+      "@reachforstar/dsh-client-ui-paper-reader": ["./packages/client/ui-paper-reader/src/index.ts"],
+      "@reachforstar/dsh-client-ui-paper-reader/client": ["./packages/client/ui-paper-reader/src/client/index.ts"],
       "@reachforstar/dsh-tool-a2a": ["./packages/a2a/tool-a2a/src/index.ts"],
 
       "@deepseek-ai/dsh-api-job-controller": ["./packages/api/job-controller/src/index.ts"],

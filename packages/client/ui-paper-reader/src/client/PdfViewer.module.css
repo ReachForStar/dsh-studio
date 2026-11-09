@@ -1,0 +1,299 @@
+.viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  background: var(--dsw-alias-bg-document-preview);
+  font-family: var(--dsw-font, sans-serif);
+  white-space: normal;
+}
+
+.pages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.page {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.placeholder {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: var(--dsw-alias-bg-skeleton);
+}
+
+.surface {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+  box-shadow: var(--dsw-elevation-prominent);
+}
+
+.surface[hidden] {
+  display: none;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+}
+
+.highlight {
+  position: absolute;
+  z-index: 0;
+  border-radius: 2px;
+  background: var(--dsw-specific-bubble-highlight);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.text {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  z-index: 1;
+}
+
+/* TextLayerBuilder selection styles follow pdfjs-dist/web/pdf_viewer.css. */
+.text :global(.textLayer) {
+  position: absolute;
+  inset: 0;
+  text-align: initial;
+  overflow: clip;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 0;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.text :global(.textLayer)[data-main-rotation="90"] {
+  transform: rotate(90deg) translateY(-100%);
+}
+
+.text :global(.textLayer)[data-main-rotation="180"] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+
+.text :global(.textLayer)[data-main-rotation="270"] {
+  transform: rotate(270deg) translateX(-100%);
+}
+
+.text :is(span, br) {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  user-select: text;
+}
+
+.text :global(.textLayer) > :not(:global(.markedContent)),
+.text :global(.markedContent) span:not(:global(.markedContent)) {
+  z-index: 1;
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.text :global(.markedContent) {
+  display: contents;
+}
+
+.text ::selection {
+  background: var(--dsw-alias-bg-document-selection);
+  color: transparent;
+}
+
+.text br::selection {
+  background: transparent;
+}
+
+.text :global(.textLayer) :global(.endOfContent) {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+
+.text :global(.selecting) :global(.endOfContent) {
+  top: 0;
+}
+
+.status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* The material, radius, and shadow belong to MenuSurface; this sheet places it. */
+.menu {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px;
+}
+
+.menuRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.menuAction {
+  padding: 5px 9px;
+  border: none;
+  border-radius: var(--dsw-radius-xs);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .menuAction:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.menuNotice {
+  max-width: 220px;
+  margin: 0;
+  padding: 0 6px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.noteEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.noteInput {
+  box-sizing: border-box;
+  width: 220px;
+  min-height: 64px;
+  padding: 6px;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: var(--dsw-radius-xs);
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block-start: 4px;
+  border-block-start: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.notesTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notesEmpty {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.noteList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 30px 8px 10px;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.notePage {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+}
+
+.noteQuote {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.noteBody {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.noteLabel {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.noteRemove {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 6px;
+  display: inline-flex;
+  padding: 3px;
+  border: none;
+  border-radius: var(--dsw-radius-xs);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .noteRemove:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+}

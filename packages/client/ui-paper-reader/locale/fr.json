@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Lecteur d’articles",
+    "description": "Lit les articles importés dans la barre latérale droite avec surlignages, notes et questions dans la conversation."
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "include": [
+    "src/index.ts",
+    "src/paper-service.ts",
+    "src/route.ts",
+    "src/types.ts"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../util/home-paths"
+    },
+    {
+      "path": "../../host/webserver"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    }
+  ]
+}

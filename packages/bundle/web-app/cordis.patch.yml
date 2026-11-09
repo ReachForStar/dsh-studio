@@ -312,6 +312,12 @@
     - id: ui-sidebar-files
       name: '@deepseek-ai/dsh-client-ui-sidebar-files'
 
+    # The right Sidebar's paper reader: PDF upload rendered in its original
+    # layout, text highlights with notes, and questions that fill the composer
+    # draft. Its node half stores papers under the web profile directory.
+    - id: ui-paper-reader
+      name: '@reachforstar/dsh-client-ui-paper-reader'
+
     - id: ui-settings
       name: '@deepseek-ai/dsh-client-ui-settings'
 

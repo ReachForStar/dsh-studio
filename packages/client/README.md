@@ -48,6 +48,7 @@ The kernel packages boot and serve the page; the UI feature packages present it.
 | [`ui-sidebar-right/`](ui-sidebar-right/README.md) | Owns the right Sidebar and its tab types | `ctx.sidebarRight`, `ctx.sidebarRightTabs` |
 | [`ui-sidebar-documentpreview/`](ui-sidebar-documentpreview/README.md) | Displays documents in right Sidebar tabs | `ctx.documentPreviews` |
 | [`ui-sidebar-browser/`](ui-sidebar-browser/README.md) | Browses sandboxed HTTP(S) pages, including loopback services, in right-Sidebar tabs | — |
+| [`ui-paper-reader/`](ui-paper-reader/README.md) | Reads uploaded PDF papers in a right-Sidebar tab, with highlights, notes, and composer questions about a selection | — |
 | [`resources/`](resources/README.md) | Unified resource model: protocol providers behind the `useResource` session standard hook | `ctx.resources` |
 | [`ui-sidebar-files/`](ui-sidebar-files/README.md) | The workspace files page and one workspace tree per pane beside docked and floating previews | — |
 | [`ui-brand-official/`](ui-brand-official/README.md) | Fills the generic browser-brand slots with the official name and marks | — |

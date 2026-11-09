@@ -512,6 +512,7 @@
     { "path": "./packages/fs/tool-str-replace-editor" },
     { "path": "./packages/fs/tool-excalidraw" },
     { "path": "./packages/client/ui-polish/tsconfig.host.json" },
+    { "path": "./packages/client/ui-paper-reader/tsconfig.host.json" },
     { "path": "./packages/compaction/compaction" },
     { "path": "./packages/compaction/compaction-basic" },
     { "path": "./packages/compaction/command-compact" },

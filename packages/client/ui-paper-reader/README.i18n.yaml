@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-paper-reader/README.md
+/:
+  en: f25f18df0d35595e
+  zh: 522b4d5f72e5582a
+/reachforstar-dsh-client-ui-paper-reader:
+  en: a820334d8e7828c7
+  zh: 2b24f34492795c08
+/reachforstar-dsh-client-ui-paper-reader/summary:
+  en: 7a0998da4a18adfb
+  zh: 9798527869230157
+/reachforstar-dsh-client-ui-paper-reader/table-of-contents:
+  en: d7fbbba70852c433
+  zh: b1d8d953f9d82d8a
+/reachforstar-dsh-client-ui-paper-reader/use-this-package:
+  en: 831a65d959741584
+  zh: ef064f261099243a
+/reachforstar-dsh-client-ui-paper-reader/use-this-package/minimal-configuration:
+  en: d98a73706a46c96b
+  zh: 02d6ba8d9525ccc3
+/reachforstar-dsh-client-ui-paper-reader/model-experience:
+  en: f92b83a77f57193f
+  zh: fb8273c105a1b369
+/reachforstar-dsh-client-ui-paper-reader/model-experience/kv-cache-effect:
+  en: 737f7f7f6902eccb
+  zh: 808184f34bee718e
+/reachforstar-dsh-client-ui-paper-reader/known-limitations-and-deferred-work:
+  en: 28dc6d5c322e5624
+  zh: b629ab9c3f6f15b4

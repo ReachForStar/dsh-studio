@@ -214,6 +214,7 @@
     "@reachforstar/dsh-client-ui-polish": "workspace:*",
     "@reachforstar/dsh-client-ui-ssh": "workspace:*",
     "@reachforstar/dsh-client-ui-a2a-status": "workspace:*",
+    "@reachforstar/dsh-client-ui-paper-reader": "workspace:*",
     "@reachforstar/dsh-host-ssh-remotes": "workspace:*",
     "@reachforstar/dsh-tool-ssh": "workspace:*",
     "@reachforstar/dsh-tool-excalidraw": "workspace:*",

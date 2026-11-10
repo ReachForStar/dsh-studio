@@ -1,6 +1,6 @@
 /** Background image service: upload to disk, serve, delete. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { handleBackgroundRequest } from '../src/background-service.ts'
@@ -115,5 +115,59 @@ describe('background image service', () => {
     const r = responseDouble()
     await handleBackgroundRequest(imagePath, MAX, requestDouble('GET', '/bg/nope') as never, r.res as never)
     expect(r.status).toBe(404)
+  })
+
+  it('sniffs JPEG, GIF, and WebP uploads', async () => {
+    const cases: [Buffer, string][] = [
+      [Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]), 'image/jpeg'],
+      [Buffer.from('GIF89a....', 'latin1'), 'image/gif'],
+      [Buffer.concat([Buffer.from('RIFF0000'), Buffer.from('WEBPVP8 ', 'latin1')]), 'image/webp'],
+    ]
+    for (const [bytes, mime] of cases) {
+      const up = responseDouble()
+      await handleBackgroundRequest(imagePath, MAX, requestDouble('POST', '/bg/upload', bytes) as never, up.res as never)
+      expect(up.status).toBe(200)
+      const get = responseDouble()
+      await handleBackgroundRequest(imagePath, MAX, requestDouble('GET', '/bg/current') as never, get.res as never)
+      expect(get.headers['content-type']).toBe(mime)
+    }
+  })
+
+  it('rejects an empty upload', async () => {
+    const up = responseDouble()
+    await handleBackgroundRequest(imagePath, MAX, requestDouble('POST', '/bg/upload', Buffer.alloc(0)) as never, up.res as never)
+    expect(up.status).toBe(500)
+    expect(JSON.parse(up.text()) as { error?: string }).toMatchObject({ error: 'background: empty upload' })
+  })
+
+  it('serves an unrecognized stored file as octet-stream', async () => {
+    await writeFile(imagePath, Buffer.from('plain text'))
+    const get = responseDouble()
+    await handleBackgroundRequest(imagePath, MAX, requestDouble('GET', '/bg/current') as never, get.res as never)
+    expect(get.status).toBe(200)
+    expect(get.headers['content-type']).toBe('application/octet-stream')
+  })
+
+  it('defaults a request without url or method to GET /', async () => {
+    const r = responseDouble()
+    const bare = { on() {}, destroy() {} }
+    await handleBackgroundRequest(imagePath, MAX, bare as never, r.res as never)
+    expect(r.status).toBe(404)
+    expect(JSON.parse(r.text()) as { error?: string }).toMatchObject({ error: 'background: unknown route GET /' })
+  })
+
+  it('reports a non-Error transport failure by its text', async () => {
+    const r = responseDouble()
+    const broken = {
+      url: '/bg/upload',
+      method: 'POST',
+      on(event: 'data' | 'end' | 'error', fn: (chunk?: Buffer) => void) {
+        if (event === 'error') fn('socket reset' as never)
+      },
+      destroy() {},
+    }
+    await handleBackgroundRequest(imagePath, MAX, broken as never, r.res as never)
+    expect(r.status).toBe(500)
+    expect(JSON.parse(r.text()) as { error?: string }).toMatchObject({ error: 'socket reset' })
   })
 })

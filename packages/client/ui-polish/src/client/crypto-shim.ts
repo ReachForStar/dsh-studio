@@ -101,6 +101,9 @@ function md5Digest(input: Uint8Array): Uint8Array {
         f = cc ^ (bb | ~dd)
         g = (7 * i) % 16
       }
+      // Indices are bounded by the loop constants: g < 16, i < 64, and the
+      // shift table has 64 entries.
+      /* v8 ignore next */
       const nextB = (bb + rotateLeft((aa + f + (x[g] ?? 0) + (MD5_TABLE[i] ?? 0)) >>> 0, (MD5_SHIFT[i] ?? 0))) >>> 0
       aa = dd
       dd = cc
@@ -139,6 +142,9 @@ function sha1Digest(input: Uint8Array): Uint8Array {
   for (let block = 0; block < padded.length; block += 64) {
     for (let i = 0; i < 16; i++) w[i] = view.getUint32(block + i * 4, false)
     for (let i = 16; i < 80; i++) {
+      // Indices are bounded by the loop range: i >= 16 keeps every operand in
+      // the message schedule.
+      /* v8 ignore next */
       w[i] = rotateLeft((w[i - 3] ?? 0) ^ (w[i - 8] ?? 0) ^ (w[i - 14] ?? 0) ^ (w[i - 16] ?? 0), 1)
     }
     let a = h0
@@ -162,6 +168,8 @@ function sha1Digest(input: Uint8Array): Uint8Array {
         f = b ^ c ^ d
         k = 0xca62c1d6
       }
+      // i is bounded by the loop range (80 entries).
+      /* v8 ignore next */
       const temp = (rotateLeft(a, 5) + f + e + k + (w[i] ?? 0)) >>> 0
       e = d
       d = c

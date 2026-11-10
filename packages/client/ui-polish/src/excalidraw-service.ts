@@ -40,6 +40,7 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
         const text = Buffer.concat(chunks).toString('utf8')
         resolveBody(text.length === 0 ? {} : JSON.parse(text) as Record<string, unknown>)
       } catch (error) {
+        /* v8 ignore next -- JSON.parse is the only thrower here and always throws an Error */
         reject(error instanceof Error ? error : new Error(String(error)))
       }
     })

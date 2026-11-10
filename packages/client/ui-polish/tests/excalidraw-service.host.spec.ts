@@ -157,6 +157,72 @@ describe('excalidraw host service', () => {
     expect(double.json.error).toContain('cwd required')
   })
 
+  it('requires a cwd field on the write route and treats an empty body as absent', async () => {
+    const emptyCwd = responseDouble()
+    await handleExcalidrawRequest(resolverFor('D:/ws'), requestDouble('/scene/write', 'POST', { cwd: '' }) as never, emptyCwd.res as never)
+    expect(emptyCwd.status).toBe(400)
+    expect(emptyCwd.json.error).toContain('cwd required')
+
+    const noBody = responseDouble()
+    await handleExcalidrawRequest(resolverFor('D:/ws'), requestDouble('/scene/write', 'POST') as never, noBody.res as never)
+    expect(noBody.status).toBe(400)
+    expect(noBody.json.error).toContain('cwd required')
+  })
+
+  it('rejects a write outside the known workspaces', async () => {
+    const double = responseDouble()
+    await handleExcalidrawRequest(
+      resolverFor('D:/ws'),
+      requestDouble('/scene/write', 'POST', { cwd: 'D:/evil', scene: '{}' }) as never,
+      double.res as never,
+    )
+    expect(double.status).toBe(400)
+    expect(double.json.error).toContain('not a known workspace')
+  })
+
+  it('reports a body that is not valid JSON', async () => {
+    const double = responseDouble()
+    const broken = {
+      url: '/scene/current',
+      method: 'POST',
+      on(event: 'data' | 'end' | 'error', fn: (chunk?: Buffer) => void) {
+        if (event === 'data') fn(Buffer.from('{oops'))
+        if (event === 'end') fn()
+      },
+    }
+    await handleExcalidrawRequest(resolverFor('D:/ws'), broken as never, double.res as never)
+    expect(double.status).toBe(500)
+    expect(double.json.error).toContain('JSON')
+  })
+
+  it('reports a resolver failure, including a non-Error throw', async () => {
+    const failed = responseDouble()
+    await handleExcalidrawRequest(
+      () => { throw new Error('registry offline') },
+      requestDouble('/scene/current', 'POST', { cwd: 'D:/ws' }) as never,
+      failed.res as never,
+    )
+    expect(failed.status).toBe(500)
+    expect(failed.json.error).toBe('registry offline')
+
+    const rejected = responseDouble()
+    await handleExcalidrawRequest(
+      () => { throw 'no workspace' },
+      requestDouble('/scene/current', 'POST', { cwd: 'D:/ws' }) as never,
+      rejected.res as never,
+    )
+    expect(rejected.status).toBe(500)
+    expect(rejected.json.error).toBe('no workspace')
+  })
+
+  it('defaults a request without url or method to GET /', async () => {
+    const double = responseDouble()
+    const bare = { on() {} }
+    await handleExcalidrawRequest(resolverFor('D:/ws'), bare as never, double.res as never)
+    expect(double.status).toBe(404)
+    expect(double.json.error).toBe('excalidraw: unknown route GET /')
+  })
+
   describe('sanitizeScene', () => {
     it('repairs a malformed element that would crash the canvas on click', () => {
       const raw = {

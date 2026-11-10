@@ -106,6 +106,236 @@ describe('billedInputTokens and formatCost', () => {
   })
 })
 
+describe('parseRateCard validation', () => {
+  const BASE = { inputPerMillion: 1, outputPerMillion: 2 }
+  const card = (models: Record<string, unknown>, fallback: unknown = BASE): string =>
+    JSON.stringify({ default: fallback, models })
+
+  it('rejects a root that is not an object', () => {
+    expect(() => parseRateCard('[]')).toThrow(/must be a JSON object/)
+    expect(() => parseRateCard('null')).toThrow(/must be a JSON object/)
+  })
+
+  it('rejects a default card that is not an object', () => {
+    expect(() => parseRateCard(card({}, 1))).toThrow(/rate card: default must be an object/)
+  })
+
+  it('rejects a models table that is not an object', () => {
+    expect(() => parseRateCard(JSON.stringify({ default: BASE, models: [] })))
+      .toThrow(/`models` must be an object/)
+    expect(() => parseRateCard(JSON.stringify({ default: BASE, models: null })))
+      .toThrow(/`models` must be an object/)
+  })
+
+  it('rejects a model entry that is not an object', () => {
+    expect(() => parseRateCard(card({ m: 1 }))).toThrow(/model "m" entry must be an object/)
+  })
+
+  it('rejects a flat payload that is not an object', () => {
+    expect(() => parseRateCard(card({ m: { mode: 'flat', flat: null } })))
+      .toThrow(/models\.m\.flat must be an object/)
+  })
+
+  it('keeps the optional cache rates only when they are numbers', () => {
+    const parsed = parseRateCard(card({
+      bare: { mode: 'flat', flat: { inputPerMillion: 1, outputPerMillion: 2 } },
+      full: { mode: 'flat', flat: { inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.1, cacheWritePerMillion: 0.2 } },
+    }))
+    expect(parsed.models['bare']).toEqual({ mode: 'flat', flat: { inputPerMillion: 1, outputPerMillion: 2 } })
+    expect(parsed.models['full']).toEqual({
+      mode: 'flat',
+      flat: { inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.1, cacheWritePerMillion: 0.2 },
+    })
+  })
+
+  it('rejects every malformed time payload', () => {
+    expect(() => parseRateCard(card({ m: { mode: 'time', time: null } })))
+      .toThrow(/time payload must be an object/)
+    expect(() => parseRateCard(card({ m: { mode: 'time', time: { peak: [], tiers: [{ name: 'a', inputPerMillion: 1, outputPerMillion: 2 }] } } })))
+      .toThrow(/time\.timezone must be a string/)
+    expect(() => parseRateCard(card({ m: { mode: 'time', time: { timezone: 'Asia/Shanghai', peak: 'x', tiers: [{ name: 'a', inputPerMillion: 1, outputPerMillion: 2 }] } } })))
+      .toThrow(/time\.peak must be an array/)
+    expect(() => parseRateCard(card({ m: { mode: 'time', time: { timezone: 'Asia/Shanghai', peak: [1], tiers: [{ name: 'a', inputPerMillion: 1, outputPerMillion: 2 }] } } })))
+      .toThrow(/time\.peak\[0\] must be an object/)
+    expect(() => parseRateCard(card({ m: { mode: 'time', time: { timezone: 'Asia/Shanghai', peak: [] } } })))
+      .toThrow(/time\.tiers must be a non-empty array/)
+    expect(() => parseRateCard(card({ m: { mode: 'time', time: { timezone: 'Asia/Shanghai', peak: [], tiers: [] } } })))
+      .toThrow(/time\.tiers must be a non-empty array/)
+    expect(() => parseRateCard(card({ m: { mode: 'time', time: { timezone: 'Asia/Shanghai', peak: [], tiers: [1] } } })))
+      .toThrow(/time\.tiers\[0\] must be an object/)
+    expect(() => parseRateCard(card({ m: { mode: 'time', time: { timezone: 'Asia/Shanghai', peak: [], tiers: [{ inputPerMillion: 1, outputPerMillion: 2 }] } } })))
+      .toThrow(/time\.tiers\[0\]\.name must be a string/)
+  })
+
+  it('accepts a time tier cache read rate and rejects a bad one', () => {
+    const parsed = parseRateCard(card({
+      m: {
+        mode: 'time',
+        time: {
+          timezone: 'Asia/Shanghai',
+          peak: [{ startMinute: 540, endMinute: 1140 }],
+          tiers: [{ name: 'default', inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.1 }],
+        },
+      },
+    }))
+    expect(parsed.models['m']).toMatchObject({ mode: 'time' })
+    expect(() => parseRateCard(card({
+      m: {
+        mode: 'time',
+        time: {
+          timezone: 'Asia/Shanghai',
+          peak: [],
+          tiers: [{ name: 'default', inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: -1 }],
+        },
+      },
+    }))).toThrow(/tiers\[0\]\.cacheReadPerMillion must be a finite non-negative number/)
+  })
+
+  it('rejects every malformed len payload', () => {
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: null } })))
+      .toThrow(/len payload must be an object/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: { tiers: [] } } })))
+      .toThrow(/len\.tiers must be a non-empty array/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: {} } })))
+      .toThrow(/len\.tiers must be a non-empty array/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: { tiers: [1] } } })))
+      .toThrow(/len\.tiers\[0\] must be an object/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: { tiers: [{ inputPerMillion: 1 }] } } })))
+      .toThrow(/len\.tiers\[0\]\.name must be a string/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: { tiers: [{ name: 'a', maxLen: -1 }] } } })))
+      .toThrow(/len\.tiers\[0\]\.maxLen must be a finite non-negative number/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: { tiers: [{ name: 'a', inputPerMillion: -1 }] } } })))
+      .toThrow(/len\.tiers\[0\]\.inputPerMillion must be a finite non-negative number/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: { tiers: [{ name: 'a', outputPerMillion: -1 }] } } })))
+      .toThrow(/len\.tiers\[0\]\.outputPerMillion must be a finite non-negative number/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: { tiers: [{ name: 'a', cacheReadPerMillion: -1 }] } } })))
+      .toThrow(/len\.tiers\[0\]\.cacheReadPerMillion must be a finite non-negative number/)
+    expect(() => parseRateCard(card({ m: { mode: 'len', len: { tiers: [{ name: 'a', cacheWritePerMillion: -1 }] } } })))
+      .toThrow(/len\.tiers\[0\]\.cacheWritePerMillion must be a finite non-negative number/)
+  })
+
+  it('keeps every len tier field only when it is a number', () => {
+    const parsed = parseRateCard(card({
+      m: {
+        mode: 'len',
+        len: {
+          tiers: [
+            { name: 'bare' },
+            { name: 'full', maxLen: 1000, inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.1, cacheWritePerMillion: 0.2 },
+          ],
+        },
+      },
+    }))
+    expect(parsed.models['m']).toEqual({
+      mode: 'len',
+      len: {
+        tiers: [
+          { name: 'bare' },
+          { name: 'full', maxLen: 1000, inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.1, cacheWritePerMillion: 0.2 },
+        ],
+      },
+    })
+  })
+})
+
+describe('billingFor case folding and fallbacks', () => {
+  it('matches a model id case-insensitively before falling back', () => {
+    const models = { 'Mixed-Case': { mode: 'flat' as const, flat: { inputPerMillion: 9, outputPerMillion: 9 } } }
+    expect(billingFor('mixed-case', models).mode).toBe('flat')
+    expect(billingFor('MIXED-CASE', models)).toBe(models['Mixed-Case'])
+    expect(billingFor('other', models, { inputPerMillion: 3, outputPerMillion: 4 }))
+      .toEqual({ mode: 'flat', flat: { inputPerMillion: 3, outputPerMillion: 4 } })
+  })
+})
+
+describe('tierFor tier selection edges', () => {
+  it('falls back to the default tier, then the first tier, when the named tier is absent', () => {
+    const timeBilling = (tiers: { name: string; inputPerMillion: number; outputPerMillion: number }[]) => ({
+      mode: 'time' as const,
+      time: { timezone: 'Asia/Shanghai', peak: [{ startMinute: 540, endMinute: 1140 }], tiers },
+    })
+    // Peak window without a peak tier: the default tier wins.
+    const withDefault = tierFor(
+      timeBilling([
+        { name: 'first', inputPerMillion: 1, outputPerMillion: 1 },
+        { name: 'default', inputPerMillion: 5, outputPerMillion: 6 },
+      ]),
+      USAGE,
+      PEAK_AT,
+    )
+    expect(withDefault.inputPerMillion).toBe(5)
+    // No named tier at all: the first tier wins.
+    const firstOnly = tierFor(timeBilling([{ name: 'only', inputPerMillion: 7, outputPerMillion: 8 }]), USAGE, PEAK_AT)
+    expect(firstOnly.inputPerMillion).toBe(7)
+  })
+
+  it('keeps the fallback rates when a time model lists no tiers at all', () => {
+    // The card parser rejects an empty list, but `tierFor` is also reachable
+    // with a hand-built billing value, so the fallback must hold.
+    const tier = tierFor(
+      { mode: 'time', time: { timezone: 'Asia/Shanghai', peak: [], tiers: [] } },
+      USAGE,
+      OFF_PEAK_AT,
+      { inputPerMillion: 4, outputPerMillion: 5 },
+    )
+    expect(tier.inputPerMillion).toBe(4)
+    expect(tier.outputPerMillion).toBe(5)
+  })
+
+  it('keeps the fallback cache read rate when the selected time tier omits it', () => {
+    const tier = tierFor(
+      {
+        mode: 'time',
+        time: {
+          timezone: 'Asia/Shanghai',
+          peak: [],
+          tiers: [{ name: 'off_peak', inputPerMillion: 1, outputPerMillion: 2 }],
+        },
+      },
+      USAGE,
+      OFF_PEAK_AT,
+      { inputPerMillion: 9, outputPerMillion: 9, cacheReadPerMillion: 0.5 },
+    )
+    expect(tier.cacheReadPerMillion).toBe(0.5)
+  })
+
+  it('falls back to the default rates for len tiers that omit prices', () => {
+    const tier = tierFor(
+      { mode: 'len', len: { tiers: [{ name: 'bare', maxLen: 10 }] } },
+      { uncachedInputTokens: 5, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      0,
+      { inputPerMillion: 4, outputPerMillion: 6, cacheReadPerMillion: 0.2, cacheWritePerMillion: 0.3 },
+    )
+    expect(tier).toEqual({ inputPerMillion: 4, outputPerMillion: 6, cacheReadPerMillion: 0.2, cacheWritePerMillion: 0.3 })
+  })
+
+  it('carries every len tier price when the tier supplies them', () => {
+    const tier = tierFor(
+      {
+        mode: 'len',
+        len: { tiers: [{ name: 'full', inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.1, cacheWritePerMillion: 0.2 }] },
+      },
+      { uncachedInputTokens: 5, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      0,
+    )
+    expect(tier).toEqual({ inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.1, cacheWritePerMillion: 0.2 })
+  })
+})
+
+describe('cache read fallback chain', () => {
+  const USAGE_NO_CACHE = { uncachedInputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 1_000_000, cacheWriteTokens: 0 }
+  const FLAT_NO_CACHE = { mode: 'flat' as const, flat: { inputPerMillion: 1, outputPerMillion: 2 } }
+
+  it('uses the card default cache read rate, then zero', () => {
+    const models = { 'flat-model': FLAT_NO_CACHE }
+    const withRate = { default: { inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.5 }, models }
+    expect(costBreakdown(USAGE_NO_CACHE, 'flat-model', 0, withRate).cache).toBeCloseTo(0.5, 10)
+    const withoutRate = { default: { inputPerMillion: 1, outputPerMillion: 2 }, models }
+    expect(costBreakdown(USAGE_NO_CACHE, 'flat-model', 0, withoutRate).cache).toBe(0)
+    expect(estimateCost(USAGE_NO_CACHE, 'flat-model', 0, withoutRate)).toBeCloseTo(1, 10)
+  })
+})
+
 describe('parseRateCard', () => {
   it('parses and validates a user card with all three billing modes', () => {
     const card = parseRateCard(JSON.stringify({

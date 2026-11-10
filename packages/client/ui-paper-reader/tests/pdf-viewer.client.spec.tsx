@@ -284,7 +284,7 @@ describe('selection menu', () => {
     await select(h.container)
     fireEvent.click(screen.getByRole('menuitem', { name: 'addNote' }))
     fireEvent.click(screen.getByText('saveNote'))
-    expect(h.onCreate).toHaveBeenCalledWith(expect.not.objectContaining({ note: expect.anything() }))
+    expect(h.onCreate.mock.calls[0]?.[0]).not.toHaveProperty('note')
   })
 
   it('cancels the note without creating an annotation', async () => {

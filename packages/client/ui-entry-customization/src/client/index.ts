@@ -59,8 +59,4 @@ export function apply(ctx: Context): void {
     name: 'conversation.session.header.views.actions', id: 'entry-customization', locale: 'entryCustomization',
     inject: () => injected('conversation'),
   }, EntryMenuContent))
-  ctx.slots.inject('sidebar.right.tab.guide.actions', () => ctx.slots.register({
-    name: 'sidebar.right.tab.guide.actions', id: 'entry-customization', locale: 'entryCustomization',
-    inject: () => injected('rightbar'),
-  }, EntryMenuContent))
 }

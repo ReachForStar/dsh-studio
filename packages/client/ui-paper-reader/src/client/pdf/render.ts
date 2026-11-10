@@ -50,10 +50,12 @@ export async function renderPdfPage(
       transform: ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0],
     })
     let text: ReturnType<RenderPdfText> | undefined
-    let cancelled = false
+    // Held in an object so the closure's write stays visible to TypeScript
+    // after the awaits below.
+    const state = { cancelled: false }
     const cancel = (): void => {
-      if (cancelled) return
-      cancelled = true
+      if (state.cancelled) return
+      state.cancelled = true
       task.cancel()
       text?.cancel()
     }
@@ -62,7 +64,7 @@ export async function renderPdfPage(
       text = renderText?.(page, viewport)
       // An abort during text setup already ran `cancel` before the task
       // existed; the layer it created still needs cancelling.
-      if (cancelled) text?.cancel()
+      if (state.cancelled) text?.cancel()
       else if (signal.aborted) cancel()
       await Promise.all([task.promise, text?.promise])
       signal.throwIfAborted()

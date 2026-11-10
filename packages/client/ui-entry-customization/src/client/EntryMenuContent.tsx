@@ -7,7 +7,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import css from './EntryMenu.module.css'
 
 /** Navigation region whose More menu hosts one registration. */
-export type EntryRegion = 'sidebar' | 'conversation' | 'rightbar'
+export type EntryRegion = 'sidebar' | 'conversation'
 
 /** Region identity and footer actions injected into each registration. */
 export interface EntryMenuInjected {
@@ -35,8 +35,12 @@ type EntryMenuContentProps = PropsRuntime<'sidebar.panellist.actions'>
 export function EntryMenuContent({
   entries, onOpen, onPinnedChange, region, onDismiss, usePluginNavigation, browsePlugins, createPlugin, t, renderFactorySlot,
 }: EntryMenuContentProps) {
-  const moreEntries = region === 'sidebar' ? entries.filter(entry => !entry.pinned) : region === 'conversation' ? entries : []
+  const moreEntries = region === 'sidebar' ? entries.filter(entry => !entry.pinned) : entries
   const browsable = usePluginNavigation(present => present)
+  // Plugin discovery and the Creator draft are global navigation actions: the
+  // left sidebar's More menu owns them, so the Conversation View menu keeps
+  // only its folded views.
+  const globalActions = region === 'sidebar'
   return <>
     {moreEntries.map(entry => <div key={entry.id} className={region === 'sidebar' ? css.sidebarEntry : undefined}>
       <MenuItemButton current={entry.active === true} icon={region === 'sidebar' ? (
@@ -59,13 +63,14 @@ export function EntryMenuContent({
         </Tooltip>
       </span>}
     </div>)}
-    {browsable && <MenuItemButton separatorBefore={moreEntries.length > 0} icon={<IconPluginPinwheelOutlineRegular size={16} />}
+    {globalActions && browsable && <MenuItemButton separatorBefore={moreEntries.length > 0}
+      icon={<IconPluginPinwheelOutlineRegular size={16} />}
       onSelect={() => { onDismiss(); browsePlugins() }}>
       {t('install')}
     </MenuItemButton>}
-    <MenuItemButton icon={<IconPlusOutlineRegular size={16} />} separatorBefore={!browsable && moreEntries.length > 0}
+    {globalActions && <MenuItemButton icon={<IconPlusOutlineRegular size={16} />} separatorBefore={!browsable && moreEntries.length > 0}
       onSelect={() => { onDismiss(); createPlugin() }}>
       {t('create')}
-    </MenuItemButton>
+    </MenuItemButton>}
   </>
 }

@@ -26,7 +26,7 @@ export function paperReaderDefinition(t: TranslateNS<'paperReader'>): SidebarRig
     title: () => t('tabTitle'),
     guide: [{
       id: 'library',
-      order: 40,
+      order: 5,
       title: () => t('guideTitle'),
       description: () => t('guideDescription'),
       icon: IconDeliverDocRegular,

@@ -13,15 +13,16 @@ describe('renderPdfPage', () => {
   it('renders the page at CSS scale and reports its display size', async () => {
     const render = vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() }))
     const cleanup = vi.fn()
+    const getViewport = vi.fn(() => ({ width: 600, height: 800 }))
     const page = {
-      getViewport: vi.fn(() => ({ width: 600, height: 800 })),
+      getViewport,
       render,
       cleanup,
     } as unknown as PDFPageProxy
     const canvas = document.createElement('canvas')
     await expect(renderPdfPage(documentOf(page), 1, canvas, new AbortController().signal, 1))
       .resolves.toEqual({ width: 600, height: 800 })
-    expect(page.getViewport).toHaveBeenCalledWith({ scale: 96 / 72 })
+    expect(getViewport).toHaveBeenCalledWith({ scale: 96 / 72 })
     expect(canvas.width).toBe(600)
     expect(canvas.height).toBe(800)
     expect(render).toHaveBeenCalledWith({ canvas, viewport: { width: 600, height: 800 }, transform: undefined })
@@ -29,16 +30,17 @@ describe('renderPdfPage', () => {
   })
 
   it('scales the raster by the device pixel ratio', async () => {
+    const render = vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() }))
     const page = {
       getViewport: () => ({ width: 300, height: 400 }),
-      render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
+      render,
       cleanup: vi.fn(),
     } as unknown as PDFPageProxy
     const canvas = document.createElement('canvas')
     await renderPdfPage(documentOf(page), 1, canvas, new AbortController().signal, 2)
     expect(canvas.width).toBe(600)
     expect(canvas.height).toBe(800)
-    expect(page.render).toHaveBeenCalledWith(expect.objectContaining({ transform: [2, 0, 0, 2, 0, 0] }))
+    expect(render).toHaveBeenCalledWith(expect.objectContaining({ transform: [2, 0, 0, 2, 0, 0] }))
   })
 
   it('bounds the raster area without changing the display size', async () => {

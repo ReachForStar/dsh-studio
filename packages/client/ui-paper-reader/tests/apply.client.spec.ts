@@ -77,7 +77,7 @@ describe('paperReaderDefinition', () => {
     const definition = paperReaderDefinition((key) => { keys.push(key); return key })
     expect(definition.title('')).toBe('tabTitle')
     expect(definition.guide?.map(entry => [entry.id, entry.order, entry.title(), entry.description?.()])).toEqual([
-      ['library', 40, 'guideTitle', 'guideDescription'],
+      ['library', 5, 'guideTitle', 'guideDescription'],
     ])
     expect(keys).toEqual(['tabTitle', 'guideTitle', 'guideDescription'])
   })

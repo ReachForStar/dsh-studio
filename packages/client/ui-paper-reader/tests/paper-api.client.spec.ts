@@ -68,7 +68,7 @@ describe('paper library client', () => {
     expect(await writeAnnotations('paper-1', [ANNOTATION], signal)).toEqual(RECORD)
     expect(calls[0]?.url).toBe(`${PAPER_READER_CLIENT_ROUTE}/papers/paper-1/annotations`)
     expect(calls[0]?.init?.method).toBe('PUT')
-    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ annotations: [ANNOTATION] })
+    expect(JSON.parse(calls[0]?.init?.body as string)).toEqual({ annotations: [ANNOTATION] })
   })
 
   it('deletes one paper', async () => {

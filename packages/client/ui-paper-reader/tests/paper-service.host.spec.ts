@@ -103,6 +103,11 @@ function annotation(overrides: Partial<PaperAnnotation> = {}): PaperAnnotation {
   }
 }
 
+/** The error text of one JSON response double. */
+function errorOf(text: string): string | undefined {
+  return (JSON.parse(text) as { error?: string }).error
+}
+
 describe('paper library routes', () => {
   it('stores a PDF and lists it newest first', async () => {
     const first = await upload('first.pdf')
@@ -164,13 +169,13 @@ describe('upload validation', () => {
   it('refuses a body without the PDF signature', async () => {
     const response = await call('POST', '/papers?name=x.pdf', Buffer.from('plain text'))
     expect(response.status).toBe(400)
-    expect(JSON.parse(response.text()).error).toContain('not a PDF')
+    expect(errorOf(response.text())).toContain('not a PDF')
   })
 
   it('refuses a body above the cap', async () => {
     const response = await call('POST', '/papers?name=x.pdf', Buffer.alloc(64, 0x25), 16)
     expect(response.status).toBe(413)
-    expect(JSON.parse(response.text()).error).toContain('exceeds')
+    expect(errorOf(response.text())).toContain('exceeds')
   })
 
   it('reduces the uploaded name to a safe basename', async () => {
@@ -194,19 +199,19 @@ describe('annotation validation', () => {
   it('rejects a body that is not an object', async () => {
     const response = await write(null)
     expect(response.status).toBe(400)
-    expect(JSON.parse(response.text()).error).toContain('body must be an object')
+    expect(errorOf(response.text())).toContain('body must be an object')
   })
 
   it('rejects a missing annotation list', async () => {
     const response = await write({ annotations: 'none' })
     expect(response.status).toBe(400)
-    expect(JSON.parse(response.text()).error).toContain('annotations must be an array')
+    expect(errorOf(response.text())).toContain('annotations must be an array')
   })
 
   it('rejects a list above the cap', async () => {
     const response = await write({ annotations: Array.from({ length: 5001 }, () => annotation()) })
     expect(response.status).toBe(413)
-    expect(JSON.parse(response.text()).error).toContain('at most 5000')
+    expect(errorOf(response.text())).toContain('at most 5000')
   })
 
   it.each([
@@ -228,7 +233,7 @@ describe('annotation validation', () => {
   ])('rejects %s', async (_label, value, message) => {
     const response = await write({ annotations: [value] })
     expect(response.status).toBe(400)
-    expect(JSON.parse(response.text()).error).toContain(message)
+    expect(errorOf(response.text())).toContain(message)
   })
 
   it('keeps an absent note absent', async () => {
@@ -252,7 +257,7 @@ describe('library faults', () => {
     const paper = await upload()
     const response = await call('PATCH', `/papers/${paper.id}`)
     expect(response.status).toBe(404)
-    expect(JSON.parse(response.text()).error).toContain('unknown route')
+    expect(errorOf(response.text())).toContain('unknown route')
   })
 
   it('answers 500 for an unreadable document and keeps the rest of the library', async () => {
@@ -296,7 +301,7 @@ describe('library faults', () => {
     req.emitError(new Error('socket hang up'))
     await pending
     expect(response.status).toBe(500)
-    expect(JSON.parse(response.text()).error).toContain('socket hang up')
+    expect(errorOf(response.text())).toContain('socket hang up')
   })
 
   it('treats a missing request URL and method as an unknown route', async () => {

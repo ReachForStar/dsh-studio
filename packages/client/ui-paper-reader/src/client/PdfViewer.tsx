@@ -13,6 +13,11 @@ import { pdfTextRenderer } from './pdf/text.ts'
 import { normalizeRects, overlayStyle } from './selection.ts'
 import css from './PdfViewer.module.css'
 
+/** Zoom limits and step for the page column. */
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 3
+const ZOOM_STEP = 0.25
+
 /** One open selection awaiting a menu action. */
 interface SelectionState {
   readonly page: number
@@ -47,6 +52,7 @@ export interface PdfViewerProps {
 export function PdfViewer(props: PdfViewerProps): ReactNode {
   const { data, annotations, signal, t, ask, onCreate, onRemove } = props
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' })
+  const [zoom, setZoom] = useState(1)
   const [selection, setSelection] = useState<SelectionState>()
   const [active, setActive] = useState<{ readonly annotation: PaperAnnotation; readonly x: number; readonly y: number }>()
 
@@ -128,33 +134,49 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
 
   return (
     <div className={css.viewer} onMouseUp={onMouseUp}>
-      <div className={css.pages}>
-        {Array.from({ length: load.document.numPages }, (_, index) => (
-          <PdfPage key={index} document={load.document} page={index + 1} signal={signal} t={t}
-            annotations={annotations.filter(annotation => annotation.page === index + 1)}
-            onSelectAnnotation={(annotation, x, y) => { setActive({ annotation, x, y }) }} />
-        ))}
+      <div className={css.toolbar}>
+        <button type="button" className={css.toolbarButton} aria-label={t('zoomOut')}
+          onClick={() => { setZoom(value => Math.max(MIN_ZOOM, value - ZOOM_STEP)) }}>
+          −
+        </button>
+        <button type="button" className={css.toolbarButton} aria-label={t('zoomReset')}
+          onClick={() => { setZoom(1) }}>
+          {t('zoomValue', { percent: Math.round(zoom * 100) })}
+        </button>
+        <button type="button" className={css.toolbarButton} aria-label={t('zoomIn')}
+          onClick={() => { setZoom(value => Math.min(MAX_ZOOM, value + ZOOM_STEP)) }}>
+          +
+        </button>
       </div>
-      <section className={css.notes} aria-label={t('annotations')}>
-        <h3 className={css.notesTitle}>{t('annotations')}</h3>
-        {annotations.length === 0
-          ? <p className={css.notesEmpty}>{t('noAnnotations')}</p>
-          : <ul className={css.noteList}>
-            {annotations.map(annotation => (
-              <li key={annotation.id} className={css.note}>
-                <span className={css.notePage}>{t('pageLabel', { page: annotation.page })}</span>
-                <p className={css.noteQuote}>{annotation.text}</p>
-                {annotation.note === undefined
-                  ? undefined
-                  : <p className={css.noteBody}><span className={css.noteLabel}>{t('noteLabel')}:</span> {annotation.note}</p>}
-                <button type="button" className={css.noteRemove} aria-label={t('removeAnnotation')}
-                  onClick={() => { onRemove(annotation.id) }}>
-                  <IconTrashOutlineRegular />
-                </button>
-              </li>
-            ))}
-          </ul>}
-      </section>
+      <div className={css.body}>
+        <div className={css.pages} style={{ zoom }}>
+          {Array.from({ length: load.document.numPages }, (_, index) => (
+            <PdfPage key={index} document={load.document} page={index + 1} signal={signal} t={t} zoom={zoom}
+              annotations={annotations.filter(annotation => annotation.page === index + 1)}
+              onSelectAnnotation={(annotation, x, y) => { setActive({ annotation, x, y }) }} />
+          ))}
+        </div>
+        <section className={css.notes} aria-label={t('annotations')}>
+          <h3 className={css.notesTitle}>{t('annotations')}</h3>
+          {annotations.length === 0
+            ? <p className={css.notesEmpty}>{t('noAnnotations')}</p>
+            : <ul className={css.noteList}>
+              {annotations.map(annotation => (
+                <li key={annotation.id} className={css.note}>
+                  <span className={css.notePage}>{t('pageLabel', { page: annotation.page })}</span>
+                  <p className={css.noteQuote}>{annotation.text}</p>
+                  {annotation.note === undefined
+                    ? undefined
+                    : <p className={css.noteBody}><span className={css.noteLabel}>{t('noteLabel')}:</span> {annotation.note}</p>}
+                  <button type="button" className={css.noteRemove} aria-label={t('removeAnnotation')}
+                    onClick={() => { onRemove(annotation.id) }}>
+                    <IconTrashOutlineRegular />
+                  </button>
+                </li>
+              ))}
+            </ul>}
+        </section>
+      </div>
       {selection === undefined
         ? undefined
         : <SelectionMenu selection={selection} t={t} ask={ask} onCreate={onCreate} onDismiss={dismiss} />}
@@ -273,9 +295,10 @@ function PdfPage(props: {
   readonly signal: AbortSignal
   readonly annotations: readonly PaperAnnotation[]
   readonly t: TranslateNS<'paperReader'>
+  readonly zoom: number
   readonly onSelectAnnotation: (annotation: PaperAnnotation, x: number, y: number) => void
 }): ReactNode {
-  const { document, page, signal, annotations, t, onSelectAnnotation } = props
+  const { document, page, signal, annotations, t, zoom, onSelectAnnotation } = props
   const canvas = useRef<HTMLCanvasElement>(null)
   const text = useRef<HTMLDivElement>(null)
   const pageHost = useRef<HTMLDivElement>(null)
@@ -322,7 +345,7 @@ function PdfPage(props: {
     const renderSignal = AbortSignal.any([lifetime.signal, signal])
     setFailed(false)
     let textTask: ReturnType<ReturnType<typeof pdfTextRenderer>> | undefined
-    void renderPdfPage(document, page, node, renderSignal, window.devicePixelRatio, (pdfPage, viewport) => {
+    void renderPdfPage(document, page, node, renderSignal, window.devicePixelRatio * zoom, (pdfPage, viewport) => {
       textTask = pdfTextRenderer(textHost)(pdfPage, viewport)
       return textTask
     }).then(
@@ -337,7 +360,7 @@ function PdfPage(props: {
       lifetime.abort()
       textTask?.cancel()
     }
-  }, [document, page, requested, signal])
+  }, [document, page, requested, signal, zoom])
 
   return (
     <div ref={pageHost} className={css.page} data-paper-page={page}>

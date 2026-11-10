@@ -495,4 +495,21 @@ describe('selection menu', () => {
     fireEvent.keyDown(document.body, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
   })
+
+  it('zooms the page column, clamps at the limits, and resets', async () => {
+    const h = start()
+    await h.ready()
+    const ratio = (): unknown => api.render.mock.calls.at(-1)?.[4]
+    const dpr = window.devicePixelRatio
+    expect(ratio()).toBe(dpr)
+    fireEvent.click(screen.getByRole('button', { name: 'zoomIn' }))
+    await waitFor(() => { expect(ratio()).toBe(dpr * 1.25) })
+    expect(screen.getByRole('button', { name: 'zoomReset' }).textContent).toBe('zoomValue:{"percent":125}')
+    for (let i = 0; i < 10; i += 1) fireEvent.click(screen.getByRole('button', { name: 'zoomIn' }))
+    await waitFor(() => { expect(ratio()).toBe(dpr * 3) })
+    for (let i = 0; i < 12; i += 1) fireEvent.click(screen.getByRole('button', { name: 'zoomOut' }))
+    await waitFor(() => { expect(ratio()).toBe(dpr * 0.5) })
+    fireEvent.click(screen.getByRole('button', { name: 'zoomReset' }))
+    await waitFor(() => { expect(ratio()).toBe(dpr) })
+  })
 })

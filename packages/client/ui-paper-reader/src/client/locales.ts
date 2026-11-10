@@ -45,6 +45,10 @@ export const zh = {
   annotationCount: '{count} 条高亮',
   removeAnnotation: '删除这条高亮',
   pageLabel: '第 {page} 页',
+  zoomIn: '放大',
+  zoomOut: '缩小',
+  zoomReset: '重置缩放',
+  zoomValue: '缩放 {percent}%',
   annotationFailed: '保存高亮失败。',
 } satisfies Record<string, string>
 
@@ -85,6 +89,10 @@ export const en = {
   annotationCount: '{count} highlights',
   removeAnnotation: 'Delete this highlight',
   pageLabel: 'Page {page}',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  zoomReset: 'Reset zoom',
+  zoomValue: 'Zoom {percent}%',
   annotationFailed: 'The highlight could not be saved.',
 } satisfies Record<PaperReaderLocaleKey, string>
 
@@ -122,6 +130,10 @@ export const ja = {
   annotationCount: '{count} 件の強調',
   removeAnnotation: 'この強調を削除',
   pageLabel: '{page} ページ',
+  zoomIn: '拡大',
+  zoomOut: '縮小',
+  zoomReset: 'ズームをリセット',
+  zoomValue: 'ズーム {percent}%',
   annotationFailed: '強調を保存できませんでした。',
 } satisfies Record<PaperReaderLocaleKey, string>
 
@@ -159,6 +171,10 @@ export const es = {
   annotationCount: '{count} resaltados',
   removeAnnotation: 'Eliminar este resaltado',
   pageLabel: 'Página {page}',
+  zoomIn: 'Ampliar',
+  zoomOut: 'Reducir',
+  zoomReset: 'Restablecer zoom',
+  zoomValue: 'Zoom {percent}%',
   annotationFailed: 'No se pudo guardar el resaltado.',
 } satisfies Record<PaperReaderLocaleKey, string>
 
@@ -196,6 +212,10 @@ export const fr = {
   annotationCount: '{count} surlignages',
   removeAnnotation: 'Supprimer ce surlignage',
   pageLabel: 'Page {page}',
+  zoomIn: 'Zoom avant',
+  zoomOut: 'Zoom arrière',
+  zoomReset: 'Réinitialiser le zoom',
+  zoomValue: 'Zoom {percent}%',
   annotationFailed: 'Le surlignage n’a pas pu être enregistré.',
 } satisfies Record<PaperReaderLocaleKey, string>
 
@@ -233,6 +253,10 @@ export const de = {
   annotationCount: '{count} Markierungen',
   removeAnnotation: 'Diese Markierung löschen',
   pageLabel: 'Seite {page}',
+  zoomIn: 'Vergrößern',
+  zoomOut: 'Verkleinern',
+  zoomReset: 'Zoom zurücksetzen',
+  zoomValue: 'Zoom {percent}%',
   annotationFailed: 'Die Markierung konnte nicht gespeichert werden.',
 } satisfies Record<PaperReaderLocaleKey, string>
 
@@ -270,6 +294,10 @@ export const ru = {
   annotationCount: '{count} выделений',
   removeAnnotation: 'Удалить это выделение',
   pageLabel: 'Страница {page}',
+  zoomIn: 'Увеличить',
+  zoomOut: 'Уменьшить',
+  zoomReset: 'Сбросить масштаб',
+  zoomValue: 'Масштаб {percent}%',
   annotationFailed: 'Не удалось сохранить выделение.',
 } satisfies Record<PaperReaderLocaleKey, string>
 
@@ -307,5 +335,9 @@ export const pt = {
   annotationCount: '{count} destaques',
   removeAnnotation: 'Excluir este destaque',
   pageLabel: 'Página {page}',
+  zoomIn: 'Ampliar',
+  zoomOut: 'Reduzir',
+  zoomReset: 'Redefinir zoom',
+  zoomValue: 'Zoom {percent}%',
   annotationFailed: 'Não foi possível salvar o destaque.',
 } satisfies Record<PaperReaderLocaleKey, string>

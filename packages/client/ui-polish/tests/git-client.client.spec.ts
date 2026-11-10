@@ -42,7 +42,7 @@ function streamResponse(chunks: readonly string[]): Response {
 
 /** Capture the request a stubbed fetch received. */
 function stubFetch(response: Response) {
-  const fetchMock = vi.fn(async () => response)
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => response)
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }

@@ -221,7 +221,7 @@ async function gitShowBuffer(cwd: string, ref: string): Promise<Buffer> {
 async function addPaths(cwd: string, paths: readonly string[]): Promise<void> {
   const total = paths.reduce((n, p) => n + p.length + 1, 0)
   if (total > PATHSPEC_STDIN_THRESHOLD) {
-    await gitRun({ cwd, args: ['add', '-A', '--pathspec-from-file=-', '--null'], stdin: `${paths.join('\0')}\0` })
+    await gitRun({ cwd, args: ['add', '-A', '--pathspec-from-file=-', '--pathspec-file-nul'], stdin: `${paths.join('\0')}\0` })
   } else {
     await gitRun({ cwd, args: ['add', '-A', '--', ...paths] })
   }
@@ -231,7 +231,7 @@ async function addPaths(cwd: string, paths: readonly string[]): Promise<void> {
 async function resetPaths(cwd: string, paths: readonly string[]): Promise<void> {
   const total = paths.reduce((n, p) => n + p.length + 1, 0)
   if (total > PATHSPEC_STDIN_THRESHOLD) {
-    await gitRun({ cwd, args: ['reset', '-q', '--pathspec-from-file=-', '--null'], stdin: `${paths.join('\0')}\0` })
+    await gitRun({ cwd, args: ['reset', '-q', '--pathspec-from-file=-', '--pathspec-file-nul'], stdin: `${paths.join('\0')}\0` })
   } else {
     await gitRun({ cwd, args: ['reset', '-q', '--', ...paths] })
   }
@@ -750,8 +750,10 @@ function parseStatusV2(raw: string, renameFrom: Map<string, string>) {
       const [key, ...rest] = line.slice(2).split(' ')
       if (key === 'branch.head') branch.head = rest[0] ?? ''
       else if (key === 'branch.upstream') branch.upstream = rest[0] ?? ''
-      else if (key === 'branch.ahead') branch.ahead = Number(rest[0] ?? 0)
-      else if (key === 'branch.behind') branch.behind = Number(rest[0] ?? 0)
+      else if (key === 'branch.ab') {
+        branch.ahead = Number((rest[0] ?? '').replace('+', '')) || 0
+        branch.behind = Number((rest[1] ?? '').replace('-', '')) || 0
+      }
       continue
     }
     const type = line[0]
@@ -773,7 +775,13 @@ function parseStatusV2(raw: string, renameFrom: Map<string, string>) {
     const x = status[0] ?? ' '
     const y = status[1] ?? ' '
     const unmerged = (newLayout !== null && newLayout[1] === 'u') || x === 'U' || y === 'U'
-    const pathField = fields[unmerged ? 10 : 8] ?? ''
+    // Entry fields: the new layout carries a leading type character ('1' plain,
+    // '2' rename with an extra score field, 'u' unmerged with three hashes);
+    // the old layout starts at XY.
+    const pathIndex = newLayout === null
+      ? (unmerged ? 10 : 8)
+      : newLayout[1] === 'u' ? 10 : newLayout[1] === '2' ? 9 : 8
+    const pathField = fields[pathIndex] ?? ''
     let path = pathField
     let source: string | undefined
     if (x === 'R' || y === 'R') {
@@ -1209,7 +1217,9 @@ export async function handleGitRequest(
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         // "no upstream" is a distinct outcome the panel turns into guidance.
-        const noUpstream = /no upstream branch|没有上游|未设置上游/i.test(message)
+        // Ask git for the upstream instead of matching its localized message.
+        const upstream = (await gitLenient(cwd, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])).trim()
+        const noUpstream = upstream.length === 0
         audit('push', `ok=0 repo=${basename(cwd)} error=${message.slice(0, 200)}`)
         json(res, 500, { error: message, ...(noUpstream ? { noUpstream: true } : {}) })
         return

@@ -217,6 +217,18 @@ class FakeWorkspaces implements IWorkspaces {
     return this.onArchive(sessionId)
   }
 
+  async deleteSession(sessionId: SessionId): Promise<void> {
+    this.list.update(state => ({
+      ...state,
+      archivedSessionIds: state.archivedSessionIds.filter(id => id !== sessionId),
+      pinnedSessionIds: state.pinnedSessionIds.filter(id => id !== sessionId),
+      items: state.items.map(item => ({
+        ...item,
+        sessionIds: item.sessionIds.filter(id => id !== sessionId),
+      })),
+    }))
+  }
+
   unarchiveSession(sessionId: SessionId): Promise<void> {
     this.unarchiveCalls.push(sessionId)
     return this.onUnarchive(sessionId)

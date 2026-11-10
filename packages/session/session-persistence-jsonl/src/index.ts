@@ -23,11 +23,12 @@ import pLimit, { type LimitFunction } from 'p-limit'
 import {
   SessionPersistence, SessionPersistenceRevision, SessionFormatUnsupportedError,
   SessionPersistenceCorruptionError,
-  SessionAlreadyExistsError, SessionPersistenceNotFoundError,
+  SessionAlreadyExistsError, SessionAlreadyOwnedError, SessionPersistenceNotFoundError,
   assertStoredId, materializeCreateHeader, sessionFormatVersionRefusal, validateStoredEvents,
   type SessionAccess, type SessionHandle,
   type SessionHandleReadResult,
   type SessionLocation, type SessionPersistenceCreateOptions,
+  type SessionPersistenceDeleteOptions,
   type SessionPersistenceListOptions, type SessionPersistenceOpenOptions,
   type SessionPersistenceSnapshot, type SessionPersistenceStatOptions,
   type SessionPersistenceRevision as PersistenceRevision,
@@ -561,6 +562,40 @@ class JsonlSessionPersistence extends SessionPersistence {
     }
     signal?.throwIfAborted()
     return snapshots
+  }
+
+  /**
+   * Remove one stored session's complete artifact directory. The kernel write
+   * lease is taken first so a concurrent writer in another process cannot
+   * append into a directory being removed; failures leave the log in place.
+   * @param id - the stored session to remove.
+   * @param options - optional cancellation.
+   * @returns true when the directory was removed, false when the session does not exist.
+   * @throws {SessionAlreadyOwnedError} while the session is open for writing.
+   */
+  async delete(id: SessionId, options?: SessionPersistenceDeleteOptions): Promise<boolean> {
+    options?.signal?.throwIfAborted()
+    await this.ensureRootEncoding()
+    options?.signal?.throwIfAborted()
+    // A created-but-unmaterialized session belongs to its live write handle.
+    if (this.tracker.hasPending(id)) throw new SessionAlreadyOwnedError(id)
+    const selected = await this.findLog(id, options?.signal)
+    if (selected === undefined) return false
+    const dir = dirname(selected.sourcePath)
+    // Releasing the lease after removal closes a descriptor for an unlinked
+    // file; the lock file itself disappears with the directory.
+    const lease = await this.acquireLease(id, undefined, dir)
+    try {
+      options?.signal?.throwIfAborted()
+      this.coldLogMemo.delete(id)
+      const preparation = this.migrationPreparations.get(id)
+      preparation?.controller.abort()
+      this.migrationPreparations.delete(id)
+      await rm(dir, { recursive: true, force: true })
+      return true
+    } finally {
+      await lease.release()
+    }
   }
 
   // --- handle-facing storage internals (package-private via the handle class below) ---

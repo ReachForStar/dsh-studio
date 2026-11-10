@@ -14,6 +14,7 @@ import {
   ClientWorkspaceModel,
   createWorkspaceStateStream,
   WorkspaceArchiveError,
+  WorkspaceDeleteSessionError,
   WorkspaceController,
   WorkspaceCreateError,
   type WorkspaceFollowSink,
@@ -371,6 +372,7 @@ describe('WorkspaceController', () => {
     })
     await expect(controller.archiveSession(sid('session'))).resolves.toBeUndefined()
     await expect(controller.unarchiveSession(sid('session'))).resolves.toBeUndefined()
+    await expect(controller.deleteSession(sid('session'))).resolves.toBeUndefined()
     await expect(controller.pinSession(sid('session'))).resolves.toBeUndefined()
     await expect(controller.unpinSession(sid('session'))).resolves.toBeUndefined()
     await expect(controller.delete(wid('one'))).resolves.toBeUndefined()
@@ -382,6 +384,7 @@ describe('WorkspaceController', () => {
     await expect(controller.archiveSession(sid('session'), { stopActivity: true })).resolves.toBeUndefined()
     expect(mock.log.requests('workspace/archiveSession')).toEqual([{ sessionId: 'session' }, { sessionId: 'session', stopActivity: true }])
     expect(mock.log.requests('workspace/unarchiveSession')).toEqual([{ sessionId: 'session' }])
+    expect(mock.log.requests('workspace/deleteSession')).toEqual([{ sessionId: 'session' }])
     expect(mock.log.requests('workspace/pinSession')).toEqual([{ sessionId: 'session' }])
     expect(mock.log.requests('workspace/unpinSession')).toEqual([{ sessionId: 'session' }])
     expect(mock.log.requests('workspace/delete')).toEqual([{ workspaceId: 'one' }])
@@ -421,6 +424,12 @@ describe('WorkspaceController', () => {
       name: 'WorkspaceArchiveError',
       rpcError: { code: 'workspace/session-active', details: { activity: [{ kind: 'probe' }, { kind: 'probe-items', items: [{ id: 'item-1' }] }] } },
     })
+    mock.remote.workspace.deleteSession.mockResolvedValueOnce(err(new RemoteError(
+      'workspace/session-open', 'still open', { sessionId: sid('session') },
+    )))
+    await expect(controller.deleteSession(sid('session'))).rejects.toBeInstanceOf(WorkspaceDeleteSessionError)
+    await expect(controller.deleteSession(sid('session'))).resolves.toBeUndefined()
+
     mock.remote.workspace.unarchiveSession.mockResolvedValueOnce(err(missingSession))
     await expect(controller.unarchiveSession(sid('session')))
       .rejects.toThrow('workspace session unarchive failed: session/not-found: missing session')

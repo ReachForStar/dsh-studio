@@ -62,7 +62,8 @@ async function harness(options: { systemDocuments?: boolean } = {}) {
   const storageDomain = new DomainFacility(ctx, { backend: 'memory', routes: {} })
   ctx.storage.mount('domain', storageDomain)
   ctx.provide('storageDomain', storageDomain)
-  ctx.provide('sessionPersistence', { list: () => Promise.resolve([]) } as never)
+  const remove = vi.fn(async (_id: SessionId): Promise<boolean> => true)
+  ctx.provide('sessionPersistence', { list: () => Promise.resolve([]), delete: remove } as never)
   await ctx.plugin(WorkspaceRegistry)
   const dispose = (): void => {}
   ctx.provide('typert', {
@@ -72,7 +73,7 @@ async function harness(options: { systemDocuments?: boolean } = {}) {
   } as never)
   new RemoteAccessService(ctx)
   const controller = new WorkspaceController(ctx, options.systemDocuments === true ? {} : { documentsDirectory: root })
-  return { controller, ctx, root, storageDomain }
+  return { controller, ctx, root, storageDomain, remove }
 }
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
@@ -301,6 +302,35 @@ describe('WorkspaceController commands', () => {
     // Unarchive is idempotent: an id that is not archived is not an error.
     await expect(controller.unarchiveSession({ sessionId: session.id }))
       .resolves.toEqual({ archivedSessionIds: [] })
+  })
+
+  it('permanently deletes a Session and maps both refusals to stable codes', async () => {
+    const { controller, ctx, root, remove } = await harness()
+    await controller.create({ path: stageDir(root, 'delete') })
+
+    await expect(controller.deleteSession({ sessionId: SessionId('stored') }))
+      .resolves.toEqual({ deleted: true })
+    expect(remove).toHaveBeenCalledExactlyOnceWith('stored')
+
+    remove.mockResolvedValueOnce(false)
+    await expect(controller.deleteSession({ sessionId: SessionId('already-gone') }))
+      .resolves.toEqual({ deleted: false })
+
+    const live = ctx.sessions.create(SessionId('open-now'), { meta: { cwd: root } })
+    await expect(controller.deleteSession({ sessionId: live.id }))
+      .rejects.toMatchObject({ code: 'workspace/session-open', details: { sessionId: live.id } })
+
+    const activity = [{ kind: 'probe' as const, items: [{ id: 'item-1', label: 'build' }] }]
+    const stopReporting = ctx.on('workspace/session-activity', async ({ sessionId }, next) =>
+      sessionId === SessionId('busy') ? [...activity, ...(await next())] : next())
+    await expect(controller.deleteSession({ sessionId: SessionId('busy') }))
+      .rejects.toMatchObject({ code: 'workspace/session-active', details: { sessionId: 'busy', activity } })
+    stopReporting()
+    expect(remove).toHaveBeenCalledTimes(2)
+
+    const failure = new Error('disk removed the wrong thing')
+    vi.spyOn(ctx.workspaceRegistry, 'deleteSession').mockRejectedValueOnce(failure)
+    await expect(controller.deleteSession({ sessionId: SessionId('stored') })).rejects.toBe(failure)
   })
 
   it('pins only known unarchived Sessions and unpins idempotently', async () => {

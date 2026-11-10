@@ -166,6 +166,8 @@ interface SessionActivity {
 
 `SessionActivityItem` carries the family-specific `id` (a session, job, or schedule id) and an optional display `label`. `archiveSession(sessionId)` asks the waterfall once, after the existence check, and rejects a non-empty answer with `WorkspaceActiveSessionError` (`sessionId`, `activity`) without writing; the controller maps it to the `workspace/session-active` error, whose details carry the same two fields. `archiveSession(sessionId, { stopActivity: true })` — the `ArchiveSessionOptions` field the transport request exposes as `stopActivity` — skips the check, writes the archive, then dispatches `workspace/session-stop`; a rejecting provider is logged and the archive stays, and the stopped work is never awaited to settlement. An already archived id neither asks nor stops. The shipped providers, what they stop, and the `agent/pre-step` gate that keeps an archived Session from running a model step are documented with the [registry package](../../packages/workspace/workspace/README.md#api-behavior); the decision record is the [archive-stops-running-work Agent Note](../../.agents/notes/implemented/feature/2026-09-21-archive-stops-running-session-work.md).
 
+`deleteSession(sessionId)` permanently removes one Session: the persistence backend deletes its stored log, then the registry detaches the id from every Workspace account and drops it from the archive and pin sets. Workspace files and work trees are never touched. A Session this process still holds open rejects with `WorkspaceLiveSessionError`, and one whose providers report running work rejects with `WorkspaceActiveSessionError`, both before anything is written; the controller maps them to `workspace/session-open` and `workspace/session-active`. An unknown id resolves `false` after the same idempotent cleanup.
+
 ## Consumers
 
 [`dsh-workspace-controller`](../../packages/api/workspace-controller) serves workspace CRUD to GUI clients over `ctx.workspaceRegistry`, and [`dsh-session-controller`](../../packages/api/session-controller) performs the create-session-then-attach flow above. [dsh-agent-instructions](../../packages/context/agent-instructions) is **not** a consumer despite the name: it discovers AGENTS.md-style instruction files under an agent's own cwd and never touches `ctx.workspaceRegistry` — the shared word refers to the user's working directory, not to this registry's entities.
@@ -371,6 +373,13 @@ Host service backing the generated `ctx.remote.workspace` namespace.
  * @returns the complete resulting archive set.
  */
 @Remote('unarchiveSession') unarchiveSession(request: WorkspaceUnarchiveSessionRequest): Promise<WorkspaceArchiveValue>
+
+/**
+ * Permanently delete a Session's stored log and workspace references.
+ * @param request - Session identity to remove.
+ * @returns whether a stored log was removed; false means it was already gone.
+ */
+@Remote('deleteSession') deleteSession(request: WorkspaceDeleteSessionRequest): Promise<WorkspaceDeleteSessionValue>
 
 /**
  * Surface one known unarchived Session ahead of unpinned Sessions.
@@ -601,6 +610,24 @@ archiveSession(sessionId: SessionId, options: ArchiveSessionOptions = {}): Promi
  * @returns resolution after durability.
  */
 unarchiveSession(sessionId: SessionId): Promise<void>
+
+/**
+ * Permanently remove one Session's stored log and every registry reference
+ * to it: Workspace accounting, the archive set, and the pin set. The log
+ * directory is the persistence backend's to remove; Workspace files and
+ * work trees are never touched.
+ *
+ * A Session this process still holds open cannot be deleted: its writer owns
+ * the log. A Session whose providers report running work is refused like an
+ * archive without `stopActivity`. An unknown id resolves `false` after the
+ * same idempotent cleanup, so a retry after a crash that already removed the
+ * log is not an error.
+ * @param sessionId - The session to remove.
+ * @returns whether a stored log was removed.
+ * @throws {WorkspaceLiveSessionError} while this process holds the Session open.
+ * @throws {WorkspaceActiveSessionError} when providers still run work for it.
+ */
+deleteSession(sessionId: SessionId): Promise<boolean>
 
 /**
  * Pin one session durably, prepending it to the registry-global pin set.

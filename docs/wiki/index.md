@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # Wiki 索引
@@ -11,7 +11,6 @@ updated: 2026-11-09
 
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。
-- [论文阅读器翻译与会话永久删除（待实现）](queries/paper-reader-translation-and-session-delete.md) — 已确认的方案与验收标准：选中/整篇翻译（跟随界面语言、宿主 `/paper-reader/translate`）与会话永久删除（只删会话目录、会话行「⋯」二次确认、归档也可删）。
 - [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全量会话）、数据源与两条计价路径；总 token、会话数、月度预算对比、当前会话 token 时间线、各会话成本行与宿主进程/系统读数（2 秒轮询），以及预算双 store 同步的原因。
 - [A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）](entities/a2a-stack.md) — 自研 A2A：协议层、宿主端点、对等端工具、状态网关与 Kafka 总线；零依赖、`contextId` 即会话 id、Loader default 导出踩坑、按 a2a-bridge 方案对接的两通道与 skill 契约，以及 `kafka-detect` 的启动与失败留证。
 - [文档面板的编辑与保存（workspaceFiles.write）](entities/document-panel-editing.md) — 写接口的守卫与包含性、pane 级编辑器、Typert 产物需根构建重生成，以及 office 预览的 fflate 浏览器入口踩坑与构建期 builtin 守卫。
@@ -21,7 +20,8 @@ updated: 2026-11-09
 - [工作区文件删除（ctx.fs.remove → workspaceFiles.delete → 右侧栏文件树）](entities/workspace-file-deletion.md) — 四层删除链的各层要点、父目录围栏与 `FS_NOT_EMPTY`，以及 `workspaceFiles/remove` 与客户端命名空间服务撞名导致整包启动失败、改方法名后必须重建两侧产物的踩坑。
 - [星域多智能体协作（dsh-xingchen）](entities/xingchen-multi-agent.md) — 四角色划分、本地与 A2A 席位的配置判断、派发入口、会话投影与现有预设接线；2026-10-27 新增 `autoRoute` 自动路由（`enabled` + `holdRole`）接入 `agent/pre-step`。
 - [本地 A2A 联调栈（deploy/a2a）](entities/local-a2a-stack.md) — 一条命令拉起 Kafka + 三网关 + Web；已运行则跳过、Kafka 停了自动重启、配置单一来源（`A2A_CONFIG`）与运行期日志位置；Linux 上 `sg docker` 提权、网关 `npm ci` 前置、9310 双占用让位规则。
-- [论文阅读器（ui-paper-reader）](entities/ui-paper-reader.md) — 右侧栏 PDF 阅读页：宿主 `/paper-reader` 路由与落盘目录、PDF.js Worker 与内联资源、归一化高亮几何、选中菜单三项动作（提问走 `inputActions` 填草稿不发送）与 8 语言文案。
+- [论文阅读器（ui-paper-reader）](entities/ui-paper-reader.md) — 右侧栏 PDF 阅读页：宿主 `/paper-reader` 与 `/paper-reader/translate` 路由、PDF.js Worker 与内联资源、归一化高亮几何、选中菜单四项动作（提问填草稿不发送、翻译走 `dsh-llm/route` 流式译文）与 8 语言文案。
+- [会话永久删除（SessionPersistence.delete → workspace/deleteSession）](entities/session-permanent-deletion.md) — 持久化接缝删除会话产物、注册表清理记账与归档/置顶引用、宿主命令与两次点击确认对话框；只删日志，不碰工作区文件。
 
 ## 概念 concepts
 
@@ -44,6 +44,7 @@ updated: 2026-11-09
 
 ## 查询沉淀 queries
 
+- [论文阅读器翻译与会话永久删除](queries/paper-reader-translation-and-session-delete.md) — 已实现：`dsh-llm/route` 候选路由与 NDJSON 翻译、按页全文翻译与译文卡片；`SessionPersistence.delete` + `workspace/deleteSession` 的删除链、拒绝码、二次确认与 100% 覆盖率验证。
 - [回复延迟：codearts 上游排队导致每步等待](queries/session-command-followup-latency.md) — 慢时段首字 63–73 秒中排队 56–62 秒（`tries[].queued`），源自 `codearts` 提供方 `maxConcurrency: 1`；本地开销中位 18 毫秒，同账号兄弟模型同日首字 7.9 秒。
 - [本机经 SOCKS5 代理推送 GitHub](queries/github-push-via-socks-proxy.md) — 直连 SSH 与 HTTPS 都不通时，用 `127.0.0.1:7890` 的 SOCKS5 加 `GIT_SSH_COMMAND` 完成推送；含只读核对与失败阶段分辨。
 - [本机（Windows）合并与门禁踩坑](queries/windows-merge-gates.md) — tsconfig project reference、bsdtar 盘符、双语配对与生成器分类等失败的现象/根因/解法；含 2026-09-26 轮的 AMSI 崩溃、git 时限竞态、分组复跑法与 unknown-cast 基线重生成。

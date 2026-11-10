@@ -44,6 +44,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly sessionId: SessionId
       readonly activity: readonly SessionActivity[]
     }
+    /** The Session is still open in the Host process, so its log cannot be removed. */
+    'workspace/session-open': {
+      readonly sessionId: SessionId
+    }
     /** The Session or its anchor is not in the Workspace's manual order. */
     'workspace/move-invalid': {
       readonly workspaceId: WorkspaceId
@@ -132,6 +136,17 @@ export interface WorkspaceUnarchiveSessionRequest {
 /** Complete archived Session set after a mutation. */
 export interface WorkspaceArchiveValue {
   readonly archivedSessionIds: readonly SessionId[]
+}
+
+/** Session requested for permanent deletion from the Host. */
+export interface WorkspaceDeleteSessionRequest {
+  readonly sessionId: SessionId
+}
+
+/** Result of a permanent Session deletion. */
+export interface WorkspaceDeleteSessionValue {
+  /** False when no stored log existed; the registry cleanup still ran. */
+  readonly deleted: boolean
 }
 
 /** Session requested for pinning ahead of unpinned Sessions on grouping surfaces. */

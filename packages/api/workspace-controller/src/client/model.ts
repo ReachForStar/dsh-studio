@@ -4,12 +4,14 @@ import { notifySubscribers } from '@deepseek-ai/dsh-client-store'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/remote'
 import { isRemoteFailure } from '@deepseek-ai/dsh-api-gateway/client'
 import type { RemoteFailure, RemoteResult, TypertClientRemote } from '@deepseek-ai/dsh-typert-protocol'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
   WorkspaceBaseline,
   WorkspaceCreateRequest,
   WorkspaceCreateValue,
+  WorkspaceDeleteSessionValue,
   WorkspaceDeleteValue,
   WorkspaceInsertSessionBeforeRequest,
   WorkspaceOrderValue,
@@ -221,6 +223,17 @@ export class ClientWorkspaceModel implements WorkspaceFollowSink {
       this.installArchived(result.value.archivedSessionIds)
     }
     return result
+  }
+
+  /**
+   * Permanently delete one Session's stored log and registry references.
+   * The Host feed publishes the resulting Workspace rows, archive set, and pin
+   * set; this model installs nothing locally.
+   * @param sessionId - Session to remove.
+   * @returns generated Remote result.
+   */
+  async deleteSession(sessionId: SessionId): Promise<RemoteResult<WorkspaceDeleteSessionValue>> {
+    return await this.remote.deleteSession({ sessionId })
   }
 
   /**

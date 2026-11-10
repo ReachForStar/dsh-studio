@@ -610,5 +610,79 @@ export function runPersistenceContract(name: string, make: () => Promise<Contrac
         await dispose()
       }
     })
+
+    it('delete removes the stored session and resolves false for an absent one', async () => {
+      const { persistence, dispose } = await make()
+      try {
+        const m = meta('delete-me', '/work')
+        const writer = await persistence.create(m)
+        await writer.append(oneTurnLog())
+        await writer.close()
+        expect(await persistence.stat(m.id)).toBeDefined()
+
+        expect(await persistence.delete(m.id)).toBe(true)
+        expect(await persistence.stat(m.id)).toBeUndefined()
+        expect((await persistence.list()).some(snapshot => snapshot.header.id === m.id)).toBe(false)
+        // A retry after the artifact is gone is an idempotent no-op.
+        expect(await persistence.delete(m.id)).toBe(false)
+        expect(await persistence.delete(SessionId('absent-delete'))).toBe(false)
+      } finally {
+        await dispose()
+      }
+    })
+
+    it('delete refuses a session with a live write handle and removes nothing', async () => {
+      const { persistence, dispose } = await make()
+      try {
+        // A created-but-unmaterialized session also belongs to its live creator.
+        const pending = await persistence.create(meta('delete-pending'))
+        await expect(persistence.delete(SessionId('delete-pending'))).rejects.toBeInstanceOf(SessionAlreadyOwnedError)
+        await pending.close()
+
+        const m = meta('delete-open', '/work')
+        const writer = await persistence.create(m)
+        await writer.append(oneTurnLog())
+        await expect(persistence.delete(m.id)).rejects.toBeInstanceOf(SessionAlreadyOwnedError)
+        expect(await persistence.stat(m.id)).toBeDefined()
+        await writer.close()
+        expect(await persistence.delete(m.id)).toBe(true)
+      } finally {
+        await dispose()
+      }
+    })
+
+    it('delete observes cancellation before touching storage', async () => {
+      const { persistence, dispose } = await make()
+      try {
+        const controller = new AbortController()
+        controller.abort(new Error('cancelled'))
+        await expect(persistence.delete(SessionId('cancelled'), { signal: controller.signal }))
+          .rejects.toThrow('cancelled')
+      } finally {
+        await dispose()
+      }
+    })
+
+    it('delete is visible to a fresh instance over the same storage', async () => {
+      const backend = await make()
+      try {
+        if (backend.reopen === undefined) return
+        const m = meta('delete-shared', '/work')
+        const writer = await backend.persistence.create(m)
+        await writer.append(oneTurnLog())
+        await writer.close()
+        expect(await backend.persistence.delete(m.id)).toBe(true)
+
+        const reopened = await backend.reopen()
+        try {
+          expect(await reopened.persistence.stat(m.id)).toBeUndefined()
+          expect(await reopened.persistence.delete(m.id)).toBe(false)
+        } finally {
+          await reopened.dispose()
+        }
+      } finally {
+        await backend.dispose()
+      }
+    })
   })
 }

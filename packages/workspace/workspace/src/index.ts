@@ -82,6 +82,21 @@ export class WorkspaceArchivedSessionPinError extends Error {
   }
 }
 
+/**
+ * A deleteSession request named a session this process still holds open. Its
+ * log cannot be removed under the live writer, so the caller must close the
+ * Session first; nothing was written.
+ */
+export class WorkspaceLiveSessionError extends Error {
+  /**
+   * @param sessionId - The open session id.
+   */
+  constructor(readonly sessionId: SessionId) {
+    super(`cannot delete session '${sessionId}': the session is still open — close it first`)
+    this.name = 'WorkspaceLiveSessionError'
+  }
+}
+
 /** A workspace reorder named a source or anchor absent from the durable registry order. */
 export class WorkspaceOrderInvalidError extends Error {
   /**
@@ -406,6 +421,49 @@ export class WorkspaceRegistry extends Service {
         ...state,
         archivedSessionIds: state.archivedSessionIds.filter(id => id !== sessionId),
       })
+    })
+  }
+
+  /**
+   * Permanently remove one Session's stored log and every registry reference
+   * to it: Workspace accounting, the archive set, and the pin set. The log
+   * directory is the persistence backend's to remove; Workspace files and
+   * work trees are never touched.
+   *
+   * A Session this process still holds open cannot be deleted: its writer owns
+   * the log. A Session whose providers report running work is refused like an
+   * archive without `stopActivity`. An unknown id resolves `false` after the
+   * same idempotent cleanup, so a retry after a crash that already removed the
+   * log is not an error.
+   * @param sessionId - The session to remove.
+   * @returns whether a stored log was removed.
+   * @throws {WorkspaceLiveSessionError} while this process holds the Session open.
+   * @throws {WorkspaceActiveSessionError} when providers still run work for it.
+   */
+  deleteSession(sessionId: SessionId): Promise<boolean> {
+    return this.enqueueOperation(async () => {
+      if (this.ctx.get('sessions')?.get(sessionId) !== undefined) {
+        throw new WorkspaceLiveSessionError(sessionId)
+      }
+      const activity = await this.ctx.waterfall(
+        'workspace/session-activity', { sessionId }, () => Promise.resolve([]),
+      )
+      if (activity.length > 0) throw new WorkspaceActiveSessionError(sessionId, activity)
+      const removed = await this.ctx.sessionPersistence.delete(sessionId)
+      // Drop the header index so a later listing cannot serve the removed row.
+      this.headers.delete(sessionId)
+      this.sessionPaths.delete(sessionId)
+      this.missingSessionPaths.delete(sessionId)
+      this.invalidSessionPaths.delete(sessionId)
+      const state = this.requireState()
+      const archivedSessionIds = state.archivedSessionIds.filter(id => id !== sessionId)
+      const pinnedSessionIds = state.pinnedSessionIds.filter(id => id !== sessionId)
+      if (archivedSessionIds.length !== state.archivedSessionIds.length
+        || pinnedSessionIds.length !== state.pinnedSessionIds.length) {
+        await this.setState({ ...state, archivedSessionIds, pinnedSessionIds })
+      }
+      for (const entity of this.entities.values()) await entity.detachSession(sessionId)
+      return removed
     })
   }
 

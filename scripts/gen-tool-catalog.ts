@@ -136,6 +136,7 @@ class CatalogSessionPersistence extends SessionPersistence {
   flush = unavailableCatalogPersistence
   stat = unavailableCatalogPersistence
   list = unavailableCatalogPersistence
+  delete = unavailableCatalogPersistence
 }
 
 /** Storage operations are unreachable during schema collection. */

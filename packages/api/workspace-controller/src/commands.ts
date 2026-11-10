@@ -6,6 +6,7 @@ import {
   WorkspaceActiveSessionError,
   WorkspaceArchivedSessionPinError,
   WorkspaceId,
+  WorkspaceLiveSessionError,
   WorkspaceMoveInvalidError,
   WorkspaceOrderInvalidError,
   WorkspaceUnknownSessionError,
@@ -18,6 +19,8 @@ import type {
   WorkspaceCreateRequest,
   WorkspaceCreateValue,
   WorkspaceDeleteRequest,
+  WorkspaceDeleteSessionRequest,
+  WorkspaceDeleteSessionValue,
   WorkspaceDeleteValue,
   WorkspaceInsertBeforeRequest,
   WorkspaceInsertSessionBeforeRequest,
@@ -192,6 +195,33 @@ export class WorkspaceCommands {
   async unarchiveSession(request: WorkspaceUnarchiveSessionRequest): Promise<WorkspaceArchiveValue> {
     await this.ctx.workspaceRegistry.unarchiveSession(request.sessionId)
     return { archivedSessionIds: [...this.ctx.workspaceRegistry.archivedSessionIds] }
+  }
+
+  /**
+   * Permanently remove one Session's stored log and registry references.
+   * An unknown id resolves `deleted: false` after the same idempotent cleanup.
+   * @param request - Session identity to remove.
+   * @returns whether a stored log was removed.
+   * @throws {RemoteError} `workspace/session-open` while the Session is live,
+   *   or `workspace/session-active` naming the work that still runs.
+   */
+  async deleteSession(request: WorkspaceDeleteSessionRequest): Promise<WorkspaceDeleteSessionValue> {
+    try {
+      return { deleted: await this.ctx.workspaceRegistry.deleteSession(request.sessionId) }
+    } catch (error) {
+      if (error instanceof WorkspaceLiveSessionError) {
+        throw new RemoteError('workspace/session-open', error.message, { sessionId: request.sessionId }, { cause: error })
+      }
+      if (error instanceof WorkspaceActiveSessionError) {
+        throw new RemoteError(
+          'workspace/session-active',
+          error.message,
+          { sessionId: request.sessionId, activity: error.activity },
+          { cause: error },
+        )
+      }
+      throw error
+    }
   }
 
   /**

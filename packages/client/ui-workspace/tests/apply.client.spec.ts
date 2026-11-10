@@ -17,11 +17,13 @@ import { apply, inject } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import {
   type ArchiveSessionInjected, menuOpenStateFactory, type PinSessionInjected,
-  type RowToastInjected, type SessionArchiveConfirmInjected, type SessionRenameDialogInjected,
+  type RowToastInjected, type SessionArchiveConfirmInjected, type SessionDeleteConfirmInjected,
+  type SessionRenameDialogInjected,
   type WorkspaceViewStoreHandle,
 } from '../src/client/contract/slots.ts'
 import { WorkspaceBrowser } from '../src/client/rows/WorkspaceBrowser.tsx'
 import { ArchiveSessionRowButton, SessionArchiveConfirmDialog } from '../src/client/session-actions/ArchiveSession.tsx'
+import { SessionDeleteConfirmDialog } from '../src/client/session-actions/DeleteSession.tsx'
 import { PinSessionRowButton } from '../src/client/session-actions/PinSession.tsx'
 import { SessionRenameDialog } from '../src/client/session-actions/RenameSession.tsx'
 import { RowActionToast } from '../src/client/session-actions/RowActionToast.tsx'
@@ -122,6 +124,8 @@ async function bench(access: 'fake' | 'static' = 'fake') {
   const fork = vi.fn<ISessions['fork']>(async () => sid('forked'))
   const pinSession = vi.fn(async () => undefined)
   const unpinSession = vi.fn(async () => undefined)
+  const deleteSession = vi.fn(async () => undefined)
+  const refresh = vi.fn(async () => undefined)
   // The Host snapshots the injected hooks derive from and a pin's order write
   // reads at completion; a test replaces them whole, so an unchanged snapshot
   // keeps its identity between reads.
@@ -139,6 +143,7 @@ async function bench(access: 'fake' | 'static' = 'fake') {
     insertBefore: vi.fn(async () => undefined),
     archiveSession: vi.fn(async () => undefined),
     unarchiveSession: vi.fn(async () => undefined),
+    deleteSession,
     pinSession,
     unpinSession,
     insertSessionBefore: vi.fn(async () => ({})),
@@ -149,6 +154,7 @@ async function bench(access: 'fake' | 'static' = 'fake') {
     retain,
     using,
     search,
+    refresh,
     searchResultLimit: 20,
     binding,
     scope,
@@ -170,6 +176,7 @@ async function bench(access: 'fake' | 'static' = 'fake') {
   return {
     ctx, slots: ctx.get('slots') as SlotRegistry, locale, create, rename, commands, accessSource, whenResourceAccess, stopGuard,
     retain, using, selectPanel, search, renameSession, binding, fork, pickDirectory, pinSession, unpinSession,
+    deleteSession, refresh,
     workspacesSubscribe, initializeDefault, history, scope, sessionOf,
     setWorkspaces: (snapshot: WorkspaceSnapshot): void => { workspaceSnapshot = snapshot },
     setSessions: (snapshot: SessionListState): void => { sessionSnapshot = snapshot },
@@ -308,7 +315,7 @@ describe('ui-workspace apply', () => {
     // The row actions follow the browser's own declaration, whenever it lands.
     expect(after.slots.entries(MENU_ITEM)).toHaveLength(0)
     expect(after.slots.entries(ROW_ACTION)).toHaveLength(2)
-    expect(after.slots.entries('shell.overlay')).toHaveLength(3)
+    expect(after.slots.entries('shell.overlay')).toHaveLength(4)
   })
 
   it('declares the two Session row lists and registers the shipped actions and overlay surfaces into them', async () => {
@@ -334,6 +341,7 @@ describe('ui-workspace apply', () => {
     expect(rows('shell.overlay')).toEqual([
       ['workspace.session-rename', undefined, SessionRenameDialog, 'workspace'],
       ['workspace.session-archive', undefined, SessionArchiveConfirmDialog, 'workspace'],
+      ['workspace.session-delete', undefined, SessionDeleteConfirmDialog, 'workspace'],
       ['workspace.row-toast', undefined, RowActionToast, undefined],
     ])
     // Only archive notice entries share the browser's viewing store.
@@ -555,6 +563,27 @@ describe('ui-workspace apply', () => {
     }
     // A rejected archive raises no notice.
     expect(toast.hooks.toast.getSnapshot()).toEqual({ kind: 'archived', sessionId: 'one', seq: 1 })
+  })
+
+  it('permanently deletes through the navigation service and refreshes the Session list', async () => {
+    const b = await bench()
+    declare(b.slots, 'sidebar.workspaces', 'shell.overlay')
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const confirm = faceOf(entry(b.slots, 'shell.overlay', 'workspace.session-delete')) as SessionDeleteConfirmInjected
+
+    await confirm.deleteSession(sid('one'))
+    expect(b.deleteSession).toHaveBeenCalledExactlyOnceWith('one')
+    expect(b.refresh).toHaveBeenCalledOnce()
+
+    // Removing the open Session also clears the main selection and releases
+    // its retained reference.
+    b.ctx.uiWorkspace.openSession(sid('one'))
+    expect(b.retain).toHaveBeenCalledWith('one', expect.objectContaining({ source: 'mainView' }))
+    await b.ctx.uiWorkspace.deleteSession(sid('one'))
+    expect(b.deleteSession).toHaveBeenCalledTimes(2)
+    expect(b.selectPanel).toHaveBeenLastCalledWith(null)
+
+    confirm.settleSessionDelete()
   })
 
   it('turns the Host\'s running-work refusal into the stop-and-archive confirmation, which archives with stopActivity', async () => {
@@ -914,7 +943,7 @@ describe('ui-workspace apply', () => {
     await fiber.await()
     expect(b.slots.entries(MENU_ITEM)).toHaveLength(0)
     expect(b.slots.entries(ROW_ACTION)).toHaveLength(2)
-    expect(b.slots.entries('shell.overlay')).toHaveLength(3)
+    expect(b.slots.entries('shell.overlay')).toHaveLength(4)
     await fiber.dispose()
     expect(b.slots.entries('sidebar.workspaces')).toHaveLength(0)
     expect(b.slots.entries('conversation.hero.workspace')).toHaveLength(0)

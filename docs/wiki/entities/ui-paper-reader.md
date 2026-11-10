@@ -3,7 +3,7 @@ title: 论文阅读器（ui-paper-reader）
 type: entity
 tags: [web, sidebar, pdf, 论文, 标注, fork]
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-10
 sources: []
 status: active
 ---
@@ -12,7 +12,7 @@ status: active
 
 ## 职责
 
-`packages/client/ui-paper-reader`：右侧栏的论文阅读页。上传 PDF 后按原始排版渲染（页面、字体、图片全部由 PDF.js 绘制，不做文本重排），选中文字弹出悬浮菜单，提供高亮、添加笔记、在会话中提问三项操作。包名 `@reachforstar/dsh-client-ui-paper-reader`，版本 `0.2.2-alpha.2`。
+`packages/client/ui-paper-reader`：右侧栏的论文阅读页。上传 PDF 后按原始排版渲染（页面、字体、图片全部由 PDF.js 绘制，不做文本重排），选中文字弹出悬浮菜单，提供高亮、添加笔记、在会话中提问、翻译四项操作；选中文字与整篇文档都可译为中文或英文。包名 `@reachforstar/dsh-client-ui-paper-reader`，版本 `0.2.2-alpha.2`。
 
 ## 关键文件与接口
 
@@ -21,6 +21,8 @@ status: active
 | `src/route.ts` | 路由唯一来源：宿主注册 `PAPER_READER_ROUTE='/paper-reader'`，浏览器用去掉前导斜杠的 `PAPER_READER_CLIENT_ROUTE` 发起文档相对请求 |
 | `src/index.ts` | 宿主 `apply`：把 `/paper-reader` 前缀挂到 `ctx.webServer`；`Config` 暴露 `directory`（默认 `dshHomePath('profiles','web','papers')`）与 `maxBytes`（默认 100 MiB） |
 | `src/paper-service.ts` | 论文列表/上传/读取/删除与注释读写；上传在写盘前按 `maxBytes` 拒绝 |
+| `src/http.ts` | 两个 HTTP 面共用的请求体有界读取、JSON 应答与 `PaperRequestError` |
+| `src/translate-service.ts` | `/paper-reader/translate`：请求校验、候选路由遍历与 NDJSON 流式输出 |
 | `src/types.ts` | 论文记录、摘要、注释与归一化矩形类型 |
 | `src/client/definition.ts` | 右侧栏标签页定义（`kind: 'paperReader'`）与引导入口 |
 | `src/client/PaperReader.tsx` | 页面骨架：上传、列表、打开/删除；提问动作经标准 `inputActions` 座位插入 |
@@ -29,13 +31,16 @@ status: active
 | `src/client/pdf/assets.ts` | 构建期内联同版本 PDF.js 的 worker 源码与 cMap/标准字体/wasm 资源，运行期不发网络请求 |
 | `src/client/pdf/render.ts`、`text.ts` | 页面位图渲染与可选中文本层 |
 | `src/client/selection.ts` | 选区矩形按页面归一化（0–1 分数），保证缩放与窗口变化后高亮仍对齐 |
-| `src/client/paper-api.ts` | 浏览器侧请求封装，错误带服务器状态 |
+| `src/client/paper-api.ts` | 浏览器侧请求封装，错误带服务器状态；`translateText` 解析 NDJSON 流 |
+| `src/client/TranslationCard.tsx` | 译文卡片：流式文本、中/英切换、复制与关闭 |
+| `src/client/pdf/extract.ts` | 逐页 `getTextContent` 文本提取，保留 PDF.js 换行 |
 
 ## 行为要点
 
 - **提问不直接发送**：`askPrompt` 按界面语言生成，先经 `inputActions.captureInsertion()` 记录插入点，再 `insertText` 写入模板并用 `insertQuote` 追加选中原文；任一步失败返回 `false`，菜单显示不可用提示。
 - **高亮几何**：注释保存归一化矩形，渲染时按当前页尺寸还原，避免缩放漂移。
 - **样式约束**：悬浮菜单用 `ui-primitives` 的 `MenuSurface` 承载材质与阴影，本包只负责定位；圆角走 `--dsw-radius-*`，悬停规则包在 `@media (hover: hover)` 内，边框用 0.5px hairline。
+- **翻译**：选区提交所选文字；全文按页提取、跳过空页后逐页提交。目标语言跟随界面语言（`zh*` → 中文，其余 → 英文），卡片可切换。宿主按 provider 顺序尝试候选路由，首个片段前失败回 502 JSON，之后失败发 `error` 行；客户端断开时中止模型调用。
 - **文案**：8 语言 locale（en/zh/ja/de/es/fr/pt/ru），产品文案全部走 `t`。
 
 ## 接线
@@ -43,11 +48,11 @@ status: active
 - `tsconfig.base.json` 路径别名、`tsconfig.client.json` 与 `tsconfig.host.json` 工程引用。
 - `packages/bundle/web-app/cordis.patch.yml` 的 `ui-paper-reader` 行与 `packages/bundle/web-app/package.json` 依赖。
 - `packages/client/README.md`/`.zh.md` 与 `README.i18n.yaml` 的包条目；`scripts/verify-package-readme-model-experience.ts` 登记。
-- 宿主依赖：`@deepseek-ai/dsh-home-paths`、`@deepseek-ai/schemastery`（`dependencies`）；`@deepseek-ai/cordis` 保持 `peerDependencies` 与 `devDependencies` 配对。
+- 宿主依赖：`@deepseek-ai/dsh-home-paths`、`@deepseek-ai/dsh-llm`（含 `./route` 子路径）、`@deepseek-ai/schemastery`（`dependencies`）；`@deepseek-ai/cordis` 保持 `peerDependencies` 与 `devDependencies` 配对。
 
 ## 验证
 
-- `tests/` 共 11 个 spec、131 项测试，`src/**` 逐文件覆盖率 100%。
+- `tests/` 共 14 个 spec、197 项测试，`src/**` 逐文件覆盖率 100%（语句/分支/函数/行）。
 - `scripts/build.ts --scope artifacts`（8 门）与 `--scope check`（2 门）通过。
 - 已过门禁：`verify-client-packages`、`verify-export-jsdoc`、`verify-client-ui-i18n`、`verify-locale-metadata`、`verify-client-route-resolution`、`verify-package-readme-*`、`verify-translation-pairing`、`verify-product-use`、`verify-package-dependencies`（本包无违规项）。
 
@@ -60,3 +65,4 @@ status: active
 - [fork Web 面板](fork-web-panels.md)：同属 fork 自研的右侧栏/面板族。
 - [CJS 客户端包共享 runtime chunk](../queries/cjs-client-shared-runtime-chunk.md)：客户端包产物与同步 chunk 的装载约束。
 - [fork 自研包的门禁红项清单](../queries/fork-gate-debt.md)：新 fork 包的接线与门禁归属。
+- [会话永久删除](session-permanent-deletion.md)：同批次新增的会话删除链。

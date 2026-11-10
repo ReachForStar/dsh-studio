@@ -166,6 +166,8 @@ interface SessionActivity {
 
 `SessionActivityItem` 携带各族自己的 `id`（会话、任务或提醒 id）和可选的展示 `label`。`archiveSession(sessionId)` 在存在性检查之后只询问 waterfall 一次，对非空答案以 `WorkspaceActiveSessionError`（`sessionId`、`activity`）拒绝且不写入；控制器把它映射为 `workspace/session-active` 错误，其 details 携带同样的两个字段。`archiveSession(sessionId, { stopActivity: true })`——`ArchiveSessionOptions` 的这个字段由传输请求以 `stopActivity` 暴露——跳过检查、先写入归档、再派发 `workspace/session-stop`；提供方抛错只记日志，归档保留，被停止的工作从不等待收敛。已归档的 id 既不询问也不停止。随附的提供方、它们停止什么，以及让已归档会话不跑模型步的 `agent/pre-step` 门禁，记录在[注册表包](../../packages/workspace/workspace/README.zh.md#api-behavior)；决策记录见 [archive-stops-running-work Agent Note](../../.agents/notes/implemented/feature/2026-09-21-archive-stops-running-session-work.zh.md)。
 
+`deleteSession(sessionId)` 永久删除一个会话：持久化后端删除其存储日志，注册表随后把该 id 从每个 Workspace 记账中移除，并从归档与置顶集合中清除。工作区文件与工作树绝不触碰。本进程仍打开的会话以 `WorkspaceLiveSessionError` 拒绝，提供方报告仍在运行的会话以 `WorkspaceActiveSessionError` 拒绝，两者都在任何写入之前发生；控制器把它们映射为 `workspace/session-open` 与 `workspace/session-active`。未知 id 在同样的幂等清理后返回 `false`。
+
 ## 消费方
 
 [`dsh-workspace-controller`](../../packages/api/workspace-controller) 经 `ctx.workspaceRegistry` 向 GUI 客户端提供工作区 CRUD，[`dsh-session-controller`](../../packages/api/session-controller) 执行上文「先建会话再 attach」的流程。[dsh-agent-instructions](../../packages/context/agent-instructions) 尽管名字如此，却**不是**消费方：它在 agent 自己的 cwd 下发现 AGENTS.md 风格的指令文件，从不触碰 `ctx.workspaceRegistry`——两者共用的这个词指的是用户的工作目录，而非本注册表的实体。
@@ -371,6 +373,13 @@ Host service backing the generated `ctx.remote.workspace` namespace.
  * @returns the complete resulting archive set.
  */
 @Remote('unarchiveSession') unarchiveSession(request: WorkspaceUnarchiveSessionRequest): Promise<WorkspaceArchiveValue>
+
+/**
+ * Permanently delete a Session's stored log and workspace references.
+ * @param request - Session identity to remove.
+ * @returns whether a stored log was removed; false means it was already gone.
+ */
+@Remote('deleteSession') deleteSession(request: WorkspaceDeleteSessionRequest): Promise<WorkspaceDeleteSessionValue>
 
 /**
  * Surface one known unarchived Session ahead of unpinned Sessions.
@@ -601,6 +610,24 @@ archiveSession(sessionId: SessionId, options: ArchiveSessionOptions = {}): Promi
  * @returns resolution after durability.
  */
 unarchiveSession(sessionId: SessionId): Promise<void>
+
+/**
+ * Permanently remove one Session's stored log and every registry reference
+ * to it: Workspace accounting, the archive set, and the pin set. The log
+ * directory is the persistence backend's to remove; Workspace files and
+ * work trees are never touched.
+ *
+ * A Session this process still holds open cannot be deleted: its writer owns
+ * the log. A Session whose providers report running work is refused like an
+ * archive without `stopActivity`. An unknown id resolves `false` after the
+ * same idempotent cleanup, so a retry after a crash that already removed the
+ * log is not an error.
+ * @param sessionId - The session to remove.
+ * @returns whether a stored log was removed.
+ * @throws {WorkspaceLiveSessionError} while this process holds the Session open.
+ * @throws {WorkspaceActiveSessionError} when providers still run work for it.
+ */
+deleteSession(sessionId: SessionId): Promise<boolean>
 
 /**
  * Pin one session durably, prepending it to the registry-global pin set.

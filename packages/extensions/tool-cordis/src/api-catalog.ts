@@ -3015,6 +3015,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'options', description: 'optional cancellation.' }],
         returns: 'one snapshot per stored session.',
       },
+      {
+        signature: 'abstract delete(id: SessionId, options?: SessionPersistenceDeleteOptions): Promise<boolean>',
+        description: 'Permanently remove one stored session: its complete durable artifact set, including historical format generations and session-local files. This is the only destructive persistence operation; callers own every other reference to the session (workspace accounting, archive and pin sets, derived read models) and must drop it themselves.\n\nAn unknown id resolves `false` without writing, so a retry after a crash that already removed the artifact is not an error. A session with a live write handle — this process\'s or another process\'s — rejects with SessionAlreadyOwnedError and removes nothing.',
+        parameters: [{ name: 'id', description: 'the stored session to remove.' }, { name: 'options', description: 'optional cancellation.' }],
+        returns: 'true when an artifact was removed, false when none existed.',
+        throws: ['{SessionAlreadyOwnedError} while the session is open for writing.'],
+      },
     ],
   },
   {
@@ -4729,6 +4736,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the complete resulting archive set.',
       },
       {
+        signature: '@Remote(\'deleteSession\') deleteSession(request: WorkspaceDeleteSessionRequest): Promise<WorkspaceDeleteSessionValue>',
+        description: 'Permanently delete a Session\'s stored log and workspace references.',
+        parameters: [{ name: 'request', description: 'Session identity to remove.' }],
+        returns: 'whether a stored log was removed; false means it was already gone.',
+      },
+      {
         signature: '@Remote(\'pinSession\') pinSession(request: WorkspacePinSessionRequest): Promise<WorkspacePinValue>',
         description: 'Surface one known unarchived Session ahead of unpinned Sessions.',
         parameters: [{ name: 'request', description: 'Session identity to pin.' }],
@@ -4856,6 +4869,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Unarchive one session durably by dropping it from the registry-global archive set; the accounting slot was never touched, so the session returns to its recorded position. Unarchiving runs no session-existence check because removing an id cannot introduce an unknown one, so an entry whose session is gone still resolves. An id that is not archived resolves without writing.',
         parameters: [{ name: 'sessionId', description: 'The session to unarchive.' }],
         returns: 'resolution after durability.',
+      },
+      {
+        signature: 'deleteSession(sessionId: SessionId): Promise<boolean>',
+        description: 'Permanently remove one Session\'s stored log and every registry reference to it: Workspace accounting, the archive set, and the pin set. The log directory is the persistence backend\'s to remove; Workspace files and work trees are never touched.\n\nA Session this process still holds open cannot be deleted: its writer owns the log. A Session whose providers report running work is refused like an archive without `stopActivity`. An unknown id resolves `false` after the same idempotent cleanup, so a retry after a crash that already removed the log is not an error.',
+        parameters: [{ name: 'sessionId', description: 'The session to remove.' }],
+        returns: 'whether a stored log was removed.',
+        throws: ['{WorkspaceLiveSessionError} while this process holds the Session open.', '{WorkspaceActiveSessionError} when providers still run work for it.'],
       },
       {
         signature: 'pinSession(sessionId: SessionId): Promise<void>',
@@ -8942,6 +8962,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SessionPersistenceCreateOptions {\n    readonly signal?: AbortSignal;\n    readonly inheritedEventCount?: SessionLogOffset;\n}',
   },
   {
+    name: 'SessionPersistenceDeleteOptions',
+    declaration: 'export interface SessionPersistenceDeleteOptions {\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
     name: 'SessionPersistenceListOptions',
     declaration: 'export interface SessionPersistenceListOptions {\n    readonly signal?: AbortSignal;\n}',
   },
@@ -10588,6 +10612,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WorkspaceDeleteRequest',
     declaration: 'export interface WorkspaceDeleteRequest {\n    readonly workspaceId: WorkspaceId;\n}',
+  },
+  {
+    name: 'WorkspaceDeleteSessionRequest',
+    declaration: 'export interface WorkspaceDeleteSessionRequest {\n    readonly sessionId: SessionId;\n}',
+  },
+  {
+    name: 'WorkspaceDeleteSessionValue',
+    declaration: 'export interface WorkspaceDeleteSessionValue {\n    readonly deleted: boolean;\n}',
   },
   {
     name: 'WorkspaceDeleteValue',

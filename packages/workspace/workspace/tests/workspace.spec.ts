@@ -14,7 +14,9 @@ import { SessionPersistenceRevision } from '@deepseek-ai/dsh-session-persistence
 import type { SessionPersistenceSnapshot } from '@deepseek-ai/dsh-session-persistence'
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 import WorkspaceRegistry, {
+  WorkspaceActiveSessionError,
   WorkspaceId,
+  WorkspaceLiveSessionError,
   type workspaceDomainState,
   WorkspaceMoveInvalidError,
   WorkspaceOrderInvalidError,
@@ -56,7 +58,12 @@ async function harness(options: HarnessOptions = {}) {
     listed.map(header => ({ header, revision: SessionPersistenceRevision(`rev-${header.id}`) })))
   const open = vi.fn(() => { throw new Error('event bodies must not be opened') })
   const stat = vi.fn(() => { throw new Error('per-session stat must not be needed') })
-  ctx.provide('sessionPersistence', { list, open, stat } as never)
+  const remove = vi.fn(async (id: SessionId): Promise<boolean> => {
+    const before = listed.length
+    listed = listed.filter(entry => entry.id !== id)
+    return listed.length !== before
+  })
+  ctx.provide('sessionPersistence', { list, open, stat, delete: remove } as never)
 
   if (options.sessionStore === true) {
     await ctx.plugin(SessionStore)
@@ -83,6 +90,7 @@ async function harness(options: HarnessOptions = {}) {
     list,
     open,
     stat,
+    remove,
     setSessions: (headers: SessionHeader[]) => { listed = headers },
   }
 }
@@ -1091,6 +1099,47 @@ describe('registry-global session archive', () => {
     await expect(result.registry.archiveSession(SessionId('ghost')))
       .rejects.toThrow(/cannot archive session 'ghost'/)
     expect(storedState(result.pool).archivedSessionIds).toEqual(['stray', 'live-only'])
+  })
+
+  it('permanently deletes the log and every registry reference', async () => {
+    const dir = await makeDir('delete-home')
+    const result = await harness({ sessions: [header('kept', dir, 100), header('gone', dir, 200)] })
+    const workspace = result.registry.list()[0]!
+    await result.registry.pinSession(SessionId('gone'))
+    await result.registry.archiveSession(SessionId('kept'))
+    expect(result.registry.pinnedSessionIds).toEqual(['gone'])
+    expect(result.registry.archivedSessionIds).toEqual(['kept'])
+
+    await expect(result.registry.deleteSession(SessionId('gone'))).resolves.toBe(true)
+    expect(result.remove).toHaveBeenCalledExactlyOnceWith('gone')
+    expect(result.registry.pinnedSessionIds).toEqual([])
+    expect(result.registry.archivedSessionIds).toEqual(['kept'])
+    expect(workspace.sessionIds).not.toContain('gone')
+    expect(workspace.sessionIds).toContain('kept')
+    expect(storedState(result.pool).archivedSessionIds).toEqual(['kept'])
+  })
+
+  it('resolves false for an unknown session without failing', async () => {
+    const result = await harness({ sessions: [header('kept')] })
+    await expect(result.registry.deleteSession(SessionId('ghost'))).resolves.toBe(false)
+    expect(result.remove).toHaveBeenCalledExactlyOnceWith('ghost')
+  })
+
+  it('refuses a session this process still holds open', async () => {
+    const dir = await makeDir('delete-live')
+    const result = await harness({ sessions: [header('live', dir, 100)], liveSessions: [header('live', dir, 100)] })
+    await expect(result.registry.deleteSession(SessionId('live'))).rejects.toBeInstanceOf(WorkspaceLiveSessionError)
+    expect(result.remove).not.toHaveBeenCalled()
+  })
+
+  it('refuses while providers still report running work', async () => {
+    const dir = await makeDir('delete-active')
+    const result = await harness({ sessions: [header('busy', dir, 100)] })
+    result.ctx.on('workspace/session-activity', async (_request, next) => [
+      { kind: 'turn' }, ...await next(),
+    ])
+    await expect(result.registry.deleteSession(SessionId('busy'))).rejects.toBeInstanceOf(WorkspaceActiveSessionError)
+    expect(result.remove).not.toHaveBeenCalled()
   })
 
   it('propagates a persistence-listing failure instead of reporting an unknown session', async () => {

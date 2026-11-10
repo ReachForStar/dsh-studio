@@ -1032,6 +1032,29 @@ describe('JsonlSessionPersistence: immutable format generations', () => {
     }
   })
 
+  it('deletes a stored session directory and aborts a concurrent historical migration', async () => {
+    const header = meta('delete-migrating', '/work')
+    const sourcePath = generationLogPath(root, header.cwd, header.id, 1, 'none')
+    await mkdir(dirname(sourcePath), { recursive: true })
+    await writeFile(sourcePath, releasedV1PackedPhysicalLog(header))
+    const paused = pausePhysicalRead(sourcePath)
+    const opening = ctx.sessionPersistence.open(header.id, 'read')
+    await paused.entered
+    expect(await ctx.sessionPersistence.delete(header.id)).toBe(true)
+    paused.release()
+    await expect(opening).rejects.toThrow()
+    await expect(readFile(sourcePath)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('reports a failed delete lease without removing the stored session', async () => {
+    const header = meta('delete-locked', '/work')
+    const handle = await ctx.sessionPersistence.create(header)
+    await handle.append(oneTurnLog())
+    await expect(ctx.sessionPersistence.delete(header.id)).rejects.toMatchObject({ name: 'SessionAlreadyOwnedError' })
+    await handle.close()
+    expect(await ctx.sessionPersistence.stat(header.id)).toBeDefined()
+  })
+
   it('reads v1 packed chunk rows without publishing or changing the source', async () => {
     const header = meta('released-v1-read', '/work')
     const sourcePath = generationLogPath(root, header.cwd, header.id, 1, 'none')

@@ -31,6 +31,21 @@ export class WorkspaceArchiveError extends Error {
   }
 }
 
+/**
+ * Permanently deleting a Session failed on the Host. `rpcError.code`
+ * distinguishes an open Session (`workspace/session-open`) and running work
+ * (`workspace/session-active`) from a carrier fault; nothing was removed for
+ * either refusal.
+ */
+export class WorkspaceDeleteSessionError extends Error {
+  override readonly name = 'WorkspaceDeleteSessionError'
+
+  /** @param rpcError - Host business or folded carrier failure. */
+  constructor(readonly rpcError: RemoteFailure) {
+    super(`workspace session delete failed: ${rpcError.code}: ${rpcError.message}`)
+  }
+}
+
 /** Bare observable source for the Workspace Controller snapshot. */
 export interface WorkspaceSource {
   /** Read the identity-stable current snapshot. */
@@ -90,6 +105,15 @@ export interface IWorkspaces {
    * @param sessionId - Session to unarchive.
    */
   unarchiveSession(sessionId: SessionId): Promise<void>
+  /**
+   * Permanently delete a Session's stored log and Workspace references. Files
+   * and work trees are never touched.
+   * @param sessionId - Session to remove.
+   * @throws {WorkspaceDeleteSessionError} when the Host refuses because the
+   *   Session is open (`workspace/session-open`) or still runs work
+   *   (`workspace/session-active`).
+   */
+  deleteSession(sessionId: SessionId): Promise<void>
   /**
    * Pin a Session ahead of unpinned Sessions on Workspace grouping surfaces.
    * @param sessionId - Session to pin.
@@ -163,6 +187,11 @@ export class WorkspaceController extends Service implements IWorkspaces {
   async unarchiveSession(sessionId: SessionId): Promise<void> {
     const result = await this.model.unarchiveSession(sessionId)
     if (!result.ok) throw commandError('session unarchive', result.error)
+  }
+
+  async deleteSession(sessionId: SessionId): Promise<void> {
+    const result = await this.model.deleteSession(sessionId)
+    if (!result.ok) throw new WorkspaceDeleteSessionError(result.error)
   }
 
   async pinSession(sessionId: SessionId): Promise<void> {

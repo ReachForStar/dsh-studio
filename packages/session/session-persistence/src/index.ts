@@ -109,6 +109,12 @@ export interface SessionPersistenceStatOptions {
   readonly signal?: AbortSignal
 }
 
+/** Options for {@link SessionPersistence.delete}. */
+export interface SessionPersistenceDeleteOptions {
+  /** Optional cancellation observed before backend work starts. */
+  readonly signal?: AbortSignal
+}
+
 /** Options for {@link SessionPersistence.list}. */
 export interface SessionPersistenceListOptions {
   /** Optional cancellation for backend listing work. */
@@ -208,6 +214,24 @@ export abstract class SessionPersistence extends Service {
    * @returns one snapshot per stored session.
    */
   abstract list(options?: SessionPersistenceListOptions): Promise<readonly SessionPersistenceSnapshot[]>
+
+  /**
+   * Permanently remove one stored session: its complete durable artifact set,
+   * including historical format generations and session-local files. This is
+   * the only destructive persistence operation; callers own every other
+   * reference to the session (workspace accounting, archive and pin sets,
+   * derived read models) and must drop it themselves.
+   *
+   * An unknown id resolves `false` without writing, so a retry after a crash
+   * that already removed the artifact is not an error. A session with a live
+   * write handle — this process's or another process's — rejects with
+   * {@link SessionAlreadyOwnedError} and removes nothing.
+   * @param id - the stored session to remove.
+   * @param options - optional cancellation.
+   * @returns true when an artifact was removed, false when none existed.
+   * @throws {SessionAlreadyOwnedError} while the session is open for writing.
+   */
+  abstract delete(id: SessionId, options?: SessionPersistenceDeleteOptions): Promise<boolean>
 }
 
 export default SessionPersistence

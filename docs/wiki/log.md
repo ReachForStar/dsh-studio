@@ -750,3 +750,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 新增待实现页：翻译（选中 + 整篇、跟随界面语言、宿主 `/paper-reader/translate`）与会话永久删除（仅删会话目录、会话行「⋯」二次确认、归档也可删）。
 - 记录阅读器已完成的能力，供下一个会话接续；两项各用独立提交。
+## [2026-11-10] feat | 论文阅读器翻译与会话永久删除
+
+- 阅读器新增 `/paper-reader/translate`（NDJSON、候选路由、可中止）与译文卡片；选区/全文翻译、目标语言跟随界面语言。LLM 路由抽到 `@deepseek-ai/dsh-llm/route`，ui-polish 改为共用。
+- 会话永久删除：`SessionPersistence.delete`（JSONL 取写锁后删目录）→ `WorkspaceRegistry.deleteSession`（清理记账/归档/置顶）→ `workspace/deleteSession` → 行菜单与两次点击确认；归档行同样可删。
+- 验证：ui-paper-reader 14 spec/197 测试、ui-workspace 15 spec/526 测试均 100% 覆盖；typecheck 五门、lint、jscpd、i18n/文档/升级指南门禁通过。
+- 新增实体页与升级指南；原方案页改为已实现记录。

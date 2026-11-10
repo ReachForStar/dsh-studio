@@ -1,14 +1,15 @@
 .viewer {
   display: flex;
   flex: 1 1 auto;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
   gap: 12px;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
   min-height: 0;
   padding: 12px;
-  overflow: auto;
+  overflow: hidden;
   background: var(--dsw-alias-bg-document-preview);
   font-family: var(--dsw-font, sans-serif);
   white-space: normal;
@@ -16,10 +17,12 @@
 
 .pages {
   display: flex;
-  flex: none;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
 }
 
 .page {
@@ -251,18 +254,15 @@
 }
 
 .notes {
-  position: sticky;
-  top: -12px;
-  z-index: 2;
   display: flex;
-  flex: none;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: 8px;
-  order: -1;
-  max-height: 45%;
+  width: clamp(160px, 34%, 240px);
+  min-height: 0;
   overflow: auto;
-  padding: 4px 0 8px;
-  border-block-end: 0.5px solid var(--dsw-alias-border-l1);
+  padding-inline-start: 10px;
+  border-inline-start: 0.5px solid var(--dsw-alias-border-l1);
   background: var(--dsw-alias-bg-document-preview);
 }
 
@@ -294,6 +294,8 @@
   flex-direction: column;
   gap: 4px;
   padding: 8px 30px 8px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-inline-start: 2px solid var(--dsw-static-red-500);
   border-radius: var(--dsw-radius-sm);
   background: var(--dsw-alias-bg-layer-1);
 }

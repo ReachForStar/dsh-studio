@@ -11,6 +11,7 @@ updated: 2026-11-09
 
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。
+- [论文阅读器翻译与会话永久删除（待实现）](queries/paper-reader-translation-and-session-delete.md) — 已确认的方案与验收标准：选中/整篇翻译（跟随界面语言、宿主 `/paper-reader/translate`）与会话永久删除（只删会话目录、会话行「⋯」二次确认、归档也可删）。
 - [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全量会话）、数据源与两条计价路径；总 token、会话数、月度预算对比、当前会话 token 时间线、各会话成本行与宿主进程/系统读数（2 秒轮询），以及预算双 store 同步的原因。
 - [A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）](entities/a2a-stack.md) — 自研 A2A：协议层、宿主端点、对等端工具、状态网关与 Kafka 总线；零依赖、`contextId` 即会话 id、Loader default 导出踩坑、按 a2a-bridge 方案对接的两通道与 skill 契约，以及 `kafka-detect` 的启动与失败留证。
 - [文档面板的编辑与保存（workspaceFiles.write）](entities/document-panel-editing.md) — 写接口的守卫与包含性、pane 级编辑器、Typert 产物需根构建重生成，以及 office 预览的 fflate 浏览器入口踩坑与构建期 builtin 守卫。

@@ -1,11 +1,14 @@
 .viewer {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
+  min-height: 0;
   padding: 12px;
+  overflow: auto;
   background: var(--dsw-alias-bg-document-preview);
   font-family: var(--dsw-font, sans-serif);
   white-space: normal;
@@ -13,6 +16,7 @@
 
 .pages {
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
@@ -213,11 +217,19 @@
 }
 
 .notes {
+  position: sticky;
+  top: -12px;
+  z-index: 2;
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: 8px;
-  padding-block-start: 4px;
-  border-block-start: 0.5px solid var(--dsw-alias-border-l1);
+  order: -1;
+  max-height: 45%;
+  overflow: auto;
+  padding: 4px 0 8px;
+  border-block-end: 0.5px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-document-preview);
 }
 
 .notesTitle {

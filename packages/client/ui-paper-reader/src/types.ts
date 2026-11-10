@@ -52,3 +52,21 @@ export interface PaperDocument {
 export interface PaperAnnotationsUpdate {
   readonly annotations: readonly PaperAnnotation[]
 }
+
+/** Languages the reader can translate a selection or a page into. */
+export type PaperTranslateTarget = 'zh' | 'en'
+
+/** One translation request from the reader. */
+export interface PaperTranslateRequest {
+  /** Text to translate; the host bounds it before calling a model. */
+  readonly text: string
+  /** Language the translation is written in. */
+  readonly target: PaperTranslateTarget
+}
+
+/** One NDJSON line of a translation response, in arrival order. */
+export type PaperTranslateEvent =
+  | { readonly type: 'delta'; readonly text: string }
+  | { readonly type: 'finish' }
+  /** Sent after deltas only when the stream failed once text was already printed. */
+  | { readonly type: 'error'; readonly message: string }

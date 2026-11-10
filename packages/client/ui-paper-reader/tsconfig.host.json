@@ -7,13 +7,18 @@
   },
   "include": [
     "src/index.ts",
+    "src/http.ts",
     "src/paper-service.ts",
     "src/route.ts",
+    "src/translate-service.ts",
     "src/types.ts"
   ],
   "references": [
     {
       "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../llm/llm"
     },
     {
       "path": "../../util/home-paths"

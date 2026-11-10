@@ -51,7 +51,7 @@ import type { GitCwdResolver } from './git-service.ts'
 import { normalizeSlashes } from './git-service.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import { BlockAssembler, createAssistantMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { listLlmModels, llmRouteCandidates, type LlmRoute } from './llm-route.ts'
+import { listLlmModels, llmRouteCandidates, type LlmRoute } from '@deepseek-ai/dsh-llm/route'
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024
 const MAX_PDF_BYTES = 20 * 1024 * 1024

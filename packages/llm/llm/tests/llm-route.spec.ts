@@ -1,7 +1,7 @@
 /** Shared LLM routing: catalog flattening and candidate selection. */
 import type { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
-import { listLlmModels, llmRouteCandidates, llmRouteKey } from '../src/llm-route.ts'
+import { listLlmModels, llmRouteCandidates, llmRouteKey } from '@deepseek-ai/dsh-llm/route'
 
 /** Minimal Host context carrying one llm service with a fixed catalog. */
 function contextWith(catalog: Record<string, { id: string; name: string }[]>): Context {

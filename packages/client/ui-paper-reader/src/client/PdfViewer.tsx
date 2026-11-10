@@ -6,11 +6,14 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNo
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import { IconTrashOutlineRegular, MenuSurface } from '@deepseek-ai/dsh-client-ui-primitives'
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
-import type { PaperAnnotation, PaperRect } from '../types.ts'
+import type { PaperAnnotation, PaperRect, PaperTranslateTarget } from '../types.ts'
+import { translateText } from './paper-api.ts'
+import { extractPageText } from './pdf/extract.ts'
 import { openPdf, type PdfDocument } from './pdf/runtime.ts'
 import { renderPdfPage } from './pdf/render.ts'
 import { pdfTextRenderer } from './pdf/text.ts'
 import { normalizeRects, overlayStyle } from './selection.ts'
+import { TranslationCard, type TranslationView } from './TranslationCard.tsx'
 import css from './PdfViewer.module.css'
 
 /** Zoom limits and step for the page column. */
@@ -38,6 +41,8 @@ export interface PdfViewerProps {
   readonly annotations: readonly PaperAnnotation[]
   readonly signal: AbortSignal
   readonly t: TranslateNS<'paperReader'>
+  /** Language a translation starts in; the card can switch between zh and en. */
+  readonly translateTarget: PaperTranslateTarget
   /** Fill the conversation draft with one question; false when no Session accepts input. */
   readonly ask: (text: string) => boolean
   readonly onCreate: (annotation: PaperAnnotation) => void
@@ -50,11 +55,18 @@ export interface PdfViewerProps {
  * @returns the page stack and the annotation list.
  */
 export function PdfViewer(props: PdfViewerProps): ReactNode {
-  const { data, annotations, signal, t, ask, onCreate, onRemove } = props
+  const { data, annotations, signal, t, translateTarget, ask, onCreate, onRemove } = props
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' })
   const [zoom, setZoom] = useState(1)
   const [selection, setSelection] = useState<SelectionState>()
   const [active, setActive] = useState<{ readonly annotation: PaperAnnotation; readonly x: number; readonly y: number }>()
+  const [translation, setTranslation] = useState<TranslationView>()
+  // Source text per page, kept so a target switch re-runs without re-extracting.
+  const translationSource = useRef<{ readonly kind: TranslationView['kind']; readonly pages: readonly string[] }>()
+  const translationLife = useRef<AbortController>()
+
+  // A closing viewer must also stop the model call it started.
+  useEffect(() => () => { translationLife.current?.abort() }, [])
 
   useEffect(() => {
     const lifetime = new AbortController()
@@ -125,11 +137,93 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
     setSelection({ page, rects, text, x: last.left, y: last.bottom + 6 })
   }, [])
 
+  /**
+   * Translate one kind of source, page by page, appending streamed text.
+   * @param kind - selection or document.
+   * @param pages - text of each submitted page, in order.
+   * @param target - language to translate into.
+   */
+  const runTranslation = useCallback((
+    kind: TranslationView['kind'],
+    pages: readonly string[],
+    target: PaperTranslateTarget,
+  ): void => {
+    translationLife.current?.abort()
+    const life = new AbortController()
+    translationLife.current = life
+    translationSource.current = { kind, pages }
+    setTranslation({ kind, target, text: '', status: 'streaming', done: 0, total: pages.length })
+    void (async () => {
+      let complete = ''
+      for (const [index, page] of pages.entries()) {
+        life.signal.throwIfAborted()
+        let pageText = ''
+        await translateText({ text: page, target }, life.signal, (delta) => {
+          pageText += delta
+          const next = complete === '' ? pageText : `${complete}\n\n${pageText}`
+          setTranslation(current => current === undefined ? current : { ...current, text: next })
+        })
+        complete = complete === '' ? pageText : `${complete}\n\n${pageText}`
+        setTranslation(current => current === undefined ? current : { ...current, done: index + 1 })
+      }
+      setTranslation(current => current === undefined ? current : { ...current, status: 'ready' })
+    })().catch(() => {
+      if (life.signal.aborted) return
+      /* v8 ignore next -- a failure after the card closed is unreachable: close aborts the request. */
+      setTranslation(current => current === undefined ? current : { ...current, status: 'failed' })
+    })
+  }, [])
+
+  /** Remove the card and stop whatever is still streaming into it. */
+  const closeTranslation = useCallback((): void => {
+    translationLife.current?.abort()
+    setTranslation(undefined)
+  }, [])
+
+  /** Re-run the same source in the other language. */
+  const changeTarget = useCallback((target: PaperTranslateTarget): void => {
+    const source = translationSource.current
+    if (source === undefined || translation?.target === target) return
+    runTranslation(source.kind, source.pages, target)
+  }, [runTranslation, translation?.target])
+
   if (load.kind === 'failed') {
     return <p className={css.status} role="alert">{t('loadFailed')}</p>
   }
   if (load.kind === 'loading') {
     return <p className={css.status} role="status">{t('loading')}</p>
+  }
+
+  /** Extract every page, then translate them; report a page that cannot be read. */
+  const translateDocument = (): void => {
+    const document = load.document
+    void (async () => {
+      const pages: string[] = []
+      try {
+        for (let number = 1; number <= document.numPages; number += 1) {
+          pages.push(await extractPageText(await document.getPage(number)))
+        }
+      } catch {
+        if (signal.aborted) return
+        setTranslation({
+          kind: 'document', target: translateTarget, text: '', status: 'failed',
+          done: 0, total: document.numPages,
+        })
+        return
+      }
+      // The paper can close while pages are being read; nobody would receive a stream.
+      if (signal.aborted) return
+      const filled = pages.filter(page => page !== '')
+      if (filled.length === 0) {
+        translationSource.current = { kind: 'document', pages }
+        setTranslation({
+          kind: 'document', target: translateTarget, text: '', status: 'empty',
+          done: pages.length, total: pages.length,
+        })
+        return
+      }
+      runTranslation('document', filled, translateTarget)
+    })()
   }
 
   return (
@@ -146,6 +240,10 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
         <button type="button" className={css.toolbarButton} aria-label={t('zoomIn')}
           onClick={() => { setZoom(value => Math.min(MAX_ZOOM, value + ZOOM_STEP)) }}>
           +
+        </button>
+        <button type="button" className={css.toolbarButton} onClick={translateDocument}
+          disabled={translation?.kind === 'document' && translation.status === 'streaming'}>
+          {t('translateDocument')}
         </button>
       </div>
       <div className={css.body}>
@@ -179,11 +277,15 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
       </div>
       {selection === undefined
         ? undefined
-        : <SelectionMenu selection={selection} t={t} ask={ask} onCreate={onCreate} onDismiss={dismiss} />}
+        : <SelectionMenu selection={selection} t={t} ask={ask} onCreate={onCreate} onDismiss={dismiss}
+          onTranslate={(text) => { dismiss(); runTranslation('selection', [text], translateTarget) }} />}
       {active === undefined
         ? undefined
         : <AnnotationMenu annotation={active.annotation} x={active.x} y={active.y} t={t}
           onRemove={onRemove} onDismiss={() => { setActive(undefined) }} />}
+      {translation === undefined
+        ? undefined
+        : <TranslationCard view={translation} t={t} onTarget={changeTarget} onClose={closeTranslation} />}
     </div>
   )
 }
@@ -223,8 +325,9 @@ function SelectionMenu(props: {
   readonly ask: (text: string) => boolean
   readonly onCreate: (annotation: PaperAnnotation) => void
   readonly onDismiss: () => void
+  readonly onTranslate: (text: string) => void
 }): ReactNode {
-  const { selection, t, ask, onCreate, onDismiss } = props
+  const { selection, t, ask, onCreate, onDismiss, onTranslate } = props
   const [note, setNote] = useState('')
   const [editing, setEditing] = useState(false)
   const [askFailed, setAskFailed] = useState(false)
@@ -264,6 +367,8 @@ function SelectionMenu(props: {
           <button type="button" className={css.menuAction} role="menuitem" onClick={highlight}>{t('highlight')}</button>
           <button type="button" className={css.menuAction} role="menuitem"
             onClick={() => { setEditing(true) }}>{t('addNote')}</button>
+          <button type="button" className={css.menuAction} role="menuitem"
+            onClick={() => { onTranslate(selection.text) }}>{t('translateSelection')}</button>
           <button type="button" className={css.menuAction} role="menuitem" onClick={askSelection}>{t('ask')}</button>
         </div>}
       {askFailed ? <p className={css.menuNotice} role="alert">{t('askUnavailable')}</p> : undefined}

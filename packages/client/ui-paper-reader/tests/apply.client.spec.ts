@@ -18,6 +18,7 @@ interface Recorded {
   readonly name: string
   readonly key: string
   readonly locale?: string
+  readonly inject?: () => unknown
   readonly component: unknown
 }
 
@@ -52,14 +53,17 @@ async function boot() {
 
 describe('ui-paper-reader apply', () => {
   it('registers the tab type, its dictionaries, and its page under the type id', async () => {
-    const { tabs, registered, dictionaries } = await boot()
+    const { tabs, registered, dictionaries, ctx } = await boot()
     const definition = tabs.get(PAPER_READER_KIND)
     expect(definition?.id).toBe(PAPER_READER_ID)
     expect(definition?.priority).toBe('builtin')
     expect(dictionaries.get('paperReader')).toEqual({ zh, en, ja, es, fr, de, ru, pt })
-    expect(registered).toEqual([
-      { name: 'sidebar.right.pane.tab', key: PAPER_READER_ID, locale: 'paperReader', component: PaperReaderTab },
-    ])
+    const entry = registered[0] as Recorded
+    expect(entry).toMatchObject({
+      name: 'sidebar.right.pane.tab', key: PAPER_READER_ID, locale: 'paperReader', component: PaperReaderTab,
+    })
+    // The page reads the active interface language for its first translation target.
+    expect(entry.inject?.()).toEqual({ hooks: { language: ctx.locale } })
   })
 
   it('takes every registration back when the plugin is disposed', async () => {

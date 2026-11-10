@@ -1,15 +1,15 @@
 /**
- * Provider and model routing shared by this package's LLM features: commit
- * messages in the Git panel and writing assistance in the LaTeX panel. A client
- * that picked a model gets exactly that route; a default request gets every
+ * Provider/model routing over the LLM service catalog, shared by host-side
+ * features that let the user pick a model or accept the default. A client that
+ * picked a model gets exactly that route; a default request gets every
  * provider's models in order, because a provider can be registered with a model
  * catalog while its credentials are missing — such a provider fails on the
  * first attempt, and the caller can move on to the next candidate.
+ *
+ * @module @deepseek-ai/dsh-llm/route
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-// Type-only: pulls the llm Context merge (ctx.llm).
-import type {} from '@deepseek-ai/dsh-llm'
 
 /** One selectable provider/model pair. */
 export interface LlmModelOption {
@@ -59,7 +59,7 @@ export async function listLlmModels(ctx: Context): Promise<readonly LlmModelOpti
  */
 export async function llmRouteCandidates(ctx: Context, hint?: string): Promise<readonly LlmRoute[]> {
   const providers = ctx.llm.listProviders()
-  if (providers.length === 0) throw new Error('ui-polish: no LLM provider is available')
+  if (providers.length === 0) throw new Error('llm route: no LLM provider is available')
   const entries: { route: LlmRoute; name: string }[] = []
   for (const provider of providers) {
     for (const model of await ctx.llm.listModels(provider.id)) {
@@ -74,9 +74,9 @@ export async function llmRouteCandidates(ctx: Context, hint?: string): Promise<r
     const named = exact.length > 0
       ? exact
       : entries.filter(entry => entry.route.model === hint || entry.name === hint)
-    if (named.length === 0) throw new Error(`ui-polish: model "${hint}" is not available on any provider`)
+    if (named.length === 0) throw new Error(`llm route: model "${hint}" is not available on any provider`)
     return named.map(entry => entry.route)
   }
-  if (entries.length === 0) throw new Error('ui-polish: no LLM model is available')
+  if (entries.length === 0) throw new Error('llm route: no LLM model is available')
   return entries.map(entry => entry.route)
 }

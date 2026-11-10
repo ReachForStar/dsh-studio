@@ -67,7 +67,9 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
   '@deepseek-ai/dsh-home-paths': ['dshHomePath'],
   // The shipped profile templates are plain data; a consumer reads their bundle names only.
   '@deepseek-ai/dsh-official-bundles': ['PROFILE_TEMPLATES'],
-  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals'],
+  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createAssistantMessage', 'createUserMessage'],
+  // Stateless provider/model routing over the LLM catalog; callers own their streams.
+  '@deepseek-ai/dsh-llm/route': ['listLlmModels', 'llmRouteCandidates'],
   '@deepseek-ai/dsh-session': ['SessionId'],
   '@deepseek-ai/dsh-session-format': ['sessionFormatLogFilename'],
   '@deepseek-ai/dsh-storage-domain': ['defineDomain'],

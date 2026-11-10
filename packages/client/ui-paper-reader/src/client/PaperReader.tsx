@@ -7,19 +7,27 @@
  * face, which fills the composer draft without submitting.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
+import type { HostObservable, PropsHooks, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   IconChevronLeftOutlineRegular, IconPlusOutlineRegular, IconRefreshOutlineRegular, IconTrashOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PaperAnnotation, PaperRecord, PaperSummary } from '../types.ts'
+import type { PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateTarget } from '../types.ts'
 import {
   deletePaper, listPapers, readPaper, readPaperBytes, uploadPaper, writeAnnotations,
 } from './paper-api.ts'
 import { PdfViewer } from './PdfViewer.tsx'
 import css from './PaperReader.module.css'
 
+/** The active interface language, read through the renderer-bound `useLanguage` selector hook. */
+export type PaperReaderLanguageHooks = {
+  readonly language: HostObservable<LocaleSnapshot>
+}
+
 /** Props of the paper reader page. */
-export type PaperReaderTabProps = PropsRuntime<'sidebar.right.pane.tab'> & PropsLocale<'paperReader'>
+export type PaperReaderTabProps = PropsRuntime<'sidebar.right.pane.tab'>
+  & PropsLocale<'paperReader'>
+  & PropsHooks<PaperReaderLanguageHooks>
 
 /** Which of the page's two views is on screen. */
 type PaperReaderView =
@@ -32,8 +40,12 @@ type PaperReaderView =
  * @returns the current view.
  */
 export function PaperReaderTab(props: PaperReaderTabProps): ReactNode {
-  const { t, inputActions } = props
+  const { t, inputActions, useLanguage } = props
   const [view, setView] = useState<PaperReaderView>({ kind: 'library' })
+  // Only Chinese and English are offered as translation targets, so every other
+  // interface language starts in English.
+  const language = useLanguage(snapshot => snapshot.active)
+  const translateTarget: PaperTranslateTarget = language.startsWith('zh') ? 'zh' : 'en'
   const open = useCallback((id: string): void => { setView({ kind: 'reader', id }) }, [])
   const back = useCallback((): void => { setView({ kind: 'library' }) }, [])
   // Insert at the caret instead of replacing the draft, so an unsent question
@@ -47,7 +59,8 @@ export function PaperReaderTab(props: PaperReaderTabProps): ReactNode {
     <div className={css.page}>
       {view.kind === 'library'
         ? <PaperLibrary t={t} onOpen={open} />
-        : <PaperView key={view.id} paperId={view.id} t={t} ask={ask} onBack={back} />}
+        : <PaperView key={view.id} paperId={view.id} t={t} ask={ask} onBack={back}
+          translateTarget={translateTarget} />}
     </div>
   )
 }
@@ -159,8 +172,9 @@ function PaperView(props: {
   readonly t: PropsLocale<'paperReader'>['t']
   readonly ask: (text: string) => boolean
   readonly onBack: () => void
+  readonly translateTarget: PaperTranslateTarget
 }): ReactNode {
-  const { paperId, t, ask, onBack } = props
+  const { paperId, t, ask, onBack, translateTarget } = props
   const [lifetime] = useState(() => new AbortController())
   const [loaded, setLoaded] = useState<{ readonly record: PaperRecord; readonly data: Uint8Array<ArrayBuffer> }>()
   const [failed, setFailed] = useState(false)
@@ -212,7 +226,7 @@ function PaperView(props: {
         : loaded === undefined
           ? <p className={css.notice} role="status">{t('loading')}</p>
           : <PdfViewer data={loaded.data} annotations={annotations} signal={lifetime.signal} t={t}
-            ask={ask} onCreate={create} onRemove={remove} />}
+            translateTarget={translateTarget} ask={ask} onCreate={create} onRemove={remove} />}
     </>
   )
 }

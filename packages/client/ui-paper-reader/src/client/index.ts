@@ -34,7 +34,11 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-paper-reader: dictionaries')
   ctx.effect(() => ctx.sidebarRightTabs.register(paperReaderDefinition(t)), 'ui-paper-reader: paper type')
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
-    { name: 'sidebar.right.pane.tab', key: PAPER_READER_ID, locale: NS },
+    {
+      name: 'sidebar.right.pane.tab', key: PAPER_READER_ID, locale: NS,
+      // The page picks its initial translation language from the interface language.
+      inject: () => ({ hooks: { language: ctx.locale } }),
+    },
     PaperReaderTab,
   )), 'ui-paper-reader: paper body')
 }

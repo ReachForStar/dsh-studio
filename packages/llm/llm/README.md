@@ -84,6 +84,7 @@ const configure = (maxTokens: number): ConfigureCall =>
 ### What you can do
 
 - **Stream one model call** — `ctx.llm.stream(options)` yields raw chunks (token-level deltas) for any registered provider and model; consumers assemble them with `BlockAssembler`.
+- **Resolve a model route** — the `@deepseek-ai/dsh-llm/route` subpath flattens provider catalogs (`listLlmModels`) and turns an optional model hint into candidate `provider/model` routes (`llmRouteCandidates`), so a host feature can fall through a provider whose credentials are missing. `llmRouteKey` names one route for a client picker.
 - **Register provider adapters** — an adapter owns one or more provider routes, and its registration captures that route's retry policy; registering the same route twice fails with `DUPLICATE_ADAPTER`.
 - **Expose and activate providers through configuration** — adapters declare configurable-provider routes plus a settings namespace, so configuration surfaces can activate dormant providers and edit connection facts without a restart. `LlmConfigurableProvider.error` reports a configuration diagnostic for repair; unaffected models can remain serviceable. An entry can also carry `defaultBaseURL`, the endpoint the adapter uses when the profile sets none, and `nativeAuth`, the environment variables and OAuth sign-in that the adapter's authentication reads when the profile names no credential reference; `baseURLEnv` lists environment variables used to configure the endpoint. Configuration UIs read these fields from the directory without calling the adapter.
 - **Discover and resolve models** — List the models an adapter advertises, interrogate an endpoint for the models it serves (candidates carry optional `inputModalities`; absence means unknown), and resolve one exact model's context window, output default, reasoning efforts, input modalities, and system prompt update mode: `LlmResolvedModelInfo.systemPromptUpdate` is `'in-history'` when the model reads the latest `system` message at any position as the effective system prompt and absent when only a leading system message is read; `normalizeModelInfo` rejects any other value with `INVALID_MODEL_INFO`.
@@ -116,6 +117,7 @@ The service is built on one separation: **the logical contract is provider-neutr
 | [`src/types.ts`](src/types.ts) | The `StreamChunk` protocol, content-block map, finish reasons, and shared vocabulary |
 | [`src/message.ts`](src/message.ts) | Immutable message constructors shared by delivery, history, and requests |
 | [`src/assembler.ts`](src/assembler.ts) | `BlockAssembler`: incremental chunk-to-block assembly |
+| [`src/route.ts`](src/route.ts) | Provider/model routing over the catalog: route keys, flattened options, and candidate routes |
 | [`src/assistant-stream.ts`](src/assistant-stream.ts) | Compact timed Assistant stream accumulation, strict validation, exact expansion, and record-level readers |
 | [`src/call-config.ts`](src/call-config.ts) | Call-config validation, adapter-default materialization, and request freezing |
 | [`src/retry-policy.ts`](src/retry-policy.ts) | Provider-owned retry policy resolution (normal and always modes) |

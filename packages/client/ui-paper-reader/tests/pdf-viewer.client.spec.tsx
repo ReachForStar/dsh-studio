@@ -9,10 +9,14 @@ const api = vi.hoisted(() => ({
   openPdf: vi.fn(),
   render: vi.fn(),
   text: vi.fn(),
+  translate: vi.fn(),
+  extract: vi.fn(),
 }))
 vi.mock('../src/client/pdf/runtime.ts', () => ({ openPdf: api.openPdf }))
 vi.mock('../src/client/pdf/render.ts', () => ({ renderPdfPage: api.render }))
 vi.mock('../src/client/pdf/text.ts', () => ({ pdfTextRenderer: api.text }))
+vi.mock('../src/client/pdf/extract.ts', () => ({ extractPageText: api.extract }))
+vi.mock('../src/client/paper-api.ts', () => ({ translateText: api.translate }))
 import { PdfViewer } from '../src/client/PdfViewer.tsx'
 
 const t = (key: string, params?: Record<string, unknown>): string =>
@@ -36,6 +40,7 @@ function start(options: {
   readonly ask?: (text: string) => boolean
   readonly signal?: AbortSignal
   readonly pending?: boolean
+  readonly translateTarget?: 'zh' | 'en'
 } = {}) {
   const document = documentOf()
   const dispose = vi.fn(async () => {})
@@ -51,6 +56,7 @@ function start(options: {
   const rendered = render(
     <PdfViewer data={DATA} annotations={options.annotations ?? []}
       signal={options.signal ?? new AbortController().signal} t={t} ask={ask}
+      translateTarget={options.translateTarget ?? 'en'}
       onCreate={onCreate} onRemove={onRemove} />,
   )
   return {
@@ -88,6 +94,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   api.render.mockResolvedValue({ width: 200, height: 400 })
   api.text.mockReturnValue(() => ({ promise: Promise.resolve(), cancel: vi.fn() }))
+  api.extract.mockResolvedValue('page text')
   vi.stubGlobal('devicePixelRatio', 2)
 })
 afterEach(() => {
@@ -135,7 +142,7 @@ describe('paper pages', () => {
   it('reports a document that cannot be opened', async () => {
     api.openPdf.mockReturnValue({ document: Promise.reject(new Error('broken')), dispose: vi.fn() })
     render(<PdfViewer data={DATA} annotations={[]} signal={new AbortController().signal}
-      t={t} ask={vi.fn()} onCreate={vi.fn()} onRemove={vi.fn()} />)
+      t={t} translateTarget="en" ask={vi.fn()} onCreate={vi.fn()} onRemove={vi.fn()} />)
     await waitFor(() => { expect(screen.getByRole('alert').textContent).toBe('loadFailed') })
   })
 
@@ -175,7 +182,7 @@ describe('paper pages', () => {
     const opened = Promise.withResolvers<{ numPages: number; getPage(): Promise<PDFPageProxy> }>()
     api.openPdf.mockReturnValue({ document: opened.promise, dispose: vi.fn() })
     const { unmount } = render(<PdfViewer data={DATA} annotations={[]} signal={new AbortController().signal}
-      t={t} ask={vi.fn()} onCreate={vi.fn()} onRemove={vi.fn()} />)
+      t={t} translateTarget="en" ask={vi.fn()} onCreate={vi.fn()} onRemove={vi.fn()} />)
     unmount()
     opened.resolve(documentOf())
     await act(async () => { await Promise.resolve() })
@@ -185,7 +192,7 @@ describe('paper pages', () => {
     const opened = Promise.withResolvers<never>()
     api.openPdf.mockReturnValue({ document: opened.promise, dispose: vi.fn() })
     const { unmount } = render(<PdfViewer data={DATA} annotations={[]} signal={new AbortController().signal}
-      t={t} ask={vi.fn()} onCreate={vi.fn()} onRemove={vi.fn()} />)
+      t={t} translateTarget="en" ask={vi.fn()} onCreate={vi.fn()} onRemove={vi.fn()} />)
     unmount()
     opened.reject(new Error('late'))
     await act(async () => { await Promise.resolve() })
@@ -511,5 +518,231 @@ describe('selection menu', () => {
     await waitFor(() => { expect(ratio()).toBe(dpr * 0.5) })
     fireEvent.click(screen.getByRole('button', { name: 'zoomReset' }))
     await waitFor(() => { expect(ratio()).toBe(dpr) })
+  })
+})
+
+describe('translation', () => {
+  /** A translator that echoes the page already streamed in the requested language. */
+  function echoTranslation(): void {
+    api.translate.mockImplementation(async (
+      request: { text: string; target: string },
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta(`[${request.target}]${request.text}`)
+      return `[${request.target}]${request.text}`
+    })
+  }
+
+  it('translates a selection into the interface language and switches targets', async () => {
+    echoTranslation()
+    const h = start({ translateTarget: 'zh' })
+    await h.ready()
+    await select(h.container)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'translateSelection' }))
+    expect(screen.queryByRole('menu')).toBeNull()
+    await waitFor(() => { expect(screen.getByLabelText('translateCard')).toBeDefined() })
+    expect(api.translate).toHaveBeenCalledWith(
+      { text: 'chosen words', target: 'zh' }, expect.any(AbortSignal), expect.any(Function),
+    )
+    expect(screen.getByText('[zh]chosen words')).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'translateSelectionTitle' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'translateTargetZh' }).getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'translateTargetEn' }))
+    expect(api.translate).toHaveBeenLastCalledWith(
+      { text: 'chosen words', target: 'en' }, expect.any(AbortSignal), expect.any(Function),
+    )
+    await waitFor(() => { expect(screen.getByText('[en]chosen words')).toBeDefined() })
+    expect(screen.getByRole('button', { name: 'translateTargetEn' }).getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'translateClose' }))
+    expect(screen.queryByLabelText('translateCard')).toBeNull()
+  })
+
+  it('ignores a target switch that names the language already shown', async () => {
+    echoTranslation()
+    const h = start({ translateTarget: 'en' })
+    await h.ready()
+    await select(h.container)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'translateSelection' }))
+    await waitFor(() => { expect(screen.getByText('[en]chosen words')).toBeDefined() })
+    fireEvent.click(screen.getByRole('button', { name: 'translateTargetEn' }))
+    expect(api.translate).toHaveBeenCalledTimes(1)
+  })
+
+  it('copies the finished translation and reports success', async () => {
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    echoTranslation()
+    const h = start()
+    await h.ready()
+    await select(h.container)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'translateSelection' }))
+    await waitFor(() => { expect(screen.getByText('[en]chosen words')).toBeDefined() })
+    fireEvent.click(screen.getByRole('button', { name: 'translateCopy' }))
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'translateCopied' })).toBeDefined() })
+    expect(writeText).toHaveBeenCalledWith('[en]chosen words')
+  })
+
+  it('reports a failed selection translation', async () => {
+    api.translate.mockRejectedValue(new Error('no model'))
+    const h = start()
+    await h.ready()
+    await select(h.container)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'translateSelection' }))
+    await waitFor(() => { expect(screen.getByRole('alert').textContent).toBe('translateFailed') })
+    expect(screen.getByLabelText('translateCard')).toBeDefined()
+  })
+
+  it('translates every page of the document with progress, then reuses the extracted text', async () => {
+    api.extract.mockReset()
+    api.extract.mockResolvedValueOnce('page one').mockResolvedValueOnce('page two')
+    const gate = Promise.withResolvers<undefined>()
+    api.translate.mockImplementation(async (
+      request: { text: string; target: string },
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta(`[${request.target}]${request.text}`)
+      await gate.promise
+    })
+    const h = start()
+    await h.ready()
+    fireEvent.click(screen.getByText('translateDocument'))
+    await waitFor(() => {
+      expect(screen.getByText('translateProgress:{"done":0,"total":2}')).toBeDefined()
+    })
+    expect(screen.getByText('translateDocument')).toHaveProperty('disabled', true)
+    expect(api.extract).toHaveBeenCalledTimes(2)
+    gate.resolve(undefined)
+    await waitFor(() => {
+      expect(screen.getByLabelText('translateCard').textContent).toContain('[en]page one')
+    })
+    expect(screen.getByLabelText('translateCard').textContent).toContain('[en]page two')
+    expect(screen.getByRole('heading', { name: 'translateDocumentTitle' })).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: 'translateTargetZh' }))
+    await waitFor(() => {
+      expect(screen.getByLabelText('translateCard').textContent).toContain('[zh]page two')
+    })
+    expect(api.extract).toHaveBeenCalledTimes(2)
+  })
+
+  it('says so when a scanned document has no text to translate', async () => {
+    api.extract.mockReset()
+    api.extract.mockResolvedValue('')
+    const h = start()
+    await h.ready()
+    fireEvent.click(screen.getByText('translateDocument'))
+    await waitFor(() => { expect(screen.getByText('translateEmpty')).toBeDefined() })
+    expect(api.translate).not.toHaveBeenCalled()
+  })
+
+  it('reports a page whose text cannot be extracted', async () => {
+    api.extract.mockReset()
+    api.extract.mockRejectedValue(new Error('broken page'))
+    const h = start()
+    await h.ready()
+    fireEvent.click(screen.getByText('translateDocument'))
+    await waitFor(() => { expect(screen.getByRole('alert').textContent).toBe('translateFailed') })
+  })
+
+  it('drops a document translation started after the paper closed', async () => {
+    const lifetime = new AbortController()
+    const extracted = Promise.withResolvers<string>()
+    api.extract.mockReset()
+    api.extract.mockReturnValue(extracted.promise)
+    const h = start({ signal: lifetime.signal })
+    await h.ready()
+    fireEvent.click(screen.getByText('translateDocument'))
+    lifetime.abort()
+    extracted.resolve('page text')
+    await act(async () => { await Promise.resolve() })
+    expect(api.translate).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('translateCard')).toBeNull()
+  })
+
+  it('ignores a document translation that finishes after the card closed', async () => {
+    api.extract.mockReset()
+    api.extract.mockResolvedValue('page text')
+    const gate = Promise.withResolvers<undefined>()
+    api.translate.mockImplementation(async (
+      _request: unknown,
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta('part')
+      await gate.promise
+    })
+    const h = start()
+    await h.ready()
+    fireEvent.click(screen.getByText('translateDocument'))
+    await waitFor(() => { expect(screen.getByText('part')).toBeDefined() })
+    fireEvent.click(screen.getByRole('button', { name: 'translateClose' }))
+    gate.resolve(undefined)
+    await act(async () => { await Promise.resolve() })
+    expect(screen.queryByLabelText('translateCard')).toBeNull()
+  })
+
+  it('ignores a selection translation that resolves after the card closed', async () => {
+    const gate = Promise.withResolvers<undefined>()
+    api.translate.mockImplementation(async (
+      _request: unknown,
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta('part')
+      await gate.promise
+    })
+    const h = start()
+    await h.ready()
+    await select(h.container)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'translateSelection' }))
+    await waitFor(() => { expect(screen.getByText('part')).toBeDefined() })
+    fireEvent.click(screen.getByRole('button', { name: 'translateClose' }))
+    gate.resolve(undefined)
+    await act(async () => { await Promise.resolve() })
+    expect(screen.queryByLabelText('translateCard')).toBeNull()
+  })
+
+  it('drops an extraction failure raised after the paper closed', async () => {
+    const lifetime = new AbortController()
+    const extracted = Promise.withResolvers<string>()
+    api.extract.mockReset()
+    api.extract.mockReturnValue(extracted.promise)
+    const h = start({ signal: lifetime.signal })
+    await h.ready()
+    fireEvent.click(screen.getByText('translateDocument'))
+    lifetime.abort()
+    extracted.reject(new Error('broken page'))
+    await act(async () => { await Promise.resolve() })
+    expect(screen.queryByLabelText('translateCard')).toBeNull()
+  })
+
+  it('stops a streaming translation when the card closes', async () => {
+    const gate = Promise.withResolvers<undefined>()
+    api.translate.mockImplementation(async (
+      _request: unknown,
+      signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta('partial')
+      await gate.promise
+      // A delta and a failure that arrive after the card closed must not
+      // reopen it or report a failure for a request nobody sees.
+      onDelta('late')
+      signal.throwIfAborted()
+    })
+    const h = start()
+    await h.ready()
+    await select(h.container)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'translateSelection' }))
+    await waitFor(() => { expect(screen.getByText('partial')).toBeDefined() })
+    fireEvent.click(screen.getByRole('button', { name: 'translateClose' }))
+    expect(screen.queryByLabelText('translateCard')).toBeNull()
+    gate.resolve(undefined)
+    await act(async () => { await Promise.resolve() })
+    expect(screen.queryByLabelText('translateCard')).toBeNull()
   })
 })

@@ -34,6 +34,10 @@
       "types": "./lib/types/assistant-stream.d.ts",
       "default": "./lib/types/assistant-stream.js"
     },
+    "./route": {
+      "types": "./lib/types/route.d.ts",
+      "default": "./lib/types/route.js"
+    },
     "./typert": {
       "types": "./lib/typert.host.d.ts",
       "default": "./lib/typert.host.js"

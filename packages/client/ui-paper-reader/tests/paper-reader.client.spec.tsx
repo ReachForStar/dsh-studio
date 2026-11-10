@@ -19,11 +19,13 @@ interface ViewerProps {
   readonly ask: (text: string) => boolean
   readonly onCreate: (annotation: PaperAnnotation) => void
   readonly onRemove: (id: string) => void
+  readonly translateTarget: 'zh' | 'en'
 }
 vi.mock('../src/client/PdfViewer.tsx', () => ({
   PdfViewer: (props: ViewerProps) => (
     <div data-testid="viewer">
       <span data-testid="annotation-count">{String(props.annotations.length)}</span>
+      <span data-testid="translate-target">{props.translateTarget}</span>
       <button type="button" onClick={() => { props.onCreate(NEW_ANNOTATION) }}>create</button>
       <button type="button" onClick={() => { props.onRemove(props.annotations[0]?.id ?? 'none') }}>remove</button>
       <button type="button" onClick={() => { props.ask('selected passage') }}>ask</button>
@@ -53,8 +55,13 @@ const inputActions = {
   insertQuote: vi.fn(() => true),
 }
 
-function renderTab() {
-  const props = { t, inputActions } as PaperReaderTabProps
+function renderTab(language = 'en') {
+  const props = {
+    t,
+    inputActions,
+    useLanguage: (selector: (snapshot: { active: string; locales: []; revision: number }) => unknown) =>
+      selector({ active: language, locales: [], revision: 0 }),
+  } as unknown as PaperReaderTabProps
   return render(<PaperReaderTab {...props} />)
 }
 
@@ -220,6 +227,22 @@ describe('open paper', () => {
     expect(screen.getByTestId('annotation-count').textContent).toBe('1')
     fireEvent.click(screen.getByText('back'))
     await waitFor(() => { expect(screen.queryByTestId('viewer')).toBeNull() })
+  })
+
+  it('starts translations in Chinese for a Chinese interface and English otherwise', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    const chinese = renderTab('zh')
+    await waitFor(() => { expect(screen.getByText('attention.pdf')).toBeDefined() })
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(screen.getByTestId('translate-target').textContent).toBe('zh') })
+    chinese.unmount()
+
+    renderTab('ja')
+    await waitFor(() => { expect(screen.getByText('attention.pdf')).toBeDefined() })
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(screen.getByTestId('translate-target').textContent).toBe('en') })
   })
 
   it('appends a new annotation and persists the whole list', async () => {

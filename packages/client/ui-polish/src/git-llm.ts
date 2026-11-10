@@ -11,8 +11,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 // Type-only: pulls the llm Context merge (ctx.llm).
 import type {} from '@deepseek-ai/dsh-llm'
+import { listLlmModels, llmRouteCandidates, type LlmRoute } from '@deepseek-ai/dsh-llm/route'
 import type { CommitMessageBridge, GitModel } from './git-service.ts'
-import { listLlmModels, llmRouteCandidates, type LlmRoute } from './llm-route.ts'
 
 /**
  * Build the commit-message bridge bound to a Host context.

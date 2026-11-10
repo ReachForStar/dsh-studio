@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { basename, join } from 'node:path'
+import { PaperRequestError, readBody, sendJson } from './http.ts'
 import { PAPER_READER_ROUTE } from './route.ts'
 import type {
   PaperAnnotation, PaperAnnotationsUpdate, PaperDocument, PaperRecord, PaperRect, PaperSummary,
@@ -31,47 +32,6 @@ const MAX_NAME_LENGTH = 200
 
 /** Most annotations one paper may hold; the reader rejects a write above this. */
 const MAX_ANNOTATIONS = 5000
-
-/** A request the surface answers with a specific status instead of a server fault. */
-class PaperRequestError extends Error {
-  readonly status: number
-
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
-
-/**
- * Read a request body up to a byte cap.
- * @param req - incoming request.
- * @param cap - largest accepted body.
- * @returns the complete body.
- * @throws {PaperRequestError} when the body exceeds the cap.
- */
-function readBody(req: IncomingMessage, cap: number): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = []
-    let size = 0
-    req.on('data', (chunk: Buffer) => {
-      size += chunk.length
-      if (size > cap) {
-        reject(new PaperRequestError(413, `paper: upload exceeds ${String(cap)} bytes`))
-        req.destroy()
-        return
-      }
-      chunks.push(chunk)
-    })
-    req.on('end', () => { resolve(Buffer.concat(chunks)) })
-    req.on('error', reject)
-  })
-}
-
-/** @param res - server response. @param status - HTTP status. @param body - JSON body. */
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-  res.end(JSON.stringify(body))
-}
 
 /**
  * Reduce an upload's query name to a display name safe to echo back.

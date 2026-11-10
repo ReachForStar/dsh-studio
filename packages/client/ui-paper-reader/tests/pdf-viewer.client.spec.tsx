@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /** The paper surface: page stack, persisted highlights, and the selection menu. */
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import type { PaperAnnotation } from '../src/types.ts'
@@ -412,6 +412,87 @@ describe('selection menu', () => {
       removeAllRanges: vi.fn(),
     } as unknown as Selection)
     fireEvent.mouseUp(h.container.firstElementChild as HTMLElement)
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+  it('opens the highlight menu from a click inside an annotation and removes it', async () => {
+    const h = start({ annotations: [ANNOTATION] })
+    await h.ready()
+    const surface = h.container.querySelector('[data-paper-surface]') as HTMLElement
+    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue(
+      { left: 100, top: 200, right: 300, bottom: 600, width: 200, height: 400 } as DOMRect)
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      isCollapsed: true, rangeCount: 0, toString: () => '', getRangeAt: () => document.createRange(), removeAllRanges: vi.fn(),
+    } as unknown as Selection)
+    fireEvent.click(surface, { clientX: 100 + 0.25 * 200, clientY: 200 + 0.4 * 400 })
+
+    const menu = await screen.findByRole('menu')
+    expect(menu.textContent).toContain('quoted passage')
+    expect(menu.textContent).toContain('my thought')
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'removeAnnotation' }))
+    expect(h.onRemove).toHaveBeenCalledExactlyOnceWith('a1')
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('opens the menu for a highlight without a note and closes it again', async () => {
+    const { note: _note, ...withoutNote } = ANNOTATION
+    const h = start({ annotations: [{ ...withoutNote, id: 'a2' }] })
+    await h.ready()
+    const surface = h.container.querySelector('[data-paper-surface]') as HTMLElement
+    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue(
+      { left: 0, top: 0, right: 200, bottom: 400, width: 200, height: 400 } as DOMRect)
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      isCollapsed: true, rangeCount: 0, toString: () => '', getRangeAt: () => document.createRange(), removeAllRanges: vi.fn(),
+    } as unknown as Selection)
+    fireEvent.click(surface, { clientX: 50, clientY: 160 })
+    const menu = await screen.findByRole('menu')
+    expect(menu.textContent).toContain('quoted passage')
+    expect(menu.textContent).not.toContain('my thought')
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'cancel' }))
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('leaves clicks outside the highlights, outside the surface, and inside a selection alone', async () => {
+    const h = start({ annotations: [ANNOTATION] })
+    await h.ready()
+    const surface = h.container.querySelector('[data-paper-surface]') as HTMLElement
+    const bounds = { left: 0, top: 0, right: 200, bottom: 400, width: 200, height: 400 } as DOMRect
+    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue(bounds)
+    const selection = { isCollapsed: true, rangeCount: 0, toString: () => '', getRangeAt: () => document.createRange(), removeAllRanges: vi.fn() }
+    vi.spyOn(window, 'getSelection').mockReturnValue(selection as unknown as Selection)
+    fireEvent.click(surface, { clientX: 190, clientY: 390 })
+    expect(screen.queryByRole('menu')).toBeNull()
+
+    surface.getBoundingClientRect = () => ({
+      left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}),
+    })
+    fireEvent.click(surface, { clientX: 50, clientY: 160 })
+    expect(screen.queryByRole('menu')).toBeNull()
+
+    surface.getBoundingClientRect = () => bounds
+    vi.spyOn(window, 'getSelection').mockReturnValue({ ...selection, isCollapsed: false } as unknown as Selection)
+    fireEvent.click(surface, { clientX: 50, clientY: 160 })
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('dismisses the highlight menu on an outside pointer and on Escape', async () => {
+    const h = start({ annotations: [ANNOTATION] })
+    await h.ready()
+    const surface = h.container.querySelector('[data-paper-surface]') as HTMLElement
+    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue(
+      { left: 0, top: 0, right: 200, bottom: 400, width: 200, height: 400 } as DOMRect)
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      isCollapsed: true, rangeCount: 0, toString: () => '', getRangeAt: () => document.createRange(), removeAllRanges: vi.fn(),
+    } as unknown as Selection)
+    fireEvent.click(surface, { clientX: 50, clientY: 160 })
+    const first = await screen.findByRole('menu')
+    fireEvent.pointerDown(first)
+    expect(screen.queryByRole('menu')).not.toBeNull()
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('menu')).toBeNull()
+
+    fireEvent.click(surface, { clientX: 50, clientY: 160 })
+    await screen.findByRole('menu')
+    fireEvent.keyDown(document.body, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
   })
 })

@@ -2,7 +2,7 @@
  * The paper surface: PDF.js pages with a selectable text layer, persisted
  * highlight overlays, and the floating menu a text selection opens.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import { IconTrashOutlineRegular, MenuSurface } from '@deepseek-ai/dsh-client-ui-primitives'
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
@@ -48,6 +48,7 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
   const { data, annotations, signal, t, ask, onCreate, onRemove } = props
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' })
   const [selection, setSelection] = useState<SelectionState>()
+  const [active, setActive] = useState<{ readonly annotation: PaperAnnotation; readonly x: number; readonly y: number }>()
 
   useEffect(() => {
     const lifetime = new AbortController()
@@ -77,14 +78,24 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
       if (target instanceof Element && target.closest('[data-paper-menu]') !== null) return
       setSelection(undefined)
     }
+    const closeAnnotation = (event: Event): void => {
+      const target = event.target
+      if (target instanceof Element && target.closest('[data-paper-annotation-menu]') !== null) return
+      setActive(undefined)
+    }
     const escape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') close(event)
+      if (event.key === 'Escape') {
+        close(event)
+        closeAnnotation(event)
+      }
     }
     document.addEventListener('pointerdown', close)
+    document.addEventListener('pointerdown', closeAnnotation)
     document.addEventListener('scroll', close, true)
     document.addEventListener('keydown', escape)
     return () => {
       document.removeEventListener('pointerdown', close)
+      document.removeEventListener('pointerdown', closeAnnotation)
       document.removeEventListener('scroll', close, true)
       document.removeEventListener('keydown', escape)
     }
@@ -120,7 +131,8 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
       <div className={css.pages}>
         {Array.from({ length: load.document.numPages }, (_, index) => (
           <PdfPage key={index} document={load.document} page={index + 1} signal={signal} t={t}
-            annotations={annotations.filter(annotation => annotation.page === index + 1)} />
+            annotations={annotations.filter(annotation => annotation.page === index + 1)}
+            onSelectAnnotation={(annotation, x, y) => { setActive({ annotation, x, y }) }} />
         ))}
       </div>
       <section className={css.notes} aria-label={t('annotations')}>
@@ -146,7 +158,39 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
       {selection === undefined
         ? undefined
         : <SelectionMenu selection={selection} t={t} ask={ask} onCreate={onCreate} onDismiss={dismiss} />}
+      {active === undefined
+        ? undefined
+        : <AnnotationMenu annotation={active.annotation} x={active.x} y={active.y} t={t}
+          onRemove={onRemove} onDismiss={() => { setActive(undefined) }} />}
     </div>
+  )
+}
+
+/** The menu a clicked highlight opens: its note, and removal. */
+function AnnotationMenu(props: {
+  readonly annotation: PaperAnnotation
+  readonly x: number
+  readonly y: number
+  readonly t: TranslateNS<'paperReader'>
+  readonly onRemove: (id: string) => void
+  readonly onDismiss: () => void
+}): ReactNode {
+  const { annotation, x, y, t, onRemove, onDismiss } = props
+  return (
+    <MenuSurface className={css.annotationMenu} data-paper-annotation-menu role="menu"
+      aria-label={t('annotations')} style={{ left: x, top: y }}>
+      <p className={css.annotationQuote}>{annotation.text}</p>
+      {annotation.note === undefined
+        ? undefined
+        : <p className={css.annotationNote}><span className={css.noteLabel}>{t('noteLabel')}:</span> {annotation.note}</p>}
+      <div className={css.menuRow}>
+        <button type="button" className={css.menuAction} role="menuitem"
+          onClick={() => { onDismiss(); onRemove(annotation.id) }}>
+          {t('removeAnnotation')}
+        </button>
+        <button type="button" className={css.menuAction} role="menuitem" onClick={onDismiss}>{t('cancel')}</button>
+      </div>
+    </MenuSurface>
   )
 }
 
@@ -229,14 +273,31 @@ function PdfPage(props: {
   readonly signal: AbortSignal
   readonly annotations: readonly PaperAnnotation[]
   readonly t: TranslateNS<'paperReader'>
+  readonly onSelectAnnotation: (annotation: PaperAnnotation, x: number, y: number) => void
 }): ReactNode {
-  const { document, page, signal, annotations, t } = props
+  const { document, page, signal, annotations, t, onSelectAnnotation } = props
   const canvas = useRef<HTMLCanvasElement>(null)
   const text = useRef<HTMLDivElement>(null)
   const pageHost = useRef<HTMLDivElement>(null)
   const [requested, setRequested] = useState(page === 1)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+
+  // A click inside a highlight opens its menu; a drag-selection is a text
+  // selection, not a highlight click.
+  const onSurfaceClick = (event: MouseEvent<HTMLDivElement>): void => {
+    const browserSelection = window.getSelection()
+    if (browserSelection !== null && !browserSelection.isCollapsed) return
+    const surface = event.currentTarget
+    const bounds = surface.getBoundingClientRect()
+    if (bounds.width === 0 || bounds.height === 0) return
+    const x = (event.clientX - bounds.left) / bounds.width
+    const y = (event.clientY - bounds.top) / bounds.height
+    const hit = annotations.find(annotation => annotation.rects.some(rect =>
+      x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height))
+    if (hit === undefined) return
+    onSelectAnnotation(hit, event.clientX, event.clientY)
+  }
 
   useEffect(() => {
     const host = pageHost.current
@@ -282,10 +343,13 @@ function PdfPage(props: {
     <div ref={pageHost} className={css.page} data-paper-page={page}>
       {!ready && <div className={css.placeholder} aria-hidden="true" />}
       {failed && <p className={css.status} role="alert">{t('pageFailed')}</p>}
-      <div className={css.surface} data-paper-surface hidden={!ready}>
-        {annotations.map(annotation => annotation.rects.map((rect, index) => (
-          <span key={`${annotation.id}-${String(index)}`} className={css.highlight} style={overlayStyle(rect)} />
-        )))}
+      <div className={css.surface} data-paper-surface hidden={!ready} onClick={onSurfaceClick}>
+        {annotations.flatMap(annotation => annotation.rects.flatMap((rect, index) => [
+          <span key={`${annotation.id}-${String(index)}`} className={css.highlight} style={overlayStyle(rect)} />,
+          ...annotation.note === undefined
+            ? []
+            : [<span key={`${annotation.id}-note-${String(index)}`} className={css.noteMark} style={overlayStyle(rect)} />],
+        ]))}
         <canvas ref={canvas} className={css.canvas} role="img" aria-label={t('pageLabel', { page })} />
         <div ref={text} className={css.text} data-paper-text />
       </div>

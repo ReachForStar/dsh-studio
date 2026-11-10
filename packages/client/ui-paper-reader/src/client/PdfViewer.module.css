@@ -57,9 +57,43 @@
   position: absolute;
   z-index: 0;
   border-radius: 2px;
-  background: var(--dsw-specific-bubble-highlight);
-  opacity: 0.45;
+  background: var(--dsw-static-amber-400);
+  opacity: 0.38;
   pointer-events: none;
+}
+
+/* A highlighted passage that carries a note: the underline marks the note. */
+.noteMark {
+  position: absolute;
+  z-index: 0;
+  border-bottom: 2px solid var(--dsw-static-red-500);
+  pointer-events: none;
+}
+
+.annotationMenu {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 260px;
+  padding: 8px;
+}
+
+.annotationQuote {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.annotationNote {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .text {

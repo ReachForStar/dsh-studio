@@ -11,19 +11,25 @@ import { MAX_BACKGROUND_IMAGE_BYTES } from '../src/background-settings.ts'
 beforeAll(() => {
   // The row uploads the raw file to /bg/upload and receives the served URL;
   // remove best-effort DELETEs /bg. Stub the transport so both stay in-process.
-  vi.stubGlobal('fetch', vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-    const method = (init?.method ?? 'GET').toUpperCase()
-    if (method === 'DELETE') {
-      return Promise.resolve(new Response(null, { status: 200 }))
-    }
-    return Promise.resolve(new Response(JSON.stringify({ url: '/bg/current' }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    }))
-  }))
+  vi.stubGlobal('fetch', defaultFetch)
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  vi.stubGlobal('fetch', defaultFetch)
+  cleanup()
+})
+
+/** The in-process transport the row sees unless a test scripts another answer. */
+function defaultFetch(_input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const method = (init?.method ?? 'GET').toUpperCase()
+  if (method === 'DELETE') {
+    return Promise.resolve(new Response(null, { status: 200 }))
+  }
+  return Promise.resolve(new Response(JSON.stringify({ url: '/bg/current' }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  }))
+}
 
 const COPY: Record<string, string> = {
   'background.title': 'Background image',
@@ -107,5 +113,37 @@ describe('BackgroundRow', () => {
     input.addEventListener('click', () => { clicked = true })
     fireEvent.click(screen.getByRole('button', { name: /Upload image/ }))
     expect(clicked).toBe(true)
+  })
+
+  it('shows the host error text when the upload is refused', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response(JSON.stringify({ error: 'disk full' }), { status: 500 })))
+    const b = mount(null)
+    pick(new File(['abc'], 'bg.png', { type: 'image/png' }))
+    await vi.waitFor(() => { expect(screen.getByText('disk full')).toBeDefined() })
+    expect(b.setBackgroundImage).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the HTTP status when the refusal carries no error text', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response('{}', { status: 503 })))
+    const b = mount(null)
+    pick(new File(['abc'], 'bg.png', { type: 'image/png' }))
+    await vi.waitFor(() => { expect(screen.getByText('HTTP 503')).toBeDefined() })
+    expect(b.setBackgroundImage).not.toHaveBeenCalled()
+  })
+
+  it('rejects an upload answer without a URL', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response('not json', { status: 200 })))
+    const b = mount(null)
+    pick(new File(['abc'], 'bg.png', { type: 'image/png' }))
+    await vi.waitFor(() => { expect(screen.getByText('background: upload returned no url')).toBeDefined() })
+    expect(b.setBackgroundImage).not.toHaveBeenCalled()
+  })
+
+  it('reports a transport failure that is not an Error', async () => {
+    vi.stubGlobal('fetch', async () => { throw 'offline' })
+    const b = mount(null)
+    pick(new File(['abc'], 'bg.png', { type: 'image/png' }))
+    await vi.waitFor(() => { expect(screen.getByText('background.uploadFailed')).toBeDefined() })
+    expect(b.setBackgroundImage).not.toHaveBeenCalled()
   })
 })

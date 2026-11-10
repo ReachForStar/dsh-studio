@@ -3,7 +3,7 @@ title: CJS 客户端包共享 runtime chunk 导致 web boot 失败
 type: query
 tags: [web, client-modules, rolldown, ui-polish, 构建, 排查]
 created: 2026-09-19
-updated: 2026-10-21
+updated: 2026-11-10
 sources: []
 status: active
 ---
@@ -52,6 +52,13 @@ ui-polish 内嵌 Excalidraw，其依赖树含大量 CJS 依赖与动态 import�
 - 任何 client 包内嵌**带 CJS 依赖 + 动态 import** 的大库（如 Excalidraw）都会触发共享 runtime chunk；改依赖树后若 web boot 报某包 import failed，先查该包 `lib/` 是否出现 `client.rolldown-runtime.js`。
 - 构建期已有 `prologueBuiltinGuard` 挡住「prologue require Node builtin」这一类；本问题是其兄弟形态（prologue require 包内 chunk），由 combo 闭包机制在运行期兜住。
 - 客户端源码改动后必须重建产物：`tsc -b` 对应包 + 包内 `tsdown --env.DSH_BUILD_FACE client`（见 [fork Web 面板](../entities/fork-web-panels.md) 踩坑）。
+
+## 组装启动夹具缺同步 chunk（2026-11-10）
+
+- 症状：`DSH_SNAPSHOT=replay` 的 `apps/web/tests/*.expected.e2e.ts` 在 teardown 报 `assembled boot: every entry must activate` 与 `web boot: warning: 1 entry did not activate`，控制台真因是 `require("./client.rolldown-runtime.js") missed the module table`。
+- 根因：`apps/web/tests/assembled-boot.ts` 的 `bundleTable()` 只用 `readFileSync(plugin.bundlePath)` 拼夹具组合，未放入同步闭包 chunk；真实 Host 的 `buildCombo` 会把闭包 chunk 排在 entry 之前，两侧生成的组合脚本因此不一致。
+- 修法：Host 半导出 `syncChunkClosure`（连同 `SyncChunk`），夹具用同一函数把 chunk 源码排在 entry 之前；单资源组合与启动批次因此与线上一致。
+- 验证：`assembled-boot.ts` 的 9 个场景（18 项测试）在 replay 下全绿；`built-boot.expected.e2e.ts` 修复前两例必红（`1 entry did not activate`），修复后通过。注意该夹具读的是**构建产物**，改动后要先重跑 `build --scope artifacts` 再跑 replay。
 
 ## 涉及模块
 

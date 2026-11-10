@@ -730,3 +730,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 口径取舍：非当前会话的投影不带模型归属，按费率卡 `default` 估算，且其整份投影在列表行本月更新时计入本月；时间线只覆盖当前会话的已结算消息。
 - 验证：`ui-polish` 17 个 spec / 168 项全绿；`test:gui` 789 文件 / 13 548 项通过；`build --scope artifacts` 8 门与 `--scope check` 2 门通过；`verify-client-ui-i18n`、`verify-locale-metadata`、`doc-quick` 21 门通过。
 - 另修 `ui-paper-reader` README 缺 `Dev Note` 章节（`doc-standard` 红项），两份 README 与 `README.i18n.yaml` 一并重录。
+
+## [2026-11-10] fix | 组装启动夹具注册同步 chunk，补齐 ui-polish 路由与设置行覆盖
+
+- `apps/web/tests/assembled-boot.ts` 的 `bundleTable()` 改用 Host 导出的 `syncChunkClosure`，把 entry 同步需要的包内 chunk 排在 entry 之前，与真实 `buildCombo` 一致；此前 ui-polish 的 CJS runtime chunk 未注册，replay 场景在 teardown 报 `1 entry did not activate`。
+- 修复前 `built-boot.expected.e2e.ts` 两例必红，修复后 9 个 assembled-boot 场景（18 项测试）在 `DSH_SNAPSHOT=replay` 下全绿。
+- 新增 `apply-routes.host.spec.ts`（五个路由的注册、未知路由分支、workspace 注册表解析与 dispose）与 `compaction-control.host.spec.ts`（阈值覆盖、默认比例、abort、无 compaction 服务、失败告警与非 Error 文本）。
+- 扩展 `apply.client.spec.ts`：视图标签文案、Excalidraw toolview、SSH 方法映射与转发帧、压缩/费率行 inject、损坏费率卡回退；新增两个设置行组件 spec；扩展 `background-row` 的上传失败分支。
+- 覆盖结果：`ui-polish` 的 `src/index.ts`、`src/client/index.ts`、`settings-store.ts`、`CompactionRow.tsx`、`PricingRow.tsx`、`BackgroundRow.tsx`、`pricing-store.ts`、`compaction-control.ts` 达到逐文件 100%；面板与服务层（Git/LaTeX/SSH/画布、`git-service`、`latex-service`、`git-client`、`latex-client`、`crypto-shim`、`cost.ts`）仍是既有欠账。

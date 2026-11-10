@@ -13,7 +13,7 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
-import { bootInjections, orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
+import { bootInjections, orderByModuleGraph, syncChunkClosure } from '@deepseek-ai/dsh-client-modules'
 import type { ClientModuleLoaderTarget, WebBootEntry, WebBootGraph } from '@deepseek-ai/dsh-client-modules/client'
 import type { RemoteMock } from '@deepseek-ai/dsh-remote-mock'
 import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
@@ -159,9 +159,15 @@ function bootGraph(plugins: readonly AssembledPlugin[]): WebBootGraph {
 
 /** Build single-resource and startup combo script bodies for one fixture composition. */
 function bundleTable(graph: WebBootGraph, plugins: readonly AssembledPlugin[]): Map<string, string> {
+  // Match the served combos: register the entry's synchronously required
+  // package-local chunks before the entry, or a CJS bundle's prologue `require`
+  // misses the module table and the entry never activates.
   const bundles = new Map(plugins.map(plugin => [
     plugin.url,
-    readFileSync(plugin.bundlePath, 'utf8'),
+    [
+      ...syncChunkClosure(plugin.bundlePath).map(chunk => chunk.bundle.toString('utf8')),
+      readFileSync(plugin.bundlePath, 'utf8'),
+    ].join('\n;\n'),
   ]))
   for (const batch of graph.batches) {
     bundles.set(batch.url, batch.entries.map((id) => {

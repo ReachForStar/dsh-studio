@@ -155,7 +155,7 @@ interface WebPluginRecord {
 }
 
 /** One package-local chunk file the entry's materialization requires from its prologue. */
-interface SyncChunk {
+export interface SyncChunk {
   /** Published chunk file name (`client.*.js`). */
   fileName: string
   /** Exact build artifact bytes served with the entry's revision. */
@@ -215,11 +215,13 @@ const CLIENT_CHUNK = /^client\.[A-Za-z0-9][A-Za-z0-9._-]*\.js$/
  * require synchronously. CJS client bundles hoist their interop helpers into a
  * shared chunk that every sibling chunk's prologue requires; the browser's
  * synchronous `require` only resolves already-registered factories, so every
- * combo carrying the entry must register those chunk factories first.
+ * combo carrying the entry must register those chunk factories first. The
+ * assembled snapshot harness builds its fixture combos through this function so
+ * they register the same chunks the served combos do.
  * @param clientPath - absolute path of the entry's client bundle (its directory holds the sibling chunks).
  * @returns the chunk files in deterministic (sorted) order.
  */
-function syncChunkClosure(clientPath: string): SyncChunk[] {
+export function syncChunkClosure(clientPath: string): SyncChunk[] {
   const dir = dirname(clientPath)
 
   const present = new Set(readdirSync(dir).filter(name => CLIENT_CHUNK.test(name) && name !== 'client.js'))

@@ -738,3 +738,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 新增 `apply-routes.host.spec.ts`（五个路由的注册、未知路由分支、workspace 注册表解析与 dispose）与 `compaction-control.host.spec.ts`（阈值覆盖、默认比例、abort、无 compaction 服务、失败告警与非 Error 文本）。
 - 扩展 `apply.client.spec.ts`：视图标签文案、Excalidraw toolview、SSH 方法映射与转发帧、压缩/费率行 inject、损坏费率卡回退；新增两个设置行组件 spec；扩展 `background-row` 的上传失败分支。
 - 覆盖结果：`ui-polish` 的 `src/index.ts`、`src/client/index.ts`、`settings-store.ts`、`CompactionRow.tsx`、`PricingRow.tsx`、`BackgroundRow.tsx`、`pricing-store.ts`、`compaction-control.ts` 达到逐文件 100%；面板与服务层（Git/LaTeX/SSH/画布、`git-service`、`latex-service`、`git-client`、`latex-client`、`crypto-shim`、`cost.ts`）仍是既有欠账。
+
+## [2026-11-10] test | ui-polish 覆盖补齐（第二批）与 git-service 三处缺陷
+
+- 新增 `cost.ts` 校验矩阵、`llm-route`/`background-service`/`excalidraw-service` 错误分支、`crypto-shim` 对拍与 Buffer 兜底、`git-client`/`latex-client` 请求与 NDJSON 终态、`git-llm` 路由回退、`ExcalidrawToolView` 三阶段用例。
+- `git-service.ts` 新增 45 个路由级用例（真实临时仓库）：工作树操作、推送拉取、储藏、重置、规则回退、生成失败、审计降级、发现上限；语句覆盖 0 → 95.5%。
+- 覆盖过程中修出三处真实缺陷：长路径列表误用 `git add/reset --null`（应为 `--pathspec-file-nul`）、porcelain v2 重命名条目路径字段偏移导致面板显示 `R100`、领先/落后读错键（`branch.ab`）导致恒为 0。
+- 现状：15 个欠账文件中 11 个已达 100%；`latex-service.ts` 76%、`SshPanel.tsx` 42.5%，`GitPanel`/`LatexPanel`/`ExcalidrawPanel` 仍待组件级测试接缝。

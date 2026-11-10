@@ -344,12 +344,13 @@ function PdfPage(props: {
       {!ready && <div className={css.placeholder} aria-hidden="true" />}
       {failed && <p className={css.status} role="alert">{t('pageFailed')}</p>}
       <div className={css.surface} data-paper-surface hidden={!ready} onClick={onSurfaceClick}>
-        {annotations.flatMap(annotation => annotation.rects.flatMap((rect, index) => [
-          <span key={`${annotation.id}-${String(index)}`} className={css.highlight} style={overlayStyle(rect)} />,
-          ...annotation.note === undefined
-            ? []
-            : [<span key={`${annotation.id}-note-${String(index)}`} className={css.noteMark} style={overlayStyle(rect)} />],
-        ]))}
+        {annotations.flatMap(annotation => annotation.rects.map((rect, index) => (
+          // A note is marked by the red underline alone; only a plain highlight
+          // paints the yellow band, so the two kinds stay distinguishable.
+          <span key={`${annotation.id}-${String(index)}`}
+            className={annotation.note === undefined ? css.highlight : css.noteMark}
+            style={overlayStyle(rect)} />
+        )))}
         <canvas ref={canvas} className={css.canvas} role="img" aria-label={t('pageLabel', { page })} />
         <div ref={text} className={css.text} data-paper-text />
       </div>

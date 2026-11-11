@@ -36,6 +36,7 @@ kind: "package-group"
 
 | 包 | 职责 | ctx 键 |
 |---|---|---|
+| [`agent-plugins`](agent-plugins/README.zh.md) | Agent Plugins v1 包：把可移植技能与 MCP 服务器经技能与 MCP 接缝发布，只读包文件不改写 | — |
 | [`action-cards`](action-cards/README.zh.md) | 回答下方的可选操作卡片：提议工具、卡片状态、用户操作与状态通知 | `ctx.actionCards` |
 | [`client-ui-action-cards`](client-ui-action-cards/README.zh.md) | 已完成回答下方的卡片框架、种类正文与提议过程行 | — |
 | [`creation-recommendations`](creation-recommendations/README.zh.md) | 针对明确需求创建持续可用、可移除的界面插件 | — |

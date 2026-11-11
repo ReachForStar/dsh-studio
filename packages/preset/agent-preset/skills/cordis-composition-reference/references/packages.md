@@ -134,6 +134,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-workflow-run` | no | Durable workflow-run Conversation Node and nested member disclosure for dsh web |
 | `@deepseek-ai/dsh-client-ui-workspace` | no | Workspace picker plugin: one WorkspacePicker registered into the sidebar and empty-state workspace slots |
 | `@reachforstar/dsh-client-ui-a2a-status` | no | A2A service status indicator in Web Settings |
+| `@reachforstar/dsh-client-ui-paper-reader` | yes | Right-Sidebar paper reader: PDF upload with original layout, text highlights, notes, and in-conversation questions |
 | `@reachforstar/dsh-client-ui-polish` | yes | Web GUI polish plugin: whole-app background image, session stats float with cost, git/latex/excalidraw panels, and configurable compaction threshold |
 | `@reachforstar/dsh-client-ui-ssh` | no | SSH/SFTP connection management page in Web Settings: list, create, edit, probe, and delete saved connections |
 
@@ -205,6 +206,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-action-cards` | yes | Optional action cards below answers: one shared proposal tool, card state, user actions and status notices |
+| `@deepseek-ai/dsh-agent-plugins` | yes | Agent Plugins v1 loader: skills and MCP servers from portable plugin.json packages |
 | `@deepseek-ai/dsh-client-ui-action-cards` | no | Action cards below completed answers: the shared card frame, kind bodies and the compact tool row |
 | `@deepseek-ai/dsh-client-ui-creation-recommendations` | no | Body of the personalized page card: location choice, creation progress, Undo and Restore |
 | `@deepseek-ai/dsh-client-ui-plugin-recommendations` | no | Official plugin card body with catalog text and enabling |

@@ -5298,8 +5298,11 @@ importers:
       '@deepseek-ai/dsh-home-paths':
         specifier: workspace:*
         version: link:../../util/home-paths
-      '@deepseek-ai/schemastery':
+      '@deepseek-ai/dsh-llm':
         specifier: workspace:*
+        version: link:../../llm/llm
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
@@ -8909,6 +8912,31 @@ importers:
       '@deepseek-ai/dsh-util-values':
         specifier: workspace:*
         version: link:../../util/values
+
+  packages/experimental/agent-plugins:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+      yaml:
+        specifier: ^2.4.2
+        version: 2.9.0
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-home-paths':
+        specifier: workspace:*
+        version: link:../../util/home-paths
+      '@deepseek-ai/dsh-mcp-manager':
+        specifier: workspace:*
+        version: link:../../mcp/mcp-manager
+      '@deepseek-ai/dsh-skill':
+        specifier: workspace:*
+        version: link:../../skill/skill
 
   packages/experimental/api-speech-to-text:
     dependencies:

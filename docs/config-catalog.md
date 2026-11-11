@@ -138,6 +138,31 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-agent-loop -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-agent-plugins -->
+<a id="deepseek-aidsh-agent-plugins"></a>
+
+## `@deepseek-ai/dsh-agent-plugins`
+
+- `inject`: `skills` · `mcpManager`
+- `source`: [`packages/experimental/agent-plugins/src/index.ts:27`](../packages/experimental/agent-plugins/src/index.ts)
+
+```ts config-catalog
+/** Agent Plugins loader configuration. */
+export interface Config {
+  /** Package directories, absolute or relative to the process working directory. */
+  plugins?: string[]
+  /**
+   * Directory that receives one `PLUGIN_DATA` subtree per package. Defaults to
+   * `<dsh home>/plugin-data`; the loader creates each subtree before registering
+   * that package's stdio servers.
+   */
+  dataRoot?: string
+  /** Rank used when a plugin skill collides with another provider's skill name. */
+  skillRank?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-agent-plugins -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-agent-preset -->
 <a id="deepseek-aidsh-agent-preset"></a>
 

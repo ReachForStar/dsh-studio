@@ -1,0 +1,73 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/agent-plugins/README.md
+/:
+  en: 42075bfdee528b76
+  zh: 98cafdeb93d3cbf4
+/deepseek-ai-dsh-agent-plugins:
+  en: 29ecd205728a5cf5
+  zh: b7c60172475f6ef8
+/deepseek-ai-dsh-agent-plugins/summary:
+  en: f0eabe865d60e27e
+  zh: 66cf8b3571af9a52
+/deepseek-ai-dsh-agent-plugins/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 82bbd1ae631975a1
+/deepseek-ai-dsh-agent-plugins/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/deepseek-ai-dsh-agent-plugins/use-this-package/when-to-choose-it:
+  en: a06f0251d5792c22
+  zh: e74f8f4eeed0dee8
+/deepseek-ai-dsh-agent-plugins/use-this-package/mount-it:
+  en: b3d40d3c4d77ee84
+  zh: 917cf23f33457e04
+/deepseek-ai-dsh-agent-plugins/use-this-package/what-a-package-may-contain:
+  en: 939599c1566390f9
+  zh: e94e08515a851f0d
+/deepseek-ai-dsh-agent-plugins/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/deepseek-ai-dsh-agent-plugins/understand-the-implementation/containment:
+  en: 2fbdbb80ccae682f
+  zh: 8e243fa4c9eb4c6a
+/deepseek-ai-dsh-agent-plugins/understand-the-implementation/names-and-collisions:
+  en: 92417f400c20e494
+  zh: 94d6081f944ae9c2
+/deepseek-ai-dsh-agent-plugins/further-exploration:
+  en: 63138e07c894a3bc
+  zh: 42faeef8102250bf
+/deepseek-ai-dsh-agent-plugins/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-agent-plugins/model-experience/skill-catalog:
+  en: 8b567c1237c67579
+  zh: e3766870303c555f
+/deepseek-ai-dsh-agent-plugins/model-experience/skill-catalog/what-the-model-sees:
+  en: 0dc998d9f44c6782
+  zh: 1fa6a38ef0037636
+/deepseek-ai-dsh-agent-plugins/model-experience/skill-catalog/token-effect:
+  en: 041e5091951d732b
+  zh: 594db7298a5b8b66
+/deepseek-ai-dsh-agent-plugins/model-experience/skill-catalog/kv-cache-effect:
+  en: 33eb8589b4e69471
+  zh: dbd27c116d76c77c
+/deepseek-ai-dsh-agent-plugins/model-experience/mcp-tools:
+  en: 96a09abf4b22b1ee
+  zh: 494162ff45a95442
+/deepseek-ai-dsh-agent-plugins/model-experience/mcp-tools/what-the-model-sees:
+  en: 32c2bea99fe04954
+  zh: 209d4f9ba7be9df7
+/deepseek-ai-dsh-agent-plugins/model-experience/mcp-tools/token-effect:
+  en: 8f170a5b66d3d765
+  zh: f14e40ff853d45d8
+/deepseek-ai-dsh-agent-plugins/model-experience/mcp-tools/kv-cache-effect:
+  en: f721a9f0b75b75cf
+  zh: 7fc88faedead779f
+/deepseek-ai-dsh-agent-plugins/known-limitations-and-deferred-work:
+  en: 39225fdf153bb01d
+  zh: b98729106377fd68
+/deepseek-ai-dsh-agent-plugins/known-limitations-and-deferred-work/dev-note:
+  en: 9c1ce133a04571c1
+  zh: 0b2321198cfea0cc

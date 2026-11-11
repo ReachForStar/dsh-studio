@@ -48,7 +48,7 @@ qwen-code 已原生加载可移植的 [Agent Plugins v1](https://agent-plugins.o
 
 ### 4. 上下文成本治理与工具检索
 
-qwen 有 `/context detail`（逐项列出每个内置工具、MCP 工具、上下文文件、技能条目的本地估算）、`idle cost` 指标（只问一句不调工具的输入 token）、`tools.eager` 白名单与 `tools.toolSearch.threshold`（默认 0，即不预加载），配套 `packages/core/src/tools/tool-search.ts` 让模型按需检索并调用（`docs/users/features/context-cost.md`）。
+qwen 有 `/context detail`（逐项列出每个内置工具、MCP 工具、上下文文件、技能条目的本地估算）、`idle cost` 指标（只问一句不调工具的输入 token）、`tools.eager` 白名单与 `tools.toolSearch.threshold`（默认 0，即不预加载），配套 qwen-code 源码的 `tool-search.ts` 让模型按需检索并调用（`docs/users/features/context-cost.md`）。
 
 本 fork 现状：`packages/llm/token-meter` 的 `contextBreakdown` 只有 `systemTokens`、`toolsTokens`、`messageTokens` 三个总数（`packages/llm/token-meter/src/projection.ts`）；`packages/core/tools` 的 `deferLoading: true` 只是声明，`packages/llm/llm/README.md` 记录其 provider 侧的执行限制；没有面向模型的工具检索工具（全仓 `tool_search` 只在 `packages/llm/llm-pi-ai` 测试里出现）。
 
@@ -76,7 +76,7 @@ qwen 有 `/context detail`（逐项列出每个内置工具、MCP 工具、上�
 
 ### 7. 文件历史快照与撤销
 
-`packages/core/src/services/fileHistoryService.ts` 与 `packages/core/src/tools/managed-tool-file-history.ts` 在编辑前留快照，按会话维度序列化留存，供撤销/回滚。
+qwen-code 源码的 `fileHistoryService.ts` 与 qwen-code 源码的 `managed-tool-file-history.ts` 在编辑前留快照，按会话维度序列化留存，供撤销/回滚。
 
 本 fork 现状：`packages/deliverables` 记录工作区变更，`packages/session/session-checkpoint-policy` 是持久化检查点，两者都不是文件级回滚。
 
@@ -84,7 +84,7 @@ qwen 有 `/context detail`（逐项列出每个内置工具、MCP 工具、上�
 
 ### 8. Advisor（第二意见工具）
 
-`packages/core/src/tools/advisor.ts` 是一个无参数工具：把当前对话转发给配置的顾问模型，取独立意见（`ADVISOR_DESCRIPTION` 原文：Get an independent second opinion on an approach, recurring failure, or completion）。
+qwen-code 源码的 `advisor.ts` 是一个无参数工具：把当前对话转发给配置的顾问模型，取独立意见（`ADVISOR_DESCRIPTION` 原文：Get an independent second opinion on an approach, recurring failure, or completion）。
 
 本 fork 现状：`packages/subagent` 可委派任务，`packages/experimental/subagent-oar` 有评审角色，但没有「对当前对话要第二意见」的一键入口。
 

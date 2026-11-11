@@ -756,3 +756,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 会话永久删除：`SessionPersistence.delete`（JSONL 取写锁后删目录）→ `WorkspaceRegistry.deleteSession`（清理记账/归档/置顶）→ `workspace/deleteSession` → 行菜单与两次点击确认；归档行同样可删。
 - 验证：ui-paper-reader 14 spec/197 测试、ui-workspace 15 spec/526 测试均 100% 覆盖；typecheck 五门、lint、jscpd、i18n/文档/升级指南门禁通过。
 - 新增实体页与升级指南；原方案页改为已实现记录。
+
+## [2026-11-11] docs | 评估 qwen-code 可融入能力
+
+- 读 `tmp/qwen-code`（main `6a999b20b7`）核心源码与 75 份功能文档，对照本 fork 的包目录与接缝，得出 11 项候选与 6 项不融入项。
+- 优先级：Agent Plugins v1 加载面 > 工具摘要与下一步建议 > 上下文成本逐项 + `tool_search` > 记忆层 > 通道运行时 > Arena；每项记录 qwen 证据路径、本 fork 现状与落点。
+- 未跑代码，页面标 `status: draft`，待确认项为公开接缝的可用性与 agent-plugins.org 规范原文。

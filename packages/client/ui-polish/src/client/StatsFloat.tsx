@@ -30,7 +30,7 @@ import {
   type RateCardData,
 } from './cost.ts'
 import { buildTimeline, spanLabel } from './stats-timeline.ts'
-import { sessionUsageRows, type UsageRow, type WatchedUsage } from './session-usage.ts'
+import { sessionUsageRows, withSubagentSessions, type UsageRow, type WatchedUsage } from './session-usage.ts'
 import type { createBudgetRowStore } from './settings-store.ts'
 import css from './StatsFloat.module.css'
 
@@ -163,19 +163,6 @@ const ZERO_USAGE: TokenUsageProjection = {
 /** Whether one usage value reports any billable activity at all. */
 function billed(usage: TokenUsageProjection): boolean {
   return billedInputTokens(usage) > 0 || usage.outputTokens > 0
-}
-
-/**
- * One bucket total priced at the card's default rate, as a full totals row.
- * The estimate carries no model attribution, so it renders no breakdown row.
- * @param usage - the buckets to price.
- * @param at - the instant the estimate is billed at.
- * @param card - the rate card pricing the estimate.
- * @returns summed buckets, total, and an empty model list.
- */
-function estimatedTotals(usage: TokenUsageProjection, at: number, card: RateCardData): CostTotals {
-  const parts = costBreakdown(usage, 'default', at, card)
-  return { ...parts, total: parts.input + parts.cache + parts.output, models: [] }
 }
 
 /**
@@ -354,8 +341,16 @@ export const StatsFloat = memo(function StatsFloat({
   // its tokens through the list row the host projects; the session on screen
   // reports its live projection instead, which is newer than its row.
   const rows = useSessions(s => s.byId)
+  const catalogs = useSessions(s => s.projectionsBySession)
   const workspaceSessionIds = useWorkspaces(s =>
     s.items.find(workspace => workspace.sessionIds.includes(sessionId))?.sessionIds)
+  // Workspace membership lists only attached Sessions. A subagent owns its own
+  // Session and often never enters that list, so the card's scope follows each
+  // root's catalog and listed child rows as well.
+  const scopeIds = useMemo(
+    () => withSubagentSessions(workspaceSessionIds ?? [sessionId], rows, catalogs),
+    [workspaceSessionIds, sessionId, rows, catalogs],
+  )
   // Cost prices the session on screen message by message (each at its own
   // model's rate and settle time) and the rest from the totals they report.
   const messages = useMemo(() => messageCosts(settledNodes), [settledNodes])
@@ -364,9 +359,7 @@ export const StatsFloat = memo(function StatsFloat({
     ...usage === undefined ? {} : { usage },
     ...messages.length === 0 ? {} : { totals: accumulateCost(messages, card) },
   }
-  const reported = workspaceSessionIds === undefined
-    ? (watched.usage === undefined ? undefined : { usage: watched.usage, sessions: 1 })
-    : workspaceUsage(workspaceSessionIds, rows, watched)
+  const reported = workspaceUsage(scopeIds, rows, watched)
   const groups: string[] = []
   if (stats.steps > 0) {
     groups.push(t('stats.counts', { turns: stats.turns, steps: stats.steps }))
@@ -380,7 +373,7 @@ export const StatsFloat = memo(function StatsFloat({
     }
     if (speeds.length > 0) groups.push(speeds.join(' · '))
   }
-  if (reported !== undefined && (billedInputTokens(reported.usage) > 0 || reported.usage.outputTokens > 0)) {
+  if (billedInputTokens(reported.usage) > 0 || reported.usage.outputTokens > 0) {
     const cacheHit = cacheHitPercent(reported.usage)
     if (cacheHit !== null) groups.push(t('stats.cacheHit', { percent: cacheHit }))
     groups.push(t('stats.tokens', {
@@ -389,40 +382,28 @@ export const StatsFloat = memo(function StatsFloat({
     }))
     if (reported.sessions > 1) groups.push(t('stats.workspace', { sessions: reported.sessions }))
   }
-  // Cost covers the same workspace. The row stays hidden at a sub-cent bill,
-  // so a fresh or failed workspace gains no noise.
-  const totals = workspaceSessionIds === undefined
-    ? watched.totals ?? (watched.usage === undefined
-      ? undefined
-      : estimatedTotals(watched.usage, Date.now(), card))
-    : workspaceCost(workspaceSessionIds, rows, watched, Date.now(), card)
-  let costDisplay: { totals: CostTotals; label: string } | null = null
-  if (totals !== undefined) {
-    const label = formatCost(totals.total)
-    if (label !== '¥0.00') {
-      costDisplay = { totals, label }
-    }
-  }
+  // Cost covers the same expanded scope. The row stays hidden at a sub-cent
+  // bill, so a fresh or failed workspace gains no noise.
+  const totals = workspaceCost(scopeIds, rows, watched, Date.now(), card)
+  const label = formatCost(totals.total)
+  const costDisplay: { totals: CostTotals; label: string } | null = label === '¥0.00' ? null : { totals, label }
   if (groups.length === 0 && costDisplay === null) return null
   const now = Date.now()
-  const scopeIds = workspaceSessionIds ?? [sessionId]
   const timeline = buildTimeline(messages, now, card)
   const sessionUsages = sessionUsageRows(scopeIds, rows, watched, now, card)
   const budgetView = budgetStatus(monthlySpend(scopeIds, rows, watched, messages, now, card), budget)
   const budgetShown = budgetView.budget !== null || formatCost(budgetView.spent) !== '¥0.00'
   // Three visual tiers: total cost leads, token/cache figures follow, and the
   // per-model split reads as labelled rows.
-  const tokenChips: { key: 'stats.tokensTotal' | 'stats.input' | 'stats.output' | 'stats.cache'; value: string }[] = reported !== undefined
-    ? [
-      {
-        key: 'stats.tokensTotal' as const,
-        value: formatTokens(billedInputTokens(reported.usage) + reported.usage.outputTokens),
-      },
-      { key: 'stats.input' as const, value: formatTokens(billedInputTokens(reported.usage)) },
-      { key: 'stats.output' as const, value: formatTokens(reported.usage.outputTokens) },
-      { key: 'stats.cache' as const, value: formatTokens(reported.usage.cacheReadTokens) },
-    ].filter(chip => chip.value !== '0')
-    : []
+  const tokenChips: { key: 'stats.tokensTotal' | 'stats.input' | 'stats.output' | 'stats.cache'; value: string }[] = [
+    {
+      key: 'stats.tokensTotal' as const,
+      value: formatTokens(billedInputTokens(reported.usage) + reported.usage.outputTokens),
+    },
+    { key: 'stats.input' as const, value: formatTokens(billedInputTokens(reported.usage)) },
+    { key: 'stats.output' as const, value: formatTokens(reported.usage.outputTokens) },
+    { key: 'stats.cache' as const, value: formatTokens(reported.usage.cacheReadTokens) },
+  ].filter(chip => chip.value !== '0')
   const BAR_CLASS = { input: css.bar_input, cache: css.bar_cache, output: css.bar_output } as const
   const DOT_CLASS = { input: css.dot_input, cache: css.dot_cache, output: css.dot_output } as const
   const bucketTotal = costDisplay === null
@@ -483,7 +464,7 @@ export const StatsFloat = memo(function StatsFloat({
         : (
           <>
             <div className={css.head}>
-              <span className={css.title}>{t('stats.title')}{reported !== undefined && reported.sessions > 1
+              <span className={css.title}>{t('stats.title')}{reported.sessions > 1
                 ? ` · ${t('stats.workspace', { sessions: reported.sessions })}`
                 : ''}</span>
               <span className={css.headHint}>{t('stats.collapse')}</span>

@@ -13,8 +13,67 @@ export interface UsageRow {
   displayTitle?: string
   /** Last durable update, Unix epoch ms (drives monthly attribution). */
   updatedAt?: number
+  /** Direct creator, present on a listed subagent row. */
+  parentId?: SessionId
+  /** Coarse durable origin; only `subagent` rows join their parent's scope. */
+  origin?: 'subagent'
   projectionValues?: { readonly tokenUsage?: TokenUsageProjection }
 }
+
+/** One session's projection snapshot, as the list store holds it. */
+export interface UsageCatalog {
+  readonly values: {
+    readonly subagentCatalog?: readonly { readonly id: SessionId; readonly mode: string }[]
+  }
+}
+
+/**
+ * Add every subagent Session beneath the given roots.
+ *
+ * Workspace membership only lists Sessions attached at creation; a subagent
+ * keeps its own Session and may never enter that list. The list still carries
+ * both sources of the parent edge: a loaded parent catalog, and the listed
+ * child rows' `parentId`. Roots keep their order, descendants follow in
+ * discovery order, and repeated ids (a child already in the workspace, a
+ * malformed cycle) appear once.
+ * @param sessionIds - workspace members, or the single current Session.
+ * @param rows - the session list's rows.
+ * @param catalogs - per-session projection snapshots.
+ * @returns the roots plus every reachable subagent Session.
+ */
+export function withSubagentSessions(
+  sessionIds: readonly SessionId[],
+  rows: Readonly<Record<string, UsageRow | undefined>>,
+  catalogs: Readonly<Record<string, UsageCatalog | undefined>>,
+): SessionId[] {
+  const children = new Map<SessionId, SessionId[]>()
+  const link = (parentId: SessionId, childId: SessionId): void => {
+    const current = children.get(parentId)
+    if (current === undefined) children.set(parentId, [childId])
+    else if (!current.includes(childId)) current.push(childId)
+  }
+  for (const [parentId, catalog] of Object.entries(catalogs)) {
+    if (catalog === undefined) continue
+    for (const entry of catalog.values.subagentCatalog ?? []) {
+      if (entry.mode === 'external') continue
+      link(parentId as SessionId, entry.id)
+    }
+  }
+  for (const [childId, row] of Object.entries(rows)) {
+    if (row?.origin === 'subagent' && row.parentId !== undefined) link(row.parentId, childId as SessionId)
+  }
+  const visited = new Set<SessionId>()
+  const scope: SessionId[] = []
+  const queue = [...sessionIds]
+  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+    if (visited.has(id)) continue
+    visited.add(id)
+    scope.push(id)
+    queue.push(...children.get(id) ?? [])
+  }
+  return scope
+}
+
 
 /** What the caller knows about the session it is watching. */
 export interface WatchedUsage {

@@ -24,6 +24,8 @@ const OTHER_SESSION = 's-other' as SessionId
 type Row = {
   displayTitle?: string
   updatedAt?: number
+  parentId?: SessionId
+  origin?: 'subagent'
   projectionValues?: { tokenUsage?: TokenUsageProjection }
 }
 
@@ -61,7 +63,12 @@ const store = <T,>(state: T): ((selector: (value: T) => unknown) => unknown) => 
 function props(
   source: { getSnapshot(): ConversationSnapshot; subscribe(fn: () => void): () => void },
   values: Record<string, unknown>,
-  over: { workspace?: SessionId[] | 'unlisted'; rows?: Record<string, Row>; budget?: number | null } = {},
+  over: {
+    workspace?: SessionId[] | 'unlisted'
+    rows?: Record<string, Row>
+    catalogs?: Record<string, { values: { subagentCatalog?: readonly { id: SessionId; mode: string }[] } }>
+    budget?: number | null
+  } = {},
 ): StatsFloatProps {
   const sessionIds = over.workspace === undefined || over.workspace === 'unlisted'
     ? [SESSION]
@@ -72,7 +79,10 @@ function props(
   return {
     useConversation: bindSnapshotSelector(source),
     useProjection: projections(values),
-    useSessions: store({ byId: over.rows ?? {}, ids: sessionIds, current: SESSION, phase: 'ready' }),
+    useSessions: store({
+      byId: over.rows ?? {}, ids: sessionIds, current: SESSION, phase: 'ready',
+      projectionsBySession: over.catalogs ?? {},
+    }),
     useWorkspaces: store({ items, phase: 'ready' }),
     useStore: store({ budget: over.budget ?? null, revision: 0 }),
     sessionId: SESSION,
@@ -195,6 +205,38 @@ describe('workspace aggregation', () => {
 })
 
 describe('StatsFloat', () => {
+  it('adds subagent Sessions beneath the workspace roots to totals and rows', () => {
+    const child = 's-child' as SessionId
+    const grandchild = 's-grandchild' as SessionId
+    const { source } = makeSource()
+    const view = render(<StatsFloat {...props(source, {
+      tokenUsage: USAGE,
+      sessionStats: sessionStats({ turns: 1, steps: 1 }),
+    }, {
+      workspace: [SESSION],
+      rows: {
+        [child]: {
+          displayTitle: 'Worker', parentId: SESSION, origin: 'subagent',
+          projectionValues: { tokenUsage: { uncachedInputTokens: 1_000, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 0 } },
+        },
+        [grandchild]: {
+          displayTitle: 'Helper', parentId: child, origin: 'subagent',
+          projectionValues: { tokenUsage: { uncachedInputTokens: 100, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 0 } },
+        },
+      },
+      catalogs: {
+        [SESSION]: { values: { subagentCatalog: [{ id: child, mode: 'continuable' }] } },
+        [child]: { values: { subagentCatalog: [{ id: grandchild, mode: 'one-shot' }] } },
+      },
+    })} />)
+    // Watched 10 + 90 + 5 = 105, child 1,000, grandchild 100 → 1,205 tokens.
+    expect(view.container.textContent).toContain('总 token 1.2K')
+    fireEvent.click(view.container.querySelector('[data-ui-polish-stats]') as HTMLElement)
+    expect(view.container.textContent).toContain('工作区共 3 个会话')
+    expect(view.container.textContent).toContain('Worker')
+    expect(view.container.textContent).toContain('Helper')
+  })
+
   it('renders projection figures and hides a sub-cent cost', () => {
     const { source } = makeSource()
     const view = render(<StatsFloat {...props(source, { tokenUsage: USAGE, sessionStats: sessionStats({ turns: 2, steps: 5 }) })} />)

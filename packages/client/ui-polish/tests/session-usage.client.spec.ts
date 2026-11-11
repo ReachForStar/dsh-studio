@@ -1,6 +1,6 @@
 /** Per-session usage rows: live projection, message-priced totals, and ordering. */
 import { describe, expect, it } from 'vitest'
-import { sessionUsageRows, type UsageRow } from '../src/client/session-usage.ts'
+import { sessionUsageRows, withSubagentSessions, type UsageRow } from '../src/client/session-usage.ts'
 import { estimateCost, SEED_RATE_CARD } from '../src/client/cost.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
@@ -60,5 +60,47 @@ describe('sessionUsageRows', () => {
 
     expect(result.map(row => row.title)).toEqual(['s-a', 's-b'])
     expect(result.map(row => row.current)).toEqual([false, true])
+  })
+})
+
+describe('withSubagentSessions', () => {
+  const C = 's-c' as SessionId
+
+  it('appends nested subagent Sessions from catalogs and listed parent links', () => {
+    const rows: Record<string, UsageRow | undefined> = {
+      [A]: { displayTitle: 'Parent' },
+      [B]: { displayTitle: 'Worker', parentId: A, origin: 'subagent' },
+      [C]: { displayTitle: 'Helper', parentId: B, origin: 'subagent' },
+    }
+    const catalogs = {
+      [A]: { values: { subagentCatalog: [{ id: B, mode: 'continuable' }] } },
+      [B]: { values: { subagentCatalog: [{ id: C, mode: 'one-shot' }] } },
+    }
+
+    expect(withSubagentSessions([A], rows, catalogs)).toEqual([A, B, C])
+  })
+
+  it('keeps a child already in the workspace once and ignores external or ordinary links', () => {
+    const rows: Record<string, UsageRow | undefined> = {
+      [A]: {},
+      [B]: { parentId: A, origin: 'subagent' },
+      [C]: { parentId: A },
+    }
+    const catalogs = {
+      [A]: { values: { subagentCatalog: [{ id: B, mode: 'continuable' }, { id: 's-ext' as SessionId, mode: 'external' }] } },
+      [B]: { values: {} },
+      [C]: undefined,
+    }
+
+    expect(withSubagentSessions([A, B], rows, catalogs)).toEqual([A, B])
+  })
+
+  it('stops on a repeated catalog cycle', () => {
+    const catalogs = {
+      [A]: { values: { subagentCatalog: [{ id: B, mode: 'continuable' }] } },
+      [B]: { values: { subagentCatalog: [{ id: A, mode: 'continuable' }, { id: B, mode: 'continuable' }] } },
+    }
+
+    expect(withSubagentSessions([A], {}, catalogs)).toEqual([A, B])
   })
 })

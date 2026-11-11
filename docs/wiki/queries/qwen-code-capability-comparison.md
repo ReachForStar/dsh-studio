@@ -14,6 +14,19 @@ status: draft
 
 qwen-code 源码在 `tmp/qwen-code`（main 分支 `6a999b20b7`）。对照本 fork 的 `packages/` 现状，找出可直接融入或值得借鉴的能力，并给出落点、成本与风险。
 
+## 实施进度
+
+| 项 | 状态 | 落点 |
+| --- | --- | --- |
+| Agent Plugins v1 加载面 | 已实现 | `packages/experimental/agent-plugins`（[实体页](../entities/agent-plugins.md)） |
+| 工具检索（qwen `tool-search.ts`） | 已实现 | `packages/experimental/tool-search`（[实体页](../entities/tool-search.md)） |
+| Arena 前置：worktree 脏状态镜像 | 已实现 | `packages/experimental/worktree` 的 `mirrorUncommitted` 与 `mirrorMaxFileBytes` |
+| 上下文成本逐项 / idle cost | 未实现 | 要改 `token-meter` 的毕业投影与客户端卡片 |
+| 快模型三件套 | 未实现 | 新增 fastModel 配置；摘要与建议需要新的展示数据通道 |
+| 记忆层 | 未实现 | 注入需可重建的上下文来源，提取走后台 subagent |
+| 通道运行时 | 未实现 | 需要把 `webhook` 泛化并新增活跃会话投递接缝 |
+| Arena 本体 | 未实现 | 依赖脏状态镜像（已具备）与多会话并行编排 |
+
 ## 判定口径
 
 - 插件化判定沿用 [合并上游 2026-11-08](upstream-merge-2026-11-08.md#第-3-项插件化分类)：只依赖已发布公开接缝、不改 harness 源码的算可插件化。

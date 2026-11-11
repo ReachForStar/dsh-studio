@@ -790,3 +790,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 持久化记录 `2026-11-11-fork-paper-source-and-title-usage`，同时补记此前未确认的 `paper-reader` 来源种类；`verify-persistence-changes` 69 根、28 条记录一致。
 - 验证：ui-chat 98 项、ui-polish 39 项、标题/计量/格式包 1,230 项、`test:gui` 13,824 项通过；改动文件覆盖 100%。
 - 知识页更新：`queries/session-token-usage-subagents.md`、`entities/stats-float.md`。
+
+## [2026-11-11] feat | worktree 脏状态镜像
+
+- `worktree.create` 新增 `mirrorUncommitted`：已跟踪改动经 `git stash create` 快照在新检出中 apply，未跟踪文件经 `ctx.fs.readBytes/writeBytes` 在调用方沙箱策略下逐个复制；新增配置 `mirrorMaxFileBytes`（默认 8 MiB）。
+- `create_worktree` 工具暴露同名布尔参数并更新描述。
+- 验证：worktree 包 56 个测试、逐文件覆盖率 100%（语句 175/175）；tool-worktree 测试通过；`doc-sync` 的 tool-catalog、config-catalog、双语配对、README 模型体验门通过。
+- 既有环境问题：`worktree.spec.ts` 与 `checkout-safety.spec.ts` 中 restore 相关用例在 5 秒默认超时下失败，`git stash` 掉本包改动后同样失败，属本机 git 耗时而非本次改动；加 `--testTimeout=30000` 后全绿。

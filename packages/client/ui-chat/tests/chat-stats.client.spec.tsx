@@ -5,6 +5,8 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import type {
   AssistantMessageNode, ChatSnapshot, LegacyConversationSlice, ToolResultNode,
 } from '@deepseek-ai/dsh-client-ui-chat/client'
+import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
@@ -154,11 +156,21 @@ describe('composer stats pills', () => {
     return (key: string) => values[key]
   }
 
+  const EMPTY_LIST: SessionListState = { ids: [], byId: {}, phase: 'ready', projectionsBySession: {} }
+
   function props(
     source: { getSnapshot(): ChatSnapshot; subscribe(fn: () => void): () => void },
     values: Record<string, unknown> = { tokenUsage: USAGE },
+    over: { sessions?: SessionListState; sessionId?: SessionId } = {},
   ): StatPillProps {
-    return { usePerformanceUsage: selector => selector('detailed'), useChat: bindSnapshotSelector(source), useProjection: projections(values), t: tEn }
+    return {
+      usePerformanceUsage: selector => selector('detailed'),
+      useChat: bindSnapshotSelector(source),
+      useProjection: projections(values),
+      useSessions: selector => selector(over.sessions ?? EMPTY_LIST),
+      sessionId: over.sessionId ?? 's-current' as SessionId,
+      t: tEn,
+    }
   }
 
   function tokenUsage(cacheReadTokens: number, uncachedInputTokens: number) {
@@ -302,6 +314,65 @@ describe('composer stats pills', () => {
     expect(tokens.textContent).toContain('Output5 tok')
     // The time split lives on the counts pill's own dialog, not here.
     expect(dialog.textContent).not.toContain('LLM time')
+  })
+
+  it('adds subagent usage across the tree to the whole-log total and names their share', () => {
+    const { source } = makeSource({ nodes: [timedStep()] })
+    const child = 's-child' as SessionId
+    const grandchild = 's-grandchild' as SessionId
+    const row = (sessionId: SessionId, parentSessionId?: SessionId): SessionSummary => ({
+      id: sessionId,
+      displayTitle: sessionId,
+      updatedAt: 0,
+      running: false,
+      blank: false,
+      retainedBy: {},
+      ...parentSessionId === undefined ? {} : { parentId: parentSessionId, origin: 'subagent' as const },
+    })
+    const sessions: SessionListState = {
+      ids: [child, grandchild],
+      byId: {
+        [child]: {
+          ...row(child, 's-current' as SessionId),
+          projectionValues: {
+            tokenUsage: { uncachedInputTokens: 1_000, outputTokens: 2_000, cacheReadTokens: 3_000, cacheWriteTokens: 0 },
+          },
+        },
+        [grandchild]: {
+          ...row(grandchild, child),
+          projectionValues: {
+            tokenUsage: { uncachedInputTokens: 100, outputTokens: 200, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          },
+        },
+      },
+      phase: 'ready',
+      projectionsBySession: {
+        ['s-current' as SessionId]: {
+          values: { subagentCatalog: [{ id: child, createdAt: 1, mode: 'continuable', label: 'Worker' }] },
+          state: 'ready',
+          error: null,
+        },
+        [child]: {
+          values: { subagentCatalog: [{ id: grandchild, createdAt: 2, mode: 'continuable', label: 'Helper' }] },
+          state: 'ready',
+          error: null,
+        },
+      },
+    }
+    const view = render(<StatsPills {...props(source, { tokenUsage: USAGE }, { sessions })} />)
+    // Parent 10 + 90 + 5, child 1,000 + 3,000 + 2,000, grandchild 100 + 200.
+    const usagePill = view.getAllByRole('button')[1]!
+    expect(usagePill.textContent).toBe('6.4K tok·Cache hit 74%')
+    expect(usagePill.getAttribute('aria-label')).toBe('6.4K tok · Cache hit 74%')
+    fireEvent.click(usagePill)
+    const dialog = view.getByRole('dialog')
+    expect(dialog.firstChild?.textContent).toBe('Token usage6,405 tok')
+    const tokens = dialog.querySelector('[data-session-stats-usage]') as HTMLElement
+    expect(tokens.textContent).toContain('Uncached input1,110 tok')
+    expect(tokens.textContent).toContain('Cached input3,090 tok')
+    expect(tokens.textContent).toContain('Output2,205 tok')
+    // The child-only subtotal, stated as a subset of the headline.
+    expect(tokens.textContent).toContain('Of which subagents (2)6,300 tok')
   })
 
   it('closes the dialog on Escape or an outside pointerdown', () => {

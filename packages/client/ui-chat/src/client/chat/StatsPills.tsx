@@ -8,10 +8,13 @@ import { memo, useMemo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { IconDatabaseOutlineRegular, IconGaugeOutlineRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { UseProjection } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { UseSessions } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { InjectFace, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: merges the sessionStats key into SessionProjectionMap for useProjection.
 import type {} from '@deepseek-ai/dsh-session-stats/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
+import { subagentUsage } from './subagent-usage.ts'
 import type { ChatViewSlotProps, PerformanceUsageInjected } from '../contract/slots.ts'
 import type { ChatSnapshot } from '../contract/snapshot.ts'
 import { formatTokensPerSecond } from './message-chrome.ts'
@@ -119,12 +122,28 @@ export function billedInputTokens(usage: TokenUsageProjection): number {
   return usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
 }
 
+function billable(usage: TokenUsageProjection): boolean {
+  return billedInputTokens(usage) > 0 || usage.outputTokens > 0
+}
+
+function addUsage(left: TokenUsageProjection, right: TokenUsageProjection): TokenUsageProjection {
+  return {
+    uncachedInputTokens: left.uncachedInputTokens + right.uncachedInputTokens,
+    outputTokens: left.outputTokens + right.outputTokens,
+    cacheReadTokens: left.cacheReadTokens + right.cacheReadTokens,
+    cacheWriteTokens: left.cacheWriteTokens + right.cacheWriteTokens,
+  }
+}
+
 type Translate = ChatViewSlotProps['t']
 
 /** Props shared by every composer stats pill: the conversation-snapshot selector plus the projection read seat. */
 export interface StatPillProps extends InjectFace<PerformanceUsageInjected> {
   useChat: SnapshotSelectorHook<ChatSnapshot>
   useProjection: UseProjection
+  /** Session-list rows and catalogs, read to total subagent Sessions. */
+  useSessions: UseSessions
+  sessionId: SessionId
   /** The owning dock's locale seat. */
   t: Translate
 }
@@ -294,21 +313,26 @@ export const ActivityPill = memo(function ActivityPill({ useChat, useProjection,
 })
 
 /** Whole-log token total and cache hit; Compact keeps only the cache hit. */
-export const UsagePill = memo(function UsagePill({ useProjection, usePerformanceUsage, t }: StatPillProps) {
+export const UsagePill = memo(function UsagePill({ useProjection, useSessions, sessionId, usePerformanceUsage, t }: StatPillProps) {
   const mode = usePerformanceUsage(value => value)
   const usage = useProjection('tokenUsage')
+  // A subagent runs in its own Session, so the parent projection excludes it.
+  // The list carries the child rows and catalogs the parent does not own.
+  const subagents = useSessions(state => subagentUsage(state, sessionId))
+  const totalUsage = usage === undefined ? subagents.usage : addUsage(usage, subagents.usage)
   // Gated on actual token activity: a session whose steps all settled without
   // billing (e.g. every request failed) shows no usage pill.
-  if (usage === undefined || (billedInputTokens(usage) === 0 && usage.outputTokens === 0)) return null
-  const cacheHit = cacheHitPercent(usage)
+  if (!billable(totalUsage)) return null
+  const cacheHit = cacheHitPercent(totalUsage)
   const cacheHitText = cacheHit !== null ? t('stats.cacheHit', { percent: cacheHit }) : null
   const icon = <IconDatabaseOutlineRegular />
   if (mode === 'compact') {
     return cacheHitText === null ? null : <PlainPill stat="usage" icon={icon} {...reading(cacheHitText, null)} />
   }
   // Same aggregate as the Turn pill's totalTokens: every prompt-side billing bucket plus output.
-  const total = billedInputTokens(usage) + usage.outputTokens
+  const total = billedInputTokens(totalUsage) + totalUsage.outputTokens
   const totalText = t('message.turnUsage.count', { count: formatTokens(total, t) })
+  const subagentTokens = billedInputTokens(subagents.usage) + subagents.usage.outputTokens
   return (
     <DialogPill
       stat="usage"
@@ -330,17 +354,23 @@ export const UsagePill = memo(function UsagePill({ useProjection, usePerformance
           </>
         )}
         <dt>{t('message.turnUsage.input')}</dt>
-        <dd>{exactCount(usage.uncachedInputTokens, t)}</dd>
+        <dd>{exactCount(totalUsage.uncachedInputTokens, t)}</dd>
         <dt>{t('message.turnUsage.cacheRead')}</dt>
-        <dd>{exactCount(usage.cacheReadTokens, t)}</dd>
-        {usage.cacheWriteTokens !== 0 && (
+        <dd>{exactCount(totalUsage.cacheReadTokens, t)}</dd>
+        {totalUsage.cacheWriteTokens !== 0 && (
           <>
             <dt>{t('message.turnUsage.cacheWrite')}</dt>
-            <dd>{exactCount(usage.cacheWriteTokens, t)}</dd>
+            <dd>{exactCount(totalUsage.cacheWriteTokens, t)}</dd>
           </>
         )}
         <dt>{t('message.turnUsage.output')}</dt>
-        <dd>{exactCount(usage.outputTokens, t)}</dd>
+        <dd>{exactCount(totalUsage.outputTokens, t)}</dd>
+        {subagents.sessions > 0 && (
+          <>
+            <dt>{t('stats.dialog.subagents', { count: subagents.sessions })}</dt>
+            <dd>{exactCount(subagentTokens, t)}</dd>
+          </>
+        )}
       </dl>
       {/* jscpd:ignore-end */}
     </DialogPill>

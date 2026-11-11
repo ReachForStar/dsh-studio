@@ -25,6 +25,7 @@ import { useSearchableHidden } from '../src/client/chat/searchable-hidden.ts'
 import { ActivityPill, UsagePill, type StatPillProps } from '../src/client/chat/StatsPills.tsx'
 import { zh } from '../src/client/locale.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 afterEach(() => {
   cleanup()
@@ -1093,6 +1094,8 @@ describe('small branch tails', () => {
       useProjection: (key: string) => key === 'tokenUsage'
         ? { uncachedInputTokens: 0, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 }
         : undefined,
+      useSessions: selector => selector({ ids: [], byId: {}, phase: 'ready', projectionsBySession: {} }),
+      sessionId: 's-current' as SessionId,
     }
     const view = render(
       <>

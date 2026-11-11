@@ -762,3 +762,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 读 `tmp/qwen-code`（main `6a999b20b7`）核心源码与 75 份功能文档，对照本 fork 的包目录与接缝，得出 11 项候选与 6 项不融入项。
 - 优先级：Agent Plugins v1 加载面 > 工具摘要与下一步建议 > 上下文成本逐项 + `tool_search` > 记忆层 > 通道运行时 > Arena；每项记录 qwen 证据路径、本 fork 现状与落点。
 - 未跑代码，页面标 `status: draft`，待确认项为公开接缝的可用性与 agent-plugins.org 规范原文。
+
+## [2026-11-11] fix | 会话统计 Token 用量并入子会话消耗
+
+- `ui-chat` 的 usage 胶囊原先只读当前会话 `tokenUsage`；新增 `subagent-usage.ts` 从 `subagentCatalog` 与列表行 `parentId` 两路遍历全部子会话，父会话与子会话分桶合计，并单列「其中子智能体（N 个）」。
+- 8 个语种补 `stats.dialog.subagents`；父会话零用量但子会话有活动时仍显示胶囊。
+- 验证：相关 4 个 ui-chat spec 98 项、`test:gui` 13,820 项通过；typecheck client 两面通过，host aggregate 为 agent-plugins 既有 TS6307 红项。
+- 知识页：`queries/session-token-usage-subagents.md`；未覆盖 session-title 独立调用与 ui-polish 浮层的子会话边界。

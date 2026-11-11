@@ -12,6 +12,7 @@ import { useSearchableHidden } from '../src/client/chat/searchable-hidden.ts'
 import { ActivityPill, UsagePill, type StatPillProps } from '../src/client/chat/StatsPills.tsx'
 import { zh } from '../src/client/locale.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 const t: AssistantMarkdownProps['t'] = makeTranslate(zh, commonZh)
 
@@ -53,6 +54,8 @@ describe('render branch tails', () => {
       t,
       useChat: bindSnapshotSelector(source),
       useProjection: () => undefined,
+      useSessions: selector => selector({ ids: [], byId: {}, phase: 'ready', projectionsBySession: {} }),
+      sessionId: 's-current' as SessionId,
     }
     const view = render(
       <>

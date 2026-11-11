@@ -61,6 +61,10 @@ No runtime invariant companion is published: Git owns checkout registration and 
 -----
 
 <a id="further-exploration"></a>
+### Mirroring uncommitted work
+
+`create(agent, { mirrorUncommitted: true })` copies the source checkout's dirty state into the new checkout. Tracked changes travel as a `git stash create` snapshot, which never touches the source index or working tree, and are applied in the new checkout; untracked files are copied one by one through the filesystem provider under the caller's sandbox policy. `mirrorMaxFileBytes` (default 8 MiB) caps each copied untracked file; a larger file fails the creation. Omit the request field and the new checkout stays at the pinned commit.
+
 ## Further Exploration
 
 - [Worktree subsystem](../../../docs/subsystems/worktrees.md) — request, result, and service reference.

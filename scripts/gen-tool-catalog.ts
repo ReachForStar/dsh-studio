@@ -70,6 +70,7 @@ import ScheduleService from '@deepseek-ai/dsh-schedule'
 import Lsp from '@deepseek-ai/dsh-lsp'
 import * as ToolLsp from '@deepseek-ai/dsh-tool-lsp'
 import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
+import * as ToolSearch from '@deepseek-ai/dsh-tool-search'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolJobs from '@deepseek-ai/dsh-tool-jobs'
 import BrowserUseRegistry from '@deepseek-ai/dsh-browser-use'
@@ -585,6 +586,18 @@ const TOOL_PACKAGES: ToolPackage[] = [
       })
       await ctx.plugin(ToolSkill)
     },
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-search',
+    dir: 'tool-search',
+    source: 'packages/experimental/tool-search/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolSearch)
+    },
+    note:
+      'tool_search reads the same registry the executor resolves, so a restricted or scoped agent searches only the tools it can call. Results carry parameter schemas; the tool never calls a matched tool itself.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-session-query',

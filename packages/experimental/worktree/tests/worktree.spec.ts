@@ -24,6 +24,47 @@ async function repo(): Promise<string> {
 }
 
 describe('creating and entering retained worktrees', () => {
+  it('mirrors uncommitted tracked and untracked files into the new checkout on request', async () => {
+    const root = await repo()
+    ctx = await harness(root)
+    const agent = testAgent(ctx, root)
+    await writeFile(join(root, 'tracked.txt'), 'changed\n')
+    await writeFile(join(root, 'untracked.txt'), 'local\n')
+    const before = await git(root, 'status', '--porcelain')
+
+    const result = await ctx.worktrees.create(agent, { name: 'mirror', mirrorUncommitted: true })
+
+    expect(await contents(join(result.path, 'tracked.txt'))).toBe('changed\n')
+    expect(await contents(join(result.path, 'untracked.txt'))).toBe('local\n')
+    expect(await contents(join(root, 'tracked.txt'))).toBe('changed\n')
+    expect(await git(root, 'status', '--porcelain')).toBe(before)
+  })
+
+  it('mirrors nothing from a clean source checkout', async () => {
+    const root = await repo()
+    ctx = await harness(root)
+    const agent = testAgent(ctx, root)
+
+    const result = await ctx.worktrees.create(agent, { name: 'clean-mirror', mirrorUncommitted: true })
+
+    expect(await contents(join(result.path, 'tracked.txt'))).toBe('initial\n')
+    expect(await git(result.path, 'status', '--porcelain')).toBe('')
+  })
+
+  it('leaves the new checkout at the pinned commit unless mirroring is requested', async () => {
+    const root = await repo()
+    ctx = await harness(root)
+    const agent = testAgent(ctx, root)
+    await writeFile(join(root, 'tracked.txt'), 'changed\n')
+    await writeFile(join(root, 'untracked.txt'), 'local\n')
+
+    const result = await ctx.worktrees.create(agent, { name: 'plain' })
+
+    expect(await contents(join(result.path, 'tracked.txt'))).toBe('initial\n')
+    expect(existsSync(join(result.path, 'untracked.txt'))).toBe(false)
+  })
+
+
   it('pins HEAD, preserves source edits and index, enters the new branch, and ignores its new pool', async () => {
     const root = await repo()
     ctx = await harness(root)

@@ -6,6 +6,14 @@ export interface CreateWorktreeRequest {
   name?: string
   /** Local revision to resolve before creation; omission selects HEAD. */
   from?: string
+  /**
+   * Copy the source checkout's uncommitted changes and untracked files into the
+   * new checkout after it is created. Tracked changes are captured with
+   * `git stash create` (which leaves the source untouched) and applied in the
+   * new checkout; untracked files are copied. Omission leaves the new checkout
+   * at the pinned commit.
+   */
+  mirrorUncommitted?: boolean
 }
 
 /** Committed Git baseline and the calling Session's resulting working directory. */

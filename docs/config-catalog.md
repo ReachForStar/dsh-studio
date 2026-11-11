@@ -1553,6 +1553,8 @@ export interface Config {
   graceMs?: number
   /** Maximum captured bytes per subprocess output stream. */
   maxOutputBytes?: number
+  /** Maximum size of one untracked file copied into a mirroring checkout. */
+  mirrorMaxFileBytes?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-worktree -->

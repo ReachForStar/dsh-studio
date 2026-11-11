@@ -35,7 +35,7 @@ status: active
 
 ## 与 qwen-code 的关系
 
-对应 qwen-code `packages/core/src/tools/tool-search.ts` 与其 `tools.eager` / `tools.toolSearch.threshold` 设计。取舍与后续项见 [qwen-code 可融入清单](../queries/qwen-code-capability-comparison.md)。
+对应 qwen-code 源码的 `tool-search.ts` 与其 `tools.eager` / `tools.toolSearch.threshold` 设计。取舍与后续项见 [qwen-code 可融入清单](../queries/qwen-code-capability-comparison.md)。
 
 ## 待确认
 

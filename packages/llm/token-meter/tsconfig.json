@@ -33,6 +33,9 @@
       "path": "../../session/session-projection"
     },
     {
+      "path": "../../session/session-title-llm"
+    },
+    {
       "path": "../../compaction/compaction-image-offload"
     }
   ]

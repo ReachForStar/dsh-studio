@@ -235,6 +235,54 @@ describe('executeSessionTitleLlm', () => {
       })
   })
 
+  it('records provider usage once per call, correlated with its request', async () => {
+    const usage = { inputTokens: 100, outputTokens: 20, cacheReadTokens: 30, cacheWriteTokens: 0 }
+    const { ctx } = await withScript([
+      { type: 'block-start', index: 0, blockType: 'text' },
+      { type: 'text-delta', index: 0, text: '标题' },
+      { type: 'usage', usage },
+      { type: 'finish', reason: { kind: 'stop' } },
+    ])
+    const providerRequest = request(ctx)
+
+    await executeSessionTitleLlm(
+      ctx,
+      resolveSessionTitleLlmConfig(CONFIG),
+      providerRequest,
+      TITLE_PROVIDER,
+      prepared(providerRequest),
+    )
+
+    const events = providerRequest.session.snapshotEvents()
+    const requestSeq = events.findLast(event => event.type === 'session/title-llm-request')?.seq
+    const recorded = events.filter(event => event.type === 'session/title-llm-usage')
+    expect(recorded).toHaveLength(1)
+    expect(recorded[0]?.data).toEqual({ requestSeq, usage })
+  })
+
+  it('records usage even when the terminal finish is an operational failure', async () => {
+    const usage = { inputTokens: 7, outputTokens: 3, cacheReadTokens: 0, cacheWriteTokens: 0 }
+    const { ctx } = await withScript([
+      { type: 'usage', usage },
+      { type: 'finish', reason: { kind: 'error', failure: { message: 'provider failed', code: 'SERVER' } } },
+    ])
+    const providerRequest = request(ctx)
+
+    await expect(executeSessionTitleLlm(
+      ctx,
+      resolveSessionTitleLlmConfig(CONFIG),
+      providerRequest,
+      TITLE_PROVIDER,
+      prepared(providerRequest),
+    )).rejects.toThrow('provider failed')
+
+    const events = providerRequest.session.snapshotEvents()
+    expect(events.findLast(event => event.type === 'session/title-llm-usage')?.data).toEqual({
+      requestSeq: events.findLast(event => event.type === 'session/title-llm-request')?.seq,
+      usage,
+    })
+  })
+
   it('forwards a different valid reasoning selector instead of choosing one itself', async () => {
     const { ctx, adapter } = await withScript(SCRIPT, ['off', 'low', 'high', 'max'])
     const providerRequest = request(ctx)

@@ -29,6 +29,7 @@ import type {
   LlmResolvedModelInfo,
   Message,
   ReasoningEffortId,
+  TokenUsage,
 } from '@deepseek-ai/dsh-llm'
 import { deadline, MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { assertNever, deepFreeze } from '@deepseek-ai/dsh-util-values'
@@ -57,10 +58,24 @@ export interface SessionTitleLlmRequestEventData {
   readonly reasoningEffort?: ReasoningEffortId
 }
 
+/** Provider-reported usage of one completed auxiliary title call. */
+export interface SessionTitleLlmUsageEventData {
+  /** Seq of the `session/title-llm-request` event this call consumed. */
+  readonly requestSeq: SessionSeq
+  /** Usage from the stream's final `usage` chunk. */
+  readonly usage: TokenUsage
+}
+
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /** Log-only pre-dispatch record of one session-title model request. */
     'session/title-llm-request': SessionTitleLlmRequestEventData
+    /**
+     * Log-only provider usage of one auxiliary title request. It is independent
+     * of the accepted title: a superseded or failed call still consumed tokens,
+     * and token accounting must not depend on whether a title replaced another.
+     */
+    'session/title-llm-usage': SessionTitleLlmUsageEventData
   }
 }
 
@@ -270,7 +285,7 @@ export async function executeSessionTitleLlm(
     purpose: 'session-title',
     signal: callDeadline.signal,
   })
-  request.session.append('session/title-llm-request', {
+  const requestSeq = request.session.append('session/title-llm-request', {
     titleProvider,
     messageSeqs: [...prepared.messageSeqs],
     route,
@@ -278,12 +293,27 @@ export async function executeSessionTitleLlm(
     messages,
     maxTokens,
     ...call.config.reasoningEffort === undefined ? {} : { reasoningEffort: call.config.reasoningEffort },
-  })
+  }).seq
   callDeadline.signal.throwIfAborted()
   const assembler = new BlockAssembler()
-  for await (const chunk of call.stream(options)) {
-    callDeadline.signal.throwIfAborted()
-    assembler.push(chunk)
+  const recordUsage = (): void => {
+    const usage = assembler.usage
+    if (usage === undefined) return
+    request.session.append('session/title-llm-usage', { requestSeq, usage })
+  }
+  try {
+    for await (const chunk of call.stream(options)) {
+      callDeadline.signal.throwIfAborted()
+      assembler.push(chunk)
+    }
+    recordUsage()
+  } catch (error) {
+    try {
+      recordUsage()
+    } catch {
+      // A disposed Session cannot retain the record; the call's own failure stays primary.
+    }
+    throw error
   }
   callDeadline.signal.throwIfAborted()
   const finish = terminalFinish(assembler.finish)

@@ -2,7 +2,7 @@
 
 English | [中文](session-title.zh.md)
 
-Durable latest-wins title state and the optional asynchronous provider vocabulary owned by [`@deepseek-ai/dsh-session-title`](../../packages/session/session-title). The shared execution module owns the exact auxiliary request record. Package READMEs own timing, fallback, failure, and fork behavior; the generated [persistence catalog](../persistence-catalog.md) owns the complete event declarations.
+Durable latest-wins title state and the optional asynchronous provider vocabulary owned by [`@deepseek-ai/dsh-session-title`](../../packages/session/session-title). The shared execution module owns the exact auxiliary request and usage records. Package READMEs own timing, fallback, failure, and fork behavior; the generated [persistence catalog](../persistence-catalog.md) owns the complete event declarations.
 
 Sources: [`packages/session/session-title/src/index.ts`](../../packages/session/session-title/src/index.ts), [`packages/session/session-title-llm/src/index.ts`](../../packages/session/session-title-llm/src/index.ts)
 
@@ -83,6 +83,18 @@ interface SessionTitleLlmRequestEventData {
   readonly maxTokens: number
   /** Resolved reasoning effort when recorded; older requests can omit it. */
   readonly reasoningEffort?: ReasoningEffortId
+}
+```
+
+The executor also records provider-reported usage for each call. The usage record correlates with the request seq and is independent of title acceptance, so a superseded or failed call remains billed.
+
+```ts type-equiv
+/** Provider-reported usage of one completed auxiliary title call. */
+interface SessionTitleLlmUsageEventData {
+  /** Seq of the `session/title-llm-request` event this call consumed. */
+  readonly requestSeq: SessionSeq
+  /** Usage from the stream's final `usage` chunk. */
+  readonly usage: TokenUsage
 }
 ```
 

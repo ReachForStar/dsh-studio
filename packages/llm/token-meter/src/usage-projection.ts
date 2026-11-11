@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import { lastAssistantStreamChunk, type TokenUsage } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm-retry/types'
+import type {} from '@deepseek-ai/dsh-session-title-llm'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
@@ -114,6 +115,11 @@ export const tokenUsageProjectionDefinition = {
   stateSchema: tokenUsageStateSchema,
   init: () => ({ totals: zeroBuckets(), last: null }),
   apply: (state, event) => {
+    if (event.type === 'session/title-llm-usage') {
+      // An auxiliary title call has no turn or step and never replaces an
+      // assistant attempt; every recorded call adds to the Session total.
+      return { ...state, totals: addReplacing(state.totals, undefined, bucketsFrom(event.data.usage)) }
+    }
     if (event.type === 'llm/retry-started') {
       return state.last?.turn === event.data.turn && state.last.step === event.data.step
         ? { ...state, last: null }

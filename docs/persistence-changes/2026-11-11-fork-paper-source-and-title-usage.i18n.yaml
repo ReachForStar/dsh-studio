@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-11-11-fork-paper-source-and-title-usage.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-11-11-fork-paper-source-and-title-usage.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-11-11-fork-paper-source-and-title-usage:
+  en: f20ab5db4776a656
+  zh: 4449a0d768ca0fba
+/2026-11-11-fork-paper-source-and-title-usage/summary:
+  en: 9951da329211c6d5
+  zh: 892b87210306793f
+/2026-11-11-fork-paper-source-and-title-usage/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-11-11-fork-paper-source-and-title-usage/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-11-11-fork-paper-source-and-title-usage/compatibility:
+  en: 6ff293b3965cc6fe
+  zh: ea7f1b521fff740c
+/2026-11-11-fork-paper-source-and-title-usage/verification:
+  en: d379848284ef78a8
+  zh: 07a8e41ec66564e4
+/2026-11-11-fork-paper-source-and-title-usage/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

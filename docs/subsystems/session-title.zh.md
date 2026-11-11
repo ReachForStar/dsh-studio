@@ -2,7 +2,7 @@
 
 [English](session-title.md) | 中文
 
-[`@deepseek-ai/dsh-session-title`](../../packages/session/session-title) 所拥有的持久、后写覆盖的标题状态与可选异步提供方词汇。共享执行模块负责精确的辅助请求记录。各包 README 负责时序、回退、失败与 fork 行为；生成的[持久化日志事件目录](../persistence-catalog.zh.md)负责完整的事件声明。
+[`@deepseek-ai/dsh-session-title`](../../packages/session/session-title) 所拥有的持久、后写覆盖的标题状态与可选异步提供方词汇。共享执行模块负责精确的辅助请求与用量记录。各包 README 负责时序、回退、失败与 fork 行为；生成的[持久化日志事件目录](../persistence-catalog.zh.md)负责完整的事件声明。
 
 源码：[`packages/session/session-title/src/index.ts`](../../packages/session/session-title/src/index.ts)、[`packages/session/session-title-llm/src/index.ts`](../../packages/session/session-title-llm/src/index.ts)
 
@@ -83,6 +83,18 @@ interface SessionTitleLlmRequestEventData {
   readonly maxTokens: number
   /** Resolved reasoning effort when recorded; older requests can omit it. */
   readonly reasoningEffort?: ReasoningEffortId
+}
+```
+
+执行器还会记录每次调用的提供方上报用量。用量记录通过请求 seq 与请求关联，且独立于标题是否被接纳，因此被取代或失败的调用仍然计费。
+
+```ts type-equiv
+/** Provider-reported usage of one completed auxiliary title call. */
+interface SessionTitleLlmUsageEventData {
+  /** Seq of the `session/title-llm-request` event this call consumed. */
+  readonly requestSeq: SessionSeq
+  /** Usage from the stream's final `usage` chunk. */
+  readonly usage: TokenUsage
 }
 ```
 

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-session-title-llm` executes one prepared auxiliary title request under consistent execution controls. Each provider supplies its own system instruction, user input, source-message attribution, reasoning selection, and output interpretation. This package resolves the route, caps the input, output, and end-to-end duration, keeps caller cancellation effective throughout streaming, records the exact model-visible request, and assembles the stream. Invalid or late operational results reject before a title can be replaced.
+`dsh-session-title-llm` executes one prepared auxiliary title request under consistent execution controls. Each provider supplies its own system instruction, user input, source-message attribution, reasoning selection, and output interpretation. This package resolves the route, caps the input, output, and end-to-end duration, keeps caller cancellation effective throughout streaming, records the exact model-visible request and the provider-reported usage, and assembles the stream. Invalid or late operational results reject before a title can be replaced.
 
 ## Table of Contents
 
@@ -35,7 +35,7 @@ Every request carries `currentTitle`, the latest accepted title snapshot the ser
 
 ### Route and failure contract
 
-`provider` and `model` overrides are optional but must be supplied together as non-empty strings. Without that pair, the function uses the exact provider/model route captured from the current session's logged `request/header`, so an explicit refresh before any route exists needs overrides. It measures the final prepared user input against `maxInputBytes` before logging or dispatch instead of truncating it, and rechecks timeout and caller cancellation while consuming the stream and after it completes, so a late successful result cannot be accepted even if an interceptor or adapter ignores abort. It records the exact request in `session/title-llm-request` and returns the assembled content blocks plus the terminal finish and the used model identity. Operational errors, aborts, and unsupported finish reasons reject; `stop`, `tool-calls`, and `max-tokens` return to the provider for its own acceptance decision. The title request uses `maxOutputTokens` independently of the conversation's cap. Its route must have a registered adapter so preparation can resolve the request before it is recorded.
+`provider` and `model` overrides are optional but must be supplied together as non-empty strings. Without that pair, the function uses the exact provider/model route captured from the current session's logged `request/header`, so an explicit refresh before any route exists needs overrides. It measures the final prepared user input against `maxInputBytes` before logging or dispatch instead of truncating it, and rechecks timeout and caller cancellation while consuming the stream and after it completes, so a late successful result cannot be accepted even if an interceptor or adapter ignores abort. It records the exact request in `session/title-llm-request` and, when the adapter reports usage, the call's provider usage in `session/title-llm-usage`; it returns the assembled content blocks plus the terminal finish and the used model identity. Operational errors, aborts, and unsupported finish reasons reject; `stop`, `tool-calls`, and `max-tokens` return to the provider for its own acceptance decision. The title request uses `maxOutputTokens` independently of the conversation's cap. Its route must have a registered adapter so preparation can resolve the request before it is recorded.
 
 ### Configuration
 
@@ -72,7 +72,7 @@ One small shared execution policy so operational behavior cannot drift: executio
 
 ### Request flow
 
-The caller builds the prepared input and frames it; the function checks the complete input against `maxInputBytes`. The provider's reasoning selector chooses at most one effort during `ctx.llm.prepareCall()`. The function records the exact input, output cap, and resolved effort in `session/title-llm-request`, then dispatches through the same captured adapter generation under the shared deadline. `purpose: 'session-title'` supplies attribution only. The request has no agent-loop identity and does not enter conversation history. Generation failures preserve the request record. The package declares `session-title` in `LlmRequestPurposeMap`; importing its public entry loads that declaration.
+The caller builds the prepared input and frames it; the function checks the complete input against `maxInputBytes`. The provider's reasoning selector chooses at most one effort during `ctx.llm.prepareCall()`. The function records the exact input, output cap, and resolved effort in `session/title-llm-request`, then dispatches through the same captured adapter generation under the shared deadline. Provider usage lands in `session/title-llm-usage` as soon as the stream reports it, including a call whose terminal finish later fails. `purpose: 'session-title'` supplies attribution only. The request has no agent-loop identity and does not enter conversation history. Generation failures preserve the request record. The package declares `session-title` in `LlmRequestPurposeMap`; importing its public entry loads that declaration.
 
 </details>
 
@@ -102,7 +102,7 @@ The title model receives the provider-owned system instruction and one user mess
 
 #### Token effect
 
-The auxiliary request consumes tokens according to the provider-prepared input size and `maxOutputTokens`. It is separate from the main agent request and does not add title text or framing to agent history. The executor applies the provider's selected reasoning effort, or the route's normal default when the selector returns `undefined`; a model that still reasons spends part of `maxOutputTokens` on it. The main conversation retains its configured thinking mode.
+The auxiliary request consumes tokens according to the provider-prepared input size and `maxOutputTokens`. It is separate from the main agent request and does not add title text or framing to agent history. The executor applies the provider's selected reasoning effort, or the route's normal default when the selector returns `undefined`; a model that still reasons spends part of `maxOutputTokens` on it. The main conversation retains its configured thinking mode. Provider usage is recorded in `session/title-llm-usage`, so the Session's `tokenUsage` includes this call even though it runs outside a turn.
 
 #### KV Cache effect
 

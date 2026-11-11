@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
-import SessionStore from '@deepseek-ai/dsh-session'
-import type { Session, SessionSeq } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionSeq } from '@deepseek-ai/dsh-session'
+import type { Session } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import TokenMeter from '@deepseek-ai/dsh-token-meter'
 import type { ContextPressureProjection, TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
@@ -101,6 +101,25 @@ function appendSummaryMeter(ctx: Context, session: Session, start: SessionSeq, e
 }
 
 describe('tokenUsage session projection', () => {
+  it('adds each auxiliary title call outside the turn loop', async () => {
+    const { ctx, session } = await harness()
+    session.append('session/title-llm-usage', {
+      requestSeq: SessionSeq(0),
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 20, cacheWriteTokens: 0 },
+    })
+    session.append('session/title-llm-usage', {
+      requestSeq: SessionSeq(1),
+      usage: { inputTokens: 1, outputTokens: 2, cacheReadTokens: 3, cacheWriteTokens: 0 },
+    })
+
+    expect(projected(ctx, session)).toEqual({
+      uncachedInputTokens: 11,
+      outputTokens: 7,
+      cacheReadTokens: 23,
+      cacheWriteTokens: 0,
+    })
+  })
+
   it('serves zero buckets without usage samples', async () => {
     const { ctx, session } = await harness()
     expect(projected(ctx, session)).toEqual(ZERO)

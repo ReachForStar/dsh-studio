@@ -13,7 +13,7 @@ updated: 2026-11-11
 - [Agent Plugins v1 加载器（dsh-agent-plugins）](entities/agent-plugins.md) — 把可移植包的 `skills/*/SKILL.md` 与根 `mcp.json` 发布到 `ctx.skills`/`ctx.mcpManager`：manifest 与技能元数据规则、`realpath` 包含性校验、注册名规范化与哈希后缀、只读包文件与 `PLUGIN_DATA` 写入边界。
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。
-- [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全量会话）、数据源与两条计价路径；总 token、会话数、月度预算对比、当前会话 token 时间线、各会话成本行与宿主进程/系统读数（2 秒轮询），以及预算双 store 同步的原因。
+- [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全部会话及其子会话）、数据源与两条计价路径；总 token、会话数、月度预算对比、当前会话 token 时间线、各会话成本行与宿主进程/系统读数（2 秒轮询），以及预算双 store 同步的原因。
 - [A2A 栈（dsh-a2a / dsh-a2a-host / dsh-tool-a2a）](entities/a2a-stack.md) — 自研 A2A：协议层、宿主端点、对等端工具、状态网关与 Kafka 总线；零依赖、`contextId` 即会话 id、Loader default 导出踩坑、按 a2a-bridge 方案对接的两通道与 skill 契约，以及 `kafka-detect` 的启动与失败留证。
 - [文档面板的编辑与保存（workspaceFiles.write）](entities/document-panel-editing.md) — 写接口的守卫与包含性、pane 级编辑器、Typert 产物需根构建重生成，以及 office 预览的 fflate 浏览器入口踩坑与构建期 builtin 守卫。
 - [远端工作区 provider（fs-sftp / subprocess-sftp）](entities/remote-workspace-providers.md) — 基于 `ctx.sshSftp` 的远端 fs/subprocess：路径标识、版本与原子发布、终端 pid 发现，以及 Web 工作区不可用的踩坑。
@@ -46,7 +46,7 @@ updated: 2026-11-11
 
 ## 查询沉淀 queries
 
-- [会话统计 Token 用量并入子会话消耗](queries/session-token-usage-subagents.md) — 胶囊只读单会话 `tokenUsage` 导致子代理/teammate 花费遗漏；从 `subagentCatalog` 与 `parentId` 两路遍历子会话并入合计，并单列「其中子智能体」；含未覆盖的 session-title 与 StatsFloat 边界。
+- [会话统计 Token 用量并入子会话与标题调用](queries/session-token-usage-subagents.md) — 胶囊、统计浮层与标题调用的用量口径：两路展开子会话，`session/title-llm-usage` 记录独立模型调用并进入 `tokenUsage`；含持久化确认与未覆盖边界。
 - [QwenLM/qwen-code 能力面与可融入清单](queries/qwen-code-capability-comparison.md) — 11 项候选按优先级排序：Agent Plugins v1 原生加载、自动记忆、通道运行时、上下文成本逐项 + `tool_search`、快模型三件套（推测执行 / 下一步建议 / 工具批次摘要）、Arena 与脏状态 worktree、文件历史、Advisor、文件变更钩子、`--json-schema`、托管运行时后端；含不融入项与逐条落点。
 - [论文阅读器翻译与会话永久删除](queries/paper-reader-translation-and-session-delete.md) — 已实现：`dsh-llm/route` 候选路由与 NDJSON 翻译、按页全文翻译与译文卡片；`SessionPersistence.delete` + `workspace/deleteSession` 的删除链、拒绝码、二次确认与 100% 覆盖率验证。
 - [回复延迟：codearts 上游排队导致每步等待](queries/session-command-followup-latency.md) — 慢时段首字 63–73 秒中排队 56–62 秒（`tries[].queued`），源自 `codearts` 提供方 `maxConcurrency: 1`；本地开销中位 18 毫秒，同账号兄弟模型同日首字 7.9 秒。

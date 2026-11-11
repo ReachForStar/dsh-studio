@@ -782,3 +782,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 新包 `packages/experimental/tool-search`：`tool_search` 按关键词或精确名返回可见工具的 schema，`maxResults` 与 `descriptionMaxLength` 可配并校验，输出经 `projectToolSchema` 投影。
 - 验证：16 个测试、逐文件覆盖率 100%；`oxlint`、`tsc -b`、`doc-standard`、`verify-package-readme-model-experience`、`verify-translation-pairing`、`verify-plugin-packages` 通过；`config-catalog` 中英生成物各插入 19 行本包条目。
 - 上下文成本逐项分解（qwen 的 `/context detail` 与 idle cost）未做：现有 `contextBreakdown` 仍是三分类。
+
+## [2026-11-11] fix | 子会话与标题调用并入会话统计
+
+- ui-polish 统计浮层用 `withSubagentSessions` 沿 `subagentCatalog` 与列表行 `parentId` 展开全部子会话，token、花费、会话行与月度预算都覆盖未挂到工作区的子代理。
+- `session-title-llm` 新增 `session/title-llm-usage`（`requestSeq` + `usage`），成功与被取代/失败的调用都记录；`tokenUsage` 直接累加该事件，不参与 assistant 尝试替换。
+- 持久化记录 `2026-11-11-fork-paper-source-and-title-usage`，同时补记此前未确认的 `paper-reader` 来源种类；`verify-persistence-changes` 69 根、28 条记录一致。
+- 验证：ui-chat 98 项、ui-polish 39 项、标题/计量/格式包 1,230 项、`test:gui` 13,824 项通过；改动文件覆盖 100%。
+- 知识页更新：`queries/session-token-usage-subagents.md`、`entities/stats-float.md`。

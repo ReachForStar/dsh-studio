@@ -9,6 +9,7 @@ updated: 2026-11-11
 
 ## 实体 entities
 
+- [工具检索（dsh-tool-search）](entities/tool-search.md) — `tool_search` 按关键词或精确名找回不可见工具的 schema：可见性来自 `ctx.tools.definitions(agent)`、名称命中优先排序、条数与描述长度上限、无匹配时的说明性结果。
 - [Agent Plugins v1 加载器（dsh-agent-plugins）](entities/agent-plugins.md) — 把可移植包的 `skills/*/SKILL.md` 与根 `mcp.json` 发布到 `ctx.skills`/`ctx.mcpManager`：manifest 与技能元数据规则、`realpath` 包含性校验、注册名规范化与哈希后缀、只读包文件与 `PLUGIN_DATA` 写入边界。
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。

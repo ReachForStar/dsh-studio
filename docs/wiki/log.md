@@ -776,3 +776,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 验证：67 个测试、逐文件覆盖率 100%（语句/分支/函数/行）；新包 lint 与 `tsc -b` 通过；`doc-standard`、`verify-package-readme-model-experience`、`verify-package-paths`、`verify-translation-pairing`、`verify-plugin-packages` 通过。
 - 未清的漂移：`verify-config-catalog`、`verify-persistence-changes`、`verify-persistence-formats` 仍红，原因是工作区另有未提交的 ui-chat / ui-paper-reader 改动造成行号与事件种类漂移。
 - 新增实体页；qwen-code 清单页的仓库路径引用改为非 `packages/` 开头形式，避免误判为仓内路径。
+
+## [2026-11-11] feat | 工具检索 dsh-tool-search
+
+- 新包 `packages/experimental/tool-search`：`tool_search` 按关键词或精确名返回可见工具的 schema，`maxResults` 与 `descriptionMaxLength` 可配并校验，输出经 `projectToolSchema` 投影。
+- 验证：16 个测试、逐文件覆盖率 100%；`oxlint`、`tsc -b`、`doc-standard`、`verify-package-readme-model-experience`、`verify-translation-pairing`、`verify-plugin-packages` 通过；`config-catalog` 中英生成物各插入 19 行本包条目。
+- 上下文成本逐项分解（qwen 的 `/context detail` 与 idle cost）未做：现有 `contextBreakdown` 仍是三分类。

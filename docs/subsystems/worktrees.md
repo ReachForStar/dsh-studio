@@ -23,6 +23,14 @@ interface CreateWorktreeRequest {
   name?: string
   /** Local revision to resolve before creation; omission selects HEAD. */
   from?: string
+  /**
+   * Copy the source checkout's uncommitted changes and untracked files into the
+   * new checkout after it is created. Tracked changes are captured with
+   * `git stash create` (which leaves the source untouched) and applied in the
+   * new checkout; untracked files are copied. Omission leaves the new checkout
+   * at the pinned commit.
+   */
+  mirrorUncommitted?: boolean
 }
 ```
 
@@ -91,7 +99,8 @@ Creates retained Git worktrees under the mounted filesystem and sandbox provider
 ```ts cordis-catalog
 /**
  * Create a fresh branch and checkout at a pinned local revision, then enter it.
- * Existing branches or checkout paths fail. Uncommitted files stay in the source checkout.
+ * Existing branches or checkout paths fail. Uncommitted files stay in the source
+ * checkout unless the request asks to mirror them.
  * Checkout disables configured clean, smudge, and process filters without changing Git config.
  * Repository-local replacement refs still apply; baseCommit reports the resolved object name.
  * The new checkout becomes current only after Git setup succeeds. Failures may retain newly

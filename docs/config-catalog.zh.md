@@ -372,7 +372,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-api-workspace-controller`
 
 - `inject`: `remoteAccess` · `typert` · `workspaceRegistry`
-- `source`: [`packages/api/workspace-controller/src/index.ts:37`](../packages/api/workspace-controller/src/index.ts)
+- `source`: [`packages/api/workspace-controller/src/index.ts:39`](../packages/api/workspace-controller/src/index.ts)
 
 ```ts config-catalog
 /** First-use directory policy for the Host account. */
@@ -3240,7 +3240,7 @@ export type SessionLogCompressionLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 
 ## `@deepseek-ai/dsh-session-persistence-jsonl`
 
-- `source`: [`packages/session/session-persistence-jsonl/src/index.ts:94`](../packages/session/session-persistence-jsonl/src/index.ts)
+- `source`: [`packages/session/session-persistence-jsonl/src/index.ts:95`](../packages/session/session-persistence-jsonl/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config for the JSONL backend's root, physical encoding, and listing concurrency. */
@@ -4457,6 +4457,25 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-ralph -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-search -->
+<a id="deepseek-aidsh-tool-search"></a>
+
+## `@deepseek-ai/dsh-tool-search`
+
+- `inject`: `tools`
+- `source`: [`packages/experimental/tool-search/src/index.ts:32`](../packages/experimental/tool-search/src/index.ts)
+
+```ts config-catalog
+/** Tool discovery configuration. */
+export interface Config {
+  /** Maximum entries one search returns; minimum 1. */
+  maxResults?: number
+  /** Maximum description length kept per entry; minimum 40. */
+  descriptionMaxLength?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-search -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-session-query -->
 <a id="deepseek-aidsh-tool-session-query"></a>
 
@@ -4605,25 +4624,6 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-terminal -->
-
-<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-search -->
-<a id="deepseek-aidsh-tool-search"></a>
-
-## `@deepseek-ai/dsh-tool-search`
-
-- `inject`: `tools`
-- `source`: [`packages/experimental/tool-search/src/index.ts:32`](../packages/experimental/tool-search/src/index.ts)
-
-```ts config-catalog
-/** Tool discovery configuration. */
-export interface Config {
-  /** Maximum entries one search returns; minimum 1. */
-  maxResults?: number
-  /** Maximum description length kept per entry; minimum 40. */
-  descriptionMaxLength?: number
-}
-```
-<!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-search -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-todo -->
 <a id="deepseek-aidsh-tool-todo"></a>
@@ -5115,18 +5115,36 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@reachforstar/dsh-a2a-host -->
 
+<!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-client-ui-paper-reader -->
+<a id="reachforstardsh-client-ui-paper-reader"></a>
+
+## `@reachforstar/dsh-client-ui-paper-reader`
+
+- `source`: [`packages/client/ui-paper-reader/src/index.ts:20`](../packages/client/ui-paper-reader/src/index.ts)
+
+```ts config-catalog
+/** Deployment choices for the paper library. */
+export interface Config {
+  /** Directory holding uploaded PDFs and their annotation documents. */
+  directory: string
+  /** Largest accepted upload in bytes. */
+  maxBytes: number
+}
+```
+<!-- END GENERATED config-catalog:@reachforstar/dsh-client-ui-paper-reader -->
+
 <!-- BEGIN GENERATED config-catalog:@reachforstar/dsh-client-ui-polish -->
 <a id="reachforstardsh-client-ui-polish"></a>
 
 ## `@reachforstar/dsh-client-ui-polish`
 
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/client/ui-polish/src/background-settings.ts:47`](../packages/client/ui-polish/src/background-settings.ts)
+- `source`: [`packages/client/ui-polish/src/background-settings.ts:53`](../packages/client/ui-polish/src/background-settings.ts)
 
 ```ts config-catalog
 /**
- * Live plugin Config: the same three fields marked volatile so the settings
- * forms own them on this profile entry and edits apply without a restart.
+ * Live plugin Config: the same fields marked volatile so the settings forms own
+ * them on this profile entry and edits apply without a restart.
  */
 export interface Config {
   /** Served background image URL (or a legacy data URL); absent when none is set. */
@@ -5135,6 +5153,8 @@ export interface Config {
   [COMPACTION_RATIO_FIELD]: Volatile<number | undefined>
   /** User-edited model rate card as JSON text; absent = the built-in seed card. */
   [MODEL_PRICING_FIELD]: Volatile<string | undefined>
+  /** Monthly spend budget in CNY; absent = no budget is shown. */
+  [MONTHLY_BUDGET_FIELD]: Volatile<number | undefined>
 }
 ```
 <!-- END GENERATED config-catalog:@reachforstar/dsh-client-ui-polish -->

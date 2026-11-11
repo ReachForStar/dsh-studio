@@ -49,6 +49,7 @@ kind: "package-reference"
 
 可见性来自 `ctx.tools.definitions(agent)`：检索读取的是执行器解析的同一分层注册表，因此限制或作用域内的同名影子对检索结果的影响与对可调用集合的影响一致。
 
+<a id="further-exploration"></a>
 ## 延伸阅读
 
 - [`dsh-tools`](../../core/tools/README.zh.md) — 注册表、可见性与执行

@@ -769,3 +769,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 8 个语种补 `stats.dialog.subagents`；父会话零用量但子会话有活动时仍显示胶囊。
 - 验证：相关 4 个 ui-chat spec 98 项、`test:gui` 13,820 项通过；typecheck client 两面通过，host aggregate 为 agent-plugins 既有 TS6307 红项。
 - 知识页：`queries/session-token-usage-subagents.md`；未覆盖 session-title 独立调用与 ui-polish 浮层的子会话边界。
+
+## [2026-11-11] feat | Agent Plugins v1 加载器
+
+- 新包 `packages/experimental/agent-plugins`：`plugin.json` 校验、`skills/<dir>/SKILL.md` provider、`mcp.json` 的 stdio/streamable-http 注册、`realpath` 包含性校验与注册名规范化。
+- 验证：67 个测试、逐文件覆盖率 100%（语句/分支/函数/行）；新包 lint 与 `tsc -b` 通过；`doc-standard`、`verify-package-readme-model-experience`、`verify-package-paths`、`verify-translation-pairing`、`verify-plugin-packages` 通过。
+- 未清的漂移：`verify-config-catalog`、`verify-persistence-changes`、`verify-persistence-formats` 仍红，原因是工作区另有未提交的 ui-chat / ui-paper-reader 改动造成行号与事件种类漂移。
+- 新增实体页；qwen-code 清单页的仓库路径引用改为非 `packages/` 开头形式，避免误判为仓内路径。

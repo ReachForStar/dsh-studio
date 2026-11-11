@@ -4604,6 +4604,25 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-terminal -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-search -->
+<a id="deepseek-aidsh-tool-search"></a>
+
+## `@deepseek-ai/dsh-tool-search`
+
+- `inject`: `tools`
+- `source`: [`packages/experimental/tool-search/src/index.ts:32`](../packages/experimental/tool-search/src/index.ts)
+
+```ts config-catalog
+/** Tool discovery configuration. */
+export interface Config {
+  /** Maximum entries one search returns; minimum 1. */
+  maxResults?: number
+  /** Maximum description length kept per entry; minimum 40. */
+  descriptionMaxLength?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-search -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-todo -->
 <a id="deepseek-aidsh-tool-todo"></a>
 

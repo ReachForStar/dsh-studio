@@ -50,12 +50,13 @@ status: active
 
 **关键坑：直接跑 `DSH_SNAPSHOT=refresh` 会把旧内容写成新夹具。** 夹具回放以**最高代际**的 `session.vN.jsonl` 作为脚本来源，而合并只更新了上游的 v4 文件。因此对「上游已重录、fork 还留着旧 v5」的场景，refresh 只是把旧脚本再写一遍 v5（例：`office-progressive-native` 里仍请求已删除的 `office-export-pdf` skill）。做法是先删掉这些场景的 `session.v5.jsonl`，让回放从上游的新 v4 取脚本，再 refresh 生成 v5。
 
-处置后：236 红 → 7 红（258 绿）。剩余 7 项：
+处置后：236 红 → **6 红**（259 绿）。同一手法后来又修掉一个场景：`team-direct-inbox` 的旧 v5 仍在调用已改名的 `spawn_teammate` 工具、并给 `send_message` 传已移除的 `agent` 字段，父会话因此等子代理创建 `team-ready` 等满 60 秒；删掉旧 v5 从上游 v4 重放后一次通过。这是「最高代际即脚本来源」这条规则的第二个实例。
 
-- `session-snapshot-corpus` 的「V3 输入 + 保留代声明」：11 个只有 v4 的场景（`web/*` 的 7 个 + 3 个 compaction + `web/diff-context` 一类）没有当代夹具，属 v5 重录欠账；本轮同时修掉了「借用 v4 输入」的 14 处 `session.source`（改指属主的 v5）。
-- `image-compaction`、`compaction-output-reserve`、`compaction-summary-headroom`、`model-switch-compaction`：脚本轮次少一次模型调用，需 `DEEPSEEK_API_KEY` 环境 `test:snapshot:record`。
+剩余 6 项：
+
+- `session-snapshot-corpus` 的「V3 输入 + 保留代声明」：11 个只有 v4 的场景缺当代夹具——8 个 `snapshots/web/*`（`standard-dsh-doc`、`creator-persona`、`autolink-cjk-punctuation`、`present-after-closing-reply`、`creation-recommendations`、`question-composer-recommended`、`plugin-recommendations`、`steering` 一类）与 3 个 compaction 场景。这 8 个 web 夹具无法机械迁移：它们是给回放用的 authoring 输入，物理行不带 `seq`（由 web 脚手架在 `seedSession` 时补齐），严格校验的 v4→v5 迁移直接拒绝。要产出当代夹具只能走 `DSH_SNAPSHOT=record`（需要 `DEEPSEEK_API_KEY` 与真实模型）。
+- `image-compaction`、`compaction-output-reserve`、`compaction-summary-headroom`、`model-switch-compaction`：脚本轮次少一次模型调用（`llm-replay: script exhausted — session requested model call #4 but its script has only 3`），需在有 key 的环境 `test:snapshot:record`。
 - `persistent-pwsh-padded-completion`：需要 pwsh。
-- `team-direct-inbox`：父会话的 `bash` 等待子代理创建 `team-ready`，子会话没有产出该文件，父会话等满 60 秒超时失败（该场景固定 30 秒进程预算）。待查上游 Team 包迁移后的子代理直投递链路。
 
 ## 环境类失败（非仓库问题）
 
@@ -72,7 +73,7 @@ status: active
 - `pnpm run build`：10 门全过（artifacts + check + Web），701 个客户端产物。
 - `pnpm run doc-sync`：43 门全过（含 `doc-typecheck`、双语配对 1327 对、文档构建）。
 - `pnpm run test`（`LC_ALL=C`）：2813 文件通过 / 17 文件失败，逐文件复跑后只剩上表的环境项。
-- `pnpm run test:snapshot`：258 通过 / 7 失败（见上节）。
+- `pnpm run test:snapshot`：259 通过 / 6 失败（见上节）。
 - `pnpm run lint`、`pnpm run duplication`：仍红，且红项全在相对合并前未变的 fork 文件里，属 [fork 自研包的门禁红项清单](fork-gate-debt.md) 记录的存量。
 
 ## 复发预防

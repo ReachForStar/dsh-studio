@@ -241,7 +241,10 @@ interface ClientBundleOptions {
   readonly lib?: UserConfig
   /** Extra plugins appended to the client bundle build (package-local concerns like node-builtin shims). */
   readonly clientPlugins?: UserConfig['plugins']
-  /** Optional legal or attribution text selected by emitted client filename. */
+  /**
+   * Optional legal or attribution text selected by emitted client filename. The preset prepends it after
+   * minification, so its comment lines reach the artifact byte for byte.
+   */
   readonly clientBanner?: (fileName: string) => string | undefined
 }
 
@@ -545,10 +548,13 @@ function asyncChunkRequirePlugin(): TsdownPlugin {
         if (!/^client\.[A-Za-z0-9][A-Za-z0-9._-]*\.js$/.test(fileName)) continue
         const specifier = `./${fileName}`
         // CJS chunks load as a bare require (CJS deps) or through the ESM-default
-        // interop __toESM(require(...).default, 1) (ESM deps, e.g. pica inside the
-        // fork's Excalidraw tree); both settle to the chunk's exports object.
+        // interop helper the bundler emits around require(...).default (ESM deps,
+        // e.g. pica inside the fork's Excalidraw tree). The helper is a bundler
+        // internal — `__toESM`, `require_rolldown_runtime.a`, or a later name — so
+        // the pattern names only the require it wraps; either form settles to the
+        // chunk's exports object.
         const call = new RegExp(
-          `Promise\\.resolve\\(\\)\\.then\\(\\(\\)\\s*=>\\s*(?:(?:/\\*\\s*@__PURE__\\s*\\*/\\s*)?(?:[\\w$]+\\.)?__toESM\\(require\\((['"])${escapeSpecifier(specifier)}\\1\\)\\.default,\\s*1\\)|require\\((['"])${escapeSpecifier(specifier)}\\2\\))\\)`,
+          `Promise\\.resolve\\(\\)\\.then\\(\\(\\)\\s*=>\\s*(?:(?:/\\*\\s*@__PURE__\\s*\\*/\\s*)?(?:[\\w$]+\\.)*[\\w$]+\\(require\\((['"])${escapeSpecifier(specifier)}\\1\\)\\.default,\\s*\\d+\\)|require\\((['"])${escapeSpecifier(specifier)}\\2\\))\\)`,
           'gu',
         )
         const matches = [...code.matchAll(call)]
@@ -868,6 +874,12 @@ function clientConfig(
     // Plugin code is fetched outside Vite's module graph, so its own bundle
     // must carry the TS/TSX mapping consumed by browser profiling tools.
     sourcemap: true,
+    // Compress the browser bundle's text while identifier names stay readable
+    // and the source map still resolves through the published `src`. The
+    // compressor stays off: the browser worker image lowers `yield*` only as a
+    // whole statement, and a compressor that folds statements into expressions
+    // hides it.
+    minify: { compress: false, mangle: false },
     clean: false,
     deps: {
       neverBundle: isRequested,
@@ -1005,10 +1017,10 @@ function clientConfig(
         isolation.sourcePath(source, mapPath)
         return browserSourcePath(source, mapPath)
       },
-      banner: (chunk) => {
-        const registration = `window.__ModuleLoader__.load({ id: ${JSON.stringify(id)}, ${chunk.isEntry ? '' : `chunk: ${JSON.stringify(chunk.fileName)}, `}factory: (require) => {`
+      banner: chunk => `window.__ModuleLoader__.load({ id: ${JSON.stringify(id)}, ${chunk.isEntry ? '' : `chunk: ${JSON.stringify(chunk.fileName)}, `}factory: (require) => {`,
+      postBanner: (chunk) => {
         const prefix = clientBanner?.(chunk.fileName)
-        return prefix === undefined ? registration : `${prefix}\n${registration}`
+        return prefix === undefined ? '' : `${prefix}\n`
       },
       footer: 'return module.exports; } });',
       intro: 'var module = { exports: {} }; var exports = module.exports;',

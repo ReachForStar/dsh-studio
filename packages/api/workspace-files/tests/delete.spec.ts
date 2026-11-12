@@ -96,7 +96,13 @@ describe('workspaceFiles.delete', () => {
       remove: async () => { throw new FsError('the disk caught fire', 'FS_IO_ERROR') },
     } as never)
     const scope: WorkspaceFileScope = { sessionId: SessionId('s-test'), workspaceRoot: '/work' }
-    const service = new WorkspaceFiles(ctx, { maxBytes: 1024, maxFileBytes: 1024, maxLines: 10, maxEntries: 10 })
+    const service = new WorkspaceFiles(ctx, {
+      maxBytes: 1024,
+      maxFileBytes: 1024,
+      maxLines: 10,
+      maxEntries: 10,
+      search: { maxResults: 100, maxEntries: 1000, graceMs: 3000, timeoutMs: 30000, stderrMaxBytes: 65536 },
+    })
 
     await expect(service.delete(scope, '/work/file.txt', {}, signal())).rejects.toThrow('the disk caught fire')
   })

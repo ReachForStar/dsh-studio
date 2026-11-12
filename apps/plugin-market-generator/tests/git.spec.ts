@@ -6,6 +6,11 @@ import { expect, it, vi } from 'vitest'
 import { generate, type GenerateOptions } from '../src/generate.ts'
 import { scratch, setEnv } from './support.ts'
 
+vi.mock('../src/metrics.ts', async original => ({
+  ...await original<typeof import('../src/metrics.ts')>(),
+  metricReader: () => async (entry: import('../src/generate.ts').GeneratedEntry) => entry,
+}))
+
 const REPOSITORY = 'https://git.example/team/plugins'
 
 /** Git subprocesses run under CI load, so each test gets more than the default deadline. */

@@ -252,7 +252,7 @@
 .primaryBtn {
   background: var(--dsw-alias-brand-primary);
   border-color: var(--dsw-alias-brand-primary);
-  color: #fff;
+  color: var(--dsw-alias-label-on-color);
 }
 
 @media (hover: hover) {
@@ -774,7 +774,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, #000 45%, transparent);
+  background: var(--dsw-alias-bg-mask-1);
 }
 
 .modal {
@@ -864,7 +864,7 @@
   gap: 10px;
   padding: 6px 10px;
   border-radius: var(--dsw-radius-sm);
-  background: color-mix(in srgb, var(--dsw-alias-warning, #b58900) 12%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent);
   color: var(--dsw-alias-label-primary);
   font-size: 12.5px;
 }
@@ -876,7 +876,7 @@
   padding: 1px 8px;
   border-radius: var(--dsw-radius-sm);
   font-size: 12px;
-  color: var(--dsw-alias-accent, #888);
+  color: var(--dsw-alias-state-business-primary);
   background: transparent;
   cursor: pointer;
   user-select: none;
@@ -908,7 +908,7 @@
 
 @media (hover: hover) {
   .treeDir:hover {
-    background: var(--dsw-alias-fill-secondary, rgba(128, 128, 128, 0.08));
+    background: var(--dsw-alias-interactive-bg-hover);
   }
 }
 
@@ -935,7 +935,7 @@
 .genLive {
   margin-left: 8px;
   font-size: 12px;
-  color: var(--dsw-alias-accent, #888);
+  color: var(--dsw-alias-state-business-primary);
 }
 
 /* Diff drawer version pair tag ------------------------------------------------ */
@@ -987,7 +987,7 @@
   border-radius: var(--dsw-radius-sm);
   cursor: zoom-in;
   background:
-    conic-gradient(#ccc 0 25%, #fff 0 50%, #ccc 0 75%, #fff 0) 0 0 / 16px 16px;
+    conic-gradient(var(--dsw-alias-border-l3) 0 25%, var(--dsw-alias-bg-base) 0 50%, var(--dsw-alias-border-l3) 0 75%, var(--dsw-alias-bg-base) 0) 0 0 / 16px 16px;
 }
 
 .imageBackdrop {
@@ -997,7 +997,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--dsw-alias-bg-mask-3);
 }
 
 .imageFull {
@@ -1007,7 +1007,7 @@
   max-height: 94vh;
   border-radius: var(--dsw-radius-md);
   overflow: hidden;
-  background: var(--dsw-alias-bg-base, #fff);
+  background: var(--dsw-alias-bg-base);
 }
 
 .imageFullBar {
@@ -1022,7 +1022,7 @@
   overflow: auto;
   max-height: calc(94vh - 44px);
   background:
-    conic-gradient(#ccc 0 25%, #fff 0 50%, #ccc 0 75%, #fff 0) 0 0 / 16px 16px;
+    conic-gradient(var(--dsw-alias-border-l3) 0 25%, var(--dsw-alias-bg-base) 0 50%, var(--dsw-alias-border-l3) 0 75%, var(--dsw-alias-bg-base) 0) 0 0 / 16px 16px;
 }
 
 .imageFullImg {
@@ -1039,7 +1039,7 @@
   overflow-y: auto;
   padding: 16px 18px;
   border-radius: var(--dsw-radius-md);
-  background: var(--dsw-alias-bg-elevated, #fff);
+  background: var(--dsw-alias-bg-overlay);
   color: var(--dsw-alias-label-primary);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
   display: flex;

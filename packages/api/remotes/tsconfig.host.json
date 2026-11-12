@@ -93,9 +93,6 @@
       "path": "../../host/ssh-remotes"
     },
     {
-      "path": "../account-controller"
-    },
-    {
       "path": "../../credentials/deepseek-account"
     },
     {

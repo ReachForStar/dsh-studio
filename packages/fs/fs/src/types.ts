@@ -247,6 +247,7 @@ export const FS_ERROR_CODES = [
   'FS_SAME_TARGET',
   'FS_NOT_EMPTY',
   'FS_UNSUPPORTED_BINARY_WRITE',
+  'FS_ALREADY_EXISTS',
 ] as const
 
 /** One machine-routable filesystem failure code from FS_ERROR_CODES. */
@@ -263,6 +264,7 @@ export class FsError extends HarnessError {
 
   constructor(message: string, code: FsErrorCode, options?: ErrorOptions) {
     super(message, code, options)
+    this.name = 'FsError'
     this.code = code
   }
 }

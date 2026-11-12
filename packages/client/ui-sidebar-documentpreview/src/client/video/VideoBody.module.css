@@ -20,7 +20,7 @@
   max-height: 70vh;
   margin: auto;
   border-radius: var(--dsw-radius-sm);
-  background: #000;
+  background: var(--dsw-alias-bg-mask-photo);
   outline: none;
 }
 

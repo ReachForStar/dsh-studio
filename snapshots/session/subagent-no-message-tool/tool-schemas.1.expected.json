@@ -560,7 +560,7 @@
     },
     {
       "name": "todo_write",
-      "description": "Record and update a task list to plan multi-step work and show progress; skip it for trivial single-step tasks. Add one todo per concrete step before you start. While work remains, keep the todos being worked on `in_progress`, several only when work runs in parallel. Mark each todo `completed` as soon as it is done.",
+      "description": "Record and update a task list to plan multi-step work and show progress; skip it for trivial single-step tasks. Add one todo per concrete step before you start. While work remains, keep the todos being worked on `in_progress`, several only when work runs in parallel. Mark each todo `completed` as soon as it is done. Before your turn ends, call todo_write once with the current statuses so the visible list reflects the work actually finished.",
       "parameters": {
         "type": "object",
         "properties": {

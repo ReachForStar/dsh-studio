@@ -1,6 +1,63 @@
 {
   "initial": [
     {
+      "name": "a2a_peers",
+      "description": "List the remote A2A agents this deployment can call, with the name each is addressed by, the display name from its published agent card, and the skills it accepts. Call it before `a2a_send` when you do not already know which peers exist. It reports a peer whose card could not be read beside that peer instead of failing the whole listing.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "a2a_send",
+      "description": "Send one task to a remote A2A agent and return its answer. Address a peer by the name `a2a_peers` reports, or by an endpoint URL. The peer works in its own environment: it can read and write files there, but it cannot see this workspace. Pass the `contextId` a previous call returned to continue the same conversation, so the peer keeps its earlier turns; omit it to start a new one.\n\nChoose the skill the peer should work under, such as code review or coding; `a2a_peers` lists what each peer accepts and the peer uses its default when you omit one. `mode: \"direct\"` waits for the answer, which can take minutes — prefer delegating a complete unit of work over many small round trips. `mode: \"bus\"` publishes the task and returns as soon as it is claimed: use it for work that outlives this turn, and add `wait: true` when you also want the answer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "peer": {
+            "type": "string",
+            "description": "Peer name from `a2a_peers`, or the endpoint URL of an unconfigured agent."
+          },
+          "message": {
+            "type": "string",
+            "description": "The task text, as a self-contained request the peer can act on."
+          },
+          "skill": {
+            "type": "string",
+            "description": "Skill the peer works under, from `a2a_peers`; omit to use the peer default."
+          },
+          "workspace": {
+            "type": "string",
+            "description": "Directory the peer runs in, when it should not use its own default."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Channel: \"direct\" waits for the answer, \"bus\" publishes and returns early.",
+            "enum": [
+              "direct",
+              "bus"
+            ]
+          },
+          "wait": {
+            "type": "boolean",
+            "description": "On \"bus\", wait for the task to finish before returning."
+          },
+          "contextId": {
+            "type": "string",
+            "description": "Conversation to continue, from an earlier answer; omit to start a new one."
+          },
+          "taskId": {
+            "type": "string",
+            "description": "Task to continue, from an earlier answer; omit unless you are resuming that task."
+          }
+        },
+        "required": [
+          "peer",
+          "message"
+        ]
+      }
+    },
+    {
       "name": "apply_patch",
       "description": "Create, update, delete, or move UTF-8 text files with one patch; prefer it over multiple edit calls when a change spans several files or separated regions.",
       "parameters": {
@@ -95,7 +152,7 @@
     },
     {
       "name": "cua",
-      "description": "Inspect macOS permissions, select an application and window, read AX state, capture screenshots or dispatch input. Use appHandle from getApp; verify actions by reading fresh state.",
+      "description": "Inspect desktop access, select an application and window, read AX state, capture screenshots or dispatch input. Use appHandle from getApp; verify actions by reading fresh state.",
       "parameters": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
@@ -234,9 +291,8 @@
                     "minLength": 1
                   },
                   "windowId": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 4294967295
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -293,17 +349,28 @@
                     "minLength": 1
                   },
                   "windowId": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 4294967295
+                    "type": "string",
+                    "minLength": 1
                   },
                   "includeMenus": {
                     "description": "Expand menu contents; omitted or false shows menu-bar entries only.",
                     "type": "boolean"
                   },
                   "details": {
-                    "description": "Include identifiers, global-point bounds and complete action names.",
+                    "description": "Include identifiers, global native bounds and complete action names.",
                     "type": "boolean"
+                  },
+                  "maxElements": {
+                    "description": "Maximum nodes to visit on this read. Omission uses the provider setting.",
+                    "type": "number",
+                    "minimum": 1,
+                    "multipleOf": 1
+                  },
+                  "maxDepth": {
+                    "description": "Maximum depth to traverse on this read. Omission uses the provider setting.",
+                    "type": "number",
+                    "minimum": 1,
+                    "multipleOf": 1
                   }
                 },
                 "required": [
@@ -323,7 +390,141 @@
             "properties": {
               "method": {
                 "type": "string",
-                "const": "hover"
+                "const": "listActions"
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "appHandle": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windowId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "snapshotId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "elementId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Opaque string defined by the platform provider, valid for at least the lifetime of one snapshot."
+                  }
+                },
+                "required": [
+                  "appHandle",
+                  "snapshotId",
+                  "elementId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "method",
+              "params"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "performAction"
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "appHandle": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windowId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "snapshotId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "elementId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Opaque string defined by the platform provider, valid for at least the lifetime of one snapshot."
+                  },
+                  "action": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "argument": {
+                    "$ref": "#/$defs/__schema0"
+                  }
+                },
+                "required": [
+                  "appHandle",
+                  "snapshotId",
+                  "elementId",
+                  "action"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "method",
+              "params"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "invoke"
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "appHandle": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windowId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "snapshotId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "elementId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Opaque string defined by the platform provider, valid for at least the lifetime of one snapshot."
+                  }
+                },
+                "required": [
+                  "appHandle",
+                  "snapshotId",
+                  "elementId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "method",
+              "params"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "mouseMove"
               },
               "params": {
                 "anyOf": [
@@ -334,20 +535,28 @@
                         "type": "string",
                         "minLength": 1
                       },
+                      "windowId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "snapshotId": {
                         "type": "string",
                         "minLength": 1
                       },
-                      "elementIndex": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
+                      "elementId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Opaque string defined by the platform provider, valid for at least the lifetime of one snapshot."
+                      },
+                      "useSystemPointer": {
+                        "description": "Request use of the system pointer. The Host checks permission before dispatch.",
+                        "type": "boolean"
                       }
                     },
                     "required": [
                       "appHandle",
                       "snapshotId",
-                      "elementIndex"
+                      "elementId"
                     ],
                     "additionalProperties": false
                   },
@@ -359,9 +568,8 @@
                         "minLength": 1
                       },
                       "windowId": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 4294967295
+                        "type": "string",
+                        "minLength": 1
                       },
                       "snapshotId": {
                         "type": "string",
@@ -379,6 +587,10 @@
                         "description": "Omitted or false uses pixels in the latest screenshot returned by this tool.",
                         "type": "boolean",
                         "const": false
+                      },
+                      "useSystemPointer": {
+                        "description": "Request use of the system pointer. The Host checks permission before dispatch.",
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -397,9 +609,8 @@
                         "minLength": 1
                       },
                       "windowId": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 4294967295
+                        "type": "string",
+                        "minLength": 1
                       },
                       "snapshotId": {
                         "type": "string",
@@ -419,6 +630,10 @@
                         "type": "boolean",
                         "const": true,
                         "description": "Use integer thousandths of the window width and height, from 0 to 999."
+                      },
+                      "useSystemPointer": {
+                        "description": "Request use of the system pointer. The Host checks permission before dispatch.",
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -455,14 +670,18 @@
                         "type": "string",
                         "minLength": 1
                       },
+                      "windowId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "snapshotId": {
                         "type": "string",
                         "minLength": 1
                       },
-                      "elementIndex": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
+                      "elementId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Opaque string defined by the platform provider, valid for at least the lifetime of one snapshot."
                       },
                       "mouseButton": {
                         "type": "string",
@@ -507,7 +726,7 @@
                     "required": [
                       "appHandle",
                       "snapshotId",
-                      "elementIndex"
+                      "elementId"
                     ],
                     "additionalProperties": false
                   },
@@ -519,9 +738,8 @@
                         "minLength": 1
                       },
                       "windowId": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 4294967295
+                        "type": "string",
+                        "minLength": 1
                       },
                       "snapshotId": {
                         "type": "string",
@@ -596,9 +814,8 @@
                         "minLength": 1
                       },
                       "windowId": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 4294967295
+                        "type": "string",
+                        "minLength": 1
                       },
                       "snapshotId": {
                         "type": "string",
@@ -691,23 +908,27 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "windowId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "snapshotId": {
                     "type": "string",
                     "minLength": 1
                   },
-                  "elementIndex": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
+                  "elementId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Opaque string defined by the platform provider, valid for at least the lifetime of one snapshot."
                   },
                   "value": {
-                    "type": "string"
+                    "$ref": "#/$defs/__schema0"
                   }
                 },
                 "required": [
                   "appHandle",
                   "snapshotId",
-                  "elementIndex",
+                  "elementId",
                   "value"
                 ],
                 "additionalProperties": false
@@ -733,14 +954,18 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "windowId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "snapshotId": {
                     "type": "string",
                     "minLength": 1
                   },
-                  "elementIndex": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
+                  "elementId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Opaque string defined by the platform provider, valid for at least the lifetime of one snapshot."
                   },
                   "text": {
                     "type": "string",
@@ -764,51 +989,8 @@
                 "required": [
                   "appHandle",
                   "snapshotId",
-                  "elementIndex",
+                  "elementId",
                   "text"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "method",
-              "params"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "method": {
-                "type": "string",
-                "const": "performSecondaryAction"
-              },
-              "params": {
-                "type": "object",
-                "properties": {
-                  "appHandle": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "snapshotId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "elementIndex": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
-                  },
-                  "action": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": [
-                  "appHandle",
-                  "snapshotId",
-                  "elementIndex",
-                  "action"
                 ],
                 "additionalProperties": false
               }
@@ -830,6 +1012,10 @@
                 "type": "object",
                 "properties": {
                   "appHandle": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windowId": {
                     "type": "string",
                     "minLength": 1
                   },
@@ -861,6 +1047,10 @@
                 "type": "object",
                 "properties": {
                   "appHandle": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windowId": {
                     "type": "string",
                     "minLength": 1
                   },
@@ -902,6 +1092,10 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "windowId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "key": {
                     "type": "string",
                     "minLength": 1
@@ -909,20 +1103,57 @@
                   "modifiers": {
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "enum": [
-                        "command",
-                        "control",
-                        "option",
-                        "shift",
-                        "fn"
-                      ]
+                      "type": "string"
                     }
                   }
                 },
                 "required": [
                   "appHandle",
                   "key"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "method",
+              "params"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "sendKeyEvent"
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "appHandle": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windowId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "down",
+                      "up"
+                    ]
+                  }
+                },
+                "required": [
+                  "appHandle",
+                  "key",
+                  "direction"
                 ],
                 "additionalProperties": false
               }
@@ -950,9 +1181,8 @@
                         "minLength": 1
                       },
                       "windowId": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 4294967295
+                        "type": "string",
+                        "minLength": 1
                       },
                       "snapshotId": {
                         "type": "string",
@@ -1000,9 +1230,8 @@
                         "minLength": 1
                       },
                       "windowId": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 4294967295
+                        "type": "string",
+                        "minLength": 1
                       },
                       "snapshotId": {
                         "type": "string",
@@ -1071,9 +1300,8 @@
                         "minLength": 1
                       },
                       "windowId": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 4294967295
+                        "type": "string",
+                        "minLength": 1
                       },
                       "mouseButton": {
                         "type": "string",
@@ -1139,9 +1367,8 @@
                         "minLength": 1
                       },
                       "windowId": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 4294967295
+                        "type": "string",
+                        "minLength": 1
                       },
                       "mouseButton": {
                         "type": "string",
@@ -1229,9 +1456,8 @@
                     "minLength": 1
                   },
                   "windowId": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 4294967295
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -1248,6 +1474,39 @@
             "additionalProperties": false
           }
         ],
+        "$defs": {
+          "__schema0": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/__schema0"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/__schema0"
+                }
+              }
+            ]
+          }
+        },
         "type": "object"
       }
     },
@@ -1342,22 +1601,6 @@
         },
         "required": [
           "pattern"
-        ]
-      }
-    },
-    {
-      "name": "interrupt_agent",
-      "description": "Ask a subagent to stop its current work. This call returns without waiting for it to stop. You can continue a local subagent's conversation later with send_message. External executions stop permanently and cannot receive follow-ups. Subagents it started will keep running.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "agent": {
-            "type": "string",
-            "description": "The name of an agent created under you: your direct child or a deeper descendant."
-          }
-        },
-        "required": [
-          "agent"
         ]
       }
     },
@@ -1483,6 +1726,180 @@
       }
     },
     {
+      "name": "sftp_list",
+      "description": "List one remote directory over SFTP (non-recursive). Entries report type, size, mtime, and mode.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          },
+          "path": {
+            "type": "string",
+            "description": "Remote directory path to list."
+          }
+        },
+        "required": [
+          "connection",
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "sftp_mkdir",
+      "description": "Create one remote directory over SFTP. With `recursive`, missing parents are created too.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          },
+          "path": {
+            "type": "string",
+            "description": "Remote directory path to create."
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "Create missing parents (default false)."
+          }
+        },
+        "required": [
+          "connection",
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "sftp_read",
+      "description": "Download one remote file to a local path over SFTP. The local file must not exist unless `overwrite` is set; a failed transfer removes the partial local file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          },
+          "remote_path": {
+            "type": "string",
+            "description": "Remote file path to download."
+          },
+          "local_path": {
+            "type": "string",
+            "description": "Local destination path; relative paths resolve against the session workspace."
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Replace an existing local file (default false)."
+          }
+        },
+        "required": [
+          "connection",
+          "remote_path",
+          "local_path"
+        ]
+      }
+    },
+    {
+      "name": "sftp_rename",
+      "description": "Rename or move one remote path over SFTP.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          },
+          "from": {
+            "type": "string",
+            "description": "Current remote path."
+          },
+          "to": {
+            "type": "string",
+            "description": "Destination remote path."
+          }
+        },
+        "required": [
+          "connection",
+          "from",
+          "to"
+        ]
+      }
+    },
+    {
+      "name": "sftp_rm",
+      "description": "Remove one remote file or directory over SFTP. Directories require `recursive: true` and are deleted depth-first; symlinks are unlinked, never followed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          },
+          "path": {
+            "type": "string",
+            "description": "Remote path to remove."
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "Remove a directory tree (default false)."
+          }
+        },
+        "required": [
+          "connection",
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "sftp_stat",
+      "description": "Stat one remote path over SFTP without following symlinks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          },
+          "path": {
+            "type": "string",
+            "description": "Remote path to stat."
+          }
+        },
+        "required": [
+          "connection",
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "sftp_write",
+      "description": "Upload one local file to a remote path over SFTP. The remote directory must already exist (use sftp_mkdir first).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          },
+          "local_path": {
+            "type": "string",
+            "description": "Local source path; relative paths resolve against the session workspace."
+          },
+          "remote_path": {
+            "type": "string",
+            "description": "Remote destination path."
+          }
+        },
+        "required": [
+          "connection",
+          "local_path",
+          "remote_path"
+        ]
+      }
+    },
+    {
       "name": "skill",
       "description": "Load the full instructions for a skill. Call it before acting on a task that names or clearly matches a skill in the session skill catalog.",
       "parameters": {
@@ -1495,6 +1912,134 @@
         },
         "required": [
           "name"
+        ]
+      }
+    },
+    {
+      "name": "ssh_connect",
+      "description": "Save a new SSH connection definition (or update one by passing its id). The definition persists in user settings and is usable by ssh_exec and the sftp_* tools; secrets never come back in results. List saved connections with ssh_connections.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique display name for the connection (also accepted wherever a connection id is)."
+          },
+          "host": {
+            "type": "string",
+            "description": "Remote host name or IP address."
+          },
+          "username": {
+            "type": "string",
+            "description": "Remote login user."
+          },
+          "port": {
+            "type": "number",
+            "description": "Remote SSH port (default 22)."
+          },
+          "auth": {
+            "type": "string",
+            "description": "Authentication kind: \"password\" or \"privateKey\".",
+            "enum": [
+              "password",
+              "privateKey"
+            ]
+          },
+          "password": {
+            "type": "string",
+            "description": "Password (required when auth is \"password\")."
+          },
+          "private_key_path": {
+            "type": "string",
+            "description": "Absolute local path of the private key (required when auth is \"privateKey\")."
+          },
+          "passphrase": {
+            "type": "string",
+            "description": "Private-key passphrase, when the key is encrypted."
+          },
+          "connect_timeout_ms": {
+            "type": "number",
+            "description": "Connection-establishment timeout in milliseconds (default 10000, range 1000-300000)."
+          },
+          "id": {
+            "type": "string",
+            "description": "Id of an existing connection to update; omit to create a new one."
+          }
+        },
+        "required": [
+          "name",
+          "host",
+          "username",
+          "auth"
+        ]
+      }
+    },
+    {
+      "name": "ssh_connections",
+      "description": "List every saved SSH connection definition (secret-free view). Use the returned id or name as the `connection` argument of ssh_exec and the sftp_* tools.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "ssh_disconnect",
+      "description": "Close the shared connection for one saved connection. Later ssh_exec/sftp_* calls reconnect automatically.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          }
+        },
+        "required": [
+          "connection"
+        ]
+      }
+    },
+    {
+      "name": "ssh_exec",
+      "description": "Execute a command on a saved SSH connection and return its stdout/stderr. Each call runs in a fresh remote shell: no state (cwd, variables) persists between calls — pass `cwd` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`; commands that exceed the timeout are killed and reported as `[timed out ...]`. Long output is truncated to its tail with a truncation marker.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          },
+          "command": {
+            "type": "string",
+            "description": "The command to execute on the remote host."
+          },
+          "timeout_ms": {
+            "type": "number",
+            "description": "Timeout in milliseconds. The provider applies its configured default and cap, and kills the command on expiry."
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Remote working directory for this command; a `cd` prefix is applied on the remote side."
+          }
+        },
+        "required": [
+          "connection",
+          "command"
+        ]
+      }
+    },
+    {
+      "name": "ssh_test",
+      "description": "Probe one saved connection: connect, run a probe command, and close again. Reports the round-trip latency or the failure reason.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string",
+            "description": "Connection id or name from ssh_connections."
+          }
+        },
+        "required": [
+          "connection"
         ]
       }
     },
@@ -1558,7 +2103,7 @@
     },
     {
       "name": "todo_write",
-      "description": "Record and update a task list to plan multi-step work and show progress; skip it for trivial single-step tasks. Add one todo per concrete step before you start. While work remains, keep the todos being worked on `in_progress`, several only when work runs in parallel. Mark each todo `completed` as soon as it is done.",
+      "description": "Record and update a task list to plan multi-step work and show progress; skip it for trivial single-step tasks. Add one todo per concrete step before you start. While work remains, keep the todos being worked on `in_progress`, several only when work runs in parallel. Mark each todo `completed` as soon as it is done. Before your turn ends, call todo_write once with the current statuses so the visible list reflects the work actually finished.",
       "parameters": {
         "type": "object",
         "properties": {

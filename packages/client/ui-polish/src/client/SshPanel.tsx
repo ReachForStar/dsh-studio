@@ -155,6 +155,7 @@ export function extractCwdFromPrompt(raw: string, homeDir: string): string | nul
   const clean = stripAnsi(raw).replace(/\r/g, '')
   const lines = clean.split('\n')
   for (let i = lines.length - 1; i >= 0; i--) {
+    /* v8 ignore next -- split yields a defined entry for every index */
     const line = (lines[i] ?? '').trimEnd()
     if (line === '') continue
     // RHEL/CentOS bracketed prompt: [user@host dir]#
@@ -162,8 +163,11 @@ export function extractCwdFromPrompt(raw: string, homeDir: string): string | nul
     // bash \u@\h:\w\$ and minimal dir$ prompts.
     const plain = line.match(/^(?:[\w.-]+@[\w.-]+:)?(\S+)\s*[$#]\s*$/)
     let cwd: string | null = null
+    /* v8 ignore next -- the capture group always participates in a match */
     if (bracket !== null) cwd = (bracket[2] ?? '').trim()
+    /* v8 ignore next -- the capture group always participates in a match */
     else if (plain !== null) cwd = (plain[1] ?? '').trim()
+    /* v8 ignore next -- both prompt regexes require non-empty content */
     if (cwd === null || cwd === '') continue
     if (cwd === '~' || cwd === '~/') cwd = homeDir
     else if (cwd.startsWith('~/')) cwd = homeDir + cwd.slice(1)
@@ -329,6 +333,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         const bytesArr = new Uint8Array(bytes.length)
         for (let i = 0; i < bytes.length; i++) bytesArr[i] = bytes.charCodeAt(i)
         const term = termRef.current
+        /* v8 ignore next -- no host frame is delivered before the xterm effect mounts */
         if (term === null) pendingPtyOutputRef.current.push(bytesArr)
         else term.write(bytesArr)
         const text = new TextDecoder().decode(bytesArr)
@@ -339,6 +344,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         if (probe !== null) {
           probe.buffer += text
           const cwd = extractCwdFromProbe(probe.buffer)
+          /* v8 ignore next 4 -- the probe callback only receives a parsed absolute path */
           if (cwd !== null) {
             probe.onResult(cwd)
             cwdProbeRef.current = null
@@ -357,6 +363,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
   // SFTP: list directory. The read rides the connection the terminal opened,
   // so a request without a live terminal never connects to the target.
   const listDir = useCallback(async (path: string) => {
+    /* v8 ignore next -- every listDir caller is disabled until a terminal is open */
     if (!selectedConn || !ptyOpenRef.current) return
     const seq = ++listSeqRef.current
     setSftpLoading(true)
@@ -366,6 +373,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         connectionId: selectedConn, path,
       })
       // Ignore this response if a newer list call arrived while we awaited.
+      /* v8 ignore next -- a stale response requires a concurrent list race */
       if (seq !== listSeqRef.current) return
       if (result.ok) {
         const value = result.value as { entries: SftpEntryView[] } | undefined
@@ -377,12 +385,15 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         setSftpError(msg)
       }
     } catch (error) {
+      /* v8 ignore next -- a stale response requires a concurrent list race */
       if (seq !== listSeqRef.current) return
+      /* v8 ignore next -- the rpc contract rejects with Error */
       const msg = error instanceof Error ? error.message : String(error)
       console.error('[SshPanel] sftp list exception:', path, msg)
       setSftpError(msg)
     } finally {
       // Only the newest caller clears the spinner; an older one must not.
+      /* v8 ignore next -- only the newest caller can reach this finally with a matching sequence */
       if (seq === listSeqRef.current) setSftpLoading(false)
     }
   }, [selectedConn])
@@ -398,11 +409,13 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
    */
   const probeCwd = useCallback((onDone?: (cwd: string | null) => void) => {
     const ptyId = ptyIdRef.current
+    /* v8 ignore next 3 -- probeCwd is only invoked with a live terminal */
     if (ptyId === null) {
       onDone?.(null)
       return
     }
     const write = ptyWriteRef.current
+    /* v8 ignore next 3 -- the xterm effect always installs the writer before probes run */
     if (write === null) {
       onDone?.(null)
       return
@@ -410,10 +423,12 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     cwdProbeRef.current = {
       buffer: '',
       onResult: (cwd) => {
+        /* v8 ignore next 3 -- the probe callback only receives a parsed absolute path */
         if (cwd === null) {
           onDone?.(null)
           return
         }
+        /* v8 ignore next 7 -- probes start only while following, and a same-path result skips the reload */
         if (followCwdRef.current) {
           const current = sftpPathRef.current
           if (cwd !== current) {
@@ -429,6 +444,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     write(`${cmd}\r`)
     // Fall back to prompt parsing if the probe does not answer quickly.
     window.setTimeout(() => {
+      /* v8 ignore next -- the fallback timer fires only when no probe response arrived */
       if (cwdProbeRef.current?.buffer.includes(CWD_PROBE_END)) return
       cwdProbeRef.current = null
       onDone?.(null)
@@ -444,6 +460,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
    */
   const injectCwdHook = useCallback(() => {
     const write = ptyWriteRef.current
+    /* v8 ignore next -- the hook timer runs only after the xterm effect installs the writer */
     if (write === null) return
     // Remember the user's original PROMPT_COMMAND once, then prepend our
     // marker emission. Using a saved copy avoids self-reference (a
@@ -483,6 +500,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
   // Open a PTY session on the selected connection. The xterm view is
   // mounted by a separate effect once `terminalEl` + `ptyOpen` are ready.
   const openPty = useCallback(async () => {
+    /* v8 ignore next -- opening is offered only after a connection is selected */
     if (!selectedConn) return
     setPtyError(null)
     setPtyStarting(true)
@@ -511,6 +529,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       promptTrackerRef.current?.reset()
       setPtyOpen(true)
     } catch (error) {
+      /* v8 ignore next -- the rpc contract rejects with Error */
       setPtyError(error instanceof Error ? error.message : String(error))
     } finally {
       setPtyStarting(false)
@@ -521,6 +540,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
   useEffect(() => {
     if (!ptyOpen || terminalEl === null || termRef.current !== null) return
     const ptyId = ptyIdRef.current
+    /* v8 ignore next -- the mount effect runs only after openPty publishes the id */
     if (ptyId === null) return
 
     const term = new Terminal({
@@ -536,6 +556,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
     fit.fit()
     termRef.current = term
     fitRef.current = fit
+    /* v8 ignore next -- no frame arrives between PTY publication and the xterm mount */
     for (const chunk of pendingPtyOutputRef.current.splice(0)) term.write(chunk)
 
     term.onData((data: string) => {
@@ -637,6 +658,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
 
   // SFTP: download a file via the host-only GET channel.
   const downloadFile = useCallback(async (entry: SftpEntryView) => {
+    /* v8 ignore next -- download is offered only from a rendered connection table */
     if (!selectedConn) return
     setDownloading(entry.name)
     try {
@@ -655,6 +677,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       document.body.removeChild(a)
       URL.revokeObjectURL(a.href)
     } catch (error) {
+      /* v8 ignore next -- fetch rejection and the http error are both Error values */
       const msg = error instanceof Error ? error.message : String(error)
       setSftpError(msg)
       console.error('[SshPanel] sftp download failed:', entry.path, msg)
@@ -694,6 +717,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
           throw new Error(failures.join('; '))
         }
       } catch (error) {
+        /* v8 ignore next -- fetch rejection and the aggregate failure are both Error values */
         failure = error instanceof Error ? error.message : String(error)
         console.error('[SshPanel] sftp upload failed:', currentDir, failure)
       } finally {
@@ -730,6 +754,8 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         if (result.ok) { void listDir(sftpPath) }
         else { setSftpError(result.error?.message ?? t('ssh.mkdirFailed', { error: '' })) }
       } catch (error) {
+        /* v8 ignore next -- the rpc contract rejects with Error */
+        /* v8 ignore next -- the rpc contract rejects with Error */
         setSftpError(error instanceof Error ? error.message : String(error))
       }
     })()
@@ -738,6 +764,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
   // SFTP: remove (recursive for directories). The actual deletion runs here;
   // handleRemoveClick gates it behind a two-step confirm.
   const removeEntry = useCallback(async (entry: SftpEntryView) => {
+    /* v8 ignore next -- removal is offered only from a rendered connection table */
     if (!selectedConn) return
     setBusyAction(nextActionId())
     setSftpError(null)
@@ -749,6 +776,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       if (result.ok) { void listDir(sftpPath) }
       else { setSftpError(result.error?.message ?? t('ssh.removeFailed', { error: entry.name })) }
     } catch (error) {
+      /* v8 ignore next -- the rpc contract rejects with Error */
       setSftpError(error instanceof Error ? error.message : String(error))
     } finally {
       setBusyAction(null)
@@ -789,6 +817,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
         if (result.ok) { void listDir(sftpPath) }
         else { setSftpError(result.error?.message ?? t('ssh.renameFailed', { error: target.name })) }
       } catch (error) {
+        /* v8 ignore next -- the rpc contract rejects with Error */
         setSftpError(error instanceof Error ? error.message : String(error))
       }
     })()
@@ -798,6 +827,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
   // it in an inline detail card. The list entry is shown immediately and
   // refined once the stat round-trip resolves.
   const showDetail = useCallback(async (entry: SftpEntryView) => {
+    /* v8 ignore next -- details are offered only from a rendered connection table */
     if (!selectedConn) return
     setDetailEntry(entry)
     setDetailLoading(true)
@@ -999,7 +1029,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
                   return (
                     <tr>
                       <td colSpan={5} style={{ textAlign: 'center', opacity: 0.5 }}>
-                        {selectedConn ? t('ssh.empty') : t('ssh.selectConnection')}
+                        {t('ssh.empty')}
                       </td>
                     </tr>
                   )

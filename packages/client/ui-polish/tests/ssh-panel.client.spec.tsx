@@ -169,6 +169,7 @@ describe('resolveHomeDir', () => {
     await expect(resolveHomeDir(async () => ({ ok: true }), 'c')).resolves.toBeNull()
     await expect(resolveHomeDir(async () => ({ ok: true, value: { exitCode: 1 } }), 'c')).resolves.toBeNull()
     await expect(resolveHomeDir(async () => ({ ok: true, value: { exitCode: 0, stdout: 'rel' } }), 'c')).resolves.toBeNull()
+    await expect(resolveHomeDir(async () => ({ ok: true, value: { exitCode: 0 } }), 'c')).resolves.toBeNull()
   })
 
   it('turns an abort into null and logs a real failure', async () => {
@@ -732,7 +733,7 @@ describe('SshPanel remaining branch coverage', () => {
     }) as never)
     fireEvent.click(view.getByText('ssh.upload'))
     const input = created.at(-1)!
-    Object.defineProperty(input, 'files', { value: [] })
+    Object.defineProperty(input, 'files', { value: null })
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     await input.onchange?.(new Event('change'))
@@ -880,5 +881,16 @@ describe('SshPanel shell timers', () => {
     await waitFor(() => { expect(FakeTerminal.instances.length).toBeGreaterThan(0) })
     await waitFor(() => { expect(calls.some(c => c.method === 'ssh.pty.write' && atob(String(c.payload['data'])).includes('__DSH_CWD__'))).toBe(true) })
     await waitFor(() => { expect(calls.some(c => c.method === 'ssh.pty.write' && atob(String(c.payload['data'])).includes('__DSH_CWD_START__'))).toBe(true) })
+  })
+})
+
+
+describe('SshPanel connection clearing', () => {
+  it('closes the terminal when the placeholder option is selected', async () => {
+    const view = panel()
+    await openTerminal(view.container, view.getByText)
+    fireEvent.change(view.container.querySelector('select')!, { target: { value: '' } })
+    await waitFor(() => { expect(view.getByText('ssh.needsTerminal')).toBeDefined() })
+    expect((view.container.querySelector('select') as HTMLSelectElement).value).toBe('')
   })
 })

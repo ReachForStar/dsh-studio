@@ -82,7 +82,12 @@ const FONT_EXTS = new Set(['ttf', 'otf', 'otc', 'ttc'])
  * @returns stdout plus the exit code (non-zero tolerated; the caller interprets).
  * @throws on spawn failure, timeout, or an unbounded output.
  */
-function runCommand(command: string, args: readonly string[], cwd: string, timeoutMs: number): Promise<{ stdout: string; code: number }> {
+export function runCommand(
+  command: string,
+  args: readonly string[],
+  cwd: string,
+  timeoutMs: number,
+): Promise<{ stdout: string; code: number }> {
   const shell = /\.(bat|cmd)$/i.test(command)
   return new Promise((resolveRun, rejectRun) => {
     const child = spawn(command, [...args], { cwd, stdio: ['ignore', 'pipe', 'pipe'], ...(shell ? { shell: true } : {}) })
@@ -129,7 +134,7 @@ function runCommand(command: string, args: readonly string[], cwd: string, timeo
  * @param name - executable name (e.g. xelatex, tlmgr, kpsewhich).
  * @returns the command string to spawn, or null when TeX is not installed.
  */
-async function locateEngine(name: string): Promise<string | null> {
+export async function locateEngine(name: string): Promise<string | null> {
   // A candidate is usable only when `--version` exits 0. A missing `.bat` probed through the shell
   // still resolves runCommand (cmd.exe starts, then reports the absent file with a non-zero exit),
   // so exit-code checking here is what keeps a stray TeX Live tree without a real binary from being
@@ -163,7 +168,7 @@ async function locateEngine(name: string): Promise<string | null> {
  * @returns the command string to spawn.
  * @throws when the executable is not found anywhere.
  */
-async function requireEngine(name: string): Promise<string> {
+export async function requireEngine(name: string): Promise<string> {
   const found = await locateEngine(name)
   if (found === null) throw new Error(`latex panel: ${name} not found (install TeX Live or add it to PATH)`)
   return found
@@ -171,15 +176,23 @@ async function requireEngine(name: string): Promise<string> {
 
 /** The cached xelatex location; null when no TeX distribution is installed. */
 let xelatexPath: string | null | undefined
-async function xelatexIfInstalled(): Promise<string | null> {
+/**
+ * Resolve xelatex once and reuse the answer.
+ * @returns the command to spawn, or null when no TeX distribution is installed.
+ */
+export async function xelatexIfInstalled(): Promise<string | null> {
   if (xelatexPath === undefined) {
     xelatexPath = await locateEngine('xelatex')
   }
   return xelatexPath
 }
 
-/** The xelatex location for a compile, which cannot run without TeX. */
-async function xelatex(): Promise<string> {
+/**
+ * The xelatex location for a compile, which cannot run without TeX.
+ * @returns the command to spawn.
+ * @throws when xelatex is not installed.
+ */
+export async function xelatex(): Promise<string> {
   const found = await xelatexIfInstalled()
   if (found === null) throw new Error('latex panel: xelatex not found (install TeX Live or add it to PATH)')
   return found
@@ -187,7 +200,12 @@ async function xelatex(): Promise<string> {
 
 /** The cached tlmgr location (resolved once). */
 let tlmgrPath: string | undefined
-async function tlmgr(): Promise<string> {
+/**
+ * Resolve tlmgr once and reuse the answer.
+ * @returns the command to spawn.
+ * @throws when tlmgr is not installed.
+ */
+export async function tlmgr(): Promise<string> {
   if (tlmgrPath === undefined) {
     tlmgrPath = await requireEngine('tlmgr')
   }
@@ -196,7 +214,12 @@ async function tlmgr(): Promise<string> {
 
 /** The cached bibtex location (resolved once). */
 let bibtexPath: string | undefined
-async function bibtex(): Promise<string> {
+/**
+ * Resolve bibtex once and reuse the answer.
+ * @returns the command to spawn.
+ * @throws when bibtex is not installed.
+ */
+export async function bibtex(): Promise<string> {
   if (bibtexPath === undefined) {
     bibtexPath = await requireEngine('bibtex')
   }
@@ -213,7 +236,13 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(payload)
 }
 
-function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+/**
+ * Read a request body as a JSON object.
+ * @param req - the incoming request.
+ * @returns the parsed object, empty for an empty body.
+ * @throws when the body is not a JSON object.
+ */
+export function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolveBody, reject) => {
     const chunks: Buffer[] = []
     req.on('data', (chunk: Buffer) => { chunks.push(chunk) })
@@ -235,7 +264,14 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
   })
 }
 
-function bodyString(body: Record<string, unknown>, field: string): string {
+/**
+ * Read a required non-empty string body field.
+ * @param body - the parsed body.
+ * @param field - the field name.
+ * @returns the field value.
+ * @throws when the field is missing, not a string, or empty.
+ */
+export function bodyString(body: Record<string, unknown>, field: string): string {
   const value = body[field]
   if (typeof value !== 'string' || value.length === 0) {
     throw new Error(`latex panel: body field "${field}" must be a non-empty string`)
@@ -243,13 +279,25 @@ function bodyString(body: Record<string, unknown>, field: string): string {
   return value
 }
 
-function bodyOptionalString(body: Record<string, unknown>, field: string): string | undefined {
+/**
+ * Read an optional string body field.
+ * @param body - the parsed body.
+ * @param field - the field name.
+ * @returns the field value, or undefined when absent or empty.
+ */
+export function bodyOptionalString(body: Record<string, unknown>, field: string): string | undefined {
   const value = body[field]
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
 
-/** A string body field that may be empty (a newly created file has no content yet). */
-function bodyText(body: Record<string, unknown>, field: string): string {
+/**
+ * Read a string body field that may be empty.
+ * @param body - the parsed body.
+ * @param field - the field name.
+ * @returns the field value.
+ * @throws when the field is not a string.
+ */
+export function bodyText(body: Record<string, unknown>, field: string): string {
   const value = body[field]
   if (typeof value !== 'string') {
     throw new Error(`latex panel: body field "${field}" must be a string`)
@@ -262,7 +310,7 @@ function bodyText(body: Record<string, unknown>, field: string): string {
  * @param body - the parsed JSON body.
  * @returns the validated turns, empty when the field is absent.
  */
-function bodyHistory(body: Record<string, unknown>): AiWriteTurn[] {
+export function bodyHistory(body: Record<string, unknown>): AiWriteTurn[] {
   const value = body['history']
   if (value === undefined) return []
   if (!Array.isArray(value)) throw new Error('latex panel: body field "history" must be an array')
@@ -280,21 +328,34 @@ function bodyHistory(body: Record<string, unknown>): AiWriteTurn[] {
   })
 }
 
-/** Validate a project-relative path and resolve it against the project directory. */
-function resolveProjectPath(projectDir: string, filePath: string): string {
+/**
+ * Validate a project-relative path and resolve it against the project directory.
+ * @param projectDir - absolute project directory.
+ * @param filePath - project-relative path.
+ * @returns the absolute path.
+ * @throws when the path is absolute, contains `..`, or resolves outside the project.
+ */
+export function resolveProjectPath(projectDir: string, filePath: string): string {
   if (filePath.includes('..') || filePath.startsWith('/') || filePath.startsWith('\\')) {
     throw new Error('latex panel: invalid path')
   }
   const abs = resolve(join(projectDir, filePath))
   const root = resolve(projectDir)
+  /* v8 ignore next 3 -- the `..` and absolute-path guards above leave no input that resolves outside the project */
   if (abs !== root && !abs.startsWith(root + sep)) {
     throw new Error('latex panel: path escapes the project')
   }
   return abs
 }
 
-/** Validate a project directory and resolve it against the workspace. */
-function resolveProjectDir(workspace: string, dir: string): string {
+/**
+ * Validate a project directory and resolve it against the workspace.
+ * @param workspace - absolute workspace directory.
+ * @param dir - workspace-relative project directory.
+ * @returns the absolute project directory.
+ * @throws when the directory resolves outside the workspace.
+ */
+export function resolveProjectDir(workspace: string, dir: string): string {
   const abs = resolve(join(workspace, dir))
   const root = resolve(workspace)
   if (abs !== root && !abs.startsWith(root + sep)) {
@@ -395,7 +456,7 @@ function cacheKey(projectDir: string, main: string): string {
  * @returns the project-relative files that were skipped, so a failing compile
  *   can say whether a missing reference exists in the project.
  */
-async function mirrorProject(projectDir: string, tmp: string): Promise<string[]> {
+export async function mirrorProject(projectDir: string, tmp: string): Promise<string[]> {
   const queue: string[] = [projectDir]
   const skipped: string[] = []
   let copied = 0
@@ -442,8 +503,13 @@ async function mirrorProject(projectDir: string, tmp: string): Promise<string[]>
   return skipped
 }
 
-/** Whether one directory entry is a directory, following a symbolic link. */
-async function isDirectoryEntry(src: string, entry: Dirent): Promise<boolean> {
+/**
+ * Whether one directory entry is a directory, following a symbolic link.
+ * @param src - absolute path of the entry.
+ * @param entry - the directory entry.
+ * @returns true when the entry resolves to a directory.
+ */
+export async function isDirectoryEntry(src: string, entry: Dirent): Promise<boolean> {
   if (entry.isDirectory()) return true
   if (!entry.isSymbolicLink()) return false
   const target = await stat(src).catch(() => undefined)
@@ -498,6 +564,7 @@ export function missingReferences(log: string): string[] {
   const names = new Set<string>()
   for (const match of log.matchAll(/(?:File `([^']+)' not found|Unable to load picture or PDF file '([^']+)')/g)) {
     const name = match[1] ?? match[2]
+    /* v8 ignore next -- the capture groups require at least one character */
     if (name !== undefined && name.length > 0) names.add(normalizeSlashes(name))
   }
   return [...names]
@@ -513,7 +580,7 @@ const WORKSPACE_SCAN_MAX_DEPTH = 8
  * @param name - file name to match.
  * @returns the absolute path of the first match, or undefined.
  */
-async function findInWorkspace(root: string, name: string): Promise<string | undefined> {
+export async function findInWorkspace(root: string, name: string): Promise<string | undefined> {
   const queue: { dir: string; depth: number }[] = [{ dir: root, depth: 0 }]
   let visited = 0
   while (queue.length > 0 && visited < WORKSPACE_SCAN_MAX_DIRS) {
@@ -556,7 +623,7 @@ interface GraphicsIndex {
  * @param mirror - the compile mirror root.
  * @returns the referenced names and the declared `\graphicspath` directories.
  */
-async function collectGraphicsReferences(mirror: string): Promise<GraphicsIndex> {
+export async function collectGraphicsReferences(mirror: string): Promise<GraphicsIndex> {
   const names = new Set<string>()
   const paths = new Set<string>()
   const queue: string[] = [mirror]
@@ -581,7 +648,9 @@ async function collectGraphicsReferences(mirror: string): Promise<GraphicsIndex>
         if (referenced !== undefined && referenced.length > 0) names.add(referenced)
       }
       for (const declaration of source.matchAll(GRAPHICS_PATH)) {
-        for (const path of (declaration[1] ?? '').matchAll(/\{([^}]*)\}/g)) {
+        /* v8 ignore next -- the graphicspath regex always captures its path group */
+        const declaredList = declaration[1] ?? ''
+        for (const path of declaredList.matchAll(/\{([^}]*)\}/g)) {
           const declared = path[1]?.trim()
           if (declared !== undefined && declared.length > 0) paths.add(declared)
         }
@@ -601,7 +670,7 @@ async function collectGraphicsReferences(mirror: string): Promise<GraphicsIndex>
  * @param workspaceRoot - absolute workspace directory to search.
  * @returns the names that were copied into the mirror.
  */
-async function supplyWorkspaceGraphics(
+export async function supplyWorkspaceGraphics(
   mirror: string,
   mainDir: string,
   workspaceRoot: string,
@@ -623,8 +692,13 @@ async function supplyWorkspaceGraphics(
   return supplied
 }
 
-/** Locate a referenced file by relative path or basename inside the project. */
-function locateProjectFile(projectDir: string, name: string): string | undefined {
+/**
+ * Locate a referenced file by relative path or basename inside the project.
+ * @param projectDir - absolute project directory.
+ * @param name - the referenced path or basename.
+ * @returns the project-relative path, or undefined when the project does not hold it.
+ */
+export function locateProjectFile(projectDir: string, name: string): string | undefined {
   if (existsSync(join(projectDir, name))) return name
   const base = basename(name)
   const queue: { dir: string; depth: number }[] = [{ dir: projectDir, depth: 0 }]
@@ -781,11 +855,13 @@ export async function compileProject(
           oldestAt = v.at
         }
       }
+      /* v8 ignore next -- the loop above always sets `oldest` for a non-empty cache */
       if (oldest !== undefined) pdfCache.delete(oldest)
     }
     return { ok: true, size: bytes.length, supplied }
   } finally {
     compiling.delete(key)
+    /* v8 ignore next 3 -- cleanup fails only when the OS temp policy owner removes or locks the mirror first */
     await rm(tmp, { recursive: true, force: true }).catch(() => {
       // The temp dir is best-effort cleanup; the OS temp policy owns it.
     })
@@ -796,8 +872,13 @@ export async function compileProject(
 // fonts
 // ---------------------------------------------------------------------------
 
-/** TeX packages the panel cares about (kpsewhich probe). */
-async function probePackage(engine: string | null, file: string): Promise<boolean> {
+/**
+ * Probe whether a TeX package file is installed.
+ * @param engine - the resolved xelatex command, or null when TeX is not installed.
+ * @param file - the package file to look up.
+ * @returns whether kpsewhich resolved the file.
+ */
+export async function probePackage(engine: string | null, file: string): Promise<boolean> {
   if (engine === null) return false
   const candidates = ['kpsewhich', `${dirname(engine)}kpsewhich.exe`]
   for (const candidate of candidates) {
@@ -866,7 +947,7 @@ const AI_WRITE_PROMPT = {
  * @param route - the provider/model pair the turn will stream with.
  * @returns the messages to stream with.
  */
-function writeMessages(
+export function writeMessages(
   request: AiWriteRequest,
   route: LlmRoute,
 ): (ReturnType<typeof createUserMessage> | ReturnType<typeof createAssistantMessage>)[] {
@@ -906,7 +987,7 @@ function writeMessages(
  * @param signal - the signal to inspect, when the request carries one.
  * @returns true once the request was aborted.
  */
-function isAborted(signal: AbortSignal | undefined): boolean {
+export function isAborted(signal: AbortSignal | undefined): boolean {
   return signal !== undefined && signal.aborted
 }
 
@@ -959,7 +1040,7 @@ export async function aiWrite(
  * @returns the model's LaTeX output.
  * @throws {Error} when the model returns no text.
  */
-async function runAiWrite(
+export async function runAiWrite(
   ctx: Context,
   route: LlmRoute,
   request: AiWriteRequest,

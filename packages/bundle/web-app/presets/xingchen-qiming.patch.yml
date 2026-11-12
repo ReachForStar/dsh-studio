@@ -176,33 +176,27 @@
             config:
               - id: tool-subagent-control
                 name: '@deepseek-ai/dsh-tool-subagent-control'
-              - id: tool-subagent-list-agents
-                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
               - id: tool-subagent
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
                   provider: spawn
                   toolName: subagent
-                  modelSelectionSettings: true
-                  backgroundMode: continuable
+                  modelSelection: true
               # Fork omits model selection so provider/model stay equal to the
               # parent and the inherited history remains eligible for KV Cache
-              # reuse. This preset keeps fork continuable; parent and child
-              # inherit the same messaging tool, while the parent id and return
-              # guidance follow the inherited history.
+              # reuse. Parent and child inherit the same messaging tool, while
+              # the parent id and return guidance follow the inherited history.
               - id: tool-subagent-fork
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
                   provider: fork
                   toolName: subagent_fork
-                  backgroundMode: continuable
               - id: tool-subagent-codex
                 name: '@deepseek-ai/dsh-tool-subagent'
                 disabled: true
                 config:
                   provider: codex
                   toolName: subagent_codex
-                  backgroundMode: one-shot
                   maxDepth: provider-managed
               - id: tool-subagent-claude-code
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -210,7 +204,6 @@
                 config:
                   provider: claude-code
                   toolName: subagent_claude_code
-                  backgroundMode: one-shot
                   maxDepth: provider-managed
               - id: workflow-ptc
                 name: '@deepseek-ai/dsh-workflow-ptc'

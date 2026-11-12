@@ -53,7 +53,7 @@ qwen 的门控含 shell 命令 AST 安全分类与审批模式枚举；dsh 目�
   name: '@deepseek-ai/dsh-speculation/runner'
   disabled: false
   config:
-    workspaceRoot: !!js process.cwd()
+    workspaceRoot: /data/f/BDJ-Train
     overlayRoot: !!js dshHomePath('speculation')
     allowWrites: false
     provider: magpie
@@ -61,10 +61,10 @@ qwen 的门控含 shell 命令 AST 安全分类与审批模式枚举；dsh 目�
 ```
 
 - `provider`/`model` 取 profile patch 里 `agent-default-model` 的同一组值（`magpie` + `officeace/deepseek-v4.1-flash`）。
-- `workspaceRoot` 用 `process.cwd()`：门控按这个根解析相对路径，落在根外的路径一律 boundary。启动目录换了，可推测的范围也跟着变；要让某个工作区生效，把这项改成该工作区绝对路径。
+- `workspaceRoot` 最初取 `process.cwd()`（启动目录），后来改为工作区绝对路径 `/data/f/BDJ-Train`：门控按这个根解析相对路径，落在根外的路径一律 boundary。一项只能对一个根，换工作区就要改这一项。
 - `allowWrites` 保持 `false`：推测期不执行任何写入。
 
-验证：插件清单里 `include:speculation` 为 `enabled: true` / `active`；在 Web 会话里跑一轮真实对话后，会话日志（`session.v5.jsonl.zstd`）出现 `speculation/proposal`——预测请求是「读一下 …README.md 的完整内容」，步骤 `read` 记为 `failed`（预测期不带 Agent 派发，需要审批或越界的调用直接失败，符合设计）。
+验证：插件清单里 `include:speculation` 为 `enabled: true` / `active`；Web 会话跑真实对话后，会话日志（`session.v5.jsonl.zstd`）出现 `speculation/proposal`。两次实测：工作区在根外时预测「读一下 …README.md 的完整内容」的 `read` 记为 `failed`（预测期不带 Agent 派发，需要审批或越界的调用直接失败）；把根改为 `/data/f/BDJ-Train` 后预测「列出当前工作区根目录下的文件」的 `bash` 记为 `boundary`（shell 一律不推测）。
 
 ## 待确认
 

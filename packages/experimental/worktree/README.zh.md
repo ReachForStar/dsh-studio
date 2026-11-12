@@ -63,7 +63,7 @@ Git 与目录分配通过挂载的子进程及沙箱提供方执行，沿用调�
 <a id="further-exploration"></a>
 ### 镜像未提交改动
 
-`create(agent, { mirrorUncommitted: true })` 把源检出的脏状态复制进新检出。已跟踪改动以 `git stash create` 快照的形式传递，不触碰源索引与工作区，并在新检出中应用；未跟踪文件经文件系统提供方在调用方沙箱策略下逐个复制。`mirrorMaxFileBytes`（默认 8 MiB）限制每个被复制的未跟踪文件，超出则创建失败。不传该请求字段时，新检出停留在钉住的提交上。
+`create(agent, { mirrorUncommitted: true })` 把源检出的脏状态复制进新检出。已跟踪改动以 `git stash create` 快照的形式传递，不触碰源索引与工作区，并在新检出中应用；未跟踪文件经文件系统提供方在调用方沙箱策略下逐个复制。`mirrorMaxFileBytes`（默认 20 MiB）限制每个被复制的未跟踪文件，超出则创建失败。不传该请求字段时，新检出停留在钉住的提交上。
 
 ## 深入探索
 

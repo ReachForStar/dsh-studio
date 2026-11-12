@@ -20,7 +20,7 @@ status: active
 | --- | --- | --- |
 | 已跟踪改动 | 在源检出执行 `git stash create` 取快照提交，再在新检出执行 `git stash apply <sha>` | 不触碰源索引与工作区：`stash create` 只创建提交对象 |
 | 未跟踪文件 | `git ls-files --others --exclude-standard -z` 列出后逐个复制 | 走 `ctx.fs.resolve`、`readBytes`、`writeBytes`，写入受调用方沙箱策略约束 |
-| 单文件上限 | 配置 `mirrorMaxFileBytes`（默认 8 MiB） | 超限的未跟踪文件使创建失败，不做静默跳过 |
+| 单文件上限 | 配置 `mirrorMaxFileBytes`（默认 20 MiB） | 超限的未跟踪文件使创建失败，不做静默跳过 |
 | 无改动时 | 快照为空字符串，未跟踪列表为空 | 新检出停留在钉住的提交上，状态干净 |
 
 失败路径与既有创建路径一致：报错文本说明「已创建的检出与分支保留」，由调用方决定是否清理。

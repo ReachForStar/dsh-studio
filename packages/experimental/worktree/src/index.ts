@@ -71,7 +71,7 @@ export class WorktreeService extends Service {
     timeoutMs: z.number().default(60_000),
     graceMs: z.number().default(3_000),
     maxOutputBytes: z.number().default(65_536),
-    mirrorMaxFileBytes: z.number().default(8 * 1_024 * 1_024),
+    mirrorMaxFileBytes: z.number().default(20 * 1_024 * 1_024),
   })
 
   private readonly config: ResolvedConfig

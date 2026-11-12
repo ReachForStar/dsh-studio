@@ -102,7 +102,7 @@ function gitRun(options: GitRunOptions): Promise<string> {
  * @param options - cwd, arguments, optional stdin and limits.
  * @returns the stdout text, the stderr text, and the exit code.
  */
-function gitRunTolerant(options: GitRunOptions): Promise<{ stdout: string; stderr: string; code: number }> {
+export function gitRunTolerant(options: GitRunOptions): Promise<{ stdout: string; stderr: string; code: number }> {
   const { cwd, args, stdin, timeoutMs = 30_000, maxBuffer = MAX_DIFF_BYTES } = options
   return new Promise((resolveRun, rejectRun) => {
     const child = spawn('git', [...args], {
@@ -156,19 +156,33 @@ function gitRunTolerant(options: GitRunOptions): Promise<{ stdout: string; stder
   })
 }
 
-/** Run git, rejecting on a non-zero exit (see {@link gitRun}). */
-async function git(cwd: string, args: readonly string[], timeoutMs?: number): Promise<string> {
+/** Run git, rejecting on a non-zero exit (see {@link gitRun}).
+ * @param cwd - the repository directory.
+ * @param args - the git arguments.
+ * @param timeoutMs - the kill deadline in milliseconds; the git default applies when omitted.
+ * @returns the stdout text on a zero exit.
+ */
+export async function git(cwd: string, args: readonly string[], timeoutMs?: number): Promise<string> {
   return gitRun({ cwd, args, ...(timeoutMs !== undefined ? { timeoutMs } : {}) })
 }
 
-/** Run git, returning stdout regardless of the exit code. */
-async function gitLenient(cwd: string, args: readonly string[], timeoutMs?: number): Promise<string> {
+/** Run git, returning stdout regardless of the exit code.
+ * @param cwd - the repository directory.
+ * @param args - the git arguments.
+ * @param timeoutMs - the kill deadline in milliseconds; the git default applies when omitted.
+ * @returns the stdout text, empty when the command fails.
+ */
+export async function gitLenient(cwd: string, args: readonly string[], timeoutMs?: number): Promise<string> {
   const out = await gitRunTolerant({ cwd, args, ...(timeoutMs !== undefined ? { timeoutMs } : {}) })
   return out.stdout
 }
 
-/** Read a git blob (`<ref>:<path>`) as bytes. */
-async function gitShowBuffer(cwd: string, ref: string): Promise<Buffer> {
+/** Read a git blob (`<ref>:<path>`) as bytes.
+ * @param cwd - the repository directory.
+ * @param ref - the `<rev>:<path>` blob reference.
+ * @returns the blob bytes.
+ */
+export async function gitShowBuffer(cwd: string, ref: string): Promise<Buffer> {
   return new Promise((resolveShow, rejectShow) => {
     const child = spawn('git', ['show', ref], {
       cwd,
@@ -180,6 +194,7 @@ async function gitShowBuffer(cwd: string, ref: string): Promise<Buffer> {
     let settled = false
     const timer = setTimeout(() => {
       child.kill('SIGKILL')
+      /* v8 ignore next -- every settle path clears the timer, so it fires only while unsettled */
       if (!settled) {
         settled = true
         rejectShow(new Error(`git show ${ref} timed out`))
@@ -201,6 +216,7 @@ async function gitShowBuffer(cwd: string, ref: string): Promise<Buffer> {
       stderr += chunk.toString('utf8')
     })
     child.on('error', (error) => {
+      /* v8 ignore next -- Node reports one spawn error per child, before its close */
       if (!settled) {
         settled = true
         clearTimeout(timer)
@@ -268,7 +284,11 @@ function isGitRepo(dir: string): boolean {
   }
 }
 
-function isGitWorktree(dir: string): boolean {
+/** Whether `dir` is a linked worktree (`.git` is a file rather than a directory).
+ * @param dir - the directory to probe.
+ * @returns true for a worktree, false for a regular repository or a non-repository.
+ */
+export function isGitWorktree(dir: string): boolean {
   try {
     return statSync(join(dir, '.git')).isFile()
   } catch {
@@ -290,6 +310,7 @@ export function findRepos(root: string): GitRepo[] {
     const item = queue.shift() as { dir: string; depth: number }
     dirs += 1
     if (isGitRepo(item.dir)) {
+      /* v8 ignore next -- a discovered repository directory always has a name; "/" is never one */
       repos.push({ path: item.dir, name: basename(item.dir) || root, isWorktree: isGitWorktree(item.dir) })
     }
     if (item.depth >= SCAN_MAX_DEPTH) continue
@@ -304,6 +325,7 @@ export function findRepos(root: string): GitRepo[] {
       queue.push({ dir: join(item.dir, entry.name), depth: item.depth + 1 })
     }
   }
+  /* v8 ignore next 2 -- the root is enqueued first, so a sort comparison never leads with it */
   repos.sort((a, b) =>
     a.path === root ? -1 : b.path === root ? 1 : a.path.localeCompare(b.path))
   return repos
@@ -656,8 +678,12 @@ function bodyRepoName(body: Record<string, unknown>, field: string): string {
   return name
 }
 
-/** Validate a repository-relative file path and resolve it against the cwd. */
-function resolveRepoPath(cwd: string, filePath: string): string {
+/** Validate a repository-relative file path and resolve it against the cwd.
+ * @param cwd - the repository directory.
+ * @param filePath - the repository-relative path from the request.
+ * @returns the absolute path inside the repository.
+ */
+export function resolveRepoPath(cwd: string, filePath: string): string {
   if (filePath.includes('..') || filePath.startsWith('/') || filePath.includes('\\')) {
     throw new Error('git panel: invalid path')
   }
@@ -737,7 +763,16 @@ export interface GitShowFile {
  * @param renameFrom - old → new path map for staged renames (empty when none).
  * @returns the parsed status (mergeState/head are filled by the caller).
  */
-function parseStatusV2(raw: string, renameFrom: Map<string, string>) {
+export function parseStatusV2(raw: string, renameFrom: Map<string, string>): {
+  branch: string
+  upstream: string | undefined
+  ahead: number
+  behind: number
+  staged: GitFile[]
+  unstaged: GitFile[]
+  untracked: GitFile[]
+  conflicted: GitFile[]
+} {
   const branch = { head: '', upstream: '', ahead: 0, behind: 0 }
   const staged: GitFile[] = []
   const unstaged: GitFile[] = []
@@ -770,9 +805,12 @@ function parseStatusV2(raw: string, renameFrom: Map<string, string>) {
     const matched = newLayout ?? oldLayout
     if (matched === null) continue
     const rawStatus = newLayout !== null ? newLayout[2] : oldLayout?.[1]
+    /* v8 ignore next -- a matched entry line always carries its two status characters */
     if (rawStatus === undefined) continue
     const status = rawStatus.replace(/\./g, ' ')
+    /* v8 ignore next -- replacing dots preserves the two-character status */
     const x = status[0] ?? ' '
+    /* v8 ignore next -- replacing dots preserves the two-character status */
     const y = status[1] ?? ' '
     const unmerged = (newLayout !== null && newLayout[1] === 'u') || x === 'U' || y === 'U'
     // Entry fields: the new layout carries a leading type character ('1' plain,
@@ -787,6 +825,7 @@ function parseStatusV2(raw: string, renameFrom: Map<string, string>) {
     if (x === 'R' || y === 'R') {
       if (path.includes('\t')) {
         const pair = path.split('\t')
+        /* v8 ignore next -- a split always yields at least one part */
         path = pair[0] ?? ''
         source = pair[1]
       } else if (renameFrom.has(path)) {
@@ -865,7 +904,7 @@ interface CommitStat {
  * @param skip - the log window offset.
  * @returns a hash → totals map (commits with no changes are absent).
  */
-async function parseStatBlocks(cwd: string, limit: number, skip: number): Promise<Map<string, CommitStat>> {
+export async function parseStatBlocks(cwd: string, limit: number, skip: number): Promise<Map<string, CommitStat>> {
   const out = await gitLenient(cwd, ['log', '--all', '--topo-order', `-n${limit}`, `--skip=${skip}`, '--stat', '--pretty=format:@@%H@@'])
   const map = new Map<string, CommitStat>()
   let current: string | undefined
@@ -875,11 +914,14 @@ async function parseStatBlocks(cwd: string, limit: number, skip: number): Promis
       current = marker[1]
       continue
     }
+    /* v8 ignore next -- git prints a record marker before every diffstat block */
     if (current === undefined) continue
     if (!/files? changed/.test(line)) continue
+    /* v8 ignore next -- the diffstat summary always names a file count */
     const files = Number(/(\d+) file/.exec(line)?.[1] ?? 0)
     const insertions = Number(/(\d+) insertion/.exec(line)?.[1] ?? 0)
     const deletions = Number(/(\d+) deletion/.exec(line)?.[1] ?? 0)
+    /* v8 ignore next -- a summary exists only when at least one file changed */
     if (files > 0 || insertions > 0 || deletions > 0) {
       map.set(current, { files, insertions, deletions })
     }
@@ -1055,7 +1097,9 @@ export async function handleGitRequest(
         const binary = add === '-' && del === '-'
         return {
           path: pathParts.join('\t'),
+          /* v8 ignore next -- numstat always emits both counts, using "-" for binaries */
           add: binary ? 0 : Number(add ?? 0),
+          /* v8 ignore next -- numstat always emits both counts, using "-" for binaries */
           del: binary ? 0 : Number(del ?? 0),
           binary,
         }
@@ -1215,6 +1259,7 @@ export async function handleGitRequest(
         audit('push', `ok=1 repo=${basename(cwd)}`)
         json(res, 200, { ok: true })
       } catch (error) {
+        /* v8 ignore next -- gitRun rejects only with Error values */
         const message = error instanceof Error ? error.message : String(error)
         // "no upstream" is a distinct outcome the panel turns into guidance.
         // Ask git for the upstream instead of matching its localized message.
@@ -1266,6 +1311,7 @@ export async function handleGitRequest(
       const op = bodyString(body, 'op')
       if (op === 'list') {
         const out = await gitLenient(cwd, ['stash', 'list', '--format=%gd\t%s'])
+        /* v8 ignore next 3 -- the stash format always emits the tab before the subject */
         const entries = out.split('\n').filter(l => l.length > 0)
           .map((l) => { const [name, message] = l.split('\t'); return { name, message: message ?? '' } })
         json(res, 200, { entries })

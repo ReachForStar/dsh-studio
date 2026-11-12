@@ -61,10 +61,11 @@ qwen 的门控含 shell 命令 AST 安全分类与审批模式枚举；dsh 目�
 ```
 
 - `provider`/`model` 取 profile patch 里 `agent-default-model` 的同一组值（`magpie` + `officeace/deepseek-v4.1-flash`）。
-- `workspaceRoot` 最初取 `process.cwd()`（启动目录），后来改为工作区绝对路径 `/data/f/BDJ-Train`：门控按这个根解析相对路径，落在根外的路径一律 boundary。一项只能对一个根，换工作区就要改这一项。
+- `workspaceRoot` 现在是**可选**项：省略时每个会话按自己的工作目录预测（读 `ctx.workingDirectory.get(session)`），因此一份部署可以服务任意工作区的会话；给定时固定到一个根，配置值优先。门控按生效的根解析相对路径，落在根外的路径一律 boundary。
+- 会话根缺失、为相对路径、或包含 `overlayRoot` 时，该轮跳过预测并告警，不抛错——这些是运行期条件，不是加载期配置错误。加载期仍会校验 `overlayRoot` 绝对、以及固定 `workspaceRoot` 时 overlay 在其之外。
 - `allowWrites` 保持 `false`：推测期不执行任何写入。
 
-验证：插件清单里 `include:speculation` 为 `enabled: true` / `active`；Web 会话跑真实对话后，会话日志（`session.v5.jsonl.zstd`）出现 `speculation/proposal`。两次实测：工作区在根外时预测「读一下 …README.md 的完整内容」的 `read` 记为 `failed`（预测期不带 Agent 派发，需要审批或越界的调用直接失败）；把根改为 `/data/f/BDJ-Train` 后预测「列出当前工作区根目录下的文件」的 `bash` 记为 `boundary`（shell 一律不推测）。
+验证：插件清单里 `include:speculation` 为 `enabled: true` / `active`；Web 会话跑真实对话后，会话日志（`session.v5.jsonl.zstd`）出现 `speculation/proposal`。实测：固定根在启动目录时预测「读一下 …README.md 的完整内容」的 `read` 记为 `failed`（预测期不带 Agent 派发，需要审批或越界的调用直接失败）；固定到 `/data/f/BDJ-Train` 后预测「列出当前工作区根目录下的文件」的 `bash` 记为 `boundary`（shell 一律不推测）；改为按会话目录解析后，在 `/data/f/BDJ-Train` 的会话里预测「列出这些 py 文件的具体路径与所在目录分布」，提案正常记录。单测覆盖会话目录、固定根优先、相对根跳过、无根跳过、overlay 落在根内跳过，包内 60 项通过、src 逐文件 100%。
 
 ## 待确认
 

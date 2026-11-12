@@ -902,3 +902,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 在 `~/.dsh/profiles/web/cordis.patch.yml` 按 id 覆盖 `speculation`：`disabled: false`，`provider: magpie`、`model: officeace/deepseek-v4.1-flash`（与 `agent-default-model` 同值），`workspaceRoot: !!js process.cwd()`、`overlayRoot: !!js dshHomePath('speculation')`，写入保持关闭。
 - 验证：插件清单 `include:speculation` 为 `active`；真实会话一轮后日志出现 `speculation/proposal`，预测内容与步骤状态符合门控设计。
 - 记录于 [speculation](entities/speculation.md) 的启用小节。
+
+## [2026-11-12] feat | speculation 改为按会话工作目录解析
+
+- `speculation` 的 `workspaceRoot` 变为可选：省略时读 `ctx.workingDirectory.get(session)`，一份部署服务任意工作区的会话；给定时仍固定到一个根且优先。
+- 门控 schema 抽出 `SessionRootPolicy`（根可选）与共享字段表，`Config` 在其上加必填根；`executePlan`/`overlayWrite`/`runPrediction` 改用 `ScopedConfig`（根已解析）。
+- 运行期跳过（告警，不抛错）：无根、相对根、overlay 落在根内；加载期仍校验 overlay 绝对与固定根的放置。
+- 包内 60 项测试通过、src 逐文件 100%；`build:check`、`test:docs` 通过；实测 `/data/f/BDJ-Train` 会话记录到 `speculation/proposal`。
+- 记录于 [speculation](entities/speculation.md)。

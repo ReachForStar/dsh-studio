@@ -480,7 +480,7 @@ function scopedConfig(ctx: Context, config: Config, session: Session): ScopedCon
     ctx.logger.warn(`speculation: overlay ${config.overlayRoot} lives inside ${workspaceRoot}; skipping the prediction`)
     return undefined
   }
-  return { ...config, workspaceRoot }
+  return Object.assign({}, config, { workspaceRoot })
 }
 
 /**

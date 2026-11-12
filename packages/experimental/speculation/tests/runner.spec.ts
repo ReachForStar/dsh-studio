@@ -411,14 +411,14 @@ describe('apply', () => {
     }
     await ctx.plugin(SessionStore)
     const session = ctx.sessions.create()
-    const base: Config = {
+    const shared = {
       overlayRoot,
       allowWrites: options.allowWrites ?? true,
       provider: 'mock',
       model: 'mock-fast',
       ...LIMITS,
     }
-    await ctx.plugin(Speculation, options.sessionRoots === true ? base : { ...base, workspaceRoot })
+    await ctx.plugin(Speculation, options.sessionRoots === true ? shared : { ...shared, workspaceRoot })
     const proposals: { data: unknown }[] = []
     const outcomes: { data: unknown }[] = []
     ctx.on('session/event', (_session, event) => {

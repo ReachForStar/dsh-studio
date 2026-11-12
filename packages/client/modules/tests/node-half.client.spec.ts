@@ -1148,6 +1148,24 @@ describe('client bundle activation', () => {
     expect(nextCombo.body.toString('utf8')).not.toContain('"client.shared.js"')
   })
 
+  it('serves a synchronous chunk a minified entry requires on its single emitted line', async () => {
+    const packageName = '@fixture/minified-closure'
+    const clientPath = writePackage(packageName)
+    mkdirSync(dirname(clientPath), { recursive: true })
+    writeFileSync(clientPath,
+      'window.__ModuleLoader__.load({id:"@fixture/minified-closure",factory:require=>{'
+      + 'const require_runtime=require("./client.rolldown-runtime.js");return {}}})\n')
+    writeFileSync(join(dirname(clientPath), 'client.rolldown-runtime.js'),
+      'window.__ModuleLoader__.load({id:"@fixture/minified-closure",chunk:"client.rolldown-runtime.js",'
+      + 'factory:require=>{return {helpers:{}};}})\n')
+    const { service, route } = constructWithRoute([packageName])
+    const row = service.graph().entries[0]!
+
+    const combo = await routeRequest(route, row.url)
+    expect(combo.status).toBe(200)
+    expect(combo.body.toString('utf8')).toContain('"client.rolldown-runtime.js"')
+  })
+
   it('serves a chunk of a package named @scope/assets instead of treating it as an asset request', async () => {
     const packageName = '@fixture/assets'
     const clientPath = writePackage(packageName)

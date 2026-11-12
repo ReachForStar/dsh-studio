@@ -232,19 +232,13 @@ export function syncChunkClosure(clientPath: string): SyncChunk[] {
     // an unreadable prologue contributes no closure edges instead of aborting.
     let requires: string[] = []
     try {
-      const path = join(dir, name)
-      requires = prologueRequires(readFileSync(path, 'utf8'))
-        .map(spec => spec.startsWith('./') ? spec.slice(2) : undefined)
-        .filter((target): target is string => target !== undefined && present.has(target))
+      requires = chunkRequires(readFileSync(join(dir, name), 'utf8'), present)
     } catch {
       requires = []
     }
     requiresOf.set(name, requires)
   }
-  const entryRequires = prologueRequires(readFileSync(clientPath, 'utf8'))
-    .map(spec => spec.startsWith('./') ? spec.slice(2) : undefined)
-    .filter((target): target is string => target !== undefined && present.has(target))
-  const closure = new Set<string>(entryRequires)
+  const closure = new Set<string>(chunkRequires(readFileSync(clientPath, 'utf8'), present))
   const stack = [...present]
   while (stack.length > 0) {
     const name = stack.pop() as string
@@ -263,6 +257,25 @@ export function syncChunkClosure(clientPath: string): SyncChunk[] {
     }
   })
   return _res
+}
+
+/**
+ * Package-local chunk files one emitted bundle requires.
+ *
+ * A minified emission puts the whole factory on one line, where the prologue
+ * pattern cannot match; the relative chunk require still names a factory the
+ * combo must register before materialization, so every relative require naming
+ * a published chunk file counts.
+ * @param code - one emitted client bundle or chunk.
+ * @param present - chunk file names the entry's directory publishes.
+ * @returns the required chunk file names, deduplicated.
+ */
+function chunkRequires(code: string, present: ReadonlySet<string>): string[] {
+  const specs = new Set(prologueRequires(code))
+  for (const match of code.matchAll(/require\("(\.[^"]+)"\)/gu)) specs.add(match[1] as string)
+  return [...specs]
+    .map(spec => spec.startsWith('./') ? spec.slice(2) : undefined)
+    .filter((target): target is string => target !== undefined && present.has(target))
 }
 
 /** Resolve `exports["./client"]` to a relative path, accepting the string and one-level conditional forms. */

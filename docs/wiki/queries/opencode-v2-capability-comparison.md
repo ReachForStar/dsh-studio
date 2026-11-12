@@ -21,6 +21,28 @@ opencode 源码在 `tmp/opencode`（`@opencode/cli` 2.2.7，Effect + Bun + Solid
 - 形态不同：opencode 以 Effect 服务图组织 monolithic core，本 fork 是 Cordis 插件树，持久化走 JSONL + 投影 + 世代迁移。只取能力语义，不照搬代码组织。
 - 插件化判定沿用[合并上游 2026-11-08](upstream-merge-2026-11-08.md#第-3-项插件化分类)：只依赖已发布公开接缝、不改 harness 源码的算可插件化。
 
+## 实施结果（2026-11-12）
+
+| 项 | 状态 | 落点 |
+| --- | --- | --- |
+| 提示缓存保活 | 已实现 | `packages/experimental/warming`：重放派生历史、工具声明与路由后追加保活提示；`auto` 间隔因无 TTL 元数据固定 4 分钟 |
+| 权限规则化 | 未实现 | 需要先给工具定义确定审批资源契约；现有预设与一次性审批不动 |
+| HTTP 卡带录制回放 | 已实现 | `packages/test-support/http-cassette`：录制/回放/auto、顺序匹配、脱敏与 CI 拒绝 |
+| MCP OAuth 与池化 | 未实现 | 待确认 MCP SDK 是否提供 OAuth provider |
+| 代码模式按需目录与静态扫描 | 未实现 | 目录模式需要运行时支持按需绑定；静态扫描缺少消费方 |
+| OpenAPI 转工具 | 已实现 | `packages/experimental/openapi-tools`：operation 转工具、参数合并、主机侧凭据 |
+| 侧问面板 | 未实现 | 需要新的客户端面板与 fork 子会话交互 |
+| 流式尾部修复 | 已实现 | `ui-primitives` 的 `heal.ts`，追加闭合标记，冻结块不受影响 |
+| 聊天内 Mermaid | 已实现 | `packages/client/ui-markdown-mermaid`，注册 `conversation.chat.markdown.fence` |
+| 输出上限续跑 | 已实现 | `agent-loop` 的 `maxOutputContinuations`（默认 0） |
+| fork 说明注入 | 已实现 | `packages/experimental/fork-notice` |
+| 工具输入修复 | 已实现 | `defineTool` 校验前 `repairArgs`，只做唯一确定转换 |
+| MCP 事件订阅 | 已实现 | `mcp-resources` 的 `watch_mcp_resource` 与 `mcp-client` 的订阅生命周期 |
+| 会话导入 | 未实现 | 需要与导出归档、格式校验和会话准入一起设计 |
+| 按轮 Web 来源面板 | 已实现 | `ui-chat` 的 `turn-sources` 节点，聚合搜索与抓取结果 |
+
+实现取舍与默认值记录在 [循环与工具行为](../../../.agents/notes/implemented/feature/2026-11-12-opencode-core-behaviors.md)。
+
 ## 已覆盖，不列为缺口
 
 | 能力 | 本 fork 落点 |

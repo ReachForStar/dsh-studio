@@ -924,3 +924,13 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 接线三面 + `tsconfig`：`web-app/cordis.patch.yml`、`web-app/package.json`、`tsconfig.client.json` references、`tsconfig.base.json` paths；生成物同步 `references/packages.md`。
 - 验证：本包 8 项测试通过、逐文件 100% 覆盖；`bundle` 产物入口 4.8 kB、`lib/client.*.js` 100 个分块原始 5.1 MB / gzip 约 1.17 MB。
 - 记录于 [聊天内 Mermaid 渲染](entities/chat-mermaid-rendering.md)。
+
+
+## [2026-11-12] feat | 融入 opencode v2 能力
+
+- 循环与工具：输出上限续跑（`maxOutputContinuations`，默认 0）、`repairArgs` 唯一确定转换、`fork-notice` 分叉归属提示。
+- 客户端：流式 Markdown 尾部修复、`ui-markdown-mermaid` 聊天围栏渲染、`ui-chat` 的 `turn-sources` 按轮来源面板。
+- 包：`warming`（重放前缀的缓存保活）、`openapi-tools`（OpenAPI 3.x 转工具）、`http-cassette`（HTTP 卡带）、`mcp-resources` 的 `watch_mcp_resource`。
+- 默认值：续跑默认关闭；`privacy` 与既有审批语义不变；新增包均为 opt-in。
+- 验证：受影响 11 个包 4300 项测试通过、`typecheck`、`build:artifacts`、`build:check`、`test:docs` 全绿。
+- 未实施：权限规则化、MCP OAuth/池化、PTC 按需目录与静态扫描、侧问面板、会话导入（见对比页实施结果表）。

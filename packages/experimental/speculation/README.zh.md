@@ -29,13 +29,12 @@ kind: "package-reference"
 
 ### 挂载随包运行方
 
-`@deepseek-ai/dsh-speculation/runner` 是 Cordis 插件：每个轮次结束后，它向一条辅助路由索取最可能的下一次请求，以及预先算出该请求所需的工具调用，然后门控并执行这份计划。它需要 `llm`、`tools`、`fs` 三个服务。
+`@deepseek-ai/dsh-speculation/runner` 是 Cordis 插件：每个轮次结束后，它向一条辅助路由索取最可能的下一次请求，以及预先算出该请求所需的工具调用，然后门控并执行这份计划。它需要 `llm`、`tools`、`fs` 三个服务；策略不固定根时读取 `workingDirectory`。
 
 ```yaml
 - id: speculation
   name: '@deepseek-ai/dsh-speculation/runner'
   config:
-    workspaceRoot: /work/repo
     overlayRoot: /work/.speculation
     allowWrites: true
     provider: deepseek
@@ -46,8 +45,8 @@ kind: "package-reference"
 
 ### 配置
 
-- `workspaceRoot` — overlay 映射的绝对工作区根。
-- `overlayRoot` — 接收推测写入的绝对 overlay 根；必须位于 `workspaceRoot` 之外。
+- `overlayRoot` — 接收推测写入的绝对 overlay 根；必须位于实际使用的工作区根之外。
+- `workspaceRoot` — 可选，给定时把所有会话固定到一个工作区；省略时每个会话按自己的工作目录预测，因此一份部署可以服务任意工作区的会话。会话根缺失、为相对路径或包含 `overlayRoot` 时，跳过该轮预测并告警，不会让该轮失败。
 - `allowWrites` — 写入是否可重定向到 overlay。默认 `false`：没有显式开启时不执行任何推测写入，运行方也不会把写工具提供给预测。
 - `readOnlyTools` / `writeTools` — 工具分类覆盖；留空时使用内置集合。
 - `pathArgumentKeys` — 携带文件路径的参数键；留空时使用 `file_path`、`path`、`directory`。

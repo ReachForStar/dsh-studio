@@ -19,6 +19,7 @@ import { BlockAssembler, createUserMessage, ToolCallId } from '@deepseek-ai/dsh-
 import type { ContentBlock, ContextFormed, Message, ToolCallBlock, ToolSchema } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm/types'
 import type {} from '@deepseek-ai/dsh-tools'
+import type {} from '@deepseek-ai/dsh-working-directory'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session/types'
 import { deadline, MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
@@ -26,8 +27,8 @@ import { accumulateTurn, boundUtf8 } from '@deepseek-ai/dsh-followup'
 import type { TurnExcerpt } from '@deepseek-ai/dsh-followup'
 import { commitOverlay, discardOverlay, seedOverlay } from './overlay.ts'
 import type { OverlayWrite } from './overlay.ts'
-import { Config as GateConfig, gatePlan, resolvePolicy, rewriteArguments } from './index.ts'
-import type { Config as GateConfigShape, SpeculationDecision, SpeculationStep } from './index.ts'
+import { SessionRootPolicy, gatePlan, resolvePolicy, rewriteArguments } from './index.ts'
+import type { SessionRootConfig, SpeculationDecision, SpeculationStep } from './index.ts'
 
 declare module '@deepseek-ai/dsh-llm/types' {
   interface LlmRequestPurposeMap {
@@ -94,7 +95,9 @@ export const SPECULATION_SYSTEM_PROMPT = 'You predict the next user request of a
   + '{"request": string, "steps": [{"tool": string, "arguments": object}]}. Use only the listed tools.'
 
 /** Runner configuration: the speculation policy plus the prediction request controls. */
-export interface Config extends GateConfigShape {
+export interface Config extends SessionRootConfig {
+  /** Absolute workspace root; omitted when each Session's own directory applies. */
+  workspaceRoot?: string
   /** Optional explicit prediction route; must be paired with `model`. */
   provider?: string
   /** Optional explicit prediction model; must be paired with `provider`. */
@@ -112,7 +115,7 @@ export interface Config extends GateConfigShape {
 }
 
 /** Runner configuration schema: the gate policy plus the prediction request controls. */
-export const Config: z<Config> = z.intersect([GateConfig, z.object({
+export const Config: z<Config> = z.intersect([SessionRootPolicy, z.object({
   provider: z.string(),
   model: z.string(),
   maxInputBytes: z.number().step(1).min(1).default(8_192),
@@ -121,6 +124,9 @@ export const Config: z<Config> = z.intersect([GateConfig, z.object({
   maxSteps: z.number().step(1).min(1).default(4),
   maxRequestChars: z.number().step(1).min(1).default(200),
 })])
+
+/** Runner configuration whose workspace root is resolved for one Session. */
+export type ScopedConfig = Config & { workspaceRoot: string }
 
 /** One parsed prediction: the request text and the calls that would pre-compute it. */
 export interface SpeculationPlan {
@@ -207,7 +213,7 @@ export function matchesPrediction(predicted: string, actual: string): boolean {
  * @returns the overlay copy and the workspace file it mirrors.
  */
 function overlayWrite(
-  config: Config,
+  config: ScopedConfig,
   decision: Extract<SpeculationDecision, { action: 'redirect' }>,
 ): OverlayWrite {
   const suffix = relative(resolve(config.overlayRoot), decision.redirectPath)
@@ -312,7 +318,7 @@ interface SessionState {
  */
 export async function executePlan(
   ctx: Context,
-  config: Config,
+  config: ScopedConfig,
   plan: SpeculationPlan,
   callPrefix: string,
   signal: AbortSignal,
@@ -376,7 +382,7 @@ async function abandon(ctx: Context, run: ActiveRun): Promise<void> {
  */
 async function runPrediction(
   ctx: Context,
-  config: Config,
+  config: ScopedConfig,
   session: Session,
   run: ActiveRun,
   excerpt: TurnExcerpt,
@@ -434,8 +440,48 @@ async function settle(
 /** Plugin name used by loader diagnostics. */
 export const name = 'speculation'
 
-/** Services the runner reads. */
+/** Services the runner reads. `workingDirectory` is optional: a configured root wins over it. */
 export const inject = ['llm', 'tools', 'fs']
+
+/**
+ * Reject an overlay root that a workspace root contains.
+ * @param workspaceRoot - absolute workspace root.
+ * @param overlayRoot - absolute overlay root.
+ * @returns whether the overlay lives outside the workspace.
+ */
+function overlayOutside(workspaceRoot: string, overlayRoot: string): boolean {
+  const inside = relative(resolve(workspaceRoot), resolve(overlayRoot))
+  return inside.startsWith('..') || isAbsolute(inside)
+}
+
+/**
+ * Resolve the workspace root a prediction runs against.
+ *
+ * A configured root pins every Session to one workspace. Otherwise the root is
+ * the Session's own working directory, so one deployment serves Sessions from
+ * any workspace. A root the policy cannot map is skipped with a warning instead
+ * of failing the Session's turn.
+ * @param ctx - context that may provide the working-directory service.
+ * @param config - validated runner configuration.
+ * @param session - Session whose prediction is starting.
+ * @returns the configuration carrying one workspace root, or undefined when the prediction must be skipped.
+ */
+function scopedConfig(ctx: Context, config: Config, session: Session): ScopedConfig | undefined {
+  const workspaceRoot = config.workspaceRoot ?? ctx.get('workingDirectory')?.get(session)
+  if (workspaceRoot === undefined) {
+    ctx.logger.warn('speculation: no workspace root for this Session; skipping the prediction')
+    return undefined
+  }
+  if (!isAbsolute(workspaceRoot)) {
+    ctx.logger.warn(`speculation: workspace root ${workspaceRoot} is not absolute; skipping the prediction`)
+    return undefined
+  }
+  if (!overlayOutside(workspaceRoot, config.overlayRoot)) {
+    ctx.logger.warn(`speculation: overlay ${config.overlayRoot} lives inside ${workspaceRoot}; skipping the prediction`)
+    return undefined
+  }
+  return { ...config, workspaceRoot }
+}
 
 /**
  * Mount the speculation runner.
@@ -447,12 +493,12 @@ export function apply(ctx: Context, config: Config): void {
   if (config.provider === undefined || config.model === undefined) {
     throw new Error('speculation: provider and model must be configured together')
   }
-  for (const [key, root] of [['workspaceRoot', config.workspaceRoot], ['overlayRoot', config.overlayRoot]] as const) {
-    if (!isAbsolute(root)) throw new Error(`speculation: ${key} must be an absolute path`)
-  }
-  const inside = relative(resolve(config.workspaceRoot), resolve(config.overlayRoot))
-  if (!inside.startsWith('..') && !isAbsolute(inside)) {
-    throw new Error('speculation: overlayRoot must live outside workspaceRoot')
+  if (!isAbsolute(config.overlayRoot)) throw new Error('speculation: overlayRoot must be an absolute path')
+  if (config.workspaceRoot !== undefined) {
+    if (!isAbsolute(config.workspaceRoot)) throw new Error('speculation: workspaceRoot must be an absolute path')
+    if (!overlayOutside(config.workspaceRoot, config.overlayRoot)) {
+      throw new Error('speculation: overlayRoot must live outside workspaceRoot')
+    }
   }
   const states = new WeakMap<Session, SessionState>()
   const runs = new Set<ActiveRun>()
@@ -474,6 +520,8 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   const start = (session: Session, state: SessionState, excerpt: TurnExcerpt, turn: number): void => {
+    const scoped = scopedConfig(ctx, config, session)
+    if (scoped === undefined) return
     const run: ActiveRun = {
       turn,
       controller: new AbortController(),
@@ -482,7 +530,7 @@ export function apply(ctx: Context, config: Config): void {
     }
     state.run = run
     runs.add(run)
-    void runPrediction(ctx, config, session, run, excerpt).finally(() => { runs.delete(run) })
+    void runPrediction(ctx, scoped, session, run, excerpt).finally(() => { runs.delete(run) })
   }
 
   ctx.on('session/event', (session, event) => {

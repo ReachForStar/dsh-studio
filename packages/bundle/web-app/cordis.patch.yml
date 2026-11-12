@@ -675,12 +675,12 @@
 
     # 推测执行运行方：预测下一请求并预执行只读调用，写操作落 overlay。
     # 它必须同时拿到 `provider` 与 `model`，所以默认关闭；在 profile patch 里
-    # 按 id 覆盖这两项并去掉 `disabled` 即启用。
+    # 按 id 覆盖这两项并去掉 `disabled` 即启用。不给 `workspaceRoot` 时按每个
+    # 会话自己的工作目录预测，一份部署因此可以服务任意工作区。
     - id: speculation
       name: '@deepseek-ai/dsh-speculation/runner'
       disabled: true
       config:
-        workspaceRoot: !!js process.cwd()
         overlayRoot: !!js dshHomePath('speculation')
 
     # Arena 多模型对比：每模型一个 worktree 与一个会话，按需应用胜者 diff。

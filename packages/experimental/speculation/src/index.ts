@@ -46,9 +46,21 @@ export type SpeculationDecision =
   }
 
 /** Speculation policy configuration. */
-export interface Config {
+export interface Config extends SessionRootConfig {
   /** Absolute workspace root whose files the overlay mirrors. */
   workspaceRoot: string
+}
+
+/**
+ * Speculation policy whose workspace root the caller resolves.
+ *
+ * The runner resolves one root per Session, because one deployment serves
+ * Sessions from many workspaces; a composition that pins a single root sets
+ * {@link Config.workspaceRoot} instead.
+ */
+export interface SessionRootConfig {
+  /** Absolute workspace root; omitted when the caller resolves one per Session. */
+  workspaceRoot?: string
   /** Absolute overlay root that receives speculative writes. */
   overlayRoot: string
   /**
@@ -65,13 +77,24 @@ export interface Config {
   pathArgumentKeys?: string[]
 }
 
-export const Config: z<Config> = z.object({
-  workspaceRoot: z.string().required(),
+/** Policy fields both schemas share, so the root stays the only difference. */
+const policyFields = {
   overlayRoot: z.string().required(),
   allowWrites: z.boolean().default(false),
   readOnlyTools: z.array(z.string()),
   writeTools: z.array(z.string()),
   pathArgumentKeys: z.array(z.string()),
+}
+
+export const Config: z<Config> = z.object({
+  workspaceRoot: z.string().required(),
+  ...policyFields,
+})
+
+/** Loader schema for a policy whose workspace root is resolved per Session. */
+export const SessionRootPolicy: z<SessionRootConfig> = z.object({
+  workspaceRoot: z.string(),
+  ...policyFields,
 })
 
 /** Built-in read-only tool names of the default tool set. */
@@ -99,7 +122,7 @@ export const BOUNDARY_TOOLS: readonly string[] = [
  * @param config - user configuration.
  * @returns normalized tool and path-key lists.
  */
-export function resolvePolicy(config: Config): {
+export function resolvePolicy(config: SessionRootConfig): {
   readOnlyTools: readonly string[]
   writeTools: readonly string[]
   pathArgumentKeys: readonly string[]

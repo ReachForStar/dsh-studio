@@ -29,13 +29,12 @@ A speculation runner calls `gateToolCall` for each predicted call, applies `rewr
 
 ### Mount the shipped runner
 
-`@deepseek-ai/dsh-speculation/runner` is a Cordis plugin: after every completed turn it asks one auxiliary route for the most likely next request and the calls that would pre-compute it, gates the plan, and executes it. It requires the `llm`, `tools`, and `fs` services.
+`@deepseek-ai/dsh-speculation/runner` is a Cordis plugin: after every completed turn it asks one auxiliary route for the most likely next request and the calls that would pre-compute it, gates the plan, and executes it. It requires the `llm`, `tools`, and `fs` services, and reads `workingDirectory` when the policy leaves the root to the Session.
 
 ```yaml
 - id: speculation
   name: '@deepseek-ai/dsh-speculation/runner'
   config:
-    workspaceRoot: /work/repo
     overlayRoot: /work/.speculation
     allowWrites: true
     provider: deepseek
@@ -46,8 +45,8 @@ When the user's next message normalizes to the predicted request and `allowWrite
 
 ### Configuration
 
-- `workspaceRoot` — absolute workspace root the overlay mirrors.
-- `overlayRoot` — absolute overlay root that receives speculative writes; it must live outside `workspaceRoot`.
+- `overlayRoot` — absolute overlay root that receives speculative writes; it must live outside the workspace root in use.
+- `workspaceRoot` — optional absolute root that pins every Session to one workspace. Omitted, each Session predicts against its own working directory, so one deployment serves Sessions from any workspace. A Session whose root is missing, relative, or contains `overlayRoot` skips prediction with a warning instead of failing its turn.
 - `allowWrites` — whether writers may redirect into the overlay. Defaults to `false`: without an explicit opt-in, no speculative write runs at all, and the runner does not offer write tools to the prediction.
 - `readOnlyTools` / `writeTools` — tool classification overrides; empty keeps the built-in sets.
 - `pathArgumentKeys` — argument keys carrying a filesystem path; empty keeps `file_path`, `path`, `directory`.

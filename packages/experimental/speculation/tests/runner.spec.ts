@@ -20,6 +20,7 @@ import {
   renderPlanInput,
   requestPlan,
   type Config,
+  type ScopedConfig,
 } from '../src/runner.ts'
 import type { OverlayWrite } from '../src/overlay.ts'
 
@@ -40,7 +41,7 @@ const LIMITS = {
   maxRequestChars: 200,
 }
 
-function config(overrides: Partial<Config> = {}): Config {
+function config(overrides: Partial<Config> = {}): ScopedConfig {
   return {
     workspaceRoot: ROOT,
     overlayRoot: OVERLAY,
@@ -53,7 +54,7 @@ function config(overrides: Partial<Config> = {}): Config {
 }
 
 /** A configuration missing one half of the auxiliary route. */
-function routeless(field: 'provider' | 'model'): Config {
+function routeless(field: 'provider' | 'model'): ScopedConfig {
   return {
     workspaceRoot: ROOT,
     overlayRoot: OVERLAY,
@@ -387,6 +388,10 @@ describe('apply', () => {
     outcomes?: (ToolBatchResult | Error)[]
     fs?: unknown
     llm?: unknown
+    /** Omit `workspaceRoot` so each Session's own directory applies. */
+    sessionRoots?: boolean
+    /** Stand-in for the working-directory service, keyed by Session. */
+    workingDirectory?: (session: Session) => string
   } = {}) {
     const ctx = new Context()
     contexts.push(ctx)
@@ -401,13 +406,19 @@ describe('apply', () => {
     } else {
       ctx.provide('tools', fakeTools(options.outcomes).service)
     }
+    if (options.workingDirectory !== undefined) {
+      ctx.provide('workingDirectory', { get: options.workingDirectory })
+    }
     await ctx.plugin(SessionStore)
     const session = ctx.sessions.create()
-    await ctx.plugin(Speculation, config({
-      workspaceRoot,
+    const base: Config = {
       overlayRoot,
       allowWrites: options.allowWrites ?? true,
-    }))
+      provider: 'mock',
+      model: 'mock-fast',
+      ...LIMITS,
+    }
+    await ctx.plugin(Speculation, options.sessionRoots === true ? base : { ...base, workspaceRoot })
     const proposals: { data: unknown }[] = []
     const outcomes: { data: unknown }[] = []
     ctx.on('session/event', (_session, event) => {
@@ -461,6 +472,69 @@ describe('apply', () => {
       content: [{ type: 'text', text: request }], source: { kind: 'user' },
     }), { surfaceOp: 'append' })
   }
+
+  it('resolves the workspace root from each Session working directory', async () => {
+    const sessionDir = join(root, 'session-workspace')
+    await mkdir(sessionDir, { recursive: true })
+    const target = join(sessionDir, 'a.txt')
+    const { ctx, session, proposals } = await mount({
+      sessionRoots: true,
+      workingDirectory: () => sessionDir,
+      plan: { request: 'rewrite a', steps: [{ tool: 'write', arguments: { file_path: target, content: 'predicted' } }] },
+    })
+    runTurn(session, 1, 'look at a', 'done')
+    await vi.waitFor(() => { expect(proposals).toHaveLength(1) }, { timeout: 5_000 })
+    // The absolute path sits inside the Session directory, so the gate maps it into the overlay.
+    expect(proposals[0]!.data).toMatchObject({ steps: [{ tool: 'write', status: 'overlay-write' }] })
+    expect(await readFile(join(overlayRoot, 'a.txt'), 'utf8')).toBe('predicted')
+    await ctx.fiber.dispose()
+  })
+
+  it('keeps a configured root authoritative over the Session directory', async () => {
+    const sessionDir = join(root, 'session-workspace')
+    await mkdir(sessionDir, { recursive: true })
+    const target = join(sessionDir, 'a.txt')
+    const { ctx, session, proposals } = await mount({
+      workingDirectory: () => sessionDir,
+      plan: { request: 'rewrite a', steps: [{ tool: 'write', arguments: { file_path: target, content: 'predicted' } }] },
+    })
+    runTurn(session, 1, 'look at a', 'done')
+    await vi.waitFor(() => { expect(proposals).toHaveLength(1) }, { timeout: 5_000 })
+    // The configured root is the deployment workspace, so this path is outside it.
+    expect(proposals[0]!.data).toMatchObject({ steps: [{ tool: 'write', status: 'boundary' }] })
+    await ctx.fiber.dispose()
+  })
+
+  it('skips a Session whose directory the policy cannot map', async () => {
+    const relative = 'not-absolute'
+    const { ctx, session, proposals } = await mount({
+      sessionRoots: true,
+      workingDirectory: () => relative,
+    })
+    runTurn(session, 1, 'look at a', 'done')
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(proposals).toHaveLength(0)
+    await ctx.fiber.dispose()
+  })
+
+  it('skips a Session when no working directory and no configured root exist', async () => {
+    const { ctx, session, proposals } = await mount({ sessionRoots: true })
+    runTurn(session, 1, 'look at a', 'done')
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(proposals).toHaveLength(0)
+    await ctx.fiber.dispose()
+  })
+
+  it('skips a Session whose directory contains the overlay', async () => {
+    const { ctx, session, proposals } = await mount({
+      sessionRoots: true,
+      workingDirectory: () => root,
+    })
+    runTurn(session, 1, 'look at a', 'done')
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(proposals).toHaveLength(0)
+    await ctx.fiber.dispose()
+  })
 
   it('predicts after a completed turn and commits an accepted write', async () => {
     await writeFile(join(workspaceRoot, 'a.txt'), 'original')

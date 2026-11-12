@@ -818,3 +818,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 实现要点：不使用已弃用的同步历史读取，改为在 `session/event` 投递中增量累积 `turn:step` 批次；`inFlight` 去重防重复投递；包名避开 `gen-tool-catalog` 的 `tool-*` 工具包约定。
 - 持久化记录 `2026-11-11-tool-summary` 一并覆盖了上一轮 memory-notes 的 `memory-notes` 来源种类（attribution-only）与本次 `tool-summary` 来源种类、`tool/batch-summary` 事件根，双向兼容说明见记录正文。
 - 验证：17 测试、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项、持久化检查 `ok: true`。
+
+## [2026-11-11] feat | followup 下一步建议（快模型第二件）
+
+- 新增 `packages/experimental/followup`：`turn/end` 后一次辅助模型请求，给出至多 `maxSuggestions` 条动作，写 log-only 的 `followup/suggestions` 事件；输入/输出/条数/字符/截止时间五重预算，失败只警告。
+- 关键点：`user/message` 事件不含 turn，按收到的 `turn/start` 归属；增量累积不读历史；`boundUtf8` 做码点安全截断。
+- 持久化记录 `2026-11-11-followup`：`followup/suggestions` 事件根（same-version allowed）与 `followup` 来源种类（双向兼容说明）。
+- 验证：20 测试、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项、持久化检查 `ok: true`。

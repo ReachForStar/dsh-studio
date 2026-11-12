@@ -1582,6 +1582,35 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-file-reference-local -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-followup -->
+<a id="deepseek-aidsh-followup"></a>
+
+## `@deepseek-ai/dsh-followup`
+
+- `inject`: `llm`
+- `source`: [`packages/experimental/followup/src/index.ts:54`](../packages/experimental/followup/src/index.ts)
+
+```ts config-catalog
+/** Auxiliary suggestion request configuration. */
+export interface Config {
+  /** Output-token cap for one suggestion request. */
+  maxOutputTokens: number
+  /** End-to-end auxiliary request deadline in milliseconds. */
+  timeoutMs: number
+  /** Maximum UTF-8 bytes in the prepared conversation excerpt. */
+  maxInputBytes: number
+  /** Maximum accepted suggestions per turn. */
+  maxSuggestions: number
+  /** Maximum characters in one accepted suggestion. */
+  maxSuggestionChars: number
+  /** Optional explicit provider route; must be paired with `model`. */
+  provider?: string
+  /** Optional explicit model id; must be paired with `provider`. */
+  model?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-followup -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-fs-local -->
 <a id="deepseek-aidsh-fs-local"></a>
 

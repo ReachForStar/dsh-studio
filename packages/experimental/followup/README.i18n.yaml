@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/followup/README.md
+/:
+  en: 4cfd4c4583d14084
+  zh: 6e8552276af4c800
+/deepseek-ai-dsh-followup:
+  en: 24304d29e57a1f73
+  zh: 70e4cba132986bb6
+/deepseek-ai-dsh-followup/summary:
+  en: a1da2f978a4da49a
+  zh: b3a39036fb51cc12
+/deepseek-ai-dsh-followup/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 725b47765ee8f30b
+/deepseek-ai-dsh-followup/use-this-package:
+  en: 20a990a0c0e5abcf
+  zh: d8b7c4447de4196d
+/deepseek-ai-dsh-followup/use-this-package/configuration:
+  en: 83741de2d2a373ec
+  zh: 83ed138c342b8d9a
+/deepseek-ai-dsh-followup/understand-the-implementation:
+  en: 339a51dca615236b
+  zh: 698c8da45502fa8b
+/deepseek-ai-dsh-followup/further-exploration:
+  en: cb39f2f920800d63
+  zh: 3b6c2e3431dc4cde
+/deepseek-ai-dsh-followup/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-followup/model-experience/follow-up-suggestions:
+  en: 39e1a2a76318273b
+  zh: 1f64db75d213874c
+/deepseek-ai-dsh-followup/model-experience/follow-up-suggestions/what-the-model-sees:
+  en: 882586e73ed57e55
+  zh: cbe035eab45e64b2
+/deepseek-ai-dsh-followup/model-experience/follow-up-suggestions/token-effect:
+  en: 8fa74782e9855a84
+  zh: 6ba5e98c3de0b3b6
+/deepseek-ai-dsh-followup/model-experience/follow-up-suggestions/kv-cache-effect:
+  en: 3dcd77a1cad66037
+  zh: 44dce56afdc80949
+/deepseek-ai-dsh-followup/known-limitations-and-deferred-work:
+  en: 1d1e61bf7b5b4b21
+  zh: 8b32dd45aafd1898
+/deepseek-ai-dsh-followup/known-limitations-and-deferred-work/dev-note:
+  en: bc6231bfd6a4e642
+  zh: 0c6b26fb462cce93

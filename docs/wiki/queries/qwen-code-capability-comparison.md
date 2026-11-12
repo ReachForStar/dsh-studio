@@ -71,7 +71,7 @@ qwen 有 `/context detail`（逐项列出每个内置工具、MCP 工具、上�
 
 同一份 `fastModel` 配置驱动三件事：
 
-- 推测执行：`packages/core/src/followup/{speculation.ts,overlayFs.ts,speculationToolGate.ts}`。建议一出现就用 fork 的 LlmChat 在后台跑，写操作重定向到写时复制 overlay 目录，读优先 overlay；用户接受则把 overlay 拷回真实文件系统（`overlayFs.ts` 头部注释与 `acceptSpeculation`）。工具门只在 `auto-edit` / `yolo` 审批模式下把写工具重定向到 overlay，默认与 plan 模式下一律 `boundary` 停止推测，注释里写明「推测执行绕过正常审批流程」。
+- 推测执行：`qwen-code 源码的 `followup/`/{speculation.ts,overlayFs.ts,speculationToolGate.ts}`。建议一出现就用 fork 的 LlmChat 在后台跑，写操作重定向到写时复制 overlay 目录，读优先 overlay；用户接受则把 overlay 拷回真实文件系统（`overlayFs.ts` 头部注释与 `acceptSpeculation`）。工具门只在 `auto-edit` / `yolo` 审批模式下把写工具重定向到 overlay，默认与 plan 模式下一律 `boundary` 停止推测，注释里写明「推测执行绕过正常审批流程」。
 - 下一步建议：`suggestionGenerator.ts`，回合结束给一条建议，回车接受、Tab 编辑后再发。
 - 工具批次摘要：批次结束后异步调快模型，输入工具名与截断到 300 字符的参数与结果，要求过去式、30 字符、git 提交标题风格标签，作为 `tool_use_summary` 记录（`docs/users/features/tool-use-summaries.md`）。
 

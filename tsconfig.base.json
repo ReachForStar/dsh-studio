@@ -501,6 +501,7 @@
       "@deepseek-ai/dsh-deque": ["./packages/util/deque/src"],
       "@deepseek-ai/dsh-file-reference": ["./packages/context/file-reference/src"],
       "@deepseek-ai/dsh-file-reference-local": ["./packages/context/file-reference-local/src"],
+      "@deepseek-ai/dsh-followup": ["./packages/experimental/followup/src"],
       "@deepseek-ai/dsh-fs": ["./packages/fs/fs/src"],
       "@deepseek-ai/dsh-fs-local": ["./packages/fs/fs-local/src"],
       "@deepseek-ai/dsh-fs-observation-policy": ["./packages/fs/fs-observation-policy/src"],

@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-11-11-followup.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-11-11-followup.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-11-11-followup:
+  en: 94202b590e647984
+  zh: b115c772dee71277
+/2026-11-11-followup/summary:
+  en: f0be866e8676cf8b
+  zh: 09d1c77ff320a7db
+/2026-11-11-followup/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-11-11-followup/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-11-11-followup/compatibility:
+  en: 5266499797c8d142
+  zh: 225512adc77d4ecb
+/2026-11-11-followup/verification:
+  en: 9dfe2ef3356f1356
+  zh: 366b38a657ca3e80
+/2026-11-11-followup/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

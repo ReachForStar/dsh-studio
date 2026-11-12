@@ -23,25 +23,25 @@ export type GitPanelProps = PropsRuntime<'conversation.view'> & PropsLocale<'ui-
 type TFunc = TranslateNS<'ui-polish'>
 
 /** The workspace path owning the current session, if any. */
-function workspacePathOf(sessionId: string | undefined, items: readonly WorkspaceView[]): string | undefined {
+export function workspacePathOf(sessionId: string | undefined, items: readonly WorkspaceView[]): string | undefined {
   if (sessionId === undefined) return undefined
   return items.find(item => item.sessionIds.includes(sessionId as never))?.path
 }
 
 /** Repository-relative basename (last path segment). */
-function basename(path: string): string {
+export function basename(path: string): string {
   const parts = path.split('/')
   return parts[parts.length - 1] ?? path
 }
 
 /** Directory portion of a repository-relative path (without the name). */
-function dirname(path: string): string {
+export function dirname(path: string): string {
   const parts = path.split('/')
   return parts.length <= 1 ? '' : parts.slice(0, -1).join('/')
 }
 
 /** ISO date → short local label. */
-function formatDate(iso: string): string {
+export function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString()
@@ -50,7 +50,7 @@ function formatDate(iso: string): string {
 /** Image extensions the diff drawer renders as pictures. */
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'])
 
-function isImagePath(path: string): boolean {
+export function isImagePath(path: string): boolean {
   const dot = path.lastIndexOf('.')
   return dot >= 0 && IMAGE_EXT.has(path.slice(dot + 1).toLowerCase())
 }
@@ -58,7 +58,7 @@ function isImagePath(path: string): boolean {
 // --- Unified diff parsing ---------------------------------------------------
 
 /** One visual diff row for the two-column renderer. */
-interface DiffRow {
+export interface DiffRow {
   kind: 'hunk' | 'ctx' | 'del' | 'add' | 'meta'
   text: string
   oldNo?: number
@@ -72,11 +72,11 @@ interface DiffRow {
  * @param text - the `git diff` output.
  * @returns the ordered visual rows.
  */
-function isConflictMarker(line: string): boolean {
+export function isConflictMarker(line: string): boolean {
   return line.includes('<<<<<<<') || line.includes('=======') || line.includes('>>>>>>>')
 }
 
-function parseUnifiedDiff(text: string): DiffRow[] {
+export function parseUnifiedDiff(text: string): DiffRow[] {
   const rows: DiffRow[] = []
   let oldCur = 0
   let newCur = 0
@@ -116,7 +116,7 @@ function parseUnifiedDiff(text: string): DiffRow[] {
 }
 
 /** Add/del counts for a file from its unified diff. */
-function diffCounts(rows: readonly DiffRow[]): { add: number; del: number } {
+export function diffCounts(rows: readonly DiffRow[]): { add: number; del: number } {
   let add = 0
   let del = 0
   for (const row of rows) {
@@ -129,7 +129,7 @@ function diffCounts(rows: readonly DiffRow[]): { add: number; del: number } {
 // --- Commit graph layout ----------------------------------------------------
 
 /** One positioned commit for the SVG graph. */
-interface GraphNode {
+export interface GraphNode {
   hash: string
   lane: number
   row: number
@@ -141,7 +141,7 @@ interface GraphNode {
  * @param commits - commits in log order (newest first).
  * @returns one node per commit.
  */
-function layoutGraph(commits: readonly GitCommit[]): GraphNode[] {
+export function layoutGraph(commits: readonly GitCommit[]): GraphNode[] {
   const laneByHash = new Map<string, number>()
   const nodes: GraphNode[] = []
   const MAX_LANES = 8
@@ -174,7 +174,7 @@ function layoutGraph(commits: readonly GitCommit[]): GraphNode[] {
 // --- Untracked directory tree ------------------------------------------------
 
 /** One node of the two-level untracked directory tree. */
-interface DirNode {
+export interface DirNode {
   dir: string
   files: readonly GitFile[]
   subdirs: readonly string[]
@@ -186,7 +186,7 @@ interface DirNode {
  * @param files - the untracked file list.
  * @returns the tree nodes (directories only).
  */
-function buildUntrackedTree(files: readonly GitFile[]): DirNode[] {
+export function buildUntrackedTree(files: readonly GitFile[]): DirNode[] {
   const byDir = new Map<string, GitFile[]>()
   for (const file of files) {
     const dir = dirname(file.path)
@@ -1165,7 +1165,7 @@ function FileRow({ file, onOpen, onStage, onUnstage, onDiscard, onDelete, t, bus
 }
 
 /** The status letter shown in the badge (the untracked letter is locale-owned). */
-function statusLetter(status: string, t: TFunc): string {
+export function statusLetter(status: string, t: TFunc): string {
   if (status === '??') return t('git.letterUntracked')
   const [index, worktree] = status
   if (index === 'U' || worktree === 'U') return t('git.letterUntracked')

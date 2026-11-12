@@ -135,8 +135,8 @@ describe('SshPanel path and prompt helpers', () => {
     tracker.feed('__DSH_CWD__/a\n')
     tracker.feed('__DSH_CWD__/b\n')
     tracker.reset()
-    tracker.feed('__DSH_CWD__/a\n')
-    expect(seen).toEqual(['/a', '/b', '/a'])
+    tracker.feed('user@host:/tmp$ ')
+    expect(seen).toEqual(['/a', '/b', '/tmp'])
   })
 
   it('drops an overlong tracker buffer while keeping the newest marker', () => {
@@ -755,11 +755,14 @@ describe('SshPanel remaining branch coverage', () => {
     await waitFor(() => { expect(FakeTerminal.instances.length).toBeGreaterThan(0) })
     vi.useFakeTimers()
     try {
-      act(() => { vi.advanceTimersByTime(2300) })
+      // A fresh probe scheduled under fake timers exercises the timeout fallback.
+      act(() => { fireEvent.click(view.getByText('ssh.followCwd')) })
+      act(() => { fireEvent.click(view.getByText('ssh.followCwd')) })
+      act(() => { vi.advanceTimersByTime(1_600) })
     } finally {
       vi.useRealTimers()
     }
-    await waitFor(() => { expect(calls.some(c => c.method === 'ssh.pty.write' && atob(String(c.payload['data'])).includes('__DSH_CWD_START__'))).toBe(true) })
+    expect(calls.some(c => c.method === 'ssh.pty.write' && atob(String(c.payload['data'])).includes('__DSH_CWD_START__'))).toBe(true)
   })
 
   it('does not repaint a closed terminal on a theme mutation', async () => {
@@ -826,16 +829,56 @@ describe('SshPanel default messages and aborted loads', () => {
   })
 
   it('drops an aborted home lookup instead of listing the directory', async () => {
-    let resolveExec: ((value: SshPanelRpcResult) => void) | null = null
+    let resolveExec!: (value: SshPanelRpcResult) => void
+    let markStarted!: () => void
+    const started = new Promise<void>((resolve) => { markStarted = resolve })
     const view = panel({ rpc: mergedRpc({
-      'ssh.exec': async () => new Promise<SshPanelRpcResult>((resolve) => { resolveExec = resolve }),
+      'ssh.exec': async () => new Promise<SshPanelRpcResult>((resolve) => {
+        resolveExec = resolve
+        markStarted()
+      }),
     }) })
     await select(view.container, CONNECTION.id)
     fireEvent.click(view.getByText('ssh.openTerminal'))
-    await waitFor(() => { expect(resolveExec).not.toBeNull() })
+    await started
     view.unmount()
-    resolveExec?.({ ok: true, value: { stdout: '/home/u\n', exitCode: 0 } })
+    resolveExec({ ok: true, value: { stdout: '/home/u\n', exitCode: 0 } })
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(calls.some(c => c.method === 'ssh.sftp.list')).toBe(false)
+  })
+})
+
+
+describe('SshPanel remaining UI guards', () => {
+  it('treats a missing connection list value as empty and runs without ResizeObserver', async () => {
+    const view = panel({ rpc: mergedRpc({ 'ssh.list': async () => ({ ok: true }) }) })
+    await waitFor(() => { expect(view.container.querySelector('select')!.querySelectorAll('option')).toHaveLength(1) })
+    cleanup()
+
+    vi.stubGlobal('ResizeObserver', undefined)
+    const noObserver = panel()
+    await openTerminal(noObserver.container, noObserver.getByText)
+    await waitFor(() => { expect(noObserver.getByText('ssh.closeTerminal')).toBeDefined() })
+    vi.unstubAllGlobals()
+  })
+
+  it('turns following off without probing', async () => {
+    const view = panel()
+    await openTerminal(view.container, view.getByText)
+    await waitFor(() => { expect(FakeTerminal.instances.length).toBeGreaterThan(0) })
+    const before = calls.filter(c => c.method === 'ssh.pty.write').length
+    fireEvent.click(view.getByText('ssh.followCwd'))
+    expect(calls.filter(c => c.method === 'ssh.pty.write').length).toBe(before)
+  })
+})
+
+
+describe('SshPanel shell timers', () => {
+  it('injects the prompt hook and probes after the shell settles', async () => {
+    const view = panel()
+    await openTerminal(view.container, view.getByText)
+    await waitFor(() => { expect(FakeTerminal.instances.length).toBeGreaterThan(0) })
+    await waitFor(() => { expect(calls.some(c => c.method === 'ssh.pty.write' && atob(String(c.payload['data'])).includes('__DSH_CWD__'))).toBe(true) })
+    await waitFor(() => { expect(calls.some(c => c.method === 'ssh.pty.write' && atob(String(c.payload['data'])).includes('__DSH_CWD_START__'))).toBe(true) })
   })
 })

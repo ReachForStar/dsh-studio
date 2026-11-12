@@ -3091,6 +3091,9 @@ importers:
       '@deepseek-ai/dsh-agent-instructions':
         specifier: workspace:*
         version: link:../../context/agent-instructions
+      '@deepseek-ai/dsh-agent-plugins':
+        specifier: workspace:*
+        version: link:../../experimental/agent-plugins
       '@deepseek-ai/dsh-agent-preset':
         specifier: workspace:*
         version: link:../../preset/agent-preset
@@ -3124,6 +3127,9 @@ importers:
       '@deepseek-ai/dsh-app-boot':
         specifier: workspace:*
         version: link:../../boot/app-boot
+      '@deepseek-ai/dsh-arena':
+        specifier: workspace:*
+        version: link:../../experimental/arena
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:*
         version: link:../../client/connection
@@ -3352,6 +3358,9 @@ importers:
       '@deepseek-ai/dsh-file-reference-local':
         specifier: workspace:*
         version: link:../../context/file-reference-local
+      '@deepseek-ai/dsh-followup':
+        specifier: workspace:*
+        version: link:../../experimental/followup
       '@deepseek-ai/dsh-harness-dev-context':
         specifier: workspace:*
         version: link:../../context/harness-dev-context
@@ -3385,6 +3394,9 @@ importers:
       '@deepseek-ai/dsh-mcp-manager':
         specifier: workspace:*
         version: link:../../mcp/mcp-manager
+      '@deepseek-ai/dsh-memory-notes':
+        specifier: workspace:*
+        version: link:../../context/memory-notes
       '@deepseek-ai/dsh-message-feedback':
         specifier: workspace:*
         version: link:../../feedback/message-feedback
@@ -3427,6 +3439,12 @@ importers:
       '@deepseek-ai/dsh-skill-office':
         specifier: workspace:*
         version: link:../../skill/skill-office
+      '@deepseek-ai/dsh-speculation':
+        specifier: workspace:*
+        version: link:../../experimental/speculation
+      '@deepseek-ai/dsh-step-summary':
+        specifier: workspace:*
+        version: link:../../experimental/step-summary
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:*
         version: link:../../subprocess/subprocess
@@ -3481,6 +3499,9 @@ importers:
       '@deepseek-ai/dsh-tool-schedule':
         specifier: workspace:*
         version: link:../../schedule/tool-schedule
+      '@deepseek-ai/dsh-tool-search':
+        specifier: workspace:*
+        version: link:../../experimental/tool-search
       '@deepseek-ai/dsh-tool-skill':
         specifier: workspace:*
         version: link:../../skill/tool-skill
@@ -3505,6 +3526,9 @@ importers:
       '@deepseek-ai/dsh-web-frontend':
         specifier: workspace:*
         version: link:../../../apps/web
+      '@deepseek-ai/dsh-webhook':
+        specifier: workspace:*
+        version: link:../../experimental/webhook
       '@deepseek-ai/dsh-workflow-ptc':
         specifier: workspace:*
         version: link:../../workflow/workflow-ptc

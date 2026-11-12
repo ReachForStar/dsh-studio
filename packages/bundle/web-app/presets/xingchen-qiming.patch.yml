@@ -218,6 +218,21 @@
                   subagentProvider: spawn
                   maxRounds: 64
 
+          # ── 从 qwen-code 吸收的智能体层能力 ──────────────────────────────
+          # 工具检索：在工具目录过长时先给模型一个短目录，再按需 `tool_search`。
+          - id: tool-search
+            name: '@deepseek-ai/dsh-tool-search'
+          # 记忆注入：项目根 `MEMORY.md` 与 `<dsh home>/memory/MEMORY.md`
+          # 作为每步的上下文进入模型可见内容；无文件时不注入。
+          - id: memory-notes
+            name: '@deepseek-ai/dsh-memory-notes'
+          # 工具批次摘要与下一步建议：两条辅助模型调用。不写 provider/model
+          # 时沿用会话自己的路由，需要指定时在 profile patch 里按 id 覆盖。
+          - id: tool-summary
+            name: '@deepseek-ai/dsh-step-summary'
+          - id: followup
+            name: '@deepseek-ai/dsh-followup'
+
           # ── remaining model-facing rows ───────────────────────────────────
           - id: tool-ask-user
             name: '@deepseek-ai/dsh-tool-ask-user'

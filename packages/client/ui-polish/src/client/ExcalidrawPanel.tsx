@@ -141,6 +141,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
 
   // Load the workspace scene once the imperative API is ready.
   const loadScene = useCallback((api: ExcalidrawImperativeAPI): void => {
+    /* v8 ignore next -- the canvas mounts only under a resolved workspace, so every load carries cwd */
     if (cwd === undefined) return
     fetch('/scene/current', {
       method: 'POST',
@@ -171,6 +172,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
   const handleApi = useCallback((api: ExcalidrawImperativeAPI): void => {
     apiRef.current = api
     setApiReady(true)
+    /* v8 ignore next -- Excalidraw announces its API once on mount, after the workspace resolved */
     if (!loadedOnce.current && cwd !== undefined) {
       loadedOnce.current = true
       loadScene(api)
@@ -179,6 +181,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
 
   // Persist change notifications back to the workspace scene file (debounced).
   const handleChange = useCallback((elements: readonly unknown[], appState: object): void => {
+    /* v8 ignore next -- change notifications only reach a canvas mounted under a resolved workspace */
     if (cwd === undefined) return
     const scene: ScenePayload = { elements: [...elements], appState: sanitizeAppState(appState) }
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current)
@@ -195,6 +198,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
           // The file now matches the canvas; remember it so the poll loop does
           // not treat this self-save as a model-driven change.
           const fingerprint = sceneFingerprint(scene)
+          /* v8 ignore next -- the saved scene always carries an element array, so its fingerprint exists */
           if (fingerprint !== null) lastAppliedFingerprint.current = fingerprint
         })
         .catch((e: unknown) => { setError(e instanceof Error ? e.message : String(e)) })
@@ -260,6 +264,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
       setError(t('excalidraw.canvasNotReady'))
       return
     }
+    /* v8 ignore next -- the button is disabled whenever an export is already running */
     if (exporting) return
     setExporting(true)
     setError(null)
@@ -301,6 +306,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
       setError(t('excalidraw.canvasNotReady'))
       return
     }
+    /* v8 ignore next -- the button is disabled whenever an export is already running */
     if (exporting) return
     setExporting(true)
     setError(null)

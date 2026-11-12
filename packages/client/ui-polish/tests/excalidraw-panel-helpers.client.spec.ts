@@ -26,6 +26,11 @@ describe('sanitizeAppState', () => {
       name: 'scene',
     })
   })
+
+  it('drops persisted keys that carry a Map or a Set', () => {
+    expect(sanitizeAppState({ gridSize: new Map([['a', 1]]), scrollX: new Set([1]), zoom: { value: 2 } }))
+      .toEqual({ zoom: { value: 2 } })
+  })
 })
 
 describe('sceneFingerprint', () => {

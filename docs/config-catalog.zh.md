@@ -2544,6 +2544,30 @@ export interface McpManagedServerEntry {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mcp-manager -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-memory-notes -->
+<a id="deepseek-aidsh-memory-notes"></a>
+
+## `@deepseek-ai/dsh-memory-notes`
+
+- `inject`: `agents` · `workingDirectory`
+- `source`: [`packages/context/memory-notes/src/config.ts:16`](../packages/context/memory-notes/src/config.ts)
+
+```ts config-catalog
+/** User-facing memory note configuration. */
+export interface Config {
+  /** Directory entries that identify the project root while walking upward from the current working directory. */
+  projectRootMarkers?: string[]
+  /** File names, in priority order, loaded from the user memory directory and the project root. */
+  memoryFileNames?: string[]
+  /**
+   * Hard cap, in text characters, on the complete injected note. Larger notes
+   * are truncated with a marker; non-positive disables injection.
+   */
+  maxChars?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-memory-notes -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-message-feedback -->
 <a id="deepseek-aidsh-message-feedback"></a>
 

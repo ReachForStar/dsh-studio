@@ -804,3 +804,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 投影 stateVersion 6→8（7 是半小时内的一次中间状态）：旧 checkpoint 按投影缓存版本机制自动丢弃并全量重放，无需迁移层。
 - 验证：token-meter 138 个测试、逐文件覆盖率 100%（语句 499/499）；`doc-sync` 42 项通过；仅剩的 export jsdoc 红项来自并行 ui-polish 改动。
 - 阻塞说明更新：会话/投影格式类改动在仓库里由 stateVersion/格式代际机制而非自研兼容层解决，验证成本主要是测试与断言同步。
+
+## [2026-11-11] feat | memory-notes 记忆注入包
+
+- 新增 `packages/context/memory-notes`：`MEMORY.md` 用户/项目双层记忆，`agent/pre-step` 每次重读注入（无投影状态、幂等替换、删除移除），共享 `maxChars` 预算与截断标记；attribution-only `memory-notes` source kind（无需格式代际）。
+- 核心逻辑抽为纯函数 `applyPreStepMemory`，瀑布接线仅一行委托；`agent/pre-step` 派发要求插件 ctx 与 agent 载体同 harness ctx（排查记录在实体页）。
+- 验证：21 测试、src 逐文件 100% 全维度覆盖、lint、聚合 typecheck、doc-sync 43 项全部通过；生成物重新生成（tsconfig paths、config-catalog、event-producer-consumer、plugin-packages、translation-pairing）。
+- 未实现（对照 qwen 记忆层）：自动提取、后台清理、逐条预算折叠、`pinned/`、团队记忆。

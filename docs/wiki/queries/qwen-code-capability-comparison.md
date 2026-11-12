@@ -21,7 +21,7 @@ qwen-code 源码在 `tmp/qwen-code`（main 分支 `6a999b20b7`）。对照本 fo
 | Agent Plugins v1 加载面 | 已实现 | `packages/experimental/agent-plugins`（[实体页](../entities/agent-plugins.md)） |
 | 工具检索（qwen `tool-search.ts`） | 已实现 | `packages/experimental/tool-search`（[实体页](../entities/tool-search.md)） |
 | Arena 前置：worktree 脏状态镜像 | 已实现 | `packages/experimental/worktree` 的 `mirrorUncommitted` 与 `mirrorMaxFileBytes` |
-| 上下文成本逐项 / idle cost | 部分实现 | `contextBreakdown` 增加 `idleCostTokens` 与逐工具 `tools`（提交 `95986ca3ea`）；文件/技能条目级与 `/context detail` 展示未做 |
+| 上下文成本逐项 / idle cost | 部分实现 | `contextBreakdown` 增加 `idleCostTokens` 与逐工具 `tools`（见 [tool-search 实体页](../entities/tool-search.md) 的待确认小节）；文件/技能条目级与 `/context detail` 展示未做 |
 | 快模型三件套 | 未实现 | 新增 fastModel 配置；摘要与建议需要新的展示数据通道 |
 | 记忆层 | 未实现 | 注入需可重建的上下文来源，提取走后台 subagent |
 | 通道运行时 | 未实现 | 需要把 `webhook` 泛化并新增活跃会话投递接缝 |

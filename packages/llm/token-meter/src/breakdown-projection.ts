@@ -23,6 +23,7 @@ const breakdownSchema = z.object({
   systemTokens: tokenCount,
   toolsTokens: tokenCount,
   messageTokens: tokenCount,
+  idleCostTokens: tokenCount,
 }).strict()
 
 /** One surviving `system/message` node and its heuristic price. */
@@ -121,7 +122,7 @@ function withTotals(state: ContextBreakdownState, totals: SurfaceTotals): Contex
   const messageTokens = Math.max(0, surfaceTokens - systemTokens)
   const breakdown = systemTokens === state.breakdown.systemTokens && messageTokens === state.breakdown.messageTokens
     ? state.breakdown
-    : { systemTokens, toolsTokens: state.breakdown.toolsTokens, messageTokens }
+    : { systemTokens, toolsTokens: state.breakdown.toolsTokens, messageTokens, idleCostTokens: systemTokens + messageTokens }
   return { ...state, systems: totals.systems, surfaceTokens, breakdown }
 }
 
@@ -140,15 +141,18 @@ function withoutClaim(state: ContextBreakdownState): ContextBreakdownState {
  * `shadowedSeqs` also name the system prompts it removes, and a system-prompt
  * rewrite subtracts the retained price of the system node it replaces. Tools
  * are priced from the latest request header. No route pricing applies.
+ * `idleCostTokens` joins the view as `systemTokens + messageTokens`: the cost
+ * of one empty request, independent of the model and the window. State version
+ * 7 drops version-6 checkpoints and refolds them from the log.
  */
 export const contextBreakdownProjectionDefinition = {
   key: 'contextBreakdown',
-  stateVersion: 6,
+  stateVersion: 7,
   stateSchema: contextBreakdownStateSchema,
   init: (): ContextBreakdownState => ({
     systems: [],
     surfaceTokens: 0,
-    breakdown: { systemTokens: 0, toolsTokens: 0, messageTokens: 0 },
+    breakdown: { systemTokens: 0, toolsTokens: 0, messageTokens: 0, idleCostTokens: 0 },
   }),
   apply: (state, event) => {
     if (event.type === 'compaction/summary' || event.type === 'compaction/prune') {

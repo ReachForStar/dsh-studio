@@ -896,3 +896,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 根因：这些包只有源码、单测与文档，`packages/bundle/base|cordis.patch.yml`、`packages/bundle/web-app/**`、预设与 `OPTIONAL_BUNDLES` 里都没有对应行；包名全仓只出现在 `tsconfig.base.json` 的编译路径。
 - 接线：星域预设加 `tool-search`/`memory-notes`/`tool-summary`/`followup`；宿主层加 `agent-plugins`/`arena`/`webhook`/`speculation`（`speculation` 默认 `disabled`，因 `provider` 与 `model` 必须成对且默认无值）；web-app `package.json` 补 8 条 workspace 依赖。
 - 验证：`--dump-config` 含全部 8 行；宿主启动无 `entry did not activate`；`agentPresets/list` 全部 `broken` 为空；`verify-cordis-config` 未新增红项。
+
+## [2026-11-12] feat | 启用 speculation 推测执行
+
+- 在 `~/.dsh/profiles/web/cordis.patch.yml` 按 id 覆盖 `speculation`：`disabled: false`，`provider: magpie`、`model: officeace/deepseek-v4.1-flash`（与 `agent-default-model` 同值），`workspaceRoot: !!js process.cwd()`、`overlayRoot: !!js dshHomePath('speculation')`，写入保持关闭。
+- 验证：插件清单 `include:speculation` 为 `active`；真实会话一轮后日志出现 `speculation/proposal`，预测内容与步骤状态符合门控设计。
+- 记录于 [speculation](entities/speculation.md) 的启用小节。

@@ -44,6 +44,28 @@ qwen 的门控含 shell 命令 AST 安全分类与审批模式枚举；dsh 目�
 
 55 个测试（门控纯逻辑 18 个 + overlay 代理 11 个，后者用真实临时目录与 `dsh-fs-local`；运行方 26 个，覆盖预测解析、计划执行、提交/丢弃、在途中止与失败告警），src 逐文件 100%（语句 264/264、分支 139/139、函数 58/58、行 226/226）；`pnpm run typecheck`、本包 lint、`jscpd` 0 克隆、`doc-sync` 43 项通过。新增 `speculation/proposal`、`speculation/outcome` 两个 log-only 事件与 `dsh-speculation` 来源种类，持久化记录为 `2026-11-12-speculation`（same-version）。
 
+## 启用记录（2026-11-12）
+
+出厂组合里该行默认 `disabled: true`（缺 `provider`/`model` 会加载期抛 `speculation: provider and model must be configured together`）。启用写在 `~/.dsh/profiles/web/cordis.patch.yml`（改写前已备份为同目录 `cordis.patch.yml.bak-*-speculation`）：
+
+```yaml
+- id: speculation
+  name: '@deepseek-ai/dsh-speculation/runner'
+  disabled: false
+  config:
+    workspaceRoot: !!js process.cwd()
+    overlayRoot: !!js dshHomePath('speculation')
+    allowWrites: false
+    provider: magpie
+    model: officeace/deepseek-v4.1-flash
+```
+
+- `provider`/`model` 取 profile patch 里 `agent-default-model` 的同一组值（`magpie` + `officeace/deepseek-v4.1-flash`）。
+- `workspaceRoot` 用 `process.cwd()`：门控按这个根解析相对路径，落在根外的路径一律 boundary。启动目录换了，可推测的范围也跟着变；要让某个工作区生效，把这项改成该工作区绝对路径。
+- `allowWrites` 保持 `false`：推测期不执行任何写入。
+
+验证：插件清单里 `include:speculation` 为 `enabled: true` / `active`；在 Web 会话里跑一轮真实对话后，会话日志（`session.v5.jsonl.zstd`）出现 `speculation/proposal`——预测请求是「读一下 …README.md 的完整内容」，步骤 `read` 记为 `failed`（预测期不带 Agent 派发，需要审批或越界的调用直接失败，符合设计）。
+
 ## 待确认
 
 - 提交缺少版本冲突检测：`commitOverlay` 直接覆盖工作区文件，不比较 overlay 副本起始版本。

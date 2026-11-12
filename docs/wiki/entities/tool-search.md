@@ -40,4 +40,4 @@ status: active
 ## 待确认
 
 - 是否在官方 bundle 默认挂载，以及默认 `maxResults` 是否应按 profile 调整。
-- 逐项上下文成本分解（qwen 的 `/context detail` 与 `idle cost`）尚未实现；现有 `contextBreakdown` 仍只有 system/tools/message 三分类。
+- 逐项上下文成本：`contextBreakdown` 已含 `idleCostTokens`（空请求成本）与 `tools`（最新请求逐工具 schema 估算）；`/context detail` 式的文件与技能条目逐项尚未实现。

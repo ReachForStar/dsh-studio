@@ -797,3 +797,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `create_worktree` 工具暴露同名布尔参数并更新描述。
 - 验证：worktree 包 56 个测试、逐文件覆盖率 100%（语句 175/175）；tool-worktree 测试通过；`doc-sync` 的 tool-catalog、config-catalog、双语配对、README 模型体验门通过。
 - 既有环境问题：`worktree.spec.ts` 与 `checkout-safety.spec.ts` 中 restore 相关用例在 5 秒默认超时下失败，`git stash` 掉本包改动后同样失败，属本机 git 耗时而非本次改动；加 `--testTimeout=30000` 后全绿。
+
+## [2026-11-11] feat | token-meter 逐工具与空闲成本
+
+- `ContextBreakdownProjection` 增加 `idleCostTokens`（= system + message，空请求成本，与模型和窗口无关）与 `tools`（最新请求 header 的逐工具 schema 估算，单位 `estimateToolTokens`）。
+- 投影 stateVersion 6→8（7 是半小时内的一次中间状态）：旧 checkpoint 按投影缓存版本机制自动丢弃并全量重放，无需迁移层。
+- 验证：token-meter 138 个测试、逐文件覆盖率 100%（语句 499/499）；`doc-sync` 42 项通过；仅剩的 export jsdoc 红项来自并行 ui-polish 改动。
+- 阻塞说明更新：会话/投影格式类改动在仓库里由 stateVersion/格式代际机制而非自研兼容层解决，验证成本主要是测试与断言同步。

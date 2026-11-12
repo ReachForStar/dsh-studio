@@ -100,3 +100,12 @@ export function estimateToolsTokens(header: EpochHeader | undefined): number {
   if (header?.tools === undefined || header.tools.length === 0) return 0
   return Math.ceil(JSON.stringify(header.tools).length / CHARS_PER_TOKEN) + BLOCK_OVERHEAD
 }
+
+/**
+ * Estimate one tool schema's contribution to a request envelope.
+ * @param tool - one declared tool.
+ * @returns the heuristic token count of its JSON serialization.
+ */
+export function estimateToolTokens(tool: { name: string; description: string }): number {
+  return Math.ceil(JSON.stringify(tool).length / CHARS_PER_TOKEN)
+}

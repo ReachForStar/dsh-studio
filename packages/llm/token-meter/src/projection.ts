@@ -72,6 +72,8 @@ export interface ContextBreakdownProjection {
    * same mass.
    */
   idleCostTokens: number
+  /** Per-tool schema estimates of the newest request envelope; empty before any request. */
+  tools: readonly { name: string; tokens: number }[]
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {

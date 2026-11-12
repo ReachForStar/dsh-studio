@@ -156,6 +156,7 @@ describe('request projection pricing', () => {
       toolsTokens: 0,
       messageTokens: estimateMessage(message),
       idleCostTokens: estimateMessage(message),
+      tools: [],
     })
     expect(breakdown?.messageTokens).not.toBe(measurement.surfaceTokens)
   })

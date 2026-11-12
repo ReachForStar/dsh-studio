@@ -17,6 +17,7 @@ import {
   estimateContent,
   estimateMessage,
   estimateSystemMessage,
+  estimateToolTokens,
   estimateToolsTokens,
 } from '../src/estimate.ts'
 
@@ -38,6 +39,8 @@ const TOOLS: ToolSchema[] = [{
   description: 'run a command',
   parameters: { type: 'object', properties: {} },
 }]
+
+const TOOL_ENTRIES = TOOLS.map(tool => ({ name: tool.name, tokens: estimateToolTokens(tool) }))
 
 const SYSTEM_SOURCE = { kind: 'system-prompt' } as const
 
@@ -105,7 +108,7 @@ function appendSummaryMeter(ctx: Context, session: Session, start: SessionSeqTyp
 describe('contextBreakdown session projection', () => {
   it('serves zeros for an empty log', async () => {
     const { ctx, session } = await harness()
-    expect(projected(ctx, session)).toEqual({ systemTokens: 0, toolsTokens: 0, messageTokens: 0, idleCostTokens: 0 })
+    expect(projected(ctx, session)).toEqual({ systemTokens: 0, toolsTokens: 0, messageTokens: 0, idleCostTokens: 0 , tools: [] })
   })
 
   it('prices the system node and the newest envelope last-wins and pushes no change for a restated envelope', async () => {
@@ -122,6 +125,7 @@ describe('contextBreakdown session projection', () => {
       toolsTokens: estimateToolsTokens({ config: CONFIG, tools: TOOLS }),
       messageTokens: 0,
       idleCostTokens: 8,
+      tools: TOOL_ENTRIES,
     })
 
     const changed: string[] = []
@@ -136,13 +140,13 @@ describe('contextBreakdown session projection', () => {
     // A tool-less envelope prices the tools figure back to zero and leaves
     // the system node's figure alone.
     session.append('request/header', { header: { config: CONFIG }, reason: 'change' })
-    expect(projected(ctx, session)).toEqual({ systemTokens: 8, toolsTokens: 0, messageTokens: 0, idleCostTokens: 8 })
+    expect(projected(ctx, session)).toEqual({ systemTokens: 8, toolsTokens: 0, messageTokens: 0, idleCostTokens: 8 , tools: [] })
 
     // Replacing node 0 follows the new prompt; an empty prompt records none.
     const longer = replaceSystem(session, systemNode, 'You are terse and answer in one line.')
     expect(projected(ctx, session).systemTokens).toBe(Math.ceil('You are terse and answer in one line.'.length / 4) + 4)
     replaceSystem(session, longer, '')
-    expect(projected(ctx, session)).toEqual({ systemTokens: 0, toolsTokens: 0, messageTokens: 0, idleCostTokens: 0 })
+    expect(projected(ctx, session)).toEqual({ systemTokens: 0, toolsTokens: 0, messageTokens: 0, idleCostTokens: 0 , tools: [] })
   })
 
   it('keeps the system node out of the message figure across appends and a system replacement', async () => {
@@ -212,6 +216,7 @@ describe('contextBreakdown session projection', () => {
       toolsTokens: 0,
       messageTokens: estimateMessage(summary),
       idleCostTokens: 5 + estimateMessage(summary),
+      tools: [],
     })
     expect(projected(ctx, session).systemTokens + projected(ctx, session).messageTokens)
       .toBe(ctx.tokenMeter.measure(session).nodes.reduce((sum, node) => sum + node.heuristicTokens, 0))
@@ -441,7 +446,7 @@ describe('contextBreakdown session projection', () => {
       ctx.sessionProjections.checkpoint(session),
     )) as ReturnType<typeof ctx.sessionProjections.checkpoint>
     const row = checkpoint['contextBreakdown']!
-    expect(row.ver).toBe(7)
+    expect(row.ver).toBe(8)
     expect(ctx.sessionProjections.viewCheckpoint(checkpoint).contextBreakdown).toEqual(projected(ctx, session))
     appendSummaryMeter(ctx, session, first, last)
     const meter = session.snapshotEvents().at(-1)!
@@ -451,7 +456,13 @@ describe('contextBreakdown session projection', () => {
     const restored = ctx.sessionProjections.restore(
       checkpoint, [meter, replacement], SessionLogOffset(meter.seq), session.header, session.inheritedEventCount,
     )
-    expect(restored.snapshot.values.contextBreakdown).toEqual({ systemTokens: 5, toolsTokens: 0, messageTokens: 10, idleCostTokens: 15 })
+    expect(restored.snapshot.values.contextBreakdown).toEqual({
+      systemTokens: 5,
+      toolsTokens: 0,
+      messageTokens: 10,
+      idleCostTokens: 15,
+      tools: [],
+    })
     const stale = { ...checkpoint, contextBreakdown: { ...row, ver: 2, val: { systemTokens: 1004, toolsTokens: 0, messageTokens: -989 } } }
     expect(ctx.sessionProjections.viewCheckpoint(stale).contextBreakdown).toBeUndefined()
     expect(ctx.sessionProjections.restoreFloor(stale)).toBe(0)
@@ -462,7 +473,7 @@ describe('contextBreakdown session projection', () => {
       stale, session.snapshotEvents(), SessionLogOffset(0), session.header, session.inheritedEventCount,
     )
     expect(replayed.snapshot.values.contextBreakdown).toEqual(projected(ctx, session))
-    expect(replayed.checkpoint['contextBreakdown']?.ver).toBe(7)
+    expect(replayed.checkpoint['contextBreakdown']?.ver).toBe(8)
     const invalid = {
       ...checkpoint,
       contextBreakdown: {
@@ -493,10 +504,14 @@ describe('contextBreakdown session projection', () => {
         checkpoint, session.snapshotEvents(), SessionLogOffset(0), session.header, session.inheritedEventCount,
       )
       expect(restored.snapshot.values.contextBreakdown).toEqual({
-        systemTokens: 8, toolsTokens: staleValue.toolsTokens, messageTokens: 9, idleCostTokens: 17,
+        systemTokens: 8,
+        toolsTokens: staleValue.toolsTokens,
+        messageTokens: 9,
+        idleCostTokens: 17,
+        tools: TOOL_ENTRIES,
       })
       expect(restored.checkpoint).toEqual(current)
-      expect(restored.checkpoint['contextBreakdown']?.ver).toBe(7)
+      expect(restored.checkpoint['contextBreakdown']?.ver).toBe(8)
     } finally {
       await ctx.fiber.dispose()
     }
@@ -524,6 +539,7 @@ describe('contextBreakdown session projection', () => {
       toolsTokens: 0,
       messageTokens: 9,
       idleCostTokens: 17,
+      tools: [],
     })
   })
 

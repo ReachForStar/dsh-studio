@@ -12,7 +12,7 @@ import type { SurfaceEvent } from '@deepseek-ai/dsh-session'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 // Type-only: the `compaction/*` SessionEventMap merges (shadow-price events).
 import type {} from '@deepseek-ai/dsh-compaction'
-import { estimateMessage, estimateToolsTokens } from './estimate.ts'
+import { estimateMessage, estimateToolTokens, estimateToolsTokens } from './estimate.ts'
 // Type-only: the client projection key and value declaration.
 import type {} from './projection.ts'
 
@@ -24,6 +24,10 @@ const breakdownSchema = z.object({
   toolsTokens: tokenCount,
   messageTokens: tokenCount,
   idleCostTokens: tokenCount,
+  tools: z.array(z.object({
+    name: z.string(),
+    tokens: tokenCount,
+  }).strict()),
 }).strict()
 
 /** One surviving `system/message` node and its heuristic price. */
@@ -122,7 +126,13 @@ function withTotals(state: ContextBreakdownState, totals: SurfaceTotals): Contex
   const messageTokens = Math.max(0, surfaceTokens - systemTokens)
   const breakdown = systemTokens === state.breakdown.systemTokens && messageTokens === state.breakdown.messageTokens
     ? state.breakdown
-    : { systemTokens, toolsTokens: state.breakdown.toolsTokens, messageTokens, idleCostTokens: systemTokens + messageTokens }
+    : {
+      systemTokens,
+      toolsTokens: state.breakdown.toolsTokens,
+      messageTokens,
+      idleCostTokens: systemTokens + messageTokens,
+      tools: state.breakdown.tools,
+    }
   return { ...state, systems: totals.systems, surfaceTokens, breakdown }
 }
 
@@ -143,16 +153,16 @@ function withoutClaim(state: ContextBreakdownState): ContextBreakdownState {
  * are priced from the latest request header. No route pricing applies.
  * `idleCostTokens` joins the view as `systemTokens + messageTokens`: the cost
  * of one empty request, independent of the model and the window. State version
- * 7 drops version-6 checkpoints and refolds them from the log.
+ * 8 drops version-7 checkpoints and refolds them from the log.
  */
 export const contextBreakdownProjectionDefinition = {
   key: 'contextBreakdown',
-  stateVersion: 7,
+  stateVersion: 8,
   stateSchema: contextBreakdownStateSchema,
   init: (): ContextBreakdownState => ({
     systems: [],
     surfaceTokens: 0,
-    breakdown: { systemTokens: 0, toolsTokens: 0, messageTokens: 0, idleCostTokens: 0 },
+    breakdown: { systemTokens: 0, toolsTokens: 0, messageTokens: 0, idleCostTokens: 0, tools: [] },
   }),
   apply: (state, event) => {
     if (event.type === 'compaction/summary' || event.type === 'compaction/prune') {
@@ -170,10 +180,14 @@ export const contextBreakdownProjectionDefinition = {
     // A claim prices only the event immediately after its metering event.
     const unclaimed = withoutClaim(state)
     if (event.type === 'request/header') {
-      const toolsTokens = estimateToolsTokens(canonicalHeader(event.data.header))
-      return toolsTokens === unclaimed.breakdown.toolsTokens
-        ? unclaimed
-        : { ...unclaimed, breakdown: { ...unclaimed.breakdown, toolsTokens } }
+      const header = canonicalHeader(event.data.header)
+      const toolsTokens = estimateToolsTokens(header)
+      const tools = (header.tools ?? []).map(tool => ({ name: tool.name, tokens: estimateToolTokens(tool) }))
+      if (toolsTokens === unclaimed.breakdown.toolsTokens) return unclaimed
+      return {
+        ...unclaimed,
+        breakdown: { ...unclaimed.breakdown, toolsTokens, tools },
+      }
     }
     if (!isSurfaceEvent(event)) return unclaimed
     const message = deriveEventMessage(event)

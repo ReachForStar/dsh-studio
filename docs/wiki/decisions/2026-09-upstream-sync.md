@@ -3,7 +3,7 @@ title: 合并上游 upstream/master（2026-09）
 type: decision
 tags: [upstream-sync, merge, cordis, ssh, session-format]
 created: 2026-09-17
-updated: 2026-10-30
+updated: 2026-11-12
 sources: []
 status: active
 ---
@@ -93,6 +93,17 @@ fork 此前的逐日任务报告位于 `doc/`（11 份，2026-09-03 ~ 09-05）�
 3. **上游删除包或工作流会在门禁里留下两处残骸，处理方式不同**：被删包在本机的构建残留目录（只有 `lib/` 与 `node_modules/`、无跟踪文件）会让 `constraints` 报「expected a package here」，核对后清除；被删工作流的断言型 spec（如 `cua-helper/payload.spec.ts` 读 `release-publish.yml`）要改成断言该工作流不存在，而不是恢复工作流。
 
 本轮细节见 [合并上游（2026-10-30）](../queries/upstream-merge-2026-10-30.md)。
+
+## 后续轮次：2026-11-12 合并上游（0.2.2-rc.2）
+
+策略不变（全量合并、按来源逐文件取舍、生成物一律重生成），新增四条可复用判定：
+
+1. **上游删除包时，fork 的依赖、tsconfig 引用与端点分类表要一起清**。本轮上游删掉 `api/account-controller` 与 `credentials/deepseek-account-platform`，留下的不是编译错误而是三处间接残骸：`web-app` 的 `workspace:*` 依赖让 `pnpm install` 直接失败、`api/remotes/tsconfig.host.json` 的 `path` 引用让 `gen-doc-graphs` 读不到 tsconfig、liveshare 的端点分类表里 `account/ackBonusNotified` 变成「表里有、生成映射里没有」的编译错误。判定口径：删包要同时核对 `package.json`、`tsconfig*.json`、全覆盖表与生成物。
+2. **测试夹具的「最高代际即脚本来源」规则会让刷新自我固化**。fork 的逐个场景 v5 夹具在回放时被当作模型脚本来源，而上游重录只更新 v4，于是 `DSH_SNAPSHOT=refresh` 会把旧脚本（例如已删除的 `office-export-pdf` skill）再写一遍成 v5。正确顺序是先删该场景的 `session.v5.jsonl`，回放取上游的新 v4，再 refresh 生成 v5。
+3. **上游新增的样式门禁会成片落在 fork 自研样式表上，按语义换 token 而不是登记豁免**。本轮两条门禁（只用别名 token、滚动容器在 elevated 表面必须重绑滚动条）共报出 38 处裸色与 6 处 elevated 表面；做法是把裸色换成 `--dsw-alias-*`（含 `bg-mask-*` 遮罩、`label-on-color`），把 layer-2/3 背景换回 `bg-base`/`interactive-bg-*`，从而既不削弱门禁也不新增重绑规则。
+4. **构建插件里认死的第三方内部名字会随依赖升级失效**。`asyncChunkRequirePlugin` 原先只匹配 `__toESM(require(...).default, 1)`；新 rolldown 改成 `require_rolldown_runtime.a(...)` 后构建失败。改为只匹配被助手包住的 `require("<chunk>")` 本身，不认助手名。
+
+本轮细节见 [合并上游（2026-11-12）](../queries/upstream-merge-2026-11-12.md)。
 
 ## 后续轮次：2026-10-15 合并上游
 

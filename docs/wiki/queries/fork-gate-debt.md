@@ -135,3 +135,10 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - wiki 页面里写 vendor 包名时要写定点名（如 `@deepseek-ai/cordis`），别用反引号或引号包住裸的上游包名：`rescope-vendor` 的 token 规则只看引号包裹，会把这种写法当成待改名的残留并让门禁失败。
 - `tsconfig.base.json` 的 `paths` 里，手写别名必须写在 `// BEGIN generated package aliases` **之前**：生成器假定自己的区块收尾 `paths`，末尾不写逗号；写在 `END` 之后的条目会让 `gen-tsconfig-paths` 产出非法 JSON。
 - 翻译配对存量较多时先 `verify-translation-pairing --write --all` 重记陈旧记录，再跑一次检查：记录问题会消失，剩下的就是真正的结构差异（表格行列数、链接目标、代码块内容）。mermaid 与代码块要求两侧逐字一致。
+
+## 2026-11-12 合并上游后复检
+
+- **ui-theme 两条新样式门禁已清偿**：上游新增 `color-tokens`（特性样式表只用别名 token）与 `scrollbar-styles`（滚动容器在 elevated 表面必须重绑滚动条）两条，报出 38 处裸色与 6 处 elevated 表面，集中在 `ui-a2a-status`、`ui-paper-reader`、`ui-polish`、`ui-ssh`、`ui-sidebar-documentpreview/VideoBody`。按语义换 token（遮罩→`bg-mask-1/3/photo`，标签→`label-secondary`/`label-on-color`，状态→`state-*`，hover→`interactive-bg-hover`），并把 layer-2/3 背景换回 `bg-base`/`interactive-bg-*` 避免触发重绑规则。两条门禁现全绿。
+- **`pnpm run lint` 与 `pnpm run duplication` 仍红，且全部为存量**：逐文件与合并前 HEAD 对照，报错文件里 24/25 个文件内容与合并前完全一致（唯一有改动的 `apps/desktop/src/main.ts` 报错行本身与 HEAD 相同），因此这一批不是本轮引入。lint 主要命中 `a2a`、`xingchen`、`tool-excalidraw`、`pi-agent-loop`、`ui-sidebar-documentpreview/tests/text-edit`、`scripts/dev-all.ts` 的 `no-confusing-void-expression`/`require-await`/`no-base-to-string` 等规则；duplication 的 84 处克隆多在 `fs-sftp`、`ssh-remotes`、`workspace-files` 的成对方法里。
+- **`test:snapshot` 从 236 红降到 7 红**：刷新手法与剩余项（3 个 compaction 场景与 `image-compaction` 需 live 录制、`persistent-pwsh` 需 pwsh、`team-direct-inbox` 待查子代理直投递、corpus 的 11 个 v4-only 场景）见[合并上游（2026-11-12）](upstream-merge-2026-11-12.md)。
+- **新增本机环境限制三项**（不是仓库缺陷）：pnpm 为独立可执行文件时 `flock-entry.ts` 的 `node <npm_execpath>` 拉起失败（桌面 15 项）、native 预构建清单要求 musl/landlock 产物、`kafka-detect` 用 `URL.pathname` 拼路径在含中文的仓库路径下失效。

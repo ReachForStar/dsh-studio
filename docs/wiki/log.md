@@ -872,3 +872,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 交接页改为「全部交付已落地」：新增通道投递与 Arena 两行，未完成项章节替换为与 qwen 的产品化差异（通道路由策略、Arena 摘要与视图、推测期只读结果复用）。
 - 新增 [Arena](entities/arena.md) 与 [webhook 活跃会话投递](entities/webhook-channel-delivery.md) 两个实体页并登记到 index；能力对比页同步现状与剩余差异。
+
+## [2026-11-12] feat | 合并上游 upstream/master（0.2.2-rc.2）
+
+- 上游 923 提交（自上一轮 0.2.2-rc.1 合并点起）并入 `develop`，冲突 85 个文件按来源取舍，合并结果 3764 个文件（+139772 / −34978）。
+- 上游结构变化与 fork 适配：office 改由 `office-kit`/`tool-office` 承载并删除 `apps/desktop-host/src/office-engine.ts`；运行期提醒加 `<system-reminder>` 框架；Team 包迁到 `packages/team`；删除 `api/account-controller` 与 `credentials/deepseek-account-platform`；typert `files` 需带 `.d.ts.map`。
+- fork 自研面全保留：`filesFace` 扩为七参（删除 + 搜索并存）、删除确认弹窗 state 改名 `removal`、`workspaceFiles` 服务与 `Config.search` 合并、`capability-seams.zh.md` 补 5 行。
+- 修掉 8 处合并引入缺陷：`officeKitRemote` 改名、rolldown 互操作助手改名导致的动态 chunk 正则、双语配对、typert 文件清单、被删包 `lib/` 残留（`pnpm run clean`）、client catalog 上限实测值、发布家族与工具清单行、ui-theme 两条新样式门禁。
+- 快照：发现「夹具回放以最高代际为脚本来源」，直接 refresh 会把旧内容固化成新 v5；改为先删旧 v5 让回放取上游新 v4，再 refresh，`test:snapshot` 从 236 红降到 7 红（余项需 live 录制、pwsh 或待查的 team 直投递链路）。
+- 验证：`typecheck` 5 门、`build` 10 门、`doc-sync` 43 门全绿；`pnpm run test` 在 `LC_ALL=C` 下余项均为超时与三项本机环境限制；`lint`/`duplication` 仍红且红项全部落在相对合并前未变的 fork 文件。

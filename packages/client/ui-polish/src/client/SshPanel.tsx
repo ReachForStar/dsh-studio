@@ -30,7 +30,7 @@ const DARK_THEME = { background: '#1e1e2e', foreground: '#cdd6f4', cursor: '#f5e
 const LIGHT_THEME = { background: '#eff1f5', foreground: '#4c4f69', cursor: '#dc8a78' }
 
 /** Resolve the xterm palette for the current DSH color mode. */
-function resolveTheme(): { background: string; foreground: string; cursor: string } {
+export function resolveTheme(): { background: string; foreground: string; cursor: string } {
   return document.body.hasAttribute(DARK_ATTRIBUTE) ? DARK_THEME : LIGHT_THEME
 }
 
@@ -81,12 +81,12 @@ interface HostFrameLike {
 }
 
 /** Join a directory and a child name into an absolute remote path. */
-function joinPath(dir: string, name: string): string {
+export function joinPath(dir: string, name: string): string {
   return dir === '/' ? `/${name}` : `${dir}/${name}`
 }
 
 /** Parent of an absolute path ('/' stays '/'). */
-function parentOf(path: string): string {
+export function parentOf(path: string): string {
   if (path === '/' || path === '') return '/'
   const trimmed = path.replace(/\/+$/, '')
   const idx = trimmed.lastIndexOf('/')
@@ -98,7 +98,7 @@ function parentOf(path: string): string {
  * Split an absolute path into clickable breadcrumb segments (prefix + label).
  * `/var/log` becomes `[{ prefix: '/', label: '/' }, { prefix: '/var', label: 'var' }]`.
  */
-function pathSegments(path: string): Array<{ prefix: string; label: string }> {
+export function pathSegments(path: string): Array<{ prefix: string; label: string }> {
   if (path === '/' || path === '') return [{ prefix: '/', label: '/' }]
   const trimmed = path.replace(/\/+$/, '')
   const parts = trimmed.split('/').filter(p => p !== '')
@@ -112,7 +112,7 @@ function pathSegments(path: string): Array<{ prefix: string; label: string }> {
 }
 
 /** Resolve the remote home directory by running `echo $HOME`. Returns null on failure. */
-async function resolveHomeDir(
+export async function resolveHomeDir(
   rpc: SshPanelInjected['rpc'],
   connectionId: string,
   signal?: AbortSignal,
@@ -133,7 +133,7 @@ async function resolveHomeDir(
 
 /** PTY event payloads are supplied by the shared Remote event stream. */
 /** Strip ANSI escape sequences (colors, cursor moves, etc.) from terminal output. */
-function stripAnsi(text: string): string {
+export function stripAnsi(text: string): string {
   let result = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
   result = result.replace(/\x1b\][^\x07]*(\x07|\x1b\\)/g, '')
   result = result.replace(/\x1b./g, '')
@@ -151,7 +151,7 @@ function stripAnsi(text: string): string {
  * (from `ssh.exec echo $HOME`) so a non-root user resolves to its real home.
  * Returns the absolute path or null when no prompt is found.
  */
-function extractCwdFromPrompt(raw: string, homeDir: string): string | null {
+export function extractCwdFromPrompt(raw: string, homeDir: string): string | null {
   const clean = stripAnsi(raw).replace(/\r/g, '')
   const lines = clean.split('\n')
   for (let i = lines.length - 1; i >= 0; i--) {
@@ -182,7 +182,7 @@ const CWD_HOOK_PREFIX = '__DSH_CWD__'
  * the path that follows the prefix. More reliable than parsing the prompt
  * itself, which varies across shells and PS1 configurations.
  */
-function extractCwdFromHook(chunk: string): string | null {
+export function extractCwdFromHook(chunk: string): string | null {
   const clean = stripAnsi(chunk).replace(/\r/g, '')
   // Use the last occurrence (the buffer holds recent scrollback, so an older
   // marker from an earlier cd could otherwise shadow the current one).
@@ -196,7 +196,7 @@ function extractCwdFromHook(chunk: string): string | null {
 }
 
 /** Streaming prompt tracker: accumulates PTY output and reports cwd changes. */
-function createPromptTracker(onCwd: (cwd: string) => void, homeDir: string): { feed: (chunk: string) => void; reset: () => void } {
+export function createPromptTracker(onCwd: (cwd: string) => void, homeDir: string): { feed: (chunk: string) => void; reset: () => void } {
   let buffer = ''
   let lastCwd: string | null = null
   return {
@@ -227,7 +227,7 @@ const CWD_PROBE_END = '__DSH_CWD_END__'
  * markers regardless of the surrounding terminal output (echoed command,
  * prompt, etc.).
  */
-function extractCwdFromProbe(chunk: string): string | null {
+export function extractCwdFromProbe(chunk: string): string | null {
   const start = chunk.indexOf(CWD_PROBE_START)
   if (start === -1) return null
   const afterStart = start + CWD_PROBE_START.length
@@ -677,6 +677,7 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
       // file (or the post-upload refresh) to a stale directory.
       const currentDir = sftpPathRef.current
       const failures: string[] = []
+      let failure: string | null = null
       try {
         for (const file of files) {
           const targetPath = joinPath(currentDir, file.name)
@@ -693,13 +694,15 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
           throw new Error(failures.join('; '))
         }
       } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        setSftpError(msg)
-        console.error('[SshPanel] sftp upload failed:', currentDir, msg)
+        failure = error instanceof Error ? error.message : String(error)
+        console.error('[SshPanel] sftp upload failed:', currentDir, failure)
       } finally {
         // Refresh in every case: a failed status may still have written part
-        // of the file, and a stale directory hides a successful upload.
+        // of the file, and a stale directory hides a successful upload. The
+        // refresh clears the list error, so the upload failure is restored
+        // after it.
         await listDir(currentDir)
+        if (failure !== null) setSftpError(failure)
         setUploading(false)
       }
     }
@@ -1044,13 +1047,13 @@ export function SshPanel({ t, rpc, subscribeHostFrames }: SshPanelProps) {
 
 // Monotonic counter for per-row busy state labels (no React state identity needs).
 let actionCounter = 0
-function nextActionId(): number {
+export function nextActionId(): number {
   actionCounter += 1
   return actionCounter
 }
 
 /** Format a byte count for display. */
-function formatSize(bytes: number): string {
+export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`

@@ -195,6 +195,7 @@ describe('WebhookRuntime', () => {
       '../src/brand.ts',
       '../src/types.ts',
       '../src/session.ts',
+      '../src/message.ts',
       '../src/index.ts',
     ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n')
     const forbidden: ReadonlyArray<readonly [string, RegExp]> = [
@@ -211,6 +212,32 @@ describe('WebhookRuntime', () => {
     for (const [label, pattern] of forbidden) {
       expect(production, label).not.toMatch(pattern)
     }
+  })
+
+  it('delivers a message action into the live target Session', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    const received = Promise.withResolvers<{
+      content: readonly { type: string; text?: string }[]
+      source: { ruleId: string }
+    }>()
+    const followed = vi.fn()
+    ctx.provide('agents', {
+      get: (id: string) => id === 'session-1'
+        ? { followup: (message: never) => { followed(); received.resolve(message) } }
+        : undefined,
+    } as never)
+    const runtime = new WebhookRuntime(ctx)
+    runtime.register({
+      id: WebhookRuleId('fixture-rule'),
+      kind: 'fixture',
+      run: () => ({ kind: 'message', sessionId: 'session-1', prompt: 'deploy finished', target: 'next-turn' }),
+    })
+    runtime.dispatch(delivery())
+    const message = await received.promise
+    expect(followed).toHaveBeenCalledTimes(1)
+    expect(message.content[0]?.text).toBe('deploy finished')
+    expect(message.source.ruleId).toBe('fixture-rule')
   })
 
   it('creates one Session per matching repeated delivery', async () => {

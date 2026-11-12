@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="rule-interface"></a>
 ## 规则接口
 
-`WebhookRule<K>` 具有带 brand 类型的唯一 `id`、提供方 `kind` 与 `run(delivery, signal)`。回调可以执行任意受信任代码，并返回 `null` 或一个 `WebhookSessionRequest`。同类规则彼此独立启动；某个回调抛出异常或其返回的 Promise 被拒绝时，只会记录日志，不会阻止同级规则。
+`WebhookRule<K>` 具有带 brand 类型的唯一 `id`、提供方 `kind` 与 `run(delivery, signal)`。回调可以执行任意受信任代码，并返回 `null` 或一个 `WebhookAction`：创建会话的 `WebhookSessionRequest`，或投递到活跃会话的 `WebhookMessageRequest`。同类规则彼此独立启动；某个回调抛出异常或其返回的 Promise 被拒绝时，只会记录日志，不会阻止同级规则。
 
 `VerifiedWebhookDelivery` 携带提供方种类、已配置来源 id、提供方交付 id、规范化的无损 JSON 与接收时间。运行时会在共享前快照并冻结完整值。`deliveryId` 仅是来源信息；重复交付会再次运行规则。
 
@@ -39,6 +39,13 @@ kind: "package-reference"
 运行时会在变更状态前验证 preset，解析或创建规范 Workspace，以该 Workspace 路径作为 `SessionHeader.cwd` 创建 Agent，在发布前挂载 agent preset，并在应用权限、标题与提示词前附加会话。附加失败会对尚未发布的动作执行 dispose（资源释放）。之后若在提示词前失败，则以尽力而为方式脱离 Workspace 并对 Agent 执行 dispose。
 
 成功的 `Agent.followup()` 是 webhook 操作的提交点。消息使用 `source.kind: "webhook"`，并携带提供方、来源、交付与规则来源信息。运行时不等待 idle、不执行特殊 flush、不检查回复，也不发布完成状态；之后完全由普通 Agent 与会话行为接管。
+
+<a id="message-delivery"></a>
+## 消息投递
+
+`WebhookMessageRequest` 要求 `sessionId`、`prompt` 与 `target`。`target: "next-turn"` 排入一次普通后续轮次；`target: "next-step"` 向正在运行的轮次插入 steering。运行时通过 `Agent.followup()` 或 `Agent.steer()` 追加消息，携带与会话动作相同的 `source.kind: "webhook"` 来源信息，随后立即返回，不等待任何轮次。
+
+投递从不创建或恢复会话。目标没有活跃 Agent 时该次调用失败，并像其他规则失败一样记录日志；因此需要同时处理离线会话的规则应改返回 `WebhookSessionRequest`。运行时不留存交付 id 状态；需要去重的规则自行保存该状态。
 
 <a id="composition"></a>
 ## 组合
@@ -54,7 +61,7 @@ kind: "package-reference"
 
 #### 模型看到的内容
 
-每个匹配规则都会让模型看到 `WebhookSessionRequest.prompt` 返回的非空文本原文。通用运行时不增加私有框架；若规则包含外部文本，则由规则负责标明其信任属性。随附 GitHub 示例会把选定 PR 字段标为不受信任的 JSON 元数据。
+每个匹配规则都会让模型看到 `WebhookSessionRequest.prompt` 或 `WebhookMessageRequest.prompt` 返回的非空文本原文：前者进入新建会话，后者进入目标会话的下一轮。通用运行时不增加私有框架；若规则包含外部文本，则由规则负责标明其信任属性。随附 GitHub 示例会把选定 PR 字段标为不受信任的 JSON 元数据。
 
 #### Token 影响
 

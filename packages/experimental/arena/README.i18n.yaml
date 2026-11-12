@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/arena/README.md
+/:
+  en: 3ef0eca575e7d3d0
+  zh: af94e1ca706c3fa2
+/deepseek-ai-dsh-arena:
+  en: f5fe8a3057a2dccf
+  zh: c670ce4d25bca5fe
+/deepseek-ai-dsh-arena/summary:
+  en: 7ab41f87011d4fdf
+  zh: d9146fbc606b749b
+/deepseek-ai-dsh-arena/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 725b47765ee8f30b
+/deepseek-ai-dsh-arena/use-this-package:
+  en: f1e421b060111327
+  zh: 2685c43538592c28
+/deepseek-ai-dsh-arena/use-this-package/configuration:
+  en: 33266bf7b10a3da6
+  zh: e93ccdab55352c62
+/deepseek-ai-dsh-arena/understand-the-implementation:
+  en: 90d1a5b499787a8c
+  zh: 47ebd3b21cac44c7
+/deepseek-ai-dsh-arena/further-exploration:
+  en: ef964afc0f54fc57
+  zh: b0af65fd56b8166b
+/deepseek-ai-dsh-arena/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-arena/model-experience/arena-contenders:
+  en: e997ba25939a18a9
+  zh: 8032e1b7b641bb2e
+/deepseek-ai-dsh-arena/model-experience/arena-contenders/what-the-model-sees:
+  en: 4fa9088548394319
+  zh: 7f66c14fc6723f9e
+/deepseek-ai-dsh-arena/model-experience/arena-contenders/token-effect:
+  en: f20e965135cf5ff9
+  zh: ee2f71b1615df3b9
+/deepseek-ai-dsh-arena/model-experience/arena-contenders/kv-cache-effect:
+  en: b4c68d97893f8a27
+  zh: 62170d5464431888
+/deepseek-ai-dsh-arena/known-limitations-and-deferred-work:
+  en: 4c4d4bda4bf1095d
+  zh: 97b02c12998f2f7c
+/deepseek-ai-dsh-arena/known-limitations-and-deferred-work/dev-note:
+  en: eebde858171ae9c4
+  zh: 7f12af850d6d4e3f

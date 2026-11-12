@@ -412,6 +412,33 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-api-workspace-files -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-arena -->
+<a id="deepseek-aidsh-arena"></a>
+
+## `@deepseek-ai/dsh-arena`
+
+- `inject`: `agents` · `fs` · `sandbox` · `sandboxPolicy` · `subprocess`
+- `source`: [`packages/experimental/arena/src/index.ts:113`](../packages/experimental/arena/src/index.ts)
+
+```ts config-catalog
+/** Arena service configuration. */
+export interface Config {
+  /** Absolute repository checkout the run branches from and applies winners to. */
+  workspaceRoot: string
+  /** Absolute directory holding one subdirectory per run; it must live outside `workspaceRoot`. */
+  worktreeRoot: string
+  /** Largest accepted number of contenders in one run. */
+  maxContenders: number
+  /** Deadline for one git command in milliseconds. */
+  timeoutMs: number
+  /** Termination grace period for one git command in milliseconds. */
+  graceMs: number
+  /** Maximum captured bytes per git output stream. */
+  maxOutputBytes: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-arena -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-attachment-local -->
 <a id="deepseek-aidsh-attachment-local"></a>
 

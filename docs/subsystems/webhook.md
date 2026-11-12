@@ -48,7 +48,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.webhookRuntime` — `WebhookRuntime`
 
-Fire-and-forget rule runtime. Session creation is the only built-in action.
+Fire-and-forget rule runtime. Session creation and live-Session delivery are the built-in actions.
 
 ```ts cordis-catalog
 /**

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-webhook` provides the Host `ctx.webhookRuntime`: a registry for trusted programmatic webhook rules plus the one built-in action, creating an ordinary root Session inside a Web Workspace. The interface stays at `register(rule)` and `dispatch(delivery)`; provider authentication belongs to adapter packages. Use it when a trusted rule must turn an external event into a new agent Session.
+`dsh-webhook` provides the Host `ctx.webhookRuntime`: a registry for trusted programmatic webhook rules plus two built-in actions, creating an ordinary root Session inside a Web Workspace and delivering a message into a Session that is already live. The interface stays at `register(rule)` and `dispatch(delivery)`; provider authentication belongs to adapter packages. Use it when a trusted rule must turn an external event into work: a new agent Session, or the next turn of one that is already running.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ English | [中文](README.zh.md)
 <a id="rule-interface"></a>
 ## Rule interface
 
-`WebhookRule<K>` has a branded unique `id`, a provider `kind`, and `run(delivery, signal)`. A callback may execute arbitrary trusted code and returns either `null` or one `WebhookSessionRequest`. Rules of the same kind start independently, and one throw or rejection is logged without starving siblings.
+`WebhookRule<K>` has a branded unique `id`, a provider `kind`, and `run(delivery, signal)`. A callback may execute arbitrary trusted code and returns `null` or one `WebhookAction`: a `WebhookSessionRequest` that creates a Session, or a `WebhookMessageRequest` that delivers into a live one. Rules of the same kind start independently, and one throw or rejection is logged without starving siblings.
 
 `VerifiedWebhookDelivery` carries provider kind, configured source id, provider delivery id, normalized lossless JSON, and receipt time. The runtime snapshots and freezes the complete value before sharing it. `deliveryId` records the provider's identifier only; repeated delivery runs the rules again.
 
@@ -39,6 +39,13 @@ Registration is an effect. Its awaitable disposer first hides the rule, then abo
 The runtime validates presets before mutation, resolves or creates the canonical Workspace, creates an Agent with that Workspace path as `SessionHeader.cwd`, mounts the agent preset before publication, and attaches the Session before applying permissions, title, and prompt. Failed attachment disposes the unpublished action. A later pre-prompt failure detaches the Workspace and disposes the Agent on a best-effort rollback.
 
 Successful `Agent.followup()` is the webhook operation's commit point. The message uses `source.kind: "webhook"` and records the provider, source, delivery, and rule identifiers. The runtime does not wait for idle, flush specially, inspect the reply, or publish completion state; ordinary Agent and Session behavior owns everything afterward.
+
+<a id="message-delivery"></a>
+## Message delivery
+
+`WebhookMessageRequest` requires `sessionId`, `prompt`, and `target`. `target: "next-turn"` queues an ordinary follow-up turn; `target: "next-step"` steers the turn already running. The runtime appends through `Agent.followup()` or `Agent.steer()` with the same `source.kind: "webhook"` attribution the Session action records, then returns without waiting for a turn.
+
+Delivery never creates or resumes a Session. A target without a live Agent fails the invocation, which is logged like any other rule failure, so a rule that must also handle an offline Session returns a `WebhookSessionRequest` instead. The runtime keeps no delivery-id state; a rule that must deduplicate repeated provider deliveries owns that state.
 
 <a id="composition"></a>
 ## Composition
@@ -54,7 +61,7 @@ The [GitHub review guide](../../../docs/user/guide/github-review.md) shows a rul
 
 #### What the model sees
 
-For each matching rule, the model sees exactly the non-empty text returned as `WebhookSessionRequest.prompt`. The generic runtime adds no private framing; a rule incorporating external text owns its trust labeling. The shipped GitHub example labels selected PR fields as untrusted JSON metadata.
+For each matching rule, the model sees exactly the non-empty text returned as `WebhookSessionRequest.prompt` or `WebhookMessageRequest.prompt`, in the created Session or in the target Session's next turn respectively. The generic runtime adds no private framing; a rule incorporating external text owns its trust labeling. The shipped GitHub example labels selected PR fields as untrusted JSON metadata.
 
 #### Token effect
 

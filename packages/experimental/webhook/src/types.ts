@@ -34,8 +34,10 @@ export interface WebhookModelSelection {
   readonly maxTokens?: number
 }
 
-/** The sole runtime action: create and prompt one root Session. */
+/** Create and prompt one root Session. */
 export interface WebhookSessionRequest {
+  /** Action discriminant; omitted means the same thing as `session`. */
+  readonly kind?: 'session'
   /** Existing local directory to resolve or create as a Web Workspace. */
   readonly workspacePath: string
   /** Explicit Session title. */
@@ -50,22 +52,48 @@ export interface WebhookSessionRequest {
   readonly model?: WebhookModelSelection
 }
 
-/** Trusted code that optionally creates one Session for a delivery. */
+/**
+ * Deliver one message into a Session that is already live.
+ *
+ * Delivery is fire-and-forget like Session creation: the runtime appends the
+ * message to the target's inbox and never waits for a turn. Repeated delivery
+ * of the same provider event appends again; a rule that must deduplicate owns
+ * that state, because the runtime keeps none.
+ */
+export interface WebhookMessageRequest {
+  /** Action discriminant. */
+  readonly kind: 'message'
+  /** Target Session id; it must have a live Agent, otherwise delivery fails. */
+  readonly sessionId: string
+  /** Non-empty text delivered as model-visible input. */
+  readonly prompt: string
+  /**
+   * Inbox boundary. `next-turn` queues an ordinary follow-up turn; `next-step`
+   * steers the turn already running and is ignored while the Session is idle
+   * beyond the ordinary steering contract.
+   */
+  readonly target: 'next-turn' | 'next-step'
+}
+
+/** One action a rule may request for a delivery. */
+export type WebhookAction = WebhookSessionRequest | WebhookMessageRequest
+
+/** Trusted code that optionally requests one action for a delivery. */
 export interface WebhookRule<K extends string = string> {
   /** Globally unique diagnostic identity. */
   readonly id: WebhookRuleId
   /** Provider kind this rule receives. */
   readonly kind: K
   /**
-   * Run arbitrary trusted code and optionally request one Session.
+   * Run arbitrary trusted code and optionally request one action.
    * @param delivery - immutable authenticated provider data.
    * @param signal - aborts when this registration or the runtime unloads.
-   * @returns one Session request, or `null` for no action.
+   * @returns one action request, or `null` for no action.
    */
   run(
     delivery: Readonly<VerifiedWebhookDelivery<K>>,
     signal: AbortSignal,
-  ): WebhookSessionRequest | null | Promise<WebhookSessionRequest | null>
+  ): WebhookAction | null | Promise<WebhookAction | null>
 }
 
 declare module '@deepseek-ai/dsh-llm' {

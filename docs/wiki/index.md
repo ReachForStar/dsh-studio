@@ -10,6 +10,8 @@ updated: 2026-11-11
 ## 实体 entities
 
 - [worktree 脏状态镜像（mirrorUncommitted）](entities/worktree-dirty-mirror.md) — `git stash create` 快照 + 未跟踪文件经 `ctx.fs` 逐文件复制，把源检出的未提交工作带进新检出；`mirrorMaxFileBytes` 限制单文件、沙箱策略随调用方、默认不镜像。
+- [Arena 模型对比（dsh-arena）](entities/arena.md) — 同一提示并行交给多个模型，各自 worktree 隔离；返回可比较结果，胜者 diff 由调用方显式应用。
+- [webhook 活跃会话投递（WebhookMessageRequest）](entities/webhook-channel-delivery.md) — 外部事件除新建会话外可投递到活跃会话（followup / steer），通道运行时三角色的落点与剩余差异。
 - [推测执行门控（dsh-speculation）](entities/speculation.md) — 输入前预执行的门控、overlay 代理与预测运行方：只读放行、写入按显式配置重定向到 overlay、越界与未知工具一律 boundary；runner 在轮次结束后预测下一次请求并预执行，用户确认才提交。
 - [下一步建议（dsh-followup）](entities/followup.md) — `turn/end` 后用辅助模型给出至多 N 条下一步动作，写 log-only 的 `followup/suggestions` 事件；按 `turn/start` 归属增量累积、空回复不写、UTF-8 安全截断。
 - [工具批次摘要（dsh-step-summary）](entities/step-summary.md) — `step/end` 时用辅助模型为工具批次生成一行摘要，以 log-only 的 `tool/batch-summary` 事件记录；增量累积事件不读历史、按 `turn:step` 幂等去重、失败只警告。

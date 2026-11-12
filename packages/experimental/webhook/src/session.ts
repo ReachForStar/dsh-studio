@@ -41,6 +41,9 @@ function resolveRequest(ctx: Context, input: WebhookSessionRequest): ResolvedWeb
     throw new TypeError('webhook rule result must be null or a Session request object')
   }
   const record = candidate as Record<string, unknown>
+  if (record['kind'] !== undefined && record['kind'] !== 'session') {
+    throw new TypeError(`webhook Session request kind must be "session", got ${JSON.stringify(record['kind'])}`)
+  }
   const workspacePath = requiredString(record, 'workspacePath')
   if (!isAbsolute(workspacePath)) {
     throw new TypeError(`webhook Session request workspacePath must be absolute, got ${JSON.stringify(workspacePath)}`)

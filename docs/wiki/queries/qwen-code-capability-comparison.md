@@ -24,8 +24,8 @@ qwen-code 源码在 `tmp/qwen-code`（main 分支 `6a999b20b7`）。对照本 fo
 | 上下文成本逐项 / idle cost | 部分实现 | `contextBreakdown` 增加 `idleCostTokens` 与逐工具 `tools`（见 [tool-search 实体页](../entities/tool-search.md) 的待确认小节）；文件/技能条目级与 `/context detail` 展示未做 |
 | 快模型三件套 | 未实现 | 新增 fastModel 配置；摘要与建议需要新的展示数据通道 |
 | 记忆层 | 未实现 | 注入需可重建的上下文来源，提取走后台 subagent |
-| 通道运行时 | 未实现 | 需要把 `webhook` 泛化并新增活跃会话投递接缝 |
-| Arena 本体 | 未实现 | 依赖脏状态镜像（已具备）与多会话并行编排 |
+| 通道运行时 | 投递面已实现 | `webhook` 新增 `WebhookMessageRequest`：规则可把消息投递到活跃会话（`followup` / `steer`）；adapter 与路由仍由规则自持 |
+| Arena 本体 | 已实现 | 新增 `packages/experimental/arena`：每模型一个 worktree + 会话，并行执行、可比较结果、按需应用胜者 diff（见 [Arena](../entities/arena.md)） |
 
 ## 判定口径
 
@@ -55,9 +55,9 @@ qwen-code 已原生加载可移植的 [Agent Plugins v1](https://agent-plugins.o
 
 `packages/channels`（270 文件）用 `qwen channel start` 起单个 ACP agent 进程，接 Telegram、微信、QQ、钉钉（含 Webhook 单向发送）、企微、飞书、GitHub、GitLab、邮件；每通道有独立 `cwd`、`model`、`instructions`；`sessionScope` 四档、`sessionRotation`、`multiSession` 八任务、`privatePolicy` 四档含 DM 配对、`operators` 共享会话管理权、`messageRoutes` 前缀路由、`dispatchMode` 三档（`steer`/`collect`/`followup`）、`groupHistoryLimit` 群聊回填、独立的 `channel memory`（`docs/users/features/channels/overview.md`、`docs/developers/channel-plugins.md`）。
 
-本 fork 现状：`packages/webhook` 是入站规则运行时（签名 HTTP → 创建 Workspace 会话），`packages/experimental/webhook-github` 是唯一平台适配器。
+本 fork 现状：`packages/experimental/webhook` 是入站规则运行时，`packages/experimental/webhook-github` 是唯一平台适配器。2026-11-12 起规则除「创建 Workspace 会话」外还可「投递到活跃会话」（`WebhookMessageRequest`，`next-turn` 走 `Agent.followup`、`next-step` 走 `Agent.steer`）；适配器与路由仍由规则自行持有，运行时不保存交付状态。
 
-融入方式：把 webhook 运行时泛化为通道运行时，Service Definition 拆成适配器（收）/ 会话路由（作用域 + 认领）/ 投递（回复）三个角色，GitHub 适配器退化为一个 provider。`dispatchMode` 与本仓已有的引导与排队投递词汇同构。难点是投递到活跃会话需要公开接缝，属核心能力，不能只靠插件。
+融入方式：把 webhook 运行时泛化为通道运行时，Service Definition 拆成适配器（收）/ 会话路由（作用域 + 认领）/ 投递（回复）三个角色，GitHub 适配器退化为一个 provider。`dispatchMode` 与本仓已有的引导与排队投递词汇同构。投递到活跃会话不需要改核心：`Agent.followup` / `Agent.steer` 已是公开接缝，本次已按该路径实现投递动作。
 
 ### 4. 上下文成本治理与工具检索
 
@@ -83,7 +83,7 @@ qwen 有 `/context detail`（逐项列出每个内置工具、MCP 工具、上�
 
 ### 6. Arena（多模型对决）
 
-`packages/core/src/agents/arena/{ArenaManager.ts,ArenaAgentClient.ts,diff-summary.ts,arena-events.ts}`：每个模型一个独立 agent 与独立 worktree，逐个启动并行执行，结束后给状态、时长、轮次、token、工具调用数、共同改动与独有改动、按 diff 的思路摘要，选中胜者把 diff 应用到主工作区并清理。worktree 的脏状态镜像在 `packages/core/src/services/gitWorktreeService.ts`：`git stash create` 取已跟踪改动，未跟踪文件单独复制进每个 worktree（约 1452–1530 行），另处理符号链接的配置目录与 submodule（`docs/users/features/arena.md`）。
+qwen-code 源码的 `agents/arena/`（`ArenaManager.ts`、`ArenaAgentClient.ts`、`diff-summary.ts`、`arena-events.ts`）：每个模型一个独立 agent 与独立 worktree，逐个启动并行执行，结束后给状态、时长、轮次、token、工具调用数、共同改动与独有改动、按 diff 的思路摘要，选中胜者把 diff 应用到主工作区并清理。worktree 的脏状态镜像在 qwen-code 源码的 `services/gitWorktreeService.ts`：`git stash create` 取已跟踪改动，未跟踪文件单独复制进每个 worktree（约 1452–1530 行），另处理符号链接的配置目录与 submodule（qwen 文档 `users/features/arena.md`）。
 
 本 fork 现状：`packages/experimental/worktree` 已补脏状态镜像（`mirrorUncommitted` 与 `mirrorMaxFileBytes`，见 [worktree 脏状态镜像](../entities/worktree-dirty-mirror.md)），但仍无多会话对比与应用胜者。
 

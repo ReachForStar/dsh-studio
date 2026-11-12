@@ -501,6 +501,39 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'arena',
+    summary: 'Compare several models on one prompt and return their outcomes.',
+    description: 'Compare several models on one prompt and return their outcomes.\n\nEach contender runs concurrently in its own checkout. The run never writes `workspaceRoot`: ArenaService.apply does that as an explicit, separate choice.',
+    methods: [
+      {
+        signature: 'async run(request: ArenaRunRequest, options: { readonly signal?: AbortSignal } = {}): Promise<ArenaRun>',
+        description: 'Run one prompt through every contender concurrently.',
+        parameters: [{ name: 'request', description: 'prompt, contenders, and optional base commit.' }, { name: 'options', description: 'cancellation for the whole comparison.' }],
+        returns: 'every contender\'s outcome, in request order.',
+        throws: ['{Error} when the request is malformed, the repository cannot be read, or the run is cancelled before settlement.'],
+      },
+      {
+        signature: 'async apply(runId: string, label: string, options: { readonly signal?: AbortSignal } = {}): Promise<string[]>',
+        description: 'Apply one contender\'s changes to the configured workspace root.',
+        parameters: [{ name: 'runId', description: 'run identity returned by {@link ArenaService.run}.' }, { name: 'label', description: 'contender whose checkout supplies the diff.' }, { name: 'options', description: 'cancellation for the git operations.' }],
+        returns: 'paths the applied diff touched.',
+        throws: ['{Error} when the run or contender is unknown, or the patch does not apply.'],
+      },
+      {
+        signature: 'async remove(runId: string, options: { readonly signal?: AbortSignal } = {}): Promise<void>',
+        description: 'Remove one run\'s checkouts and branches.',
+        parameters: [{ name: 'runId', description: 'run identity returned by {@link ArenaService.run}.' }, { name: 'options', description: 'cancellation for the git operations.' }],
+        throws: ['{Error} when the run is unknown.'],
+      },
+      {
+        signature: 'runs(): readonly ArenaRun[]',
+        description: 'List the runs this service still retains.',
+        parameters: [],
+        returns: 'the retained runs, oldest first.',
+      },
+    ],
+  },
+  {
     key: 'attachments',
     summary: 'Immutable binary attachment service.',
     description: 'Immutable binary attachment service. Implementations validate bytes before publishing a reference.',
@@ -4539,7 +4572,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'webhookRuntime',
     summary: 'Fire-and-forget rule runtime.',
-    description: 'Fire-and-forget rule runtime. Session creation is the only built-in action.',
+    description: 'Fire-and-forget rule runtime. Session creation and live-Session delivery are the built-in actions.',
     methods: [
       {
         signature: 'register<K extends string>(rule: WebhookRule<K>): () => Promise<void>',
@@ -5944,6 +5977,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ArchiveSessionOptions',
     declaration: 'export interface ArchiveSessionOptions {\n    readonly stopActivity?: boolean;\n}',
+  },
+  {
+    name: 'ArenaContender',
+    declaration: 'export interface ArenaContender {\n    readonly label: string;\n    readonly provider: string;\n    readonly model: string;\n    readonly maxTokens?: number;\n}',
+  },
+  {
+    name: 'ArenaContenderResult',
+    declaration: 'export interface ArenaContenderResult {\n    readonly label: string;\n    readonly provider: string;\n    readonly model: string;\n    readonly sessionId: SessionId;\n    readonly branch: string;\n    readonly worktree: string;\n    readonly status: \'completed\' | \'failed\' | \'cancelled\';\n    readonly failure?: string;\n    readonly reply: string;\n    readonly durationMs: number;\n    readonly turns: number;\n    readonly toolCalls: number;\n    readonly tokens: number;\n    readonly changedPaths: string[];\n}',
+  },
+  {
+    name: 'ArenaRun',
+    declaration: 'export interface ArenaRun {\n    readonly runId: string;\n    readonly baseCommit: string;\n    readonly prompt: string;\n    readonly startedAt: number;\n    readonly contenders: readonly ArenaContenderResult[];\n}',
+  },
+  {
+    name: 'ArenaRunRequest',
+    declaration: 'export interface ArenaRunRequest {\n    readonly prompt: string;\n    readonly contenders: readonly ArenaContender[];\n    readonly from?: string;\n}',
   },
   {
     name: 'AskOptions',
@@ -10418,6 +10467,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface WebFetchResultView {\n    card: \'web\';\n    kind: \'fetch\';\n    title?: string;\n    url: string;\n    statusCode: number;\n    truncated: boolean;\n}',
   },
   {
+    name: 'WebhookAction',
+    declaration: 'export type WebhookAction = WebhookSessionRequest | WebhookMessageRequest;',
+  },
+  {
     name: 'WebhookDeliveryId',
     declaration: 'export type WebhookDeliveryId = Branded<\'WebhookDeliveryId\'>;',
   },
@@ -10430,12 +10483,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type WebhookEventOf<K extends string> = K extends keyof WebhookEventMap ? WebhookEventMap[K] : JsonValue;',
   },
   {
+    name: 'WebhookMessageRequest',
+    declaration: 'export interface WebhookMessageRequest {\n    readonly kind: \'message\';\n    readonly sessionId: string;\n    readonly prompt: string;\n    readonly target: \'next-turn\' | \'next-step\';\n}',
+  },
+  {
     name: 'WebhookModelSelection',
     declaration: 'export interface WebhookModelSelection {\n    readonly provider: string;\n    readonly model: string;\n    readonly maxTokens?: number;\n}',
   },
   {
     name: 'WebhookRule',
-    declaration: 'export interface WebhookRule<K extends string = string> {\n    readonly id: WebhookRuleId;\n    readonly kind: K;\n    run(delivery: Readonly<VerifiedWebhookDelivery<K>>, signal: AbortSignal): WebhookSessionRequest | null | Promise<WebhookSessionRequest | null>;\n}',
+    declaration: 'export interface WebhookRule<K extends string = string> {\n    readonly id: WebhookRuleId;\n    readonly kind: K;\n    run(delivery: Readonly<VerifiedWebhookDelivery<K>>, signal: AbortSignal): WebhookAction | null | Promise<WebhookAction | null>;\n}',
   },
   {
     name: 'WebhookRuleId',
@@ -10443,7 +10500,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'WebhookSessionRequest',
-    declaration: 'export interface WebhookSessionRequest {\n    readonly workspacePath: string;\n    readonly title: string;\n    readonly prompt: string;\n    readonly agentPreset: string;\n    readonly permissionPreset: string;\n    readonly model?: WebhookModelSelection;\n}',
+    declaration: 'export interface WebhookSessionRequest {\n    readonly kind?: \'session\';\n    readonly workspacePath: string;\n    readonly title: string;\n    readonly prompt: string;\n    readonly agentPreset: string;\n    readonly permissionPreset: string;\n    readonly model?: WebhookModelSelection;\n}',
   },
   {
     name: 'WebhookSourceId',

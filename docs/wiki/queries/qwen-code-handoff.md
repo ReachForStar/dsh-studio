@@ -1,7 +1,7 @@
 ---
 title: qwen-code 采纳工作交接
 type: query
-tags: [交接, qwen-code, 路线图, 未完成项]
+tags: [交接, qwen-code, 路线图, 门禁]
 created: 2026-11-11
 updated: 2026-11-12
 sources: []
@@ -12,7 +12,7 @@ status: active
 
 ## 一句话总结
 
-对照 `github.com/QwenLM/qwen-code`（`tmp/qwen-code`，检出 `6a999b20b7`）评估 dsh 的可采纳能力，已落地 9 个交付（Agent Plugins v1、工具检索、worktree 脏状态镜像、逐工具上下文成本、记忆注入、工具批次摘要、下一步建议、推测门控与 overlay、推测触发）。剩余 2 项（通道运行时、Arena 本体）需要核心接缝或多会话编排，留给后续会话。
+对照 `github.com/QwenLM/qwen-code`（`tmp/qwen-code`，检出 `6a999b20b7`）评估 dsh 的可采纳能力。全部交付已落地：Agent Plugins v1、工具检索、worktree 脏状态镜像、逐工具上下文成本、记忆注入、工具批次摘要、下一步建议、推测门控与 overlay、推测触发、通道投递、Arena 本体。本页保留逐项落点、与 qwen 的差异，以及后续维护需要注意的门禁与踩坑。
 
 ## 已完成交付
 
@@ -28,30 +28,16 @@ status: active
 | 下一步建议 | [followup](../entities/followup.md) | 已完成 |
 | 推测执行门控 + overlay 代理 | [speculation](../entities/speculation.md) | 已完成 |
 | 推测触发（预测 + 预执行 + 提交/丢弃） | [speculation](../entities/speculation.md) | 已完成（`@deepseek-ai/dsh-speculation/runner`） |
+| 通道投递（外部事件 → 活跃会话） | [webhook 活跃会话投递](../entities/webhook-channel-delivery.md) | 已完成投递角色（`WebhookMessageRequest`） |
+| Arena 本体（多模型对比） | [Arena](../entities/arena.md) | 已完成（`@deepseek-ai/dsh-arena`） |
 
-## 未完成项与开工点
+## 与 qwen 的剩余差异
 
-### 1. 通道运行时
+三项主干能力已经落地，差异集中在产品化的一层，不需要新的核心接缝：
 
-现状：`packages/experimental/webhook` 只把外部事件转成**新 Session**；qwen 的 channels 能把事件投递到**活跃会话**。
-
-核心缺口已缩小：`Agent` 接口已有 `followup(message)` / `send(message, target, wakeup)` / `steer(message)`，把一条 `UserMessage` 投递到已存在的会话并唤醒驱动不需要改核心；`ctx.agents.get(sessionId)` 可取到活跃 Agent。开工时需要确认的点：
-
-- 投递使用的消息来源种类：新增种类要按第 2 条走持久化记录，或复用现有种类。
-- 会话不在运行时的处理（取不到 Agent、或需要恢复一个持久化会话）与幂等（同一外部事件重复投递）。
-- 拆三角色：adapter（外部协议 → 归一事件）、routing（选择目标会话）、delivery（投递到会话）。
-- 若目标会话必须存在才能投递，退化为「路由到新会话」并在 README 明确差异。
-
-### 2. Arena 本体
-
-现状：前置条件已具备（`create_worktree` 的 `mirrorUncommitted` 与 `mirrorMaxFileBytes`）。
-
-开工点：
-
-- 每模型一个 Session，并行在各自 worktree 中执行同一提示。
-- 比较输出需要一条新投影（参考 [session projection](../../../.agents/skills/dsh-session-projection/SKILL.md)）；摘要类数据可参考 `step-summary` 的 log-only 事件模式。
-- 胜者应用：把胜出 worktree 的 diff 应用到主工作区（写操作走正常审批路径，不要复用推测 overlay）。
-- 风险：并行 Session 的生命周期、取消与资源回收；需要 e2e 证据。
+- **通道路由**：投递原语已有，`sessionScope`、`sessionRotation`、`messageRoutes` 前缀路由、`collect` 投递模式仍缺；这些属于路由策略，可在规则层或新的路由服务里做。
+- **Arena 摘要与界面**：比较数据（回复、状态、耗时、轮次、工具调用数、token、改动路径）已返回，按 diff 的思路摘要与对比视图未做。
+- **推测期结果复用**：预测的只读调用不留产物，只有提交的 overlay 副本保留。
 
 ## 门禁与踩坑清单（后续会话必读）
 
@@ -74,13 +60,11 @@ status: active
 
 未删除，待授权：
 
-- `.artifacts/persistence-change.prose.json`（已 gitignore，持久化记录输入）
-- `tmp/persistence-check.json`（一次性检查输出）
-- `tmp/persistence-prose.json`（本次推测触发的持久化记录输入）
-- `tmp/task-speculation-runner.md`（本次任务清单）
-- `tmp/cov/`（一次性覆盖率 JSON 报告）
-
-`tmp/qwen-code` 是用户提供的参照仓库，必须保留。
+- `tmp/qwen-code`（用户提供的参照仓库，必须保留）
+- `tmp/task-speculation-runner.md`、`tmp/task-channel-and-arena.md`（本批任务清单）
+- `tmp/persistence-prose.json`、`tmp/persistence-prose-arena.json`（持久化记录输入）
+- `tmp/cov/`、`tmp/cov-arena/`（一次性覆盖率报告）
+- `tmp/check-workspace-constraints.log`、`tmp/constraints2.log`、`tmp/constraints3.log`、`tmp/verify-no-unknown-casts.log`、`tmp/verify-package-meta.log`、`tmp/commit-msg.txt`
 
 ## 相关页面
 

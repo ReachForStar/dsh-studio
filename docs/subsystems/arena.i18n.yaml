@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for arena.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/arena.md
+/model-comparison-arena:
+  en: 324d07018260ca3e
+  zh: b92fce4a53b606d3
+/model-comparison-arena/running-a-comparison:
+  en: 2d06e7f468e6285c
+  zh: 423f89d9be0affa8
+/model-comparison-arena/applying-a-result:
+  en: 098181ee98b4dd11
+  zh: 4aebf8d350d4c80e
+/model-comparison-arena/retention-and-failure:
+  en: 9856dae606e0af71
+  zh: 357e023e7088429b

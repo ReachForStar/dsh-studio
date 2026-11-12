@@ -219,6 +219,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Streams one panel state per followed Session: Git inspection using Session permissions, the recognized code host and its sign-in, and the bound change requests with polled status.',
   },
   {
+    key: 'arena',
+    pkg: 'arena',
+    title: 'Model comparison runs',
+    mode: 'service',
+    consumers: [],
+    note: 'Runs one prompt through several models, each in its own checkout on a shared base commit, and applies a chosen contender diff to the workspace on request.',
+  },
+  {
     key: 'worktrees',
     pkg: 'experimental-worktree',
     title: 'Git worktree creation',

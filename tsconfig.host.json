@@ -291,6 +291,7 @@
     { "path": "./packages/experimental/session-titles-bundle" },
     { "path": "./packages/experimental/translator" },
     { "path": "./packages/experimental/agent-plugins" },
+    { "path": "./packages/experimental/arena" },
     { "path": "./packages/experimental/followup" },
     { "path": "./packages/experimental/speculation" },
     { "path": "./packages/experimental/step-summary" },

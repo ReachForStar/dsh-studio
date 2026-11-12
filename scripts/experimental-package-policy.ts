@@ -26,6 +26,7 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/client-ui-plugin-recommendations': '@deepseek-ai/dsh-client-ui-plugin-recommendations',
   'packages/experimental/personalized-recommendations': '@deepseek-ai/dsh-personalized-recommendations',
   'packages/experimental/agent-plugins': '@deepseek-ai/dsh-agent-plugins',
+  'packages/experimental/arena': '@deepseek-ai/dsh-arena',
   'packages/experimental/followup': '@deepseek-ai/dsh-followup',
   'packages/experimental/speculation': '@deepseek-ai/dsh-speculation',
   'packages/experimental/step-summary': '@deepseek-ai/dsh-step-summary',

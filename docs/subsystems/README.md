@@ -19,6 +19,7 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [commands.md](commands.md) | the human-command registry service: definitions, adapter discovery, direct invocation, results, and parsing views |
 | [session.md](session.md) | the full `SessionEventMap` variant catalog, `TurnEndReason`, `deriveMessages()`, execution enclosure, and standalone events |
 | [working-directory.md](working-directory.md) | Session execution directories, durable changes, recovery, and user context |
+| [arena.md](arena.md) | Experimental model comparison: isolated contender checkouts, comparable results, and applying one chosen diff |
 | [worktrees.md](worktrees.md) | Experimental Git branch and checkout creation under existing permissions |
 | [forge.md](forge.md) | Experimental code host change requests: provider contract, shared status polling, and Session bindings |
 | [persistence.md](persistence.md) | the durability seam: `SessionPersistence`, the JSONL provider, `session/flush`, crash recovery, `SessionHeader` |

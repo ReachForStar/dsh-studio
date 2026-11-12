@@ -4,8 +4,9 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import { errorChain } from '@deepseek-ai/dsh-llm'
 import { deepFreeze, snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WebhookRuleId } from './brand.ts'
+import { deliverWebhookMessage } from './message.ts'
 import { createWebhookSession } from './session.ts'
-import type { VerifiedWebhookDelivery, WebhookRule, WebhookSessionRequest } from './types.ts'
+import type { VerifiedWebhookDelivery, WebhookAction, WebhookRule } from './types.ts'
 
 export * from './brand.ts'
 export type * from './types.ts'
@@ -23,7 +24,7 @@ interface AnyWebhookRule {
   run(
     delivery: Readonly<VerifiedWebhookDelivery>,
     signal: AbortSignal,
-  ): WebhookSessionRequest | null | Promise<WebhookSessionRequest | null>
+  ): WebhookAction | null | Promise<WebhookAction | null>
 }
 
 /** One effect-owned rule registration and the invocations that currently use it. */
@@ -54,7 +55,7 @@ function snapshotDelivery(delivery: VerifiedWebhookDelivery): VerifiedWebhookDel
   return deepFreeze(snapshot)
 }
 
-/** Fire-and-forget rule runtime. Session creation is the only built-in action. */
+/** Fire-and-forget rule runtime. Session creation and live-Session delivery are the built-in actions. */
 export class WebhookRuntime extends Service {
   static inject = [
     'agents',
@@ -138,15 +139,24 @@ export class WebhookRuntime extends Service {
       registration.controller.signal.throwIfAborted()
       const request = await registration.rule.run(delivery, registration.controller.signal)
       registration.controller.signal.throwIfAborted()
-      if (request !== null) {
-        await createWebhookSession(
+      if (request === null) return
+      if (request.kind === 'message') {
+        deliverWebhookMessage(
           this.selfCtx,
           delivery,
           registration.rule.id,
           request,
           registration.controller.signal,
         )
+        return
       }
+      await createWebhookSession(
+        this.selfCtx,
+        delivery,
+        registration.rule.id,
+        request,
+        registration.controller.signal,
+      )
     }).catch((error: unknown) => {
       const invocation = `webhook: provider=${JSON.stringify(delivery.kind)} source=${JSON.stringify(delivery.source)} `
         + `delivery=${JSON.stringify(delivery.deliveryId)} rule=${JSON.stringify(registration.rule.id)}`

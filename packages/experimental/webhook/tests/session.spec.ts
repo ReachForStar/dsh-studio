@@ -211,6 +211,12 @@ describe('webhook Session creation', () => {
     expect(test.agentOptions).toEqual({ provider: 'p', model: 'm', maxTokens: 10 })
   })
 
+  it('accepts an explicit session discriminant', async () => {
+    const test = harness()
+    await create(test, { kind: 'session', ...test.request })
+    expect(test.calls).toContain('followup')
+  })
+
   it('passes the default route and reasoning effort as initial Agent options', async () => {
     const test = harness()
     await create(test)
@@ -230,6 +236,7 @@ describe('webhook Session creation', () => {
     [{ workspacePath: '/w', title: 't', prompt: 'p', agentPreset: 'a', permissionPreset: 'x', model: null }, /model must be an object/],
     [{ workspacePath: '/w', title: 't', prompt: 'p', agentPreset: 'a', permissionPreset: 'x', model: {} }, /provider/],
     [{ workspacePath: '/w', title: 't', prompt: 'p', agentPreset: 'a', permissionPreset: 'x', model: { provider: 'p', model: 'm', maxTokens: 0 } }, /maxTokens/],
+    [{ kind: 'message', workspacePath: '/w', title: 't', prompt: 'p', agentPreset: 'a', permissionPreset: 'x' }, /kind must be "session"/],
   ] as const)('rejects malformed rule result %# before side effects', async (request, message) => {
     const test = harness()
     await expect(create(test, request as never)).rejects.toThrow(message)

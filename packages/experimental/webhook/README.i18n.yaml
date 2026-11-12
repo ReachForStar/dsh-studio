@@ -9,17 +9,20 @@
   en: 342876b9abe16093
   zh: 48f48c97e57847a6
 /deepseek-ai-dsh-webhook/summary:
-  en: 406c9bffd5078cb3
+  en: eb19dbd136529a54
   zh: c7e732b80df254a8
 /deepseek-ai-dsh-webhook/table-of-contents:
   en: 2c6f2175556251ee
   zh: 753d216d980e1735
 /deepseek-ai-dsh-webhook/rule-interface:
-  en: d9674188535399ab
-  zh: c52fe9b7ebe8fe79
+  en: d07a51a6173733dd
+  zh: 501d04390a463f7c
 /deepseek-ai-dsh-webhook/session-request:
-  en: 61e5fd0df92f6467
-  zh: 39be823dd906b01a
+  en: aa1fe8cbdffab18c
+  zh: c304788cba5ab64a
+/deepseek-ai-dsh-webhook/message-delivery:
+  en: 2711f41e5944c051
+  zh: 5bb4002e53da82d7
 /deepseek-ai-dsh-webhook/composition:
   en: 6a19f22997772945
   zh: b92bec411e0406bc
@@ -30,8 +33,8 @@
   en: d9d6f7525ae75c28
   zh: 981d9ea68b9e884b
 /deepseek-ai-dsh-webhook/model-experience/rule-authored-initial-prompt/what-the-model-sees:
-  en: 44859d5d877a1484
-  zh: 0f6c96ff6435167b
+  en: b1599a9a8b05ccca
+  zh: f2c47c3f801e267f
 /deepseek-ai-dsh-webhook/model-experience/rule-authored-initial-prompt/token-effect:
   en: 13937f95014a6bea
   zh: c61031459298c4ab

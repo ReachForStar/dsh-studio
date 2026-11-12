@@ -852,3 +852,23 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 持久化记录 `2026-11-12-speculation`（两个 log-only 事件根 + `dsh-speculation` 来源种类，same-version）。
 - 顺带清偿 handoff 遗留的门禁红项：五个包补进 `tsconfig.host.json` 的 references，修掉 `memory-notes`/`step-summary`/`tool-search`/`followup` 测试文件类型错误，`pnpm run typecheck` 由红转绿。
 - 验证：55 测试、src 逐文件 100% 全维度覆盖、本批包 lint 通过、`jscpd` 0 克隆、`doc-sync` 43 项、持久化检查 `ok: true`。
+
+## [2026-11-12] feat | webhook 投递到活跃会话（通道运行时·投递角色）
+
+- `packages/experimental/webhook` 新增 `WebhookMessageRequest`（`sessionId` + `prompt` + `target`）与 `deliverWebhookMessage`：`next-turn` 走 `Agent.followup`，`next-step` 走 `Agent.steer`，沿用既有 `webhook` 来源种类，因此不需要新的持久化记录。
+- 判别方式：`WebhookSessionRequest` 增加可选 `kind?: 'session'`，`run()` 返回值改为 `WebhookAction` 联合；`dispatch` 按 `kind === 'message'` 分流。
+- 设计取舍：不做去重（运行时本就无交付状态）、不等待目标轮次（即发即忘）、目标无活跃 Agent 时报错并记日志，规则可改返回会话请求兜底。
+- 验证：webhook 包 82 测试、src 逐文件 100%（语句 151、分支 94、函数 26、行 141）、lint、`doc-sync` 43 项。
+
+## [2026-11-12] feat | Arena 多模型对比（dsh-arena）
+
+- 新增 `packages/experimental/arena`：`ctx.arena.run/apply/remove/runs`。每个参选者一个 `git worktree add -b` 检出 + 一个普通会话，prompt 以 `dsh-arena` 来源种类投递，收敛后返回回复、状态、耗时、轮次、工具调用数、token 与改动路径。
+- 关键实现：diff 收集先 `git add --all` 再 `git diff --cached <base>`（从不提交的模型也给完整改动集）；补丁写出补回结尾换行；所有 git 命令经 `subprocess` + `sandbox` 按 `sandboxPolicy` 执行并清除仓库选择变量。
+- 生命周期：单参选者失败/取消只影响自身状态；会话收敛后释放，`remove()` 清理 checkout 与分支，删除失败只记日志。
+- 新增 `dsh-arena` 消息来源种类，持久化记录 `2026-11-12-arena`（same-version）；新子系统页 `docs/subsystems/arena.md` 与能力接缝表条目。
+- 验证：24 测试（真实临时仓库 + 脚本化 Agent 注册表）、src 逐文件 100%（语句 182、分支 100、函数 31、行 159）、lint、`jscpd` 0 克隆、`pnpm run typecheck`、`doc-sync` 43 项。
+
+## [2026-11-12] docs | qwen-code 交接收尾
+
+- 交接页改为「全部交付已落地」：新增通道投递与 Arena 两行，未完成项章节替换为与 qwen 的产品化差异（通道路由策略、Arena 摘要与视图、推测期只读结果复用）。
+- 新增 [Arena](entities/arena.md) 与 [webhook 活跃会话投递](entities/webhook-channel-delivery.md) 两个实体页并登记到 index；能力对比页同步现状与剩余差异。

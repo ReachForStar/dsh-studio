@@ -208,6 +208,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 |---|---|---|
 | `@deepseek-ai/dsh-action-cards` | yes | Optional action cards below answers: one shared proposal tool, card state, user actions and status notices |
 | `@deepseek-ai/dsh-agent-plugins` | yes | Agent Plugins v1 loader: skills and MCP servers from portable plugin.json packages |
+| `@deepseek-ai/dsh-arena` | yes | Run one prompt through several models in isolated worktrees and apply the chosen result |
 | `@deepseek-ai/dsh-client-ui-action-cards` | no | Action cards below completed answers: the shared card frame, kind bodies and the compact tool row |
 | `@deepseek-ai/dsh-client-ui-creation-recommendations` | no | Body of the personalized page card: location choice, creation progress, Undo and Restore |
 | `@deepseek-ai/dsh-client-ui-plugin-recommendations` | no | Official plugin card body with catalog text and enabling |

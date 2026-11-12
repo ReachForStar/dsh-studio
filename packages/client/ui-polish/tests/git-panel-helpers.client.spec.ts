@@ -92,6 +92,12 @@ describe('GitPanel diff parsing', () => {
     const rows = parseUnifiedDiff('@@ -1 +1 @@\n-a\n+b\n c\n')
     expect(diffCounts(rows)).toEqual({ add: 1, del: 1 })
   })
+
+  it('treats conflict markers in added and deleted lines as meta rows', () => {
+    const rows = parseUnifiedDiff('@@ -1 +1 @@\n-<<<<<<< HEAD\n+>>>>>>> other')
+    expect(rows[1]).toMatchObject({ kind: 'meta', text: '<<<<<<< HEAD', oldNo: 1 })
+    expect(rows[2]).toMatchObject({ kind: 'meta', text: '>>>>>>> other', newNo: 1 })
+  })
 })
 
 describe('GitPanel commit graph', () => {
@@ -115,6 +121,14 @@ describe('GitPanel commit graph', () => {
     const nodes = layoutGraph(commits)
     expect(nodes.map(node => node.lane)).toEqual(Array.from({ length: 10 }, () => 0))
   })
+
+  it('reuses the lane of a parent that appears earlier in the page', () => {
+    const nodes = layoutGraph([commit('a'), commit('b', ['a'])])
+    expect(nodes).toEqual([
+      { hash: 'a', lane: 0, row: 0 },
+      { hash: 'b', lane: 0, row: 1 },
+    ])
+  })
 })
 
 describe('GitPanel untracked tree', () => {
@@ -135,6 +149,11 @@ describe('GitPanel untracked tree', () => {
   it('keeps one node per top directory even when deeper branches repeat', () => {
     const tree = buildUntrackedTree([file('a/b/x'), file('a/b/y'), file('a/c/z')])
     expect(tree).toEqual([{ dir: 'a', files: [], subdirs: ['b', 'c'] }])
+  })
+
+  it('records a nested directory only once', () => {
+    const tree = buildUntrackedTree([file('a/b/x'), file('a/b/y')])
+    expect(tree).toEqual([{ dir: 'a', files: [], subdirs: ['b'] }])
   })
 })
 

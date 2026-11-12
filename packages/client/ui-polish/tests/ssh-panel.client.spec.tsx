@@ -755,7 +755,7 @@ describe('SshPanel remaining branch coverage', () => {
     await waitFor(() => { expect(FakeTerminal.instances.length).toBeGreaterThan(0) })
     vi.useFakeTimers()
     try {
-      act(() => { vi.advanceTimersByTime(700) })
+      act(() => { vi.advanceTimersByTime(2300) })
     } finally {
       vi.useRealTimers()
     }
@@ -769,4 +769,73 @@ describe('SshPanel remaining branch coverage', () => {
     document.body.removeAttribute('data-ds-dark-theme')
   })
 
+})
+
+
+describe('SshPanel default messages and aborted loads', () => {
+  it('uses default messages when a route omits its error', async () => {
+    const missing = panel({ rpc: mergedRpc({ 'ssh.pty.open': async () => ({ ok: false }) }) })
+    await select(missing.container, CONNECTION.id)
+    fireEvent.click(missing.getByText('ssh.openTerminal'))
+    await waitFor(() => { expect(missing.getByText('failed to open PTY')).toBeDefined() })
+    cleanup()
+
+    const attach = panel({ rpc: mergedRpc({ 'ssh.pty.attach': async () => ({ ok: false }) }) })
+    await select(attach.container, CONNECTION.id)
+    fireEvent.click(attach.getByText('ssh.openTerminal'))
+    await waitFor(() => { expect(attach.getByText('failed to attach PTY')).toBeDefined() })
+    cleanup()
+
+    const list = panel({ rpc: mergedRpc({
+      'ssh.sftp.list': async () => ({ ok: true }),
+    }) })
+    await select(list.container, CONNECTION.id)
+    fireEvent.click(list.getByText('ssh.openTerminal'))
+    await waitFor(() => { expect(list.getByText('ssh.empty')).toBeDefined() })
+    cleanup()
+
+    const denied = panel({ rpc: mergedRpc({
+      'ssh.sftp.list': async () => ({ ok: false }),
+    }) })
+    await select(denied.container, CONNECTION.id)
+    fireEvent.click(denied.getByText('ssh.openTerminal'))
+    await waitFor(() => { expect(denied.getByText('failed to list directory')).toBeDefined() })
+    cleanup()
+
+    const mkdir = panel({ rpc: mergedRpc({ 'ssh.sftp.mkdir': async () => ({ ok: false }) }) })
+    await openTerminal(mkdir.container, mkdir.getByText)
+    fireEvent.click(mkdir.getByText('ssh.mkdir'))
+    fireEvent.change(mkdir.getByPlaceholderText('ssh.mkdirPrompt'), { target: { value: 'x' } })
+    fireEvent.click(mkdir.getByText('ssh.confirm'))
+    await waitFor(() => { expect(mkdir.getByText(/ssh\.mkdirFailed/)).toBeDefined() })
+    cleanup()
+
+    const rename = panel({ rpc: mergedRpc({ 'ssh.sftp.rename': async () => ({ ok: false }) }) })
+    await openTerminal(rename.container, rename.getByText)
+    fireEvent.click(rename.getByText('ssh.rename'))
+    fireEvent.change(rename.getByPlaceholderText('ssh.renamePrompt'), { target: { value: 'x.txt' } })
+    fireEvent.click(rename.getByText('ssh.confirm'))
+    await waitFor(() => { expect(rename.getByText(/ssh\.renameFailed/)).toBeDefined() })
+    cleanup()
+
+    const remove = panel({ rpc: mergedRpc({ 'ssh.sftp.remove': async () => ({ ok: false }) }) })
+    await openTerminal(remove.container, remove.getByText)
+    fireEvent.click(remove.getByText('ssh.remove'))
+    fireEvent.click(remove.getByText('ssh.confirmRemove'))
+    await waitFor(() => { expect(remove.getByText(/ssh\.removeFailed/)).toBeDefined() })
+  })
+
+  it('drops an aborted home lookup instead of listing the directory', async () => {
+    let resolveExec: ((value: SshPanelRpcResult) => void) | null = null
+    const view = panel({ rpc: mergedRpc({
+      'ssh.exec': async () => new Promise<SshPanelRpcResult>((resolve) => { resolveExec = resolve }),
+    }) })
+    await select(view.container, CONNECTION.id)
+    fireEvent.click(view.getByText('ssh.openTerminal'))
+    await waitFor(() => { expect(resolveExec).not.toBeNull() })
+    view.unmount()
+    resolveExec?.({ ok: true, value: { stdout: '/home/u\n', exitCode: 0 } })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(calls.some(c => c.method === 'ssh.sftp.list')).toBe(false)
+  })
 })

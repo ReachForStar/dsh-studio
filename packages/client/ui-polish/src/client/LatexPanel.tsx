@@ -230,13 +230,16 @@ export function LatexPanel({ useSession, useWorkspaces, t }: LatexPanelProps) {
   const projectOptions = projects.length > 0
     ? projects
     : [{ path: '.', name: '.', mainFiles: [] }]
+  // Every route below takes the project directory; the root stands in before
+  // one is selected, and the tree, PDF, and open-file calls share that answer.
+  const activeDir = dir ?? '.'
 
   return (
     <div className={css.view}>
       <header className={css.toolbar}>
         <select
           className={css.select}
-          value={dir ?? '.'}
+          value={activeDir}
           onChange={e => void selectProject(e.target.value)}
           title={t('latex.project')}
         >
@@ -282,7 +285,7 @@ export function LatexPanel({ useSession, useWorkspaces, t }: LatexPanelProps) {
                     key={f.path}
                     className={f.dir ? css.treeDir : css.treeFile}
                     {...(f.dir ? {} : {
-                      onClick: () => void openFile(f.path, dir ?? '.'),
+                      onClick: () => void openFile(f.path, activeDir),
                       'data-current': currentFile === f.path ? '1' : undefined,
                     })}
                     title={f.path}
@@ -323,6 +326,7 @@ export function LatexPanel({ useSession, useWorkspaces, t }: LatexPanelProps) {
                     wrap="off"
                     onScroll={(e) => {
                       const gutter = gutterRef.current
+                      /* v8 ignore next -- the gutter renders beside the editor, so its ref is always set */
                       if (gutter !== null) gutter.scrollTop = e.currentTarget.scrollTop
                     }}
                     onChange={(e) => { setContent(e.target.value); setDirty(true) }}
@@ -367,7 +371,7 @@ export function LatexPanel({ useSession, useWorkspaces, t }: LatexPanelProps) {
             )}
           </div>
           {compileOk && pdfTick > 0 && mainFile !== null
-            ? <iframe className={css.pdf} title={t('latex.preview')} src={latexApi.pdfUrl(cwd, dir ?? '.', mainFile, pdfTick)} />
+            ? <iframe className={css.pdf} title={t('latex.preview')} src={latexApi.pdfUrl(cwd, activeDir, mainFile, pdfTick)} />
             : (
               <div className={css.empty}>
                 {compileLog !== null
@@ -670,7 +674,10 @@ function AiModal({ cwd, dir, path, selection, onResult, onClose, t }: AiModalPro
           <button
             className={css.btn}
             disabled={latest === undefined}
-            onClick={() => { if (latest !== undefined) onResult(latest) }}
+            onClick={() => {
+              /* v8 ignore next -- this button is disabled until an answer exists */
+              if (latest !== undefined) onResult(latest)
+            }}
           >
             {t('latex.aiApply')}
           </button>

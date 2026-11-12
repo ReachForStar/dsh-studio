@@ -825,3 +825,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 关键点：`user/message` 事件不含 turn，按收到的 `turn/start` 归属；增量累积不读历史；`boundUtf8` 做码点安全截断。
 - 持久化记录 `2026-11-11-followup`：`followup/suggestions` 事件根（same-version allowed）与 `followup` 来源种类（双向兼容说明）。
 - 验证：20 测试、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项、持久化检查 `ok: true`。
+
+## [2026-11-11] feat | speculation 推测执行门控（快模型第三件·上）
+
+- 新增 `packages/experimental/speculation`：`gateToolCall` / `gatePlan` / `overlayPath` / `rewriteArguments` 纯逻辑门控。只读工具放行；文件写入在 `allowWrites` 显式开启时重定向到 overlay；越界路径、未知工具与外部网络工具一律 boundary。
+- 与 qwen 的差异：dsh 无 `auto-edit`/`yolo` 审批枚举，写入许可改为显式配置；不做 shell AST 分类（一律 boundary）。
+- 延后：overlay `FileSystem` 代理与「接受即提交」、从用户意图生成推测计划。
+- 验证：13 测试、src 逐文件 100% 全维度覆盖、lint、`doc-sync` 43 项。

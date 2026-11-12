@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/speculation/README.md
+/:
+  en: 0a4e7b67e40238ed
+  zh: 30de9e27525d5eb8
+/deepseek-ai-dsh-speculation:
+  en: 07942aaa3e7ac03b
+  zh: 72f6f9d2ad79ddec
+/deepseek-ai-dsh-speculation/summary:
+  en: 12ac29f5a40f54cc
+  zh: e93314ed72110834
+/deepseek-ai-dsh-speculation/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 725b47765ee8f30b
+/deepseek-ai-dsh-speculation/use-this-package:
+  en: 739437979435029e
+  zh: 7dacaa6c5b64c354
+/deepseek-ai-dsh-speculation/use-this-package/configuration:
+  en: da31e5f029c40859
+  zh: a750153614374f6d
+/deepseek-ai-dsh-speculation/understand-the-implementation:
+  en: 0d3bffffa5f5cdd3
+  zh: c279c000f417465c
+/deepseek-ai-dsh-speculation/further-exploration:
+  en: 004fe571f30150a0
+  zh: 4416be974b561c97
+/deepseek-ai-dsh-speculation/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-speculation/model-experience/speculation-gate:
+  en: e1b2fe609b309bbd
+  zh: 9b91167a0321909b
+/deepseek-ai-dsh-speculation/model-experience/speculation-gate/what-the-model-sees:
+  en: cc9a5c8ae6b29a3d
+  zh: 6ea0b821b404f964
+/deepseek-ai-dsh-speculation/model-experience/speculation-gate/token-effect:
+  en: c5ccb45e653e3f86
+  zh: c9d3a0ea4a0451db
+/deepseek-ai-dsh-speculation/model-experience/speculation-gate/kv-cache-effect:
+  en: 82e96ad8ba70f1c4
+  zh: 59a97e2a2a0b7b25
+/deepseek-ai-dsh-speculation/known-limitations-and-deferred-work:
+  en: 4d56fdfc0b5c72f9
+  zh: 2bf6ce6899e5e10d
+/deepseek-ai-dsh-speculation/known-limitations-and-deferred-work/dev-note:
+  en: 54ea9439aebec5cc
+  zh: b284915de3a92df0

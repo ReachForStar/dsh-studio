@@ -87,3 +87,14 @@ status: active
 - 合并范围：全仓 3764 个文件。
 - 重点取舍：`packages/client/ui-sidebar-files`、`packages/api/workspace-files`、`packages/client/tsdown.client.ts`、`snapshots/**`。
 - fork 适配：`packages/api/remotes`、`packages/fs/*`、`packages/llm/llm-pi-ai`、`packages/a2a/*`、`packages/host/ssh-remotes`、`packages/client/ui-polish`。
+
+## 合并后 fork 入口消失的复盘（2026-11-12 晚）
+
+用户报告 A2A / SSH / 星域 / ui-polish / Excalidraw / pi 后端入口消失、Token 用量与之前不同，并给出预设诊断行 `tool-subagent-list-agents (@deepseek-ai/dsh-tool-subagent-control/list-agents): never started`。两处独立原因：
+
+| 现象 | 根因 | 修法 |
+| --- | --- | --- |
+| 统计浮层与 Git/画布/LaTeX/SSH 标签页消失、Token 用量只剩核心胶囊 | ui-polish 客户端包在压缩单行产物下算不出同步 chunk 闭包，`import failed` 使整包不激活（见 [CJS 共享 runtime chunk](cjs-client-shared-runtime-chunk.md) 新增小节） | `syncChunkClosure` 按整份产物扫描包内 chunk require |
+| 星域预设报 `never started` | 预设仍挂上游已删除的 `@deepseek-ai/dsh-tool-subagent-control/list-agents` 子入口（`ERR_PACKAGE_PATH_NOT_EXPORTED`），并残留已改名的 `modelSelectionSettings` 与已删除的 `backgroundMode` | `presets/xingchen-qiming.patch.yml` 删该行、改 `modelSelection`、删 `backgroundMode` |
+
+结论：合并保留 fork 文件并不等于 fork 文件仍然有效——上游改的是**被 fork 文件引用的接口**（子入口、配置键、构建产物形态）。合并收尾应额外做两项检查：预设/配置里每个插件名能 `require.resolve`，以及 `pnpm dsh web` 的控制台没有 `entry did not activate`。

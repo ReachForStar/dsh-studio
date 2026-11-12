@@ -71,3 +71,11 @@ ui-polish 内嵌 Excalidraw，其依赖树含大量 CJS 依赖与动态 import�
 桌面 0.2.1-rc.2 安装后复现相同报错，但 Host/Client 同步闭包机制仍在。直接原因是 ui-polish 的 `package.json.files` 只发布 `lib/client.js`，遗漏了 172 个 `lib/client.*.js` 文件。补齐发布清单后，真实 tarball 包含全部 173 个客户端 JavaScript 文件；真实 ASAR 运行时的浏览器进入工作台，控制台错误为零。
 
 同时检查 [桌面 deb 发布与安装](desktop-deb-release.md)，避免只验证源码 Web 开发目录而遗漏 npm 和 ASAR 中的文件。
+
+## 压缩单行产物让闭包收集失效（2026-11-12，合并 0.2.2-rc.2 后）
+
+- 症状：合并上游 0.2.2-rc.2 后 `pnpm dsh web` 复现同一报错（`@reachforstar/dsh-client-ui-polish: import failed`），统计浮层与 Git/画布/LaTeX/SSH 会话标签页全部消失，用户看到的是没有 ui-polish 的核心界面。
+- 根因：上游构建链升级后 ui-polish 的 `lib/client.js` 变成**单行压缩产物**（58 行、无 `//#region`），工厂里 `require("./client.rolldown-runtime.js")` 不在行首，`prologueRequires` 的行锚定正则匹配不到；`syncChunkClosure` 因此算不出同步闭包，combo 不注册 runtime chunk，浏览器 `require` 落空。
+- 修法：`syncChunkClosure` 改用 `chunkRequires(code, present)`——在 `prologueRequires` 之外再扫描整份产物里的 `require("./…")`，只保留目录中真实存在的 `client.*.js` chunk 名；压缩与未压缩产物都能收集到同一个闭包。
+- 验证：新增用例「单行压缩 entry 的同步 chunk 也进 combo」通过；`packages/client/modules` 与 `preset/agent-preset-registry` 共 278 项通过；重建 `tsc -b` + 包内 `tsdown` 后实测浏览器控制台无 `import failed`，会话视图标签环恢复为 对话/轨迹/Git/画布/LaTeX/SSH/统计，`[data-ui-polish-stats]` 浮层出现。
+- 复发预防：`prologueRequires` 依赖「require 独占一行」，只适合未压缩产物；凡是「产物里出现的包内 chunk 名」这类判断，都要按整份文本扫描，并保持「只认目录里真实存在的 chunk 文件」这条过滤，避免把动态 `require` 的任意相对路径当成 chunk。

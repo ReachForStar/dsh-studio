@@ -67,7 +67,7 @@ updated: 2026-11-11
 - [A2A v1.0.1 符合性缺口清单（已修）](queries/a2a-v1.0.1-conformance-gaps.md) — 按规范原文逐条核对出的 7 处 MUST 级偏离（推送错误码、扩展卡能力、终态任务三处行为、`A2A-Version` 头、contextId/taskId 校验）与 4 处细节（列表排序、artifacts 省略、游标分页、historyLength），2026-09-18 已全部修复，含修法、错误码映射与复现命令。
 - [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率红项的现象、归属与修复方向；2026-10-30 复检补齐 `hygiene` 的 12 门清单，其中包元数据、客户端文案与文档相对路由三门已同日清偿。
 - [客户端文案、包元数据与文档相对路由三门禁的清偿](queries/client-copy-and-locale-metadata.md) — 三门的判定规则、16 包 × 8 语言的元数据约定与 manifest 导出、5 处文案与 4 条路由的改法，以及 `-/X` 被当成斜杠命令 token 的踩坑。
-- [CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md) — ui-polish 内嵌 Excalidraw 后 CJS 构建提升共享 `client.rolldown-runtime.js`，prologue 同步 require 模块表答不了；combo 携带同步闭包 + 相对 chunk 解析的修法与验证，以及组装启动夹具按同一函数排 chunk 的修复。
+- [CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md) — ui-polish 内嵌 Excalidraw 后 CJS 构建提升共享 `client.rolldown-runtime.js`，prologue 同步 require 模块表答不了；combo 携带同步闭包 + 相对 chunk 解析的修法与验证，组装启动夹具按同一函数排 chunk 的修复，以及压缩单行产物下改为整份扫描的闭包收集。
 - [Git/LaTeX 面板重写的缺陷与修复（2026-09-19）](queries/ui-polish-git-latex-defects.md) — 六个缺陷：加载中误报合并、嵌套仓库合并状态读错仓库、多仓库 cwd 回落、LaTeX 读写路径基准、空文件写入被拒、AI 写作默认 provider 空结果。
 - [星域包实现缺陷与新包门禁接线（2026-09-19）](queries/xingchen-review-fixes.md) — 九处实现缺陷的根因与修法、新 fork 包的 8 步门禁接线清单、仍未清偿项的归属。
 - [星域预设不可见与普通消息没有回复（2026-10-02）](queries/xingchen-usability.md) — 入站 A2A Host 状态误用于隐藏本地预设（已修）；启明与 standard 在 `amax/c-y2/gpt-6-sol` 上的失败属于该路由上游，与专家派发无关，且既有会话不会随全局默认值换模型。
@@ -84,7 +84,7 @@ updated: 2026-11-11
 - [合并上游 upstream/master（2026-10-29，0.2.2-alpha.2 同步）](queries/upstream-merge-2026-10-29.md) — 413 文件 / 534 块冲突（343 个纯版本号）：LiveShare 端点全覆盖表补 fork 端点、上游新函数不认 linux-x64、装配页 `/remote` 重写只认上游作用域、持久化后继记录补记与 Node/git/locale 三项环境前置。
 - [合并上游 upstream/master（2026-10-30）](queries/upstream-merge-2026-10-30.md) — 351 个提交、67 个冲突文件；`ctx.fs` 三个新抽象成员与 `fs-sftp` 补齐、`ui-sidebar-files` 重写后的删除功能重建、SDK/Desktop 工具一致性例外登记，以及 8 处合并引入缺陷的修法。
 - [合并上游 upstream/master（2026-11-08）](queries/upstream-merge-2026-11-08.md) — 926 个提交、148 个冲突文件；宽度滑块与桌面更新通道的逐块合并、8 处合并引入缺陷的修法、27 项 fork 修复的归属核对（仅 3 项由上游解决），以及插件化三类划分（整包能力可插件化，持久化格式/能力接缝/工具卡契约/宽度滑块/桌面外壳必须留 fork）。
-- [合并上游 upstream/master（2026-11-12，0.2.2-rc.2）](queries/upstream-merge-2026-11-12.md) — 923 个提交、85 个冲突文件；office 改由 office-kit 承载、运行期提醒加 `<system-reminder>` 框架、Team 包迁移与账号包删除的 fork 适配，`filesFace` 七参重排与 `pending` 撞名处理，ui-theme 两条新样式门禁的清偿，以及「先删旧 v5 夹具再 refresh」让 `test:snapshot` 从 236 红降到 7 红的手法。
+- [合并上游 upstream/master（2026-11-12，0.2.2-rc.2）](queries/upstream-merge-2026-11-12.md) — 923 个提交、85 个冲突文件；office 改由 office-kit 承载、运行期提醒加 `<system-reminder>` 框架、Team 包迁移与账号包删除的 fork 适配，`filesFace` 七参重排与 `pending` 撞名处理，ui-theme 两条新样式门禁的清偿，「先删旧 v5 夹具再 refresh」让 `test:snapshot` 从 236 红降到 7 红的手法，以及合并后 fork 入口消失（ui-polish 压缩产物闭包、星域预设挂已删子入口）的复盘与修法。
 - [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建；2026-10-30 复核家族 391 个成员与上游同版本，无需改动
 - [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 蓝色鲸鱼及标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；含本机重打包的两个网络问题（坏代理拖垮 npm 下载、`@electron/get` 的 SHASUMS 行格式）与本地镜像做法；2026-10-27 补 Release 桌面包三触发（published / `dsh-v*` tag push / 手动 `release_tag` 补传）与按 target 校验非空。
 - [Cua Driver 检测补全与入口迁移（2026-10-27）](queries/cua-driver-detect-and-placement.md) — 检测补齐安装器写入的稳定路径（`~/.local/bin`、`~/.cua-driver/packages/current`、Windows `LOCALAPPDATA`）并按 `X_OK` 判定，check 路由回报 `path`；安装入口从插件卡片 footer 迁到「计算机操作」详情页，安装后自动重检。

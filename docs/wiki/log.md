@@ -881,3 +881,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 修掉 8 处合并引入缺陷：`officeKitRemote` 改名、rolldown 互操作助手改名导致的动态 chunk 正则、双语配对、typert 文件清单、被删包 `lib/` 残留（`pnpm run clean`）、client catalog 上限实测值、发布家族与工具清单行、ui-theme 两条新样式门禁。
 - 快照：发现「夹具回放以最高代际为脚本来源」，直接 refresh 会把旧内容固化成新 v5；改为先删旧 v5 让回放取上游新 v4，再 refresh，`test:snapshot` 从 236 红降到 6 红。同法修掉 `team-direct-inbox`（旧 v5 仍调用已改名的 `spawn_teammate`，父会话空等 60 秒）；余 4 个 compaction 场景需 live 录制、`persistent-pwsh` 需 pwsh、11 个 v4-only 场景（含 8 个不含 `seq` 的 web authoring 夹具）需 record 模式。
 - 验证：`typecheck` 5 门、`build` 10 门、`doc-sync` 43 门全绿；`pnpm run test` 在 `LC_ALL=C` 下余项均为超时与三项本机环境限制；`lint`/`duplication` 仍红且红项全部落在相对合并前未变的 fork 文件。
+
+## [2026-11-12] fix | 合并后 fork 入口消失（ui-polish 闭包 + 星域预设）
+
+- 症状：`pnpm dsh web` 报 `@reachforstar/dsh-client-ui-polish: import failed`，统计浮层与 Git/画布/LaTeX/SSH 标签页消失；星域预设报 `tool-subagent-list-agents …: never started`。
+- 根因一：上游构建链升级后 ui-polish 的 `lib/client.js` 是单行压缩产物，`prologueRequires` 的行锚定正则匹配不到 `require("./client.rolldown-runtime.js")`，`syncChunkClosure` 因此不注册 runtime chunk。
+- 根因二：星域预设仍挂上游已删除的 `/list-agents` 子入口，并残留 `modelSelectionSettings`（已改名 `modelSelection`）与 `backgroundMode`（已删除）。
+- 修法：`syncChunkClosure` 增加 `chunkRequires` 整份扫描；预设删该行、改键名、删旧键；新增「单行压缩 entry 的同步 chunk 也进 combo」用例。
+- 验证：`packages/client/modules` + `preset/agent-preset-registry` 278 项通过；重建后浏览器实测控制台无 `import failed`，标签环恢复 对话/轨迹/Git/画布/LaTeX/SSH/统计，统计浮层出现；预设插件名全部可解析。

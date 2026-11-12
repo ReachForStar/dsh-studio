@@ -31,6 +31,26 @@ status: active
 | 通道投递（外部事件 → 活跃会话） | [webhook 活跃会话投递](../entities/webhook-channel-delivery.md) | 已完成投递角色（`WebhookMessageRequest`） |
 | Arena 本体（多模型对比） | [Arena](../entities/arena.md) | 已完成（`@deepseek-ai/dsh-arena`） |
 
+## 出厂组合接线（2026-11-12 晚）
+
+交接期这些能力只有包、单测和文档，没有任何一份出厂组合挂载它们：全仓 yml/json 里包名只出现在 `tsconfig.base.json` 的编译路径，`pnpm dsh web` 因此看不到任何一项。已按层接线：
+
+| 能力 | 行 id | 挂载层 |
+| --- | --- | --- |
+| 工具检索 | `tool-search` | 星域预设 `presets/xingchen-qiming.patch.yml` |
+| 记忆注入 | `memory-notes` | 同上 |
+| 工具批次摘要 | `tool-summary`（包 `dsh-step-summary`） | 同上 |
+| 下一步建议 | `followup` | 同上 |
+| Agent Plugins v1 | `agent-plugins` | 宿主层 `packages/bundle/web-app/cordis.patch.yml` |
+| Arena | `arena` | 同上 |
+| webhook 规则运行时 | `webhook` | 同上 |
+| 推测执行 | `speculation`（包 `dsh-speculation/runner`） | 同上，**默认 `disabled`** |
+
+- `tool-summary` 与 `followup` 不写 `provider`/`model`：两者都按会话自己的路由走，需要固定小模型时在 profile patch 里按 id 覆盖。
+- `speculation/runner` 的 `provider` 与 `model` 必须成对出现，缺一即在加载期抛 `speculation: provider and model must be configured together`；因此默认关闭并保留配置骨架，启用时补两项并去掉 `disabled`。
+- `arena` 需要 `workspaceRoot`/`worktreeRoot`，`agent-plugins` 的 `plugins` 为空时不注册任何技能或 MCP 服务器；两者都用启动目录与 dsh 主目录作默认值。
+- 验证：`--dump-config` 的合成树含全部 8 行；宿主启动无 `entry did not activate`；`agentPresets/list` 里所有预设 `broken` 为空（含星域预设的 4 个新行）；`verify-cordis-config` 未新增红项。
+
 ## 与 qwen 的剩余差异
 
 三项主干能力已经落地，差异集中在产品化的一层，不需要新的核心接缝：

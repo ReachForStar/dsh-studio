@@ -889,3 +889,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 根因二：星域预设仍挂上游已删除的 `/list-agents` 子入口，并残留 `modelSelectionSettings`（已改名 `modelSelection`）与 `backgroundMode`（已删除）。
 - 修法：`syncChunkClosure` 增加 `chunkRequires` 整份扫描；预设删该行、改键名、删旧键；新增「单行压缩 entry 的同步 chunk 也进 combo」用例。
 - 验证：`packages/client/modules` + `preset/agent-preset-registry` 278 项通过；重建后浏览器实测控制台无 `import failed`，标签环恢复 对话/轨迹/Git/画布/LaTeX/SSH/统计，统计浮层出现；预设插件名全部可解析。
+
+## [2026-11-12] feat | qwen-code 能力接入出厂组合
+
+- 症状：交接页列出的 8 项能力在 `pnpm dsh web` 里一个都看不到。
+- 根因：这些包只有源码、单测与文档，`packages/bundle/base|cordis.patch.yml`、`packages/bundle/web-app/**`、预设与 `OPTIONAL_BUNDLES` 里都没有对应行；包名全仓只出现在 `tsconfig.base.json` 的编译路径。
+- 接线：星域预设加 `tool-search`/`memory-notes`/`tool-summary`/`followup`；宿主层加 `agent-plugins`/`arena`/`webhook`/`speculation`（`speculation` 默认 `disabled`，因 `provider` 与 `model` 必须成对且默认无值）；web-app `package.json` 补 8 条 workspace 依赖。
+- 验证：`--dump-config` 含全部 8 行；宿主启动无 `entry did not activate`；`agentPresets/list` 全部 `broken` 为空；`verify-cordis-config` 未新增红项。

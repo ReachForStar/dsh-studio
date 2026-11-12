@@ -4,6 +4,15 @@ This file is GENERATED from workspace manifests (`scripts/gen-plugin-packages.ts
 
 Every package below exports a Cordis plugin that a bundle patch can name in a Loader row. `Config` marks packages whose row accepts a `config` mapping; read the mounted schema from `Config.listConfigs` through `cordis_inspect_query` (filter by `name`, then query the `entry` id) when available, otherwise from the package README. Packages under `experimental` are pre-stable.
 
+## a2a
+
+| Package | Config | Description |
+|---|---|---|
+| `@reachforstar/dsh-a2a` | yes | A2A protocol and peer seam: wire types, server, and client on node:http, plus the configured remote agents this deployment may call |
+| `@reachforstar/dsh-a2a-host` | yes | A2A host: publish this deployment’s sessions to remote A2A agents over JSON-RPC and Server-Sent Events |
+| `@reachforstar/dsh-a2a-status` | no | Host Remote gateway for querying a2a-host listener and Kafka reachability status |
+| `@reachforstar/dsh-tool-a2a` | no | Model-facing A2A tools: list the configured peers and send one message to a peer |
+
 ## acp
 
 | Package | Config | Description |
@@ -124,6 +133,10 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-user-questions` | no | Web ask_user_question composer takeover and plan-review presentation UI |
 | `@deepseek-ai/dsh-client-ui-workflow-run` | no | Durable workflow-run Conversation Node and nested member disclosure for dsh web |
 | `@deepseek-ai/dsh-client-ui-workspace` | no | Workspace picker plugin: one WorkspacePicker registered into the sidebar and empty-state workspace slots |
+| `@reachforstar/dsh-client-ui-a2a-status` | no | A2A service status indicator in Web Settings |
+| `@reachforstar/dsh-client-ui-paper-reader` | yes | Right-Sidebar paper reader: PDF upload with original layout, text highlights, notes, and in-conversation questions |
+| `@reachforstar/dsh-client-ui-polish` | yes | Web GUI polish plugin: whole-app background image, session stats float with cost, git/latex/excalidraw panels, and configurable compaction threshold |
+| `@reachforstar/dsh-client-ui-ssh` | no | SSH/SFTP connection management page in Web Settings: list, create, edit, probe, and delete saved connections |
 
 ## compaction
 
@@ -147,6 +160,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-agent-instructions` | yes | Workspace context loader for AGENTS.md/CLAUDE.md instruction files |
 | `@deepseek-ai/dsh-file-reference-local` | yes | Local-filesystem ctx.fileReferences provider with bounded fuzzy indexes |
 | `@deepseek-ai/dsh-harness-dev-context` | no | Model context naming the DeepSeek Harness checkout and Web GUI URL without letting either change the system prompt |
+| `@deepseek-ai/dsh-memory-notes` | yes | Project memory notes: MEMORY.md baseline context kept current |
 | `@deepseek-ai/dsh-session-reference` | yes | Cross-session snapshot references and durable untrusted model context (ctx.sessionReferenceResolver) |
 | `@deepseek-ai/dsh-time-context` | yes | Durable per-step context with the current time and elapsed time |
 | `@deepseek-ai/dsh-tmux-context` | yes | Opt-in durable per-step context with this agent's tmux pane and window location |
@@ -159,6 +173,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-agent-default-model` | yes | Default model selection shared by Agent entry points |
 | `@deepseek-ai/dsh-agent-loop` | yes | The concrete agent loop plugin for the DeepSeek Harness |
 | `@deepseek-ai/dsh-agent-tool-presentation` | yes | Deprecated tool presentation selector; use dsh-tool-executor-native or dsh-tool-executor-ptc directly |
+| `@deepseek-ai/dsh-pi-agent-loop` | yes | Pi coding-agent runtime as a dsh agent-loop backend (POC) |
 | `@deepseek-ai/dsh-session` | no | Event-sourced session store for the DeepSeek Harness |
 | `@deepseek-ai/dsh-system-prompt` | yes | System prompt assembly registry for the DeepSeek Harness |
 | `@deepseek-ai/dsh-tool-executor-native` | no | Native tool execution plugin |
@@ -193,6 +208,8 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-action-cards` | yes | Optional action cards below answers: one shared proposal tool, card state, user actions and status notices |
+| `@deepseek-ai/dsh-agent-plugins` | yes | Agent Plugins v1 loader: skills and MCP servers from portable plugin.json packages |
+| `@deepseek-ai/dsh-arena` | yes | Run one prompt through several models in isolated worktrees and apply the chosen result |
 | `@deepseek-ai/dsh-client-ui-action-cards` | no | Action cards below completed answers: the shared card frame, kind bodies and the compact tool row |
 | `@deepseek-ai/dsh-client-ui-creation-recommendations` | no | Body of the personalized page card: location choice, creation progress, Undo and Restore |
 | `@deepseek-ai/dsh-client-ui-plugin-recommendations` | no | Official plugin card body with catalog text and enabling |
@@ -226,13 +243,16 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-tool-worktree` | no | Model tool that creates and enters a new Git worktree |
 | `@deepseek-ai/dsh-experimental-translator` | yes | Machine translation with reusable Session results |
 | `@deepseek-ai/dsh-experimental-worktree` | yes | Creates a named Git worktree and changes the calling Session working directory |
+| `@deepseek-ai/dsh-followup` | yes | Model-suggested next steps for the user after each completed turn |
 | `@deepseek-ai/dsh-hooks-claude-code` | yes | Bridge plugin: run a Claude Code hooks.json / settings hook config on the DeepSeek Harness interception seams |
 | `@deepseek-ai/dsh-hooks-codex` | yes | Bridge plugin: run a Codex hooks.json hook config on the DeepSeek Harness interception seams |
 | `@deepseek-ai/dsh-plugin-recommendations` | no | Official plugin suggestions with explicit user activation and persistent conversation decisions |
 | `@deepseek-ai/dsh-session-title-all-prompts-llm` | yes | All-user-messages LLM provider plugin for DeepSeek Harness session titles |
 | `@deepseek-ai/dsh-skill-badge` | no | Bundled dsh badge skill provider for DeepSeek Harness |
+| `@deepseek-ai/dsh-step-summary` | yes | One-line model summaries of each step's tool batch, logged for presentation |
 | `@deepseek-ai/dsh-terminal-panel` | yes | Persistent Agent terminals shown in the Web sidebar, plus read-only access to the user's terminals |
 | `@deepseek-ai/dsh-tool-ralph` | yes | Model-facing fresh-agent Ralph loop over the workflow and subagent seams |
+| `@deepseek-ai/dsh-tool-search` | yes | Model-facing tool discovery: search the session tool surface by keyword or fetch one tool by name |
 | `@deepseek-ai/dsh-tool-session-query` | yes | Workspace-authorized model-facing session history search, trace, and event read tools |
 | `@deepseek-ai/dsh-tool-terminal` | yes | Six model-facing persistent PTY tools with owner isolation and generic background-job integration |
 | `@deepseek-ai/dsh-webhook` | no | Fire-and-forget webhook rule runtime that creates Workspace-backed DeepSeek Harness Sessions |
@@ -264,6 +284,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-tool-fs` | yes | Model-facing filesystem tools (read, write, edit) over the DeepSeek Harness filesystem seam (ctx.fs) |
 | `@deepseek-ai/dsh-tool-fs-search` | yes | Model-facing filesystem discovery tools (glob, grep) backed by the packaged ripgrep binary (@vscode/ripgrep) |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | yes | Model-facing view, create, literal replace, and line insert tool over the Harness filesystem service |
+| `@reachforstar/dsh-tool-excalidraw` | no | Model-facing Excalidraw scene tools (read, write, draw, export) over the workspace scene file |
 
 ## goal
 
@@ -293,6 +314,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-host-plugin-inventory` | no | Read-only Remote projection of current Cordis Loader plugin state |
 | `@deepseek-ai/dsh-host-product-telemetry-otel` | yes | Explicit product usage events exported through OpenTelemetry HTTP logs |
 | `@deepseek-ai/dsh-host-webserver` | yes | Web route-registration plugin: HTTP and upgrade routes, per-Peer index transform taps, and static dist fallback |
+| `@reachforstar/dsh-host-ssh-remotes` | no | Host Remote gateway for the SSH connection-management surface of the Web GUI |
 
 ## interaction
 
@@ -359,6 +381,15 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-ptc-runtime-node` | yes | Node PTC execution with async function, REPL, scoped REPL and VM Script evaluators and optional retained state |
+
+## remote
+
+| Package | Config | Description |
+|---|---|---|
+| `@reachforstar/dsh-fs-sftp` | yes | SFTP-backed implementation of the DeepSeek Harness filesystem capability seam over the ctx.sshSftp connection |
+| `@reachforstar/dsh-ssh-local` | yes | Local ssh2 implementation of the DeepSeek Harness SSH/SFTP capability seam |
+| `@reachforstar/dsh-subprocess-sftp` | yes | SSH exec/PTY-backed implementation of the DeepSeek Harness subprocess capability seam over the ctx.sshSftp connection |
+| `@reachforstar/dsh-tool-ssh` | no | Model-facing Consumer of the SSH/SFTP capability seam: connection management, remote command execution, and SFTP file transfer tools |
 
 ## sandbox
 
@@ -473,6 +504,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-subagent-spawn-in-process` | yes | In-process spawn subagent backend: runs a fresh child agent on ctx.agents |
 | `@deepseek-ai/dsh-tool-subagent` | yes | Model-facing subagent delegation tool over the ctx.subagents seam |
 | `@deepseek-ai/dsh-tool-subagent-control` | yes | Shared messaging, interruption, and child discovery tools for subagents |
+| `@reachforstar/dsh-subagent-pi` | yes | One-shot Pi coding agent subagent provider over the Pi RPC protocol |
 
 ## subprocess
 
@@ -540,3 +572,9 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-workspace` | no | Workspace entity registry (ctx.workspaceRegistry): durable workspace records with validated session attachment over the domain data form for the DeepSeek Harness |
+
+## xingchen
+
+| Package | Config | Description |
+|---|---|---|
+| `@reachforstar/dsh-xingchen` | yes | Xingchen multi-agent collaboration: four star-domain roles over A2A peers, heuristic routing, delegation tool, /review /bug /planning /clear commands, and the bundled git/run/log skills |

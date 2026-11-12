@@ -832,3 +832,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 与 qwen 的差异：dsh 无 `auto-edit`/`yolo` 审批枚举，写入许可改为显式配置；不做 shell AST 分类（一律 boundary）。
 - 延后：overlay `FileSystem` 代理与「接受即提交」、从用户意图生成推测计划。
 - 验证：13 测试、src 逐文件 100% 全维度覆盖、lint、`doc-sync` 43 项。
+
+## [2026-11-11] feat | speculation overlay 代理（快模型第三件·下）
+
+- `packages/experimental/speculation/src/overlay.ts` 新增 `OverlayFileSystem`：`FileSystem` 代理，读取先探测 overlay 副本、所有变更写入 overlay，按产出路径集合 `commit` 回工作区或 `discard` 丢弃；越界写入直接抛错。
+- 实现取舍：代理自建独立 Cordis 上下文注册服务，避免与企业 `ctx.fs` 冲突；`commit` 不做版本冲突检测（记录为已知限制）。
+- 验证：24 测试（含真实临时目录与 `dsh-fs-local` 的读写/提交/丢弃/越界用例）、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项。

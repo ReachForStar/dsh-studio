@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-speculation` 决定推测运行在用户提交输入前可以做什么。只读工具原样执行；策略允许写入时，文件写入被重定向到 overlay 路径；其余工具一律停止推测。本模块是纯逻辑：它判定单次调用或整份计划，并返回运行方需要施加的路径改写。它从不触碰文件系统，overlay 的创建、执行与提交由运行方负责。
+`dsh-speculation` 决定推测运行在用户提交输入前可以做什么，并提供把写入挡在工作区之外的 overlay 文件系统。只读工具原样执行；策略允许写入时，文件写入被重定向到 overlay 路径；其余工具一律停止推测。`OverlayFileSystem` 读取时优先使用 overlay 副本，所有写入都落在 overlay，并暴露 `commit` 与 `discard`，使「用户接受」成为内容进入工作区的唯一路径。
 
 ## 目录
 
@@ -42,6 +42,8 @@ kind: "package-reference"
 
 门控刻意保守：写入需要 `allowWrites`，未知工具是 boundary，外部网络工具无论配置如何都在固定 boundary 集合中。
 
+`OverlayFileSystem` 是 `FileSystem` 代理：解析走底层提供者，每次读取先探测 `<overlayRoot>/<相对路径>`，所有变更都落到那里。它记录自己产出的每个 overlay 路径，因此 `commit` 只把这些文件写回，`discard` 只删除这些文件。
+
 <a id="further-exploration"></a>
 ## 进一步探索
 
@@ -69,10 +71,10 @@ kind: "package-reference"
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
-- 无 overlay 文件系统：本包只规划路径；从 overlay 提供读取、接受后提交的代理 `FileSystem` 实现延后。
 - 无预测：从用户意图生成推测计划属于运行方。
-- 无提交步骤：把 overlay 内容移回工作区由运行方负责。
+- 提交无冲突检测：`commit` 直接覆盖工作区文件，不比较 overlay 副本起始版本。
 - 无 shell 门控：未实现命令安全分类；shell 调用一律 boundary。
+- 无界面：overlay 是给运行方使用的 API，不是面向用户的界面。
 
 <a id="dev-note"></a>
 ### 开发备注

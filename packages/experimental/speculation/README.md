@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-speculation` decides what a speculative run may do before the user submits input. Read-only tools run unchanged, file writers are redirected into an overlay path when the policy allows writes, and every other tool stops the run. The module is pure logic: it classifies one call or a whole plan and returns the path rewrite a runner must apply. It never touches the filesystem, so a runner owns overlay creation, execution, and commit.
+`dsh-speculation` decides what a speculative run may do before the user submits input, and provides the overlay filesystem that keeps those writes out of the workspace. Read-only tools run unchanged, file writers are redirected into an overlay path when the policy allows writes, and every other tool stops the run. `OverlayFileSystem` serves reads from overlay copies first, sends every write to the overlay, and exposes `commit` and `discard` so acceptance is the only path into the workspace.
 
 ## Table of Contents
 
@@ -41,6 +41,8 @@ A speculation runner calls `gateToolCall` for each predicted call, applies `rewr
 
 The gate is deliberately conservative: writers require `allowWrites`, unknown tools are boundaries, and external-network tools stay in the fixed boundary set regardless of configuration.
 
+`OverlayFileSystem` is a `FileSystem` proxy: it resolves through the base provider, probes `<overlayRoot>/<relative>` before every read, and routes every mutation there. It records each overlay path it produced, so `commit` copies exactly those files back and `discard` removes exactly those files.
+
 ## Further Exploration
 
 - Ahead-of-input execution in the upstream reference: qwen-code's `followup/speculationToolGate.ts`.
@@ -53,7 +55,7 @@ The gate is deliberately conservative: writers require `allowWrites`, unknown to
 
 #### What the model sees
 
-Nothing. This package issues no request and logs no event; it only classifies tool calls a speculation runner already produced, returning `allow`, `redirect`, or `boundary` for each `gateToolCall` call.
+Nothing. This package issues no request and logs no event; it only classifies tool calls a speculation runner already produced, returning `allow`, `redirect`, or `boundary` for each `gateToolCall` call, and serves `OverlayFileSystem` reads and writes.
 
 #### Token effect
 
@@ -65,10 +67,10 @@ None: no model request is affected.
 
 ## Known Limitations and Deferred Work
 
-- No overlay filesystem: this package plans paths; a proxy `FileSystem` implementation that serves reads from the overlay and commits on acceptance is deferred.
 - No prediction: generating the speculative plan from user intent belongs to a runner.
-- No commit step: moving overlay content into the workspace is the runner's responsibility.
+- No conflict detection on commit: `commit` overwrites the workspace file without comparing the version the overlay copy started from.
 - No shell gating: command safety classification is not implemented; shell calls are boundaries.
+- No UI: the overlay is an API for a runner, not a user-facing surface.
 
 ### Dev Note
 

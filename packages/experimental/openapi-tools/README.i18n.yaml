@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/openapi-tools/README.md
+/:
+  en: 85b04efc53ffe3ad
+  zh: 68aca588de0c67d8
+/deepseek-ai-dsh-openapi-tools:
+  en: 2b1621120d9bf618
+  zh: 7101e672d814de62
+/deepseek-ai-dsh-openapi-tools/summary:
+  en: 34fa60ab0bff042f
+  zh: 0c78c62aee5f9647
+/deepseek-ai-dsh-openapi-tools/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 82bbd1ae631975a1
+/deepseek-ai-dsh-openapi-tools/use-this-package:
+  en: 8e4658c005f79617
+  zh: 4eb58b1a63c50a51
+/deepseek-ai-dsh-openapi-tools/use-this-package/naming-and-skipping:
+  en: 6bcf49654963273f
+  zh: 5fcf6c4dbc4a2732
+/deepseek-ai-dsh-openapi-tools/understand-the-implementation:
+  en: 32d4285c25757609
+  zh: c496dba36779bcb8
+/deepseek-ai-dsh-openapi-tools/further-exploration:
+  en: 9b69ccd9dc41e19f
+  zh: 354f260af2ba1195
+/deepseek-ai-dsh-openapi-tools/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-openapi-tools/model-experience/generated-operation-tools:
+  en: 7d0888b7379ec093
+  zh: 91e317ac8fc4d80e
+/deepseek-ai-dsh-openapi-tools/model-experience/generated-operation-tools/what-the-model-sees:
+  en: dcccf0d34c0ec351
+  zh: 365fb2a42d7043e0
+/deepseek-ai-dsh-openapi-tools/model-experience/generated-operation-tools/token-effect:
+  en: 1b66b5b71b2a2358
+  zh: 9429508b619eb649
+/deepseek-ai-dsh-openapi-tools/model-experience/generated-operation-tools/kv-cache-effect:
+  en: 603fe20cc560af8e
+  zh: 5a73458a5cbd078b
+/deepseek-ai-dsh-openapi-tools/model-experience/operation-results:
+  en: 892f84cad433c0b9
+  zh: cdd5a5e29ecb2612
+/deepseek-ai-dsh-openapi-tools/model-experience/operation-results/what-the-model-sees:
+  en: 3b0debabd796ae38
+  zh: 4696d86a96c98379
+/deepseek-ai-dsh-openapi-tools/model-experience/operation-results/token-effect:
+  en: 2ef8188756c4f411
+  zh: cd0d8771beb90fa7
+/deepseek-ai-dsh-openapi-tools/model-experience/operation-results/kv-cache-effect:
+  en: 84e9075a78779b97
+  zh: db50773579f158d0
+/deepseek-ai-dsh-openapi-tools/known-limitations-and-deferred-work:
+  en: 71ea22bc4a560bc3
+  zh: 5be6fa7610de7a9e
+/deepseek-ai-dsh-openapi-tools/known-limitations-and-deferred-work/dev-note:
+  en: 2aee169dc7a9bc0a
+  zh: ba6bc5750c40d51d

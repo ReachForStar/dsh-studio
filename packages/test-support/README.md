@@ -29,6 +29,7 @@ The test-support group gives repository tests deterministic, keyless ways to exe
 | [`tool-testkit`](tool-testkit/README.md) | Defines tool fixtures and exercises invocation or executor behavior in tests |
 | [`client-runtime`](client-runtime/README.md) | Provides the jsdom slot test bench for browser feature specs |
 | [`remote-mock`](remote-mock/README.md) | Provides the endpoint-named Typert Remote mock and the Connection carrier face whole-client specs install |
+| [`http-cassette`](http-cassette/README.md) | Records real HTTP traffic into JSON cassettes and replays it in tests |
 | [`loader-smoke`](loader-smoke/README.md) | Boots Loader-composed applications and drives fixture turns for smoke tests |
 | [`llm-mock-server`](llm-mock-server/README.md) | Provides a scriptable OpenAI-compatible fault server for recovery tests |
 | [`llm-replay`](llm-replay/README.md) | Replays recorded model streams for keyless tests and demos |

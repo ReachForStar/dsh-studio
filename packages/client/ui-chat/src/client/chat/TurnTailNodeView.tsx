@@ -17,7 +17,10 @@ function lastContent(snapshot: ChatSnapshot, turn: number, skipWarning: boolean)
   const keys = snapshot.locations.getTurn(turn)
   for (let index = keys.length - 1; index >= 0; index--) {
     const node = snapshot.nodes.get(keys[index] as string) as ChatNode | undefined
+    // Turn-level disclosures carry no answer text, so they never make the
+    // closing reply look followed by other content.
     if (node === undefined || node.kind === 'turn-tail' || node.kind === 'turn-process'
+      || node.kind === 'turn-sources'
       || (skipWarning && node.kind === 'turn-max-tokens')) continue
     return node
   }

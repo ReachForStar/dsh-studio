@@ -1,0 +1,37 @@
+/* Drawing status and failure copy share the fencing row's caption rhythm;
+   the drawn diagram owns the column and scrolls on its own axis. */
+
+.status {
+  padding: 8px 2px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.diagram {
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+  padding: 8px 0;
+  overflow-x: auto;
+}
+
+/* Mermaid writes an explicit pixel width and height onto the root svg; the
+   column, not the drawing, decides how wide it may become. */
+.diagram :global(svg) {
+  max-width: 100%;
+  height: auto;
+}
+
+.failure {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  line-height: 20px;
+}

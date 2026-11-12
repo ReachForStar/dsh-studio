@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-markdown-mermaid/README.md
+/:
+  en: b68f129ff5fc0ce2
+  zh: 5db8b1ea68da24bb
+/deepseek-ai-dsh-client-ui-markdown-mermaid:
+  en: 1d15de06154b2191
+  zh: f3657ff3a4ce030a
+/deepseek-ai-dsh-client-ui-markdown-mermaid/summary:
+  en: 31ac906a377c13df
+  zh: d731123cd9063060
+/deepseek-ai-dsh-client-ui-markdown-mermaid/table-of-contents:
+  en: 76368b6b1da79c80
+  zh: ddafa933c150c4d1
+/deepseek-ai-dsh-client-ui-markdown-mermaid/use-this-package:
+  en: 41b17dadc3de2e44
+  zh: bece433f2d7e0ab3
+/deepseek-ai-dsh-client-ui-markdown-mermaid/use-this-package/what-the-reader-sees:
+  en: f98a4392af9fe5c7
+  zh: b8ed74d542cb94c1
+/deepseek-ai-dsh-client-ui-markdown-mermaid/use-this-package/when-to-choose-it:
+  en: 4f3ca098414fa6fe
+  zh: ca8f4d494239865f
+/deepseek-ai-dsh-client-ui-markdown-mermaid/understand-the-implementation:
+  en: 8e919ddc31a9609f
+  zh: fffbd364bf7d4084
+/deepseek-ai-dsh-client-ui-markdown-mermaid/model-experience:
+  en: f7564f5366644881
+  zh: 30e74762ca76a7e4
+/deepseek-ai-dsh-client-ui-markdown-mermaid/model-experience/kv-cache-effect:
+  en: 18d495138837133a
+  zh: 662fc2f6f49c224e
+/deepseek-ai-dsh-client-ui-markdown-mermaid/known-limitations-and-deferred-work:
+  en: f465ce63393301e1
+  zh: 5d9e7fc8909d7e0d
+/deepseek-ai-dsh-client-ui-markdown-mermaid/known-limitations-and-deferred-work/dev-note:
+  en: 3fb17f5004216a62
+  zh: 9c1f102954d407ec

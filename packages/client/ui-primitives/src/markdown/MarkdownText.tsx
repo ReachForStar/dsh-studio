@@ -15,6 +15,7 @@ import { memo, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import { copyKatexAsTex } from './copy-tex.ts'
+import { healStreamingMarkdown } from './heal.ts'
 import { IncrementalMarkdownParser } from './incremental.ts'
 import { parseGfm, parseGfmWithMath } from './parse.ts'
 import {
@@ -90,8 +91,11 @@ class StreamingRenderer {
    * @returns Frozen elements, re-rendered tail, and the footnote section.
    */
   render(text: string): ReactNode[] {
-    if (text === this.lastText) return this.lastRendered
-    const { frozen, tail, generation } = this.parser.update(text)
+    // Heal before parsing so a frame never shows a half-typed `**`, code span,
+    // or link destination; the append-only suffix drops when the real closer lands.
+    const healed = healStreamingMarkdown(text)
+    if (healed === this.lastText) return this.lastRendered
+    const { frozen, tail, generation } = this.parser.update(healed)
     if (generation !== this.generation) {
       this.generation = generation
       this.frozenCount = 0
@@ -148,7 +152,7 @@ class StreamingRenderer {
     }
     const section = renderFootnoteSection(tailContext)
     if (section !== null) children.push('\n', section)
-    this.lastText = text
+    this.lastText = healed
     this.lastRendered = children
     return this.lastRendered
   }

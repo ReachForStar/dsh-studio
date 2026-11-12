@@ -240,6 +240,8 @@ export interface ChatNodeOwnerProps {
   groupPart?: string
   cwd?: string | undefined
   openFile: (path: string, options?: OpenFileOptions) => void
+  /** Open one HTTP(S) link at the reader's chosen destination. */
+  openExternalLink: (url: string) => void
   inspectCall: ((callId: ToolCallId) => void) | undefined
   /** Activate a conversation view tab by id, focusing an element (empty for none). */
   openView?: ((view: string, focus: string) => void) | undefined
@@ -373,7 +375,7 @@ export type ChatFlowDataInjected = Pick<ChatViewInjected, 'keyedHooks'> & {
 
 /** Ordered rows and reconciled local echoes rendered inside one Chat viewport. */
 export interface ChatFlowOwnerProps extends Pick<ChatNodeOwnerProps,
-  'cwd' | 'openFile' | 'inspectCall' | 'openView' | 'forkAt' | 'loadImage'> {
+  'cwd' | 'openFile' | 'openExternalLink' | 'inspectCall' | 'openView' | 'forkAt' | 'loadImage'> {
   readonly entries: readonly RenderEntry[]
   readonly pendingInputs: readonly (PendingSubmission | InboxState['next-step'][number])[]
   readonly lastInputTurn: number | undefined

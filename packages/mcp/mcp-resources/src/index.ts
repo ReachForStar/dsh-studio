@@ -21,16 +21,25 @@ declare module '@deepseek-ai/cordis' {
 export type McpResourceRequest =
   | { method: 'resources/list' | 'resources/templates/list'; cursor?: string }
   | { method: 'resources/read'; uri: string }
+  | {
+    /** Subscribe to one resource, wait for its first update or the timeout, then unsubscribe. */
+    method: 'resources/watch'
+    /** Resource URI to watch. */
+    uri: string
+    /** Tool-requested wait in milliseconds; omission uses the connection's configured default. */
+    timeoutMs?: number
+  }
 
 /** One configured server's resource access, owned by its MCP connection plugin. */
 export interface McpResourceProvider {
   /**
    * Run an operation against one live connection generation. The resource tools
    * dispatch in parallel, so one provider may receive several concurrent requests;
-   * each must settle independently.
+   * each must settle independently. A watch subscribes and releases within this
+   * call; `exec.signal` cancels the wait and the subscription.
    * @param request - MCP resource method and parameters.
    * @param exec - caller identity and cancellation for this invocation.
-   * @returns the protocol result as lossless JSON.
+   * @returns the protocol result, or the watch outcome, as lossless JSON.
    */
   request(request: McpResourceRequest, exec: ToolExecution): Promise<JsonValue>
 }
@@ -45,7 +54,7 @@ class ResourceLayer implements ScopeLayer {
   }
 }
 
-/** Scoped resource access plus three tools shared by configured MCP servers. */
+/** Scoped resource access plus four tools shared by configured MCP servers. */
 export class McpResourceRuntime extends Service {
   /** Tool registry required by the resource consumer. */
   static inject = ['tools']
@@ -67,7 +76,8 @@ export class McpResourceRuntime extends Service {
           const names = [...this.layers.merge(scope, layer => layer.servers).keys()].sort()
           return names.length === 0 ? '' : '## MCP resource servers\n\n'
             + 'Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names '
-            + `as the server argument: ${JSON.stringify(names)}.`
+            + `as the server argument: ${JSON.stringify(names)}. `
+            + 'Call watch_mcp_resource with the same server name and a resource URI to wait for that resource\'s next update.'
         },
       })
     })

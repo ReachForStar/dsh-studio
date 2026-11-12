@@ -37,7 +37,7 @@ Bash, formatters, code generators, and scripts can overwrite concurrent edits wi
 
 ## MCP resource servers
 
-Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: ["catalog"].
+Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: ["catalog"]. Call watch_mcp_resource with the same server name and a resource URI to wait for that resource's next update.
 
 ### MCP server: catalog
 

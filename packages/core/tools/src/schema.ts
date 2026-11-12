@@ -480,6 +480,78 @@ export function validateArgs(spec: ParameterSchemaSpec, args: unknown): string[]
   return validateJsonSchemaValue(parameterSchemaSpecToJsonSchema(spec), args, '')
 }
 
+/**
+ * Coerce argument values the model plausibly meant to the declared scalar or
+ * container type before validation. A wrong type is otherwise a hard
+ * `INVALID_ARGS` failure the model has to spend a turn recovering from; every
+ * coercion here is uniquely determined by the schema, so an ambiguous or
+ * still-invalid value is left for {@link validateArgs} to reject.
+ * @param schema - compiled parameter schema.
+ * @param args - model-generated arguments.
+ * @returns repaired arguments when any value changed, otherwise the input.
+ */
+export function repairArgs(schema: JsonSchemaNode, args: unknown): unknown {
+  if (schema.type === 'object' && typeof args === 'string' && args.trimStart().startsWith('{')) {
+    const parsed = parseJsonText(args)
+    if (parsed !== undefined) return repairArgs(schema, parsed)
+  }
+  if (schema.type === 'object' && isPlainObject(args)) {
+    let repaired: Record<string, unknown> | undefined
+    for (const [key, node] of Object.entries(schema.properties ?? {})) {
+      if (!Object.hasOwn(args, key)) continue
+      const value = repairArgs(node, args[key])
+      if (value === args[key]) continue
+      repaired ??= { ...args }
+      repaired[key] = value
+    }
+    return repaired ?? args
+  }
+  if (schema.type === 'array' && Array.isArray(args) && schema.items !== undefined) {
+    let repaired: unknown[] | undefined
+    for (const [index, entry] of args.entries()) {
+      const value = repairArgs(schema.items, entry)
+      if (value === entry) continue
+      repaired ??= [...args]
+      repaired[index] = value
+    }
+    return repaired ?? args
+  }
+  if (typeof args !== 'string' && schema.type === 'string') {
+    if (typeof args === 'number' || typeof args === 'boolean') return String(args)
+    return args
+  }
+  if (typeof args !== 'string') return args
+  const text = args.trim()
+  if (text === '') return args
+  if (schema.type === 'number' || schema.type === 'integer') {
+    const parsed = Number(text)
+    if (!Number.isFinite(parsed)) return args
+    if (schema.type === 'integer' && !Number.isInteger(parsed)) return args
+    return parsed
+  }
+  if (schema.type === 'boolean') return text === 'true' ? true : text === 'false' ? false : args
+  if (schema.type === 'object' || schema.type === 'array') {
+    const parsed = parseJsonText(text)
+    if (parsed === undefined) return args
+    if (schema.type === 'array' ? Array.isArray(parsed) : isPlainObject(parsed)) return parsed
+  }
+  return args
+}
+
+/** Parse one JSON text value, or `undefined` when it is not valid JSON. */
+function parseJsonText(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown
+  } catch (_error: unknown) {
+    return undefined
+  }
+}
+
+/** Whether `value` is a plain JSON object (not an array or `null`). */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /** Options for {@link defineTool}. */
 export interface DefineToolOptions<S extends ParameterSchemaSpec, O extends ValueSchemaSpec> {
   /** Tool name (must be unique). */
@@ -596,9 +668,10 @@ export function defineTool<const S extends ParameterSchemaSpec, const O extends 
     ...(options.deferLoading === true ? { deferLoading: options.deferLoading } : {}),
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     async execute(args: unknown, exec: ToolRunContext): Promise<JsonValue> {
-      const violations = validate(args)
+      const repaired = repairArgs(parameters, args)
+      const violations = validate(repaired)
       if (violations.length > 0) throw new ToolArgsError(violations)
-      return userExecute(args as InferArgs<S>, exec) as Promise<JsonValue>
+      return userExecute(repaired as InferArgs<S>, exec) as Promise<JsonValue>
     },
   }
   if (userProjectContent) {

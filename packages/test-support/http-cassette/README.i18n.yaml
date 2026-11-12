@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/test-support/http-cassette/README.md
+/:
+  en: 45e5290f2ce52a45
+  zh: 8052fa897aab79bd
+/deepseek-ai-dsh-test-support-http-cassette:
+  en: 0b0daf9785a2ff1f
+  zh: 292546bf67ccf4ef
+/deepseek-ai-dsh-test-support-http-cassette/summary:
+  en: 9a2a5f5c89e6c5ea
+  zh: 07a9e117d62f10eb
+/deepseek-ai-dsh-test-support-http-cassette/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 4620a1ea7d377be7
+/deepseek-ai-dsh-test-support-http-cassette/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/deepseek-ai-dsh-test-support-http-cassette/use-this-package/when-to-use-it:
+  en: 794bd146be3b4673
+  zh: c0a1e61bd5f4062f
+/deepseek-ai-dsh-test-support-http-cassette/use-this-package/entry-point:
+  en: 3aeb7beb2691a915
+  zh: 6ed1327592faf96b
+/deepseek-ai-dsh-test-support-http-cassette/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: ce1d25bffb6948cd
+/deepseek-ai-dsh-test-support-http-cassette/understand-the-implementation/design:
+  en: f9da00e41bc81b99
+  zh: e5c1da0c6866ef24
+/deepseek-ai-dsh-test-support-http-cassette/understand-the-implementation/redaction:
+  en: 9d9d66cca19c55c2
+  zh: add27cea7a899139
+/deepseek-ai-dsh-test-support-http-cassette/understand-the-implementation/source-map:
+  en: eae22548f8b70caf
+  zh: 81603e1093bc4eff
+/deepseek-ai-dsh-test-support-http-cassette/further-exploration:
+  en: 30936dd456e6287a
+  zh: b13e808284f070f4
+/deepseek-ai-dsh-test-support-http-cassette/model-experience:
+  en: b7c8b741b0963618
+  zh: c1fb77aefec5f372
+/deepseek-ai-dsh-test-support-http-cassette/model-experience/kv-cache-effect:
+  en: 77a573a3dd057579
+  zh: 1e7444d2f389d502
+/deepseek-ai-dsh-test-support-http-cassette/known-limitations-and-deferred-work:
+  en: 4927bbe977fb4673
+  zh: 66020ce2bea4de1d
+/deepseek-ai-dsh-test-support-http-cassette/known-limitations-and-deferred-work/dev-note:
+  en: 0a3f8df005ef8e35
+  zh: 8d769c2f92359323

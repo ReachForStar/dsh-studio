@@ -29,6 +29,7 @@ test-support 组为仓库测试提供确定且无须密钥的真实产品测试�
 | [`tool-testkit`](tool-testkit/README.zh.md) | 定义工具 fixture，并在测试中执行工具调用或执行器行为 |
 | [`client-runtime`](client-runtime/README.zh.md) | 为浏览器功能测试提供 jsdom slot 测试台 |
 | [`remote-mock`](remote-mock/README.zh.md) | 为整体客户端测试提供端点具名的 Typert Remote mock 与它们安装的 Connection 载体面 |
+| [`http-cassette`](http-cassette/README.zh.md) | 把真实 HTTP 流量录制为 JSON 卡带并在测试中回放 |
 | [`loader-smoke`](loader-smoke/README.zh.md) | 启动由 Loader 组合的应用并驱动 fixture（测试前置数据）轮次以执行冒烟测试 |
 | [`llm-mock-server`](llm-mock-server/README.zh.md) | 为恢复测试提供可通过脚本控制的 OpenAI 兼容故障服务器 |
 | [`llm-replay`](llm-replay/README.zh.md) | 为无密钥测试与演示回放已记录的模型流 |

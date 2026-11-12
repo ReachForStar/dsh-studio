@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Diagramas de Mermaid",
+    "description": "Dibuja los bloques de diagrama Mermaid de las respuestas del chat y muestra su código mientras la respuesta se transmite o cuando el dibujo falla."
+  }
+}

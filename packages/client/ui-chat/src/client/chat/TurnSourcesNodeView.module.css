@@ -1,0 +1,117 @@
+.root {
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: calc(24px + var(--dsh-content-font-delta, 0px));
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  transition: color 100ms ease;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .header:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-secondary);
+  }
+}
+
+.header:focus-visible {
+  outline: none;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.chevron,
+.icon {
+  flex: none;
+  color: inherit;
+}
+
+.chevron {
+  margin-left: -2px;
+}
+
+.title {
+  flex: none;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
+}
+
+.count {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0 0 0 22px;
+  list-style: none;
+}
+
+.item {
+  min-width: 0;
+}
+
+.link,
+.plain {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
+  overflow-wrap: anywhere;
+}
+
+.link {
+  color: var(--dsw-alias-link);
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .link:hover {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+  }
+}
+
+.plain {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.siteIcon {
+  flex: none;
+  align-self: center;
+  width: calc(14px + var(--dsh-content-font-delta, 0px));
+  height: calc(14px + var(--dsh-content-font-delta, 0px));
+}
+
+.label {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header {
+    transition: none;
+  }
+}

@@ -51,6 +51,7 @@ import {
 } from '../src/client/chat/MessageItem.tsx'
 import { TurnTailNodeView } from '../src/client/chat/TurnTailNodeView.tsx'
 import { TurnProcessNodeView } from '../src/client/chat/TurnProcessNodeView.tsx'
+import { TurnSourcesNodeView } from '../src/client/chat/TurnSourcesNodeView.tsx'
 import { SystemPromptNodeView } from '../src/client/chat/SystemPromptRow.tsx'
 import { formatRunDuration as durationParts } from '../src/client/chat/message-chrome.ts'
 import { ChatSnapshotBuilder } from '../src/client/conversation-nodes/chat-snapshot-builder.ts'
@@ -356,6 +357,8 @@ function HarnessChatNode({
       return <TurnMaxTokensNodeView {...nodeProps} node={owner.node} />
     case 'turn-process':
       return <TurnProcessNodeView {...nodeProps} node={owner.node} />
+    case 'turn-sources':
+      return <TurnSourcesNodeView {...nodeProps} node={owner.node} />
     case 'system-prompt':
       return <SystemPromptNodeView {...nodeProps} node={owner.node} />
     case 'turn-tail':
@@ -3732,6 +3735,39 @@ describe('ChatView', () => {
     fireEvent.pointerDown(branch, { pointerType: 'touch' })
     fireEvent.click(branch)
     expect(view.queryByRole('tooltip', { hidden: true })).toBeNull()
+  })
+
+  it('shows a Turn sources row above the actions row without hiding the tail branch', () => {
+    const base = chatSnapshotFixture({
+      nodes: [user(1, 'question'), assistant(2, 'answer')],
+      turnEnds: new Map([[1, 4]]),
+    })
+    const sources: ChatNode<'turn-sources'> = {
+      key: 'fixture:turn-sources:1', id: '1', target: 'chat', kind: 'turn-sources',
+      anchorSeq: 3, visibility: 'visible',
+      location: { kind: 'turn', turn: base.timeline.turns.get(1)! },
+      data: {
+        turn: 1,
+        sources: [
+          { url: 'https://a.test/one', title: 'First source' },
+          { url: 'https://b.test/two' },
+        ],
+      },
+    }
+    const builder = new ChatSnapshotBuilder()
+    const chat = builder.replace({ nodes: [...base.nodes.values(), sources], timeline: base.timeline })
+    const h = makeHarness({}, {}, chat)
+    const view = render(<h.ChatView {...h.props} />)
+    const kinds = renderedFlowKinds(view.container)
+    expect(kinds.indexOf('turn-sources')).toBeGreaterThan(kinds.indexOf('assistant-step'))
+    expect(kinds.indexOf('turn-sources')).toBeLessThan(kinds.indexOf('turn-tail'))
+    // The row carries no answer text, so the closing reply keeps the permanent actions row.
+    expect(view.container.querySelector('[data-turn-tail="1"]')?.getAttribute('data-actions-reveal')).toBe('always')
+    expect(view.getByRole('button', { name: '在新对话中分支' }).getAttribute('aria-disabled')).toBeNull()
+
+    fireEvent.click(view.container.querySelector('[data-turn-sources] button')!)
+    fireEvent.click(view.getByText('First source'))
+    expect(h.props.openExternalLink).toHaveBeenCalledWith('https://a.test/one')
   })
 
   it('keeps final content actions but disables branch when Tool and interrupted Think follow it', () => {

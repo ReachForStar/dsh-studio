@@ -19,7 +19,8 @@ vi.mock('../src/transport.ts', () => ({ createTransport: mockTransport }))
 
 const config: Config = {
   transport: 'stdio', serverName: 'fixture', command: 'fixture', args: [], env: {}, cwd: '',
-  toolCallTimeoutMs: 60_000, startupTimeoutMs: 30, closeTimeoutMs: 5_000,
+  toolCallTimeoutMs: 60_000, resourceWatchTimeoutMs: 30_000, maxResourceWatchTimeoutMs: 300_000,
+  startupTimeoutMs: 30, closeTimeoutMs: 5_000,
   expandTemplates: false, failOnStartupError: true,
 }
 

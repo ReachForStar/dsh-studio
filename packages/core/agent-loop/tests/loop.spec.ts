@@ -30,7 +30,7 @@ function driverDone(agent: Agent): Promise<void> {
   return (agent as Agent & { done: Promise<void> }).done
 }
 
-async function harness(adapter: MockAdapter, persona = '') {
+async function harness(adapter: MockAdapter, persona = '', config: { maxOutputContinuations?: number } = {}) {
   const ctx = new Context()
   await ctx.plugin(LlmRuntime)
   await ctx.plugin(SessionStore)
@@ -39,7 +39,7 @@ async function harness(adapter: MockAdapter, persona = '') {
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(AgentRegistry)
-  await ctx.plugin(AgentLoop, { agents: [] })
+  await ctx.plugin(AgentLoop, { agents: [], ...config })
   ctx.llm.registerAdapter(['mock'], adapter)
   return ctx
 }
@@ -1446,8 +1446,38 @@ describe('agent loop', () => {
     expect(turnEnd!.data.reason).toEqual({ kind: 'max-tokens' })
   })
 
-  it('a max-tokens step earlier in a turn still surfaces as max-tokens after a later completed step', async () => {
-    // Step 1 is cut off (max-tokens, no tool calls → would stop by default), so continuation
+  it('continues a truncated reply when maxOutputContinuations allows it', async () => {
+    const adapter = new MockAdapter([maxTokensResponse('first half'), textResponse('second half')])
+    const ctx = await harness(adapter, '', { maxOutputContinuations: 1 })
+    const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+
+    send(agent, 'go')
+    await waitForIdle(ctx, agent)
+
+    expect(adapter.requests).toHaveLength(2)
+    const followUp = adapter.requests[1]!.messages.at(-1)
+    expect(followUp).toMatchObject({ role: 'user' })
+    expect(JSON.stringify(followUp)).toContain('cut off by the output-token limit')
+    const turnEnd = agent.session.snapshotEvents().findLast(e => e.type === 'turn/end')
+    expect(turnEnd!.data.reason).toEqual({ kind: 'max-tokens' })
+  })
+
+  it('stops after the continuation budget is spent', async () => {
+    const adapter = new MockAdapter([
+      maxTokensResponse('first'),
+      maxTokensResponse('second'),
+      textResponse('never requested'),
+    ])
+    const ctx = await harness(adapter, '', { maxOutputContinuations: 1 })
+    const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+
+    send(agent, 'go')
+    await waitForIdle(ctx, agent)
+
+    expect(adapter.requests).toHaveLength(2)
+  })
+
+  it('a max-tokens step earlier in a turn still surfaces as max-tokens after a later completed step', async () => {    // Step 1 is cut off (max-tokens, no tool calls → would stop by default), so continuation
     // must be FORCED to reach step 2 which finishes normally (stop).
     const adapter = new MockAdapter([
       maxTokensResponse('first half'),

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Mermaid 图表",
+    "description": "在聊天回复中绘制 Mermaid 图表围栏；回复流式输出或绘制失败时改为显示源码。"
+  }
+}

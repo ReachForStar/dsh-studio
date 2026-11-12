@@ -946,6 +946,31 @@
       }
     },
     {
+      "name": "watch_mcp_resource",
+      "description": "Wait for an MCP server to report that a resource changed. Subscribes first and unsubscribes when the wait ends. Returns updated: true after the first change, or updated: false when the wait times out; read the resource again to get its content. The server must support resource subscriptions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "string",
+            "description": "Configured MCP server name."
+          },
+          "uri": {
+            "type": "string",
+            "description": "Resource URI to watch."
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "description": "Milliseconds to wait for the first change. Omit to use the default wait; larger values are capped."
+          }
+        },
+        "required": [
+          "server",
+          "uri"
+        ]
+      }
+    },
+    {
       "name": "web_fetch",
       "description": "Fetch the content of a specific HTTP(S) URL and return it decoded to text.",
       "parameters": {

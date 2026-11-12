@@ -59,6 +59,8 @@ kind: "package-reference"
 | `command` / `args` / `env` / `cwd` | — | stdio：可执行文件、参数、合并到清洗过的环境之上的额外环境变量、工作目录 |
 | `url` / `headers` | — | streamable-http：端点 URL 与额外请求标头 |
 | `toolCallTimeoutMs` | `60,000` | 每次 `tools/call` 或资源请求的超时 |
+| `resourceWatchTimeoutMs` | `30,000` | 模型省略 `timeoutMs` 时，单次 `watch_mcp_resource` 的默认等待 |
+| `maxResourceWatchTimeoutMs` | `300,000` | 对模型请求的资源等待所施加的上限 |
 | `startupTimeoutMs` | 未设置 | 模板解析、协商、连接及初次工具同步的可选预算 |
 | `closeTimeoutMs` | `5,000` | 传输关闭与待处理本地工作完全结算的预算 |
 | `expandTemplates` | `false` | 在运行时解析传输字符串中的 `${credential:REF}`，并在诊断中替换已解析的值 |
@@ -88,6 +90,10 @@ kind: "package-reference"
 模型调用 MCP 工具时，调用会以每次调用超时（默认 60 秒）发往远程服务器，并像其他工具调用一样可以取消。结果按块顺序以普通文本返回；资源链接以文本形式显示名称与 URI。如果服务器报告错误，调用会明确失败——模型不会看到虚假的成功。
 
 当前模型接受图片输入且 harness 启用了附件功能时支持图片；图片会像其他图片一样出现在对话中。不支持图片时——以及服务器返回音频或嵌入资源时——模型会看到清晰的诊断消息，而不是什么都没有。
+
+### 资源更新
+
+服务器声明 `resources.subscribe` 后，共享的 [`watch_mcp_resource`](../mcp-resources/README.zh.md) 工具可以等待某个资源的下一次变化。现代连接打开 SDK 的 `subscriptions/listen` 流；旧版连接发送 `resources/subscribe`。两者都会等待该 URI 的首条 `notifications/resources/updated`，随后释放订阅；取消调用或连接关闭时也会释放。同一 URI 的并发等待共享一个订阅，由最后一个等待者释放。服务器没有该能力时，调用直接失败，而不是等待一条不可能到达的通知。`resourceWatchTimeoutMs` 设定省略超时时的等待，`maxResourceWatchTimeoutMs` 为更大的模型请求封顶；连接在加载时重新校验这两个值。
 
 ### 启动、工具更新与重连
 
@@ -129,6 +135,7 @@ kind: "package-reference"
 | [`src/index.ts`](src/index.ts) | 插件入口：`Config` schema、`serverName` 预留、激活等待 |
 | [`src/connection.ts`](src/connection.ts) | 连接监督器：客户端世代、重连策略、尝试预算、dispose（资源释放） |
 | [`src/generation.ts`](src/generation.ts) | 传输归属、取消、待处理工作与关闭确认 |
+| [`src/resource-watch.ts`](src/resource-watch.ts) | 单世代资源等待：双协议世代订阅、共享计数、通知路由与释放 |
 | [`src/credentials.ts`](src/credentials.ts) | 运行时模板绑定，并替换每个已解析的值 |
 | [`src/templates.ts`](src/templates.ts) | 凭据模板语法、替换与引用发现 |
 | [`src/server-context.ts`](src/server-context.ts) | 资源提供方注册与字面服务器指令 |
@@ -188,7 +195,7 @@ SDK 通过旧版通知或现代协议订阅接收工具列表变化。监督器�
 
 #### Token 影响
 
-工具注册期间，工具描述与输入 schema 会进入每次请求；重新同步会替换而非累积 schema，服务器限定名称也会为每个工具定义和调用增加 token。已配置客户端还会启用[共享资源工具与服务器名称提示词](../mcp-resources/README.zh.md#model-experience)。
+工具注册期间，工具描述与输入 schema 会进入每次请求；重新同步会替换而非累积 schema，服务器限定名称也会为每个工具定义和调用增加 token。已配置客户端还会启用[共享资源工具与服务器名称提示词](../mcp-resources/README.zh.md#model-experience)，其中包括 `watch_mcp_resource`；该工具本身不增加提示词文本。
 
 #### KV Cache 影响
 
@@ -229,7 +236,7 @@ SDK 通过旧版通知或现代协议订阅接收工具列表变化。监督器�
 
 这些限制说明你无法用本插件做什么、以及何时需要运维注意。它们是当前包约束，不是与其他 MCP 客户端的对比，也不是任务积压。
 
-- **资源按需读取**——随附 profile 提供[共享资源服务](../mcp-resources/README.zh.md)；资源订阅与 MCP 提示词模板不受支持。
+- **资源按需读取**——随附 profile 提供[共享资源服务](../mcp-resources/README.zh.md)；资源等待每次只覆盖一个 URI 的一次更新，MCP 提示词模板不受支持。
 - **整次启动尝试的预算需主动配置**——设置 `startupTimeoutMs` 后，它覆盖模板解析、协商、连接与初次工具同步。通知驱动的重同步发出的 `tools/list` 请求使用 MCP SDK 的 60 秒请求默认值及其页数上限。插件卸载先关闭传输以中断待处理的启动请求，再等待清理。
 - **重连处理协商失败与传输关闭**——初始连接失败或 stdio 子进程崩溃都会使用配置的重连预算。普通 HTTP 请求失败使用 SDK 传输的恢复机制；凭据变化则替换连接。
 - **图片是唯一的持久丰富结果桥接**——PNG、JPEG、WebP 与 GIF 在确切能力得到证明后进入 Native 上下文。音频与嵌入资源载荷仍只存在于执行局部并带明确诊断，资源链接只以文本保留名称与 URI。

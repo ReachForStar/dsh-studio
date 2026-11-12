@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/warming/README.md
+/:
+  en: 174770a0377f91b8
+  zh: b0efd6e57b07ed83
+/deepseek-ai-dsh-warming:
+  en: 0dc9c10970b9d1c2
+  zh: 222d49396a09e3f2
+/deepseek-ai-dsh-warming/summary:
+  en: 17e8205ba82ab5d3
+  zh: d26fd78f44e1fd94
+/deepseek-ai-dsh-warming/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 725b47765ee8f30b
+/deepseek-ai-dsh-warming/use-this-package:
+  en: e8024165e6635b48
+  zh: 0ca5d6ed1e68bbc4
+/deepseek-ai-dsh-warming/use-this-package/configuration:
+  en: 3bdd37cd6022d50c
+  zh: ebc74be5779002a6
+/deepseek-ai-dsh-warming/understand-the-implementation:
+  en: 31f5484fd6f135ff
+  zh: 91715c2d61082f05
+/deepseek-ai-dsh-warming/further-exploration:
+  en: b4ee2accd35da132
+  zh: 98aa405dd1791e95
+/deepseek-ai-dsh-warming/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-warming/model-experience/keep-alive-requests:
+  en: cf4861e7c73e6d1d
+  zh: 0f9db44bbcd3e339
+/deepseek-ai-dsh-warming/model-experience/keep-alive-requests/what-the-model-sees:
+  en: 454c27a757967ad4
+  zh: fe097093bcc16aa5
+/deepseek-ai-dsh-warming/model-experience/keep-alive-requests/token-effect:
+  en: aa6119cc35658e6f
+  zh: 640eb4f7eddce794
+/deepseek-ai-dsh-warming/model-experience/keep-alive-requests/kv-cache-effect:
+  en: c9265eab41f86b0f
+  zh: 92769491f6c07b3e
+/deepseek-ai-dsh-warming/known-limitations-and-deferred-work:
+  en: 87586c11c835ea80
+  zh: 96d0d3cea810152a
+/deepseek-ai-dsh-warming/known-limitations-and-deferred-work/dev-note:
+  en: 683c9732f6545c17
+  zh: b5b0bca49625cf99

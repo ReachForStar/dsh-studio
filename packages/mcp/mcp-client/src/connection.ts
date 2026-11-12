@@ -27,6 +27,7 @@ import type { McpCloseResult } from './types.ts'
 import { McpGeneration } from './generation.ts'
 import { McpTemplateBinding } from './credentials.ts'
 import { MissingTemplateValue } from './templates.ts'
+import { ResourceWatchRegistry } from './resource-watch.ts'
 import { McpToolRegistrationError, syncTools } from './tools.ts'
 import type { ToolDisposers } from './tools.ts'
 import type { Config } from './index.ts'
@@ -50,6 +51,50 @@ export const RECONNECT_DEFAULTS: Required<ReconnectConfig> = Object.freeze({
   maxDelayMs: 30_000,
   maxAttempts: 10,
 })
+
+/** Default wait for one resource update watch (ms). */
+export const DEFAULT_RESOURCE_WATCH_TIMEOUT_MS = 30_000
+
+/** Default ceiling for a tool-requested resource update watch (ms). */
+export const DEFAULT_MAX_RESOURCE_WATCH_TIMEOUT_MS = 300_000
+
+/** Fully resolved resource-watch wait limits captured at plugin load. */
+interface ResourceWatchLimits {
+  /** Wait used when the tool call omits a timeout. */
+  timeoutMs: number
+  /** Ceiling applied to a tool-requested wait. */
+  maxTimeoutMs: number
+}
+
+/**
+ * Judge the resource-watch waits once and produce the limits the connection
+ * runs. Programmatic construction may bypass Schemastery normalization, so
+ * every bound is re-judged here; misconfiguration fails the plugin instance at
+ * load.
+ *
+ * @param config - Raw watch limits from the plugin configuration.
+ * @param path - Diagnostic prefix naming the config location in thrown messages.
+ * @returns The frozen resolved limits.
+ */
+function resolveResourceWatchLimits(
+  config: Partial<Pick<Config, 'resourceWatchTimeoutMs' | 'maxResourceWatchTimeoutMs'>>,
+  path: string,
+): Readonly<ResourceWatchLimits> {
+  const timeoutMs = config.resourceWatchTimeoutMs ?? DEFAULT_RESOURCE_WATCH_TIMEOUT_MS
+  const maxTimeoutMs = config.maxResourceWatchTimeoutMs ?? DEFAULT_MAX_RESOURCE_WATCH_TIMEOUT_MS
+  for (const [name, value] of [
+    ['resourceWatchTimeoutMs', timeoutMs],
+    ['maxResourceWatchTimeoutMs', maxTimeoutMs],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value < 1 || value > MAX_TIMER_DELAY_MS) {
+      throw new Error(`${path}.${name} must be a positive safe integer no greater than ${MAX_TIMER_DELAY_MS}`)
+    }
+  }
+  if (timeoutMs > maxTimeoutMs) {
+    throw new Error(`${path}.resourceWatchTimeoutMs must not exceed maxResourceWatchTimeoutMs`)
+  }
+  return Object.freeze({ timeoutMs, maxTimeoutMs })
+}
 
 /** Default UTF-8 byte limit for attributed server instructions. */
 export const DEFAULT_MAX_INSTRUCTION_BYTES = 32_768
@@ -131,9 +176,10 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   const label = `mcp-client(${config.serverName})`
   const binding = new McpTemplateBinding(ctx, config)
   const diagnostic = (error: unknown, operation: string): string => binding.diagnostic(error, operation)
+  const watchLimits = resolveResourceWatchLimits(config, label)
   const lifetime = new AbortController()
   const readiness = Promise.withResolvers<ConnectionOutcome>()
-  type Generation = { wire: McpGeneration; connectedAt?: number }
+  type Generation = { wire: McpGeneration; watches: ResourceWatchRegistry; connectedAt?: number }
   let current: Generation | undefined
   let bindingValue: { config?: Config } | undefined
   let disposed = false
@@ -285,7 +331,14 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       capabilities: {}, versionNegotiation: { mode: 'auto' },
       listChanged: { tools: { autoRefresh: false, debounceMs: 0, onChanged: () => { void refreshTools() } } },
     })
-    const record: Generation = { wire: new McpGeneration(client, config.closeTimeoutMs, error => diagnostic(error, 'cleanup')) }
+    const watches = new ResourceWatchRegistry({
+      client,
+      label,
+      requestTimeoutMs: config.toolCallTimeoutMs,
+      defaultWaitMs: watchLimits.timeoutMs,
+      maxWaitMs: watchLimits.maxTimeoutMs,
+    })
+    const record: Generation = { wire: new McpGeneration(client, config.closeTimeoutMs, error => diagnostic(error, 'cleanup')), watches }
     current = record
     status.opened()
     status.update({ state: 'connecting', attempt: failedAttempts })
@@ -354,6 +407,9 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
         if (record?.connectedAt === undefined) throw new Error(`${label}: server is disconnected`)
         try {
           return await record.wire.run(async (signal) => {
+            if (request.method === 'resources/watch') {
+              return await record.watches.watch(request.uri, request.timeoutMs, signal, exec.signal)
+            }
             const options = { signal: AbortSignal.any([signal, exec.signal]), timeout: config.toolCallTimeoutMs }
             const generation = record.wire.client
             // The SDK answers an unadvertised capability with the same empty page, but

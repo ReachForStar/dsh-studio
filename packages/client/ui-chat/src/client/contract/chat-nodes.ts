@@ -103,6 +103,21 @@ export interface TurnTailChatData {
   readonly tokenUsage?: TurnTokenUsage
 }
 
+/** One distinct web source collected from a Turn's search or fetch results. */
+export interface TurnSourceEntry {
+  /** The URL exactly as the tool result recorded it; the deduplication key. */
+  readonly url: string
+  /** The provider title, when one was returned; a renderer falls back to the hostname. */
+  readonly title?: string
+}
+
+/** Turn-level web sources disclosure collected from search and fetch results. */
+export interface TurnSourcesChatData {
+  readonly turn: number
+  /** Distinct sources in first-seen order; never empty for a rendered Node. */
+  readonly sources: readonly TurnSourceEntry[]
+}
+
 /** Turn-level process disclosure projected before the finalized answer. */
 export interface TurnProcessChatData {
   readonly turn: number

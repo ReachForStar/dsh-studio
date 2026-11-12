@@ -39,7 +39,7 @@ Bash, formatters, code generators, and scripts can overwrite concurrent edits wi
 
 ## MCP resource servers
 
-Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: ["catalog"].
+Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: ["catalog"]. Call watch_mcp_resource with the same server name and a resource URI to wait for that resource's next update.
 
 ### MCP server: catalog
 
@@ -380,6 +380,15 @@ interface ToolArgsMap {
   wait_agent: {
     /** Wait duration in milliseconds, from 10000 through 3600000. Defaults to 30000. */
     timeout_ms?: number;
+  } & Record<string, JsonValue>;
+  /** Wait for an MCP server to report that a resource changed. Subscribes first and unsubscribes when the wait ends. Returns updated: true after the first change, or updated: false when the wait times out; read the resource again to get its content. The server must support resource subscriptions. */
+  watch_mcp_resource: {
+    /** Configured MCP server name. */
+    server: string;
+    /** Resource URI to watch. */
+    uri: string;
+    /** Milliseconds to wait for the first change. Omit to use the default wait; larger values are capped. */
+    timeoutMs?: number;
   } & Record<string, JsonValue>;
   /** Fetch the content of a specific HTTP(S) URL and return it decoded to text. */
   web_fetch: {
@@ -776,6 +785,11 @@ interface ToolOutputMap {
   };
   wait_agent: {
     timedOut: boolean;
+  };
+  watch_mcp_resource: {
+    uri: string;
+    updated: boolean;
+    waitedMs: number;
   };
   web_fetch: {
     url: string;

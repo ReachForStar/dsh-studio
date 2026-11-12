@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: b68abe13e8430709
-  zh: a1d6ec8ce3b49970
+  en: 2e8a984177367c90
+  zh: 56f36d13956656d0
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -33,8 +33,11 @@
   en: bf4236607199d61e
   zh: 82f4f749dcabc89f
 /tool-schema-catalog/deepseek-ai-dsh-mcp-resources/read-mcp-resource:
-  en: 5d92c07fa062734f
-  zh: 2d6f0cb8116cf567
+  en: fba8577910bfd3c0
+  zh: fa0c4e66363a8477
+/tool-schema-catalog/deepseek-ai-dsh-mcp-resources/watch-mcp-resource:
+  en: 7db80b68ba2ad6c0
+  zh: 002ee641f25c174f
 /tool-schema-catalog/deepseek-ai-dsh-experimental-browser-use-stagehand-native:
   en: 19e7df8d692b4375
   zh: 19e7df8d692b4375

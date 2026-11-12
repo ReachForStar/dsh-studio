@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Mermaid diagrams",
+    "description": "Draws Mermaid diagram fences in chat replies and shows their source instead while a reply streams or after a drawing failure."
+  }
+}

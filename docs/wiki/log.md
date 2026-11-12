@@ -916,3 +916,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 只读分析 `tmp/opencode`（`@opencode/cli` 2.2.7）与 `packages/`，先核实本 fork 已覆盖的 12 项（PTC、增量 Markdown、tool_search、worktree/Arena/推测执行、jobs/schedule/goal/subagent、会话导出、按轮变更快照、MCP 资源、客户端插件面、逐轮 effort、token-meter），避免重复。
 - 产出 10 项候选与落点：缓存保活、权限规则化与参数纠正、HTTP 卡带录制、MCP OAuth/池化、代码模式按需目录与 OpenAPI/静态扫描、跨重启终端、会话文件回滚、侧问面板、流式尾部 heal、聊天内 mermaid；另列 7 个小项与 5 项不融入。
 - 记录于 [opencode v2.2.7 能力面与可融入清单](queries/opencode-v2-capability-comparison.md)。
+
+## [2026-11-12] feat | 聊天围栏注册 Mermaid 渲染层
+
+- 新建 `packages/client/ui-markdown-mermaid`：以 `key: 'mermaid'` 注册进 `conversation.chat.markdown.fence`，`streaming` 与绘制失败时渲染 owner 的 `FenceCodeBlock`；画成功时以 `dangerouslySetInnerHTML` 展示 Mermaid 序列化并消毒后的 SVG。
+- `apply` 闭包持有唯一的渲染器与 id 序列并经槽位注入面下发；`mermaid` 只以动态 `import()` 进入浏览器私自分块，`initialize` 固定 `startOnLoad: false`、`securityLevel: 'strict'`、`suppressErrorRendering: true`（否则非法正文会画错误图而不抛错，回退失效）。
+- 接线三面 + `tsconfig`：`web-app/cordis.patch.yml`、`web-app/package.json`、`tsconfig.client.json` references、`tsconfig.base.json` paths；生成物同步 `references/packages.md`。
+- 验证：本包 8 项测试通过、逐文件 100% 覆盖；`bundle` 产物入口 4.8 kB、`lib/client.*.js` 100 个分块原始 5.1 MB / gzip 约 1.17 MB。
+- 记录于 [聊天内 Mermaid 渲染](entities/chat-mermaid-rendering.md)。

@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/fork-notice/README.md
+/:
+  en: 55ff9278948b6f15
+  zh: d4e214d6a6fb226c
+/deepseek-ai-dsh-fork-notice:
+  en: 3546b0164583f79f
+  zh: 29db84f0e4e6905a
+/deepseek-ai-dsh-fork-notice/summary:
+  en: 41d65d68e0f33c89
+  zh: 67bd8f0afa8683d6
+/deepseek-ai-dsh-fork-notice/table-of-contents:
+  en: 7917bead29f7b022
+  zh: 7ffafe068a00bc07
+/deepseek-ai-dsh-fork-notice/use-this-package:
+  en: 150cd1308b4cc28d
+  zh: 7932156d96b85f86
+/deepseek-ai-dsh-fork-notice/understand-the-implementation:
+  en: 388c91a965edd015
+  zh: cd92cd89a9c142b4
+/deepseek-ai-dsh-fork-notice/understand-the-implementation/dev-note:
+  en: a66de7276d056683
+  zh: 042bdc759171130c
+/deepseek-ai-dsh-fork-notice/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-fork-notice/model-experience/fork-ownership-notice:
+  en: 94110f6bccbe8442
+  zh: 5cebfd43127dbc26
+/deepseek-ai-dsh-fork-notice/model-experience/fork-ownership-notice/what-the-model-sees:
+  en: 1a20a7f17f01a5a7
+  zh: 324503fd3ec90340
+/deepseek-ai-dsh-fork-notice/model-experience/fork-ownership-notice/token-effect:
+  en: b495da648de7edfe
+  zh: bbe5859c7a4c3645
+/deepseek-ai-dsh-fork-notice/model-experience/fork-ownership-notice/kv-cache-effect:
+  en: a3c884a30a31ea8b
+  zh: 2ec7ed35a013babd
+/deepseek-ai-dsh-fork-notice/known-limitations-and-deferred-work:
+  en: 0d2556196bbe3cd5
+  zh: 2e01cb7cf0382395

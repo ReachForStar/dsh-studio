@@ -90,6 +90,7 @@ const PACKAGE_LIBRARIES: Readonly<Record<string, string>> = {
   'packages/test-support/llm-mock-server': 'Test server library; substitutes provider wire behavior.',
   'packages/test-support/loader-smoke': 'Test harness library; mounts nothing into a product composition.',
   'packages/test-support/remote-mock': 'Browser-side test infrastructure; mounts nothing into a product composition.',
+  'packages/test-support/http-cassette': 'HTTP record/replay library; exports helpers without a plugin entry.',
   'packages/typert/generator': 'Build-time generator run outside any agent runtime.',
   'packages/typert/protocol': 'Compiler-independent protocol declarations.',
   'packages/util/atomic-write': 'Zero-dependency filesystem write utility.',

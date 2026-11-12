@@ -22,3 +22,19 @@ export function renderResourceResult(server: string, value: JsonValue): ContentB
   })
   return [{ type: 'text', text: `MCP server: ${server}\n${rendered}` }]
 }
+
+/**
+ * Render one bounded resource-watch outcome and the next step for the model.
+ * @param server - configured server attribution.
+ * @param value - canonical watch result with the watched URI, update flag, and wait duration.
+ * @returns one attributed text block.
+ */
+export function renderResourceWatchResult(
+  server: string,
+  value: { uri: string; updated: boolean; waitedMs: number },
+): ContentBlock[] {
+  const outcome = value.updated
+    ? `reported a change after ${value.waitedMs} ms. Read it again to get the new content.`
+    : `reported no change within ${value.waitedMs} ms. Read it again to check its current content.`
+  return [{ type: 'text', text: `MCP server: ${server}\nMCP resource ${JSON.stringify(value.uri)} ${outcome}` }]
+}

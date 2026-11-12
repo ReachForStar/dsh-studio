@@ -5,4 +5,5 @@
     <li>
       #text "first"
     <li>
-      #text "**unfinished"
+      <strong>
+        #text "unfinished"

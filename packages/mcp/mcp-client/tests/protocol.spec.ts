@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { InMemoryTransport, type Transport } from '@modelcontextprotocol/client'
+import { Client, InMemoryTransport, type JSONRPCMessage, type McpSubscription, type RequestOptions, type SubscriptionFilter, type Transport } from '@modelcontextprotocol/client'
 import { McpServer } from '@modelcontextprotocol/server'
 import { serveStdio } from '@modelcontextprotocol/server/stdio'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
@@ -19,31 +19,116 @@ import { Config } from '../src/index.ts'
 const { mockTransport } = vi.hoisted(() => ({ mockTransport: vi.fn<() => Transport>() }))
 vi.mock('../src/transport.ts', () => ({ createTransport: mockTransport }))
 
-const config = Config({
-  transport: 'stdio', serverName: 'fixture', command: 'fixture', args: [], env: {}, cwd: '',
-  toolCallTimeoutMs: 60_000, startupTimeoutMs: 30_000, failOnStartupError: true,
-})
+function fixtureConfig(watch: { resourceWatchTimeoutMs?: number; maxResourceWatchTimeoutMs?: number } = {}): Config {
+  return Config({
+    transport: 'stdio', serverName: 'fixture', command: 'fixture', args: [], env: {}, cwd: '',
+    toolCallTimeoutMs: 60_000, startupTimeoutMs: 30_000, failOnStartupError: true, ...watch,
+  })
+}
 
-async function connect(server: McpServer, options?: { resources: true }): Promise<Context> {
+interface ConnectOptions {
+  resources?: true
+  /** Legacy-only server: connect directly instead of through `serveStdio`, which forces the modern era. */
+  legacy?: boolean
+  watch?: { resourceWatchTimeoutMs?: number; maxResourceWatchTimeoutMs?: number }
+  /** Collect messages the client writes to the transport. */
+  outbound?: JSONRPCMessage[]
+}
+
+async function connect(server: McpServer, options: ConnectOptions = {}): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(NativeToolExecutor)
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-  const serving = serveStdio(() => server, { transport: serverTransport })
+  const serving = options.legacy === true ? undefined : serveStdio(() => server, { transport: serverTransport })
+  if (serving === undefined) await server.connect(serverTransport)
+  if (options.outbound !== undefined) {
+    const outbound = options.outbound
+    const send = clientTransport.send.bind(clientTransport)
+    clientTransport.send = (message, sendOptions) => {
+      outbound.push(message)
+      return send(message, sendOptions)
+    }
+  }
   mockTransport.mockReturnValue(clientTransport)
-  const connection = startConnection(ctx, config, resolveReconnectPolicy({ enabled: false }, 'fixture'), new McpStatusCell(() => {}))
+  const connection = startConnection(ctx, fixtureConfig(options.watch), resolveReconnectPolicy({ enabled: false }, 'fixture'), new McpStatusCell(() => {}))
   onTestFinished(async () => {
     await connection.dispose()
-    await serving.close()
+    if (serving === undefined) await server.close()
+    else await serving.close()
     await ctx.fiber.dispose()
   })
   expect(await connection.ready).toEqual({})
-  if (options?.resources) {
+  if (options.resources === true) {
     await ctx.plugin(McpResources)
     ctx.mcpResources.register('fixture', connection.resources)
   }
   return ctx
+}
+
+/** Resource server with a change-notification handler shape both eras deliver. */
+function resourceServer(options: {
+  subscribe?: boolean
+  legacy?: boolean
+  onSubscribe?: () => void
+  onUnsubscribe?: () => void
+} = {}): McpServer {
+  const server = new McpServer({ name: 'resources', version: '1' }, {
+    capabilities: { resources: { subscribe: options.subscribe ?? true } },
+    ...options.legacy === true ? { supportedProtocolVersions: ['2025-06-18'] } : {},
+  })
+  server.registerResource('memo', 'memo://readme', {}, async () => ({
+    contents: [{ uri: 'memo://readme', text: 'memo' }],
+  }))
+  server.server.setRequestHandler('resources/subscribe', async () => {
+    options.onSubscribe?.()
+    return {}
+  })
+  server.server.setRequestHandler('resources/unsubscribe', async () => {
+    options.onUnsubscribe?.()
+    return {}
+  })
+  return server
+}
+
+function watchTool(ctx: Context, args: Record<string, unknown>, signal = new AbortController().signal) {
+  return executeToolFixture(ctx, {
+    name: 'watch_mcp_resource', arguments: { server: 'fixture', ...args },
+    callId: ToolCallId('watch-resource'), signal,
+  })
+}
+
+/** Let the acquire continuation register its waiter after the subscription ack. */
+function flushMicrotasks(): Promise<void> {
+  return new Promise(resolve => setImmediate(resolve))
+}
+
+/** Recorded modern listen handles, their call count, and the spy restore. */
+type ListenRecorder = {
+  readonly subscriptions: McpSubscription[]
+  calls(): number
+  restore(): void
+}
+
+/**
+ * Record opened modern listen handles while leaving the SDK call in charge.
+ * @returns opened subscriptions, the listen call count, and the spy restore.
+ */
+function recordListens(): ListenRecorder {
+  // oxlint-disable-next-line typescript/unbound-method -- invoked below with the connected client as `this`
+  const original = Client.prototype.listen
+  const subscriptions: McpSubscription[] = []
+  const spy = vi.spyOn(Client.prototype, 'listen').mockImplementation(function (
+    this: Client,
+    filter: SubscriptionFilter,
+    options?: RequestOptions,
+  ) {
+    const opening = original.call(this, filter, options)
+    void opening.then((subscription) => { subscriptions.push(subscription) }, () => undefined)
+    return opening
+  })
+  return { subscriptions, calls: () => spy.mock.calls.length, restore: () => { spy.mockRestore() } }
 }
 
 describe('modern MCP connections', () => {
@@ -65,6 +150,7 @@ describe('modern MCP connections', () => {
     const names = ctx.tools.schemas().map(tool => tool.name)
     expect(names.toSorted()).toEqual([
       'list_mcp_resource_templates', 'list_mcp_resources', 'mcp__fixture__ping', 'read_mcp_resource',
+      'watch_mcp_resource',
     ])
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
     onTestFinished(() => { debug.mockRestore() })
@@ -156,5 +242,101 @@ describe('modern MCP connections', () => {
     controller.abort(new Error('caller stopped'))
     expect((await result).isError).toBe(true)
     await cancelled.promise
+  })
+
+  it('returns the first resource update from a modern listen subscription', async () => {
+    const listens = recordListens()
+    onTestFinished(() => { listens.restore() })
+    const server = resourceServer()
+    const ctx = await connect(server, { resources: true })
+    const result = watchTool(ctx, { uri: 'memo://readme', timeoutMs: 5_000 })
+    await vi.waitFor(() => { expect(listens.subscriptions).toHaveLength(1) })
+    // The subscription ack resolved; let the registry register its waiter.
+    await flushMicrotasks()
+    await server.server.sendResourceUpdated({ uri: 'memo://readme' })
+    expect(await result).toMatchObject({ isError: false, value: { uri: 'memo://readme', updated: true } })
+  })
+
+  it('shares one modern subscription between concurrent watches of the same URI', async () => {
+    const listens = recordListens()
+    onTestFinished(() => { listens.restore() })
+    const server = resourceServer()
+    const ctx = await connect(server, { resources: true })
+    const first = watchTool(ctx, { uri: 'memo://readme', timeoutMs: 5_000 })
+    await vi.waitFor(() => { expect(listens.subscriptions).toHaveLength(1) })
+    const [subscription] = listens.subscriptions
+    if (subscription === undefined) throw new Error('the modern listen subscription was not recorded')
+    const close = vi.spyOn(subscription, 'close')
+    const second = watchTool(ctx, { uri: 'memo://readme', timeoutMs: 5_000 })
+    // The second watch joins the existing subscription without another listen call.
+    await flushMicrotasks()
+    expect(listens.calls()).toBe(1)
+    await server.server.sendResourceUpdated({ uri: 'memo://readme' })
+    expect(await first).toMatchObject({ isError: false, value: { uri: 'memo://readme', updated: true } })
+    expect(await second).toMatchObject({ isError: false, value: { uri: 'memo://readme', updated: true } })
+    expect(close).toHaveBeenCalledOnce()
+  })
+
+  it('returns a timeout outcome and cancels the modern subscription', async () => {
+    const outbound: JSONRPCMessage[] = []
+    const server = resourceServer()
+    const ctx = await connect(server, { resources: true, watch: { resourceWatchTimeoutMs: 30 }, outbound })
+    expect(await watchTool(ctx, { uri: 'memo://readme' }))
+      .toMatchObject({ isError: false, value: { uri: 'memo://readme', updated: false } })
+    expect(outbound.some(message => 'method' in message && message.method === 'notifications/cancelled')).toBe(true)
+  })
+
+  it('releases the modern subscription when the tool call is cancelled', async () => {
+    const outbound: JSONRPCMessage[] = []
+    const listens = recordListens()
+    onTestFinished(() => { listens.restore() })
+    const server = resourceServer()
+    const ctx = await connect(server, { resources: true, outbound })
+    const controller = new AbortController()
+    const result = watchTool(ctx, { uri: 'memo://readme', timeoutMs: 60_000 }, controller.signal)
+    await vi.waitFor(() => { expect(listens.subscriptions).toHaveLength(1) })
+    await flushMicrotasks()
+    controller.abort(new Error('caller stopped'))
+    expect((await result).isError).toBe(true)
+    expect(outbound.some(message => 'method' in message && message.method === 'notifications/cancelled')).toBe(true)
+  })
+
+  it('fails clearly when the server does not advertise resource subscriptions', async () => {
+    const ctx = await connect(resourceServer({ subscribe: false }), { resources: true })
+    const result = await watchTool(ctx, { uri: 'memo://readme' })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result.content)).toContain('does not advertise resource subscriptions')
+  })
+
+  it('subscribes and unsubscribes through the legacy resource methods', async () => {
+    let subscribed = false
+    let unsubscribed = false
+    const server = resourceServer({
+      legacy: true,
+      onSubscribe: () => { subscribed = true },
+      onUnsubscribe: () => { unsubscribed = true },
+    })
+    const ctx = await connect(server, { resources: true, legacy: true })
+    const result = watchTool(ctx, { uri: 'memo://readme', timeoutMs: 5_000 })
+    await vi.waitFor(() => { expect(subscribed).toBe(true) })
+    await server.server.sendResourceUpdated({ uri: 'memo://readme' })
+    expect(await result).toMatchObject({ isError: false, value: { uri: 'memo://readme', updated: true } })
+    expect(unsubscribed).toBe(true)
+  })
+
+  it('rejects resource-watch limits where the default exceeds the maximum', () => {
+    const ctx = new Context()
+    const config = { ...fixtureConfig(), resourceWatchTimeoutMs: 20, maxResourceWatchTimeoutMs: 10 }
+    expect(() => startConnection(ctx, config, resolveReconnectPolicy({ enabled: false }, 'fixture'), new McpStatusCell(() => {})))
+      .toThrow('resourceWatchTimeoutMs must not exceed maxResourceWatchTimeoutMs')
+  })
+
+  it('rejects resource-watch limits that are not positive safe integers', () => {
+    const ctx = new Context()
+    for (const invalid of [0, 1.5]) {
+      const config = { ...fixtureConfig(), resourceWatchTimeoutMs: invalid }
+      expect(() => startConnection(ctx, config, resolveReconnectPolicy({ enabled: false }, 'fixture'), new McpStatusCell(() => {})))
+        .toThrow('resourceWatchTimeoutMs must be a positive safe integer')
+    }
   })
 })

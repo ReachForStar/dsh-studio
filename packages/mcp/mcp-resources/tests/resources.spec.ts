@@ -12,7 +12,7 @@ import { bindScopeParent, createScope, type Scope } from '@deepseek-ai/dsh-scope
 import { PtcRuntime, type PtcRunRequest, type PtcRunResult, type PtcRunSpec } from '@deepseek-ai/dsh-ptc-runtime'
 import McpResources, { type McpResourceProvider } from '../src/index.ts'
 
-const resourceToolNames = ['list_mcp_resources', 'list_mcp_resource_templates', 'read_mcp_resource']
+const resourceToolNames = ['list_mcp_resources', 'list_mcp_resource_templates', 'read_mcp_resource', 'watch_mcp_resource']
 
 class BindingProbe extends PtcRuntime {
   readonly language = 'typescript'
@@ -296,13 +296,13 @@ describe('MCP resource tools', () => {
     expect(renderPrompt(await ctx.systemPrompt.assemble())).toContain('MCP resource servers')
 
     await fiber.dispose()
-    for (const name of ['list_mcp_resources', 'list_mcp_resource_templates', 'read_mcp_resource']) {
+    for (const name of resourceToolNames) {
       expect(ctx.tools.get(name)).toBeUndefined()
     }
     expect(renderPrompt(await ctx.systemPrompt.assemble())).not.toContain('MCP resource servers')
   })
 
-  it('routes all three operations with the explicit server and opaque parameters', async () => {
+  it('routes all four operations with the explicit server and opaque parameters', async () => {
     const ctx = await setup()
     const request = vi.fn<McpResourceProvider['request']>().mockResolvedValue({ resources: [], nextCursor: 'next-page' })
     ctx.mcpResources.register('docs', { request })
@@ -317,6 +317,47 @@ describe('MCP resource tools', () => {
     expect((await call(ctx, 'list_mcp_resource_templates', { server: 'docs', cursor: 'template-page' })).isError)
       .toBe(false)
     expect(request.mock.calls[3]?.[0]).toEqual({ method: 'resources/templates/list', cursor: 'template-page' })
+  })
+
+  it('forwards a resource watch with the optional timeout and projects its bounded outcome', async () => {
+    const ctx = await setup()
+    const request = vi.fn<McpResourceProvider['request']>()
+    request.mockResolvedValueOnce({ uri: 'docs://guide', updated: true, waitedMs: 12 })
+    request.mockResolvedValueOnce({ uri: 'docs://guide', updated: false, waitedMs: 5_000 })
+    ctx.mcpResources.register('docs', { request })
+
+    const updated = await call(ctx, 'watch_mcp_resource', { server: 'docs', uri: 'docs://guide', timeoutMs: 5_000 })
+    expect(updated.isError).toBe(false)
+    expect(request.mock.calls[0]?.[0]).toEqual({ method: 'resources/watch', uri: 'docs://guide', timeoutMs: 5_000 })
+    expect(updated.content).toEqual([{ type: 'text', text: 'MCP server: docs\n'
+      + 'MCP resource "docs://guide" reported a change after 12 ms. Read it again to get the new content.' }])
+
+    const timedOut = await call(ctx, 'watch_mcp_resource', { server: 'docs', uri: 'docs://guide' })
+    expect(timedOut.isError).toBe(false)
+    expect(request.mock.calls[1]?.[0]).toEqual({ method: 'resources/watch', uri: 'docs://guide' })
+    expect(timedOut.content).toEqual([{ type: 'text', text: 'MCP server: docs\n'
+      + 'MCP resource "docs://guide" reported no change within 5000 ms. Read it again to check its current content.' }])
+  })
+
+  it('rejects a resource-watch timeout that is not a positive integer before dispatch', async () => {
+    const ctx = await setup()
+    const request = vi.fn<McpResourceProvider['request']>().mockResolvedValue({ uri: 'docs://guide', updated: false, waitedMs: 1 })
+    ctx.mcpResources.register('docs', { request })
+    for (const timeoutMs of [0, -1]) {
+      const result = await call(ctx, 'watch_mcp_resource', { server: 'docs', uri: 'docs://guide', timeoutMs })
+      expect(result).toMatchObject({ isError: true })
+      expect(JSON.stringify(result.content)).toContain('timeoutMs must be a positive integer')
+    }
+    expect((await call(ctx, 'watch_mcp_resource', { server: 'docs', uri: 'docs://guide', timeoutMs: 1.5 })).isError).toBe(true)
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it('rejects a provider watch result that does not match the declared output', async () => {
+    const ctx = await setup()
+    ctx.mcpResources.register('docs', { request: async () => ({ uri: 'docs://guide' }) })
+    const result = await call(ctx, 'watch_mcp_resource', { server: 'docs', uri: 'docs://guide' })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result.content)).toContain('invalid watch result')
   })
 
   it('keeps binary bytes programmatic while projecting text, URI and server attribution', async () => {

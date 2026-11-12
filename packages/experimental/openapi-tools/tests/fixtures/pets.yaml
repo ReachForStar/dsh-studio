@@ -1,0 +1,215 @@
+openapi: 3.1.0
+info:
+  title: Pet API
+  version: 1.0.0
+servers:
+  - url: https://api.example.test/v1
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List pets
+      description: Return every pet known to the store.
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of pets to return.
+          schema:
+            type: integer
+        - name: tags
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: filter
+          in: query
+          style: deepObject
+          explode: true
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              color:
+                type: string
+      responses:
+        '200':
+          description: Pets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+    post:
+      operationId: createPet
+      summary: Create a pet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewPet'
+      responses:
+        '201':
+          description: Created
+  /pets/{petId}:
+    parameters:
+      - name: petId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getPet
+      summary: Fetch one pet
+      parameters:
+        - name: verbose
+          in: query
+          schema:
+            type: boolean
+        - name: X-Request-Id
+          in: header
+          schema:
+            type: string
+        - name: Accept
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: One pet
+    delete:
+      summary: Delete a pet
+      responses:
+        '204':
+          description: Deleted
+  /collide:
+    get:
+      operationId: collideOp
+      parameters:
+        - name: value
+          in: query
+          schema:
+            type: string
+        - name: value
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+  /upload:
+    post:
+      operationId: uploadPhoto
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: ok
+  /form:
+    post:
+      operationId: submitForm
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: ok
+  /composed:
+    post:
+      operationId: composedOp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+      responses:
+        '200':
+          description: ok
+  /cookies:
+    get:
+      operationId: cookieOp
+      parameters:
+        - name: session
+          in: cookie
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+  /delimited:
+    get:
+      operationId: delimitedOp
+      parameters:
+        - name: ids
+          in: query
+          style: spaceDelimited
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: ok
+  /callback:
+    post:
+      operationId: callbackOp
+      callbacks:
+        onEvent: {}
+      responses:
+        '200':
+          description: ok
+  /pets/search:
+    get:
+      operationId: listPets
+      summary: Duplicate operation id
+      responses:
+        '200':
+          description: ok
+webhooks:
+  petCreated:
+    post:
+      responses:
+        '200':
+          description: ok
+components:
+  schemas:
+    Pet:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    NewPet:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          description: Pet name
+        age:
+          type: integer

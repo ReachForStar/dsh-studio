@@ -123,6 +123,11 @@ export interface Config {
    * omission defaults to {@link DEFAULT_MAX_PARALLEL_TOOL_CALLS}.
    */
   maxParallelToolCalls: Volatile<number>
+  /**
+   * Maximum automatic continuations after a reply hits the output-token
+   * limit. `0` (the default) ends the turn at the first truncation.
+   */
+  maxOutputContinuations: Volatile<number>
   /** Agents created or resumed at plugin startup; a resumed agent records its configured route as the Session's model selection. */
   agents: (AgentOptions & {
     /** Stable config label used in logs and as the fresh combined-id prefix. */
@@ -2555,7 +2560,7 @@ export interface LspLocalServerConfig {
 ## `@deepseek-ai/dsh-mcp-client`
 
 - `inject`: `tools`
-- `source`: [`packages/mcp/mcp-client/src/index.ts:138`](../packages/mcp/mcp-client/src/index.ts)
+- `source`: [`packages/mcp/mcp-client/src/index.ts:146`](../packages/mcp/mcp-client/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for one stdio or Streamable HTTP MCP server. */
@@ -2581,6 +2586,10 @@ export interface StdioConfig {
   cwd: string
   /** Timeout per tool call or resource request in milliseconds. */
   toolCallTimeoutMs: number
+  /** Default wait for one resource update watch when the caller omits a timeout, in milliseconds. */
+  resourceWatchTimeoutMs: number
+  /** Upper bound applied to a caller-requested resource update wait, in milliseconds. */
+  maxResourceWatchTimeoutMs: number
   /** Optional budget for one connection attempt plus its initial tool sync, in milliseconds. */
   startupTimeoutMs?: number
   /** Budget for transport closure and local cleanup, in milliseconds (default 5000). */
@@ -2611,6 +2620,10 @@ export interface StreamableHttpConfig {
   headers: Record<string, string>
   /** Timeout per tool call or resource request in milliseconds. */
   toolCallTimeoutMs: number
+  /** Default wait for one resource update watch when the caller omits a timeout, in milliseconds. */
+  resourceWatchTimeoutMs: number
+  /** Upper bound applied to a caller-requested resource update wait, in milliseconds. */
+  maxResourceWatchTimeoutMs: number
   /** Optional budget for one connection attempt plus its initial tool sync, in milliseconds. */
   startupTimeoutMs?: number
   /** Budget for transport closure and local cleanup, in milliseconds (default 5000). */
@@ -2788,6 +2801,47 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-office-kit -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-openapi-tools -->
+<a id="deepseek-aidsh-openapi-tools"></a>
+
+## `@deepseek-ai/dsh-openapi-tools`
+
+- `inject`: `tools`
+- `source`: [`packages/experimental/openapi-tools/src/index.ts:47`](../packages/experimental/openapi-tools/src/index.ts)
+
+```ts config-catalog
+/** OpenAPI tools plugin configuration. */
+export interface Config {
+  /** Local path or absolute HTTP(S) URL of the OpenAPI 3.x document. */
+  spec: string
+  /** Absolute base URL; overrides every `servers` entry in the document. */
+  baseUrl?: string
+  /** Static headers sent on every request. */
+  headers?: Record<string, string>
+  /** Optional host-side authentication; omitted means anonymous requests. */
+  auth?: AuthConfig
+  /** Request deadline in milliseconds. */
+  timeoutMs?: number
+  /** Cap on a returned non-JSON body, in characters. */
+  maxResponseChars?: number
+  /** Cap on the body quoted inside an HTTP failure, in characters. */
+  maxErrorBodyChars?: number
+  /** Cap on each generated tool description, in characters. */
+  descriptionMaxLength?: number
+}
+
+/** Host-side authentication for every request of one document. */
+export interface AuthConfig {
+  /** `${credential:NAME}` reference or bare environment-variable name. */
+  credential: string
+  /** Where the resolved secret is sent; default `bearer`. */
+  scheme?: 'bearer' | 'header' | 'query'
+  /** Header or query parameter name required by `header` and `query`. */
+  name?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-openapi-tools -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-permission-presets -->
 <a id="deepseek-aidsh-permission-presets"></a>
@@ -5064,6 +5118,33 @@ export type ApprovalPolicy = 'ask' | 'never'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-user-approval -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-warming -->
+<a id="deepseek-aidsh-warming"></a>
+
+## `@deepseek-ai/dsh-warming`
+
+- `inject`: `llm`
+- `source`: [`packages/experimental/warming/src/index.ts:54`](../packages/experimental/warming/src/index.ts)
+
+```ts config-catalog
+/** Keep-alive configuration. */
+export interface Config {
+  /** Whether idle Sessions may be warmed; the package is opt-in by mounting. */
+  enabled: boolean
+  /** Wait after the latest request before one ping, in milliseconds, or `'auto'`. */
+  interval: number | 'auto'
+  /** How long after the latest real request warming may continue. */
+  durationMs: number
+  /** Model-visible keep-alive text. */
+  prompt: string
+  /** Output-token cap for one ping. */
+  maxOutputTokens: number
+  /** End-to-end ping deadline in milliseconds. */
+  timeoutMs: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-warming -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-web -->
 <a id="deepseek-aidsh-web"></a>
 
@@ -5733,6 +5814,7 @@ export interface XingchenSeatConfig {
 | `@deepseek-ai/dsh-client-ui-input-trigger` | — | [`packages/client/ui-input-trigger/src/index.ts`](../packages/client/ui-input-trigger/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-jobs` | — | [`packages/client/ui-jobs/src/index.ts`](../packages/client/ui-jobs/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-layout` | — | [`packages/client/ui-layout/src/index.ts`](../packages/client/ui-layout/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-markdown-mermaid` | — | [`packages/client/ui-markdown-mermaid/src/index.ts`](../packages/client/ui-markdown-mermaid/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-message-feedback` | — | [`packages/client/ui-message-feedback/src/index.ts`](../packages/client/ui-message-feedback/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-model-selection` | — | [`packages/client/ui-model-selection/src/index.ts`](../packages/client/ui-model-selection/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-open-in-app` | — | [`packages/client/ui-open-in-app/src/index.ts`](../packages/client/ui-open-in-app/src/index.ts) |
@@ -5785,6 +5867,7 @@ export interface XingchenSeatConfig {
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | `computerUse` · `tools` · `systemPrompt` | [`packages/experimental/computer-use-cua-driver-native/src/index.ts`](../packages/experimental/computer-use-cua-driver-native/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-session-inspector` | — | [`packages/experimental/session-inspector/src/index.ts`](../packages/experimental/session-inspector/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-tool-worktree` | `tools` · `worktrees` | [`packages/experimental/tool-worktree/src/index.ts`](../packages/experimental/tool-worktree/src/index.ts) |
+| `@deepseek-ai/dsh-fork-notice` | — | [`packages/experimental/fork-notice/src/index.ts`](../packages/experimental/fork-notice/src/index.ts) |
 | `@deepseek-ai/dsh-fs-observation-policy` | — | [`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts) |
 | `@deepseek-ai/dsh-fs-ssh` | `ssh` · `sandboxPolicy` | [`packages/ssh/fs-ssh/src/index.ts`](../packages/ssh/fs-ssh/src/index.ts) |
 | `@deepseek-ai/dsh-goal-round-driver` | `agents` · `goals` · `sessions` | [`packages/goal/goal-round-driver/src/index.ts`](../packages/goal/goal-round-driver/src/index.ts) |
@@ -5926,6 +6009,7 @@ export interface XingchenSeatConfig {
 | `@deepseek-ai/dsh-session-title-llm` | — | [`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts) |
 | `@deepseek-ai/dsh-speculation` | — | [`packages/experimental/speculation/src/index.ts`](../packages/experimental/speculation/src/index.ts) |
 | `@deepseek-ai/dsh-ssh-helper-runtime` | — | [`packages/ssh/ssh-helper-runtime/src/index.ts`](../packages/ssh/ssh-helper-runtime/src/index.ts) |
+| `@deepseek-ai/dsh-test-support-http-cassette` | — | [`packages/test-support/http-cassette/src/index.ts`](../packages/test-support/http-cassette/src/index.ts) |
 | `@deepseek-ai/dsh-timeout` | — | [`packages/util/timeout/src/index.ts`](../packages/util/timeout/src/index.ts) |
 | `@deepseek-ai/dsh-tool-testkit` | — | [`packages/test-support/tool-testkit/src/index.ts`](../packages/test-support/tool-testkit/src/index.ts) |
 | `@deepseek-ai/dsh-typert-generator` | — | [`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts) |

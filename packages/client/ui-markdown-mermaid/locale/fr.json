@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Diagrammes Mermaid",
+    "description": "Dessine les blocs de diagramme Mermaid des réponses du chat et affiche leur code pendant la diffusion d'une réponse ou après un échec de dessin."
+  }
+}

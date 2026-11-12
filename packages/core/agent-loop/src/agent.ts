@@ -38,6 +38,7 @@ import { ToolActivationError, ToolBatchExecutionError } from '@deepseek-ai/dsh-t
 import type { ResolvedToolSet } from '@deepseek-ai/dsh-tools'
 import type { Context } from '@deepseek-ai/cordis'
 import { ReactLoopInbox } from './inbox.ts'
+import { outputLimitContinuation } from './output-limit.ts'
 import { RuntimeContextProjection } from './runtime-context.ts'
 import { AssistantStreamAttempt } from './assistant-stream.ts'
 import { SystemPromptProjection } from './runtime-context.ts'
@@ -345,6 +346,7 @@ export class ReactLoopAgent implements Agent {
     }
     phase.turn = turn
     let turnEnds: TurnEndReason | null = null
+    let outputContinuations = 0
     let target: InboxTarget = 'next-turn'
     try {
       while (true) {
@@ -374,6 +376,13 @@ export class ReactLoopAgent implements Agent {
             // max-tokens is sticky: once any step hits the ceiling, later steps
             // that complete normally must not downgrade the turn outcome.
             const stepEnd = await this.step(decision)
+            // A truncated reply gets a bounded continuation so the turn can
+            // finish the answer instead of ending mid-sentence.
+            if (stepEnd?.kind === 'max-tokens'
+              && outputContinuations < this.loopCtx.agentLoop.config.maxOutputContinuations.get()) {
+              outputContinuations += 1
+              this.inject(outputLimitContinuation())
+            }
             // max-tokens stays sticky: a later completed step must not
             // downgrade the turn outcome.
             if (turnEnds === null || turnEnds.kind !== 'max-tokens') turnEnds = stepEnd

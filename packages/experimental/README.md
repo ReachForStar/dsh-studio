@@ -48,6 +48,7 @@ Promotion requires a named product role, documented public behavior and limitati
 | [`session-search`](session-search/README.md) | Optional experimental global session search tools | — |
 | [`ralph-bundle`](ralph-bundle/README.md) | Optional repeated delegation with an isolated workflow engine | — |
 | [`tool-search`](tool-search/README.md) | Model-facing tool discovery: search the calling agent's visible tools by keyword or fetch one by exact name, returning each match with its parameter schema | — |
+| [`openapi-tools`](openapi-tools/README.md) | OpenAPI 3.x operations as model-visible tools, with one host-side credential and skipped constructs logged | — |
 | [`terminal-bundle`](terminal-bundle/README.md) | Optional global persistent terminal tools | — |
 | [`badge-skill-bundle`](badge-skill-bundle/README.md) | Optional powered-by-dsh badge skill | — |
 | [`session-titles-bundle`](session-titles-bundle/README.md) | Optional titles following human prompts in a conversation | — |

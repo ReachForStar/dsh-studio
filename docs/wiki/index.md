@@ -31,6 +31,7 @@ updated: 2026-11-12
 - [本地 A2A 联调栈（deploy/a2a）](entities/local-a2a-stack.md) — 一条命令拉起 Kafka + 三网关 + Web；已运行则跳过、Kafka 停了自动重启、配置单一来源（`A2A_CONFIG`）与运行期日志位置；Linux 上 `sg docker` 提权、网关 `npm ci` 前置、9310 双占用让位规则。
 - [论文阅读器（ui-paper-reader）](entities/ui-paper-reader.md) — 右侧栏 PDF 阅读页：宿主 `/paper-reader` 与 `/paper-reader/translate` 路由、PDF.js Worker 与内联资源、归一化高亮几何、选中菜单四项动作（提问填草稿不发送、翻译走 `dsh-llm/route` 流式译文）与 8 语言文案。
 - [会话永久删除（SessionPersistence.delete → workspace/deleteSession）](entities/session-permanent-deletion.md) — 持久化接缝删除会话产物、注册表清理记账与归档/置顶引用、宿主命令与两次点击确认对话框；只删日志，不碰工作区文件。
+- [聊天内 Mermaid 渲染（ui-markdown-mermaid）](entities/chat-mermaid-rendering.md) — `conversation.chat.markdown.fence` 的 `mermaid` 层：流式与绘制失败回退 owner 代码块、注入面持有渲染器与 id 序列、动态 import + 私有打包的体积实测，以及 `suppressErrorRendering` 这一失败回退前提。
 
 ## 概念 concepts
 

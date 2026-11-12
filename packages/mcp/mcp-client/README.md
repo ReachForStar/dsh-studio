@@ -59,6 +59,8 @@ Add one entry per server; nothing else is required. After the harness starts, th
 | `command` / `args` / `env` / `cwd` | — | stdio: executable, arguments, extra env merged over scrubbed ambient env, working directory |
 | `url` / `headers` | — | streamable-http: endpoint URL and extra request headers |
 | `toolCallTimeoutMs` | `60,000` | Timeout per `tools/call` or resource request |
+| `resourceWatchTimeoutMs` | `30,000` | Default wait for one `watch_mcp_resource` call when the model omits `timeoutMs` |
+| `maxResourceWatchTimeoutMs` | `300,000` | Ceiling applied to a model-requested resource-watch wait |
 | `startupTimeoutMs` | unset | Optional budget for template resolution, negotiation, connection, and the initial tool sync |
 | `closeTimeoutMs` | `5,000` | Budget for transport closure and pending local work to settle |
 | `expandTemplates` | `false` | Resolve `${credential:REF}` in transport strings at runtime and redact resolved values from diagnostics |
@@ -88,6 +90,10 @@ The model sees each tool under a stable server-qualified name: `mcp__<serverName
 When the model calls an MCP tool, the call runs against the remote server with a per-call timeout (default 60 seconds) and can be cancelled like any other tool call. The result comes back as ordinary text in block order; resource links appear as text with their name and URI. If the server reports an error, the call fails visibly — the model does not see a fake success.
 
 Images are supported when the current model accepts image input and the harness attachment feature is enabled; they then appear in the conversation like other images. Otherwise — and for audio or embedded resources — the model sees a clear diagnostic message instead of nothing.
+
+### Resource updates
+
+When a server advertises `resources.subscribe`, the shared [`watch_mcp_resource`](../mcp-resources/README.md) tool can wait for one resource's next change. A modern connection opens an SDK `subscriptions/listen` stream; a legacy connection sends `resources/subscribe`. Both wait for the first `notifications/resources/updated` for the URI and then release the subscription, also on cancellation or connection closure. Concurrent watches of the same URI share one subscription, released by the last watcher. A server without the capability fails the call instead of waiting for a notification that cannot arrive. `resourceWatchTimeoutMs` sets the omitted-timeout wait and `maxResourceWatchTimeoutMs` caps larger model requests; the connection re-validates both at load.
 
 ### Startup, updates, and reconnection
 
@@ -129,6 +135,7 @@ This section explains the design decisions behind the bridge and points at the c
 | [`src/index.ts`](src/index.ts) | Plugin entry: `Config` schema, `serverName` reservation, activation await |
 | [`src/connection.ts`](src/connection.ts) | Connection supervisor: client generations, reconnect policy, attempt budget, disposal |
 | [`src/generation.ts`](src/generation.ts) | Transport ownership, cancellation, pending work, and confirmed closure |
+| [`src/resource-watch.ts`](src/resource-watch.ts) | Per-generation resource watches: era-specific subscriptions, sharing, notification routing, and release |
 | [`src/credentials.ts`](src/credentials.ts) | Runtime template binding and redaction of every resolved value |
 | [`src/templates.ts`](src/templates.ts) | Credential template syntax, substitution, and reference discovery |
 | [`src/server-context.ts`](src/server-context.ts) | Resource-provider registration and literal server instructions |
@@ -188,7 +195,7 @@ After discovery succeeds, SDK-admitted MCP tools appear as native tools named `m
 
 #### Token effect
 
-The tool descriptions and input schemas enter every request while the tools are registered; re-syncs replace rather than accumulate schemas, and the server-qualified name adds tokens to every tool definition and call. A configured client also enables the [shared resource tools and server-name prompt](../mcp-resources/README.md#model-experience).
+The tool descriptions and input schemas enter every request while the tools are registered; re-syncs replace rather than accumulate schemas, and the server-qualified name adds tokens to every tool definition and call. A configured client also enables the [shared resource tools and server-name prompt](../mcp-resources/README.md#model-experience), including `watch_mcp_resource`; the watch adds no prompt text of its own.
 
 #### KV Cache effect
 
@@ -229,7 +236,7 @@ Unchanged instructions retain identical prompt text. Updated or removed instruct
 
 These limits describe what you cannot do with this plugin and when it needs operational attention. They are current package constraints, not a comparison with other MCP clients or a task backlog.
 
-- **Resources are read on demand** — shipped profiles provide the [shared resource service](../mcp-resources/README.md); resource subscriptions and MCP prompt templates are unsupported.
+- **Resources are read on demand** — shipped profiles provide the [shared resource service](../mcp-resources/README.md); resource watches cover one URI and one update per call, and MCP prompt templates are unsupported.
 - **Whole-attempt startup budgets are opt-in** — `startupTimeoutMs` covers template resolution, negotiation, connect, and the initial tool sync when configured. A notification-driven re-sync's `tools/list` requests use the MCP SDK's 60-second request default and page limit. Plugin unload closes the transport to interrupt pending startup requests before awaiting teardown.
 - **Reconnect handles failed negotiation and transport close** — a failed initial connection or a crashed stdio child uses the configured reconnect budget. Ordinary HTTP request failures use the SDK transport's recovery; credential changes replace the connection.
 - **Image is the only durable rich-result bridge** — PNG, JPEG, WebP, and GIF enter Native context after exact capability proof. Audio and embedded-resource payloads remain execution-local with explicit diagnostics, while resource links preserve only their name and URI as text.

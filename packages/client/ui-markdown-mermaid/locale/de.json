@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Mermaid-Diagramme",
+    "description": "Zeichnet Mermaid-Diagramm-Blöcke in Chat-Antworten und zeigt stattdessen den Quelltext, während eine Antwort einläuft oder wenn das Zeichnen fehlschlägt."
+  }
+}

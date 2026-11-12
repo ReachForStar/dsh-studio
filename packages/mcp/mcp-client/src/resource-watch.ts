@@ -116,10 +116,10 @@ export class ResourceWatchRegistry {
   /** Route update notifications to {@link notify} once per generation. */
   private routeUpdates(): void {
     if (this.handlerRegistered) return
-    this.handlerRegistered = true
     this.options.client.setNotificationHandler('notifications/resources/updated', (notification) => {
       this.notify(notification.params.uri)
     })
+    this.handlerRegistered = true
   }
 
   /** Join or open the shared subscription for one URI. */

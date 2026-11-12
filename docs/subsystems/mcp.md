@@ -202,7 +202,7 @@ Source: [`packages/mcp/mcp-manager/src/index.ts`](../../packages/mcp/mcp-manager
 
 ### `ctx.mcpResources` — `McpResourceRuntime`
 
-Scoped resource access plus three tools shared by configured MCP servers.
+Scoped resource access plus four tools shared by configured MCP servers.
 
 ```ts cordis-catalog
 /**

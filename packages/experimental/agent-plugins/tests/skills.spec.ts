@@ -48,7 +48,7 @@ describe('AgentPluginSkillProvider', () => {
   })
 
   it('returns no candidates without a skills directory', async () => {
-    const provider = new AgentPluginSkillProvider([{ root: await pluginRoot(), name: 'demo' }], 300)
+    const provider = new AgentPluginSkillProvider([{ root: await pluginRoot() }], 300)
     await expect(provider.list({})).resolves.toEqual([])
   })
 

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-followup",
   "description": "Model-suggested next steps for the user after each completed turn",
-  "version": "0.1.0-rc.1",
+  "version": "0.2.2-rc.1",
   "publishConfig": {
     "access": "public"
   },

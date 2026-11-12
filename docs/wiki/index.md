@@ -10,7 +10,7 @@ updated: 2026-11-11
 ## 实体 entities
 
 - [worktree 脏状态镜像（mirrorUncommitted）](entities/worktree-dirty-mirror.md) — `git stash create` 快照 + 未跟踪文件经 `ctx.fs` 逐文件复制，把源检出的未提交工作带进新检出；`mirrorMaxFileBytes` 限制单文件、沙箱策略随调用方、默认不镜像。
-- [推测执行门控（dsh-speculation）](entities/speculation.md) — 输入前预执行的门控与 overlay 路径规划：只读放行、写入按显式配置重定向到 overlay、越界与未知工具一律 boundary；纯逻辑不含 I/O。
+- [推测执行门控（dsh-speculation）](entities/speculation.md) — 输入前预执行的门控、overlay 代理与预测运行方：只读放行、写入按显式配置重定向到 overlay、越界与未知工具一律 boundary；runner 在轮次结束后预测下一次请求并预执行，用户确认才提交。
 - [下一步建议（dsh-followup）](entities/followup.md) — `turn/end` 后用辅助模型给出至多 N 条下一步动作，写 log-only 的 `followup/suggestions` 事件；按 `turn/start` 归属增量累积、空回复不写、UTF-8 安全截断。
 - [工具批次摘要（dsh-step-summary）](entities/step-summary.md) — `step/end` 时用辅助模型为工具批次生成一行摘要，以 log-only 的 `tool/batch-summary` 事件记录；增量累积事件不读历史、按 `turn:step` 幂等去重、失败只警告。
 - [记忆笔记（dsh-memory-notes）](entities/memory-notes.md) — 读取并注入 `MEMORY.md` 持久记忆：用户层（`<dsh home>/memory`）与项目层（最近根目录）共享 `maxChars` 预算，`agent/pre-step` 每次重读实现编辑更新与删除移除，attribution-only `memory-notes` 来源无需格式代际。

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type { ToolDefinition, ToolExecutionToken, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { apply, createToolSearchTool, renderCatalog, searchTools } from '../src/index.ts'
 
 
@@ -11,7 +13,7 @@ function definition(name: string, description: string): ToolDefinition {
     description,
     parameters: { path: { type: 'string', required: true, description: 'Path' } },
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
-    execute: () => 'ok',
+    execute: async () => 'ok',
   })
 }
 
@@ -83,7 +85,14 @@ describe('renderCatalog', () => {
 })
 
 /** Minimal run context: the search tool reads only the agent scope and the signal. */
-const EXEC = { agent: undefined, signal: new AbortController().signal } as ToolRunContext
+const EXEC: ToolRunContext = {
+  callId: ToolCallId('tool-search'), rootCallId: ToolCallId('tool-search'), name: 'tool_search', arguments: {},
+  token: Symbol('tool-search') as ToolExecutionToken, signal: new AbortController().signal,
+  deferContext() {}, concludeTurn() {},
+}
+
+/** Catalog one search call returns; the tool's declared output schema fixes this shape. */
+type CatalogResult = { tools: { name: string }[] }
 
 function contextWith(definitions: readonly ToolDefinition[]): Context {
   return { tools: { definitions: () => definitions } } as Context
@@ -92,20 +101,20 @@ function contextWith(definitions: readonly ToolDefinition[]): Context {
 describe('createToolSearchTool', () => {
   it('returns the matching tools for a query', async () => {
     const tool = createToolSearchTool(contextWith(DEFINITIONS), {})
-    const result = await tool.execute({ query: 'read' }, EXEC)
+    const result = await tool.execute({ query: 'read' }, EXEC) as CatalogResult
     expect(result).toMatchObject({ tools: [{ name: 'read_file' }] })
   })
 
   it('renders its catalog through the declared presentation', async () => {
     const tool = createToolSearchTool(contextWith(DEFINITIONS), {})
     const value = await tool.execute({ name: 'read_file' }, EXEC)
-    const blocks = tool.output.render({ name: 'read_file' }, value)
+    const blocks = tool.output.render({ name: 'read_file' }, value as JsonValue)
     expect(JSON.stringify(blocks)).toContain('## read_file')
   })
 
   it('honours the configured caps', async () => {
     const tool = createToolSearchTool(contextWith(DEFINITIONS), { maxResults: 1, descriptionMaxLength: 40 })
-    const result = await tool.execute({ query: 'file' }, EXEC)
+    const result = await tool.execute({ query: 'file' }, EXEC) as CatalogResult
     expect(result.tools).toHaveLength(1)
   })
 

@@ -21,6 +21,76 @@ import type {
   FsWriteOutcome,
 } from '@deepseek-ai/dsh-fs'
 
+/** One overlay copy and the workspace file it belongs to. */
+export interface OverlayWrite {
+  /** Absolute overlay path holding the speculative content. */
+  overlay: string
+  /** Absolute workspace path that content belongs to. */
+  workspace: string
+}
+
+/**
+ * Copy one workspace file into the overlay so a redirected edit opens the same
+ * content the model read.
+ * @param fs - provider serving both trees.
+ * @param write - overlay copy and the workspace file it mirrors.
+ * @param signal - aborts the seeding.
+ */
+export async function seedOverlay(fs: FileSystem, write: OverlayWrite, signal?: AbortSignal): Promise<void> {
+  const overlay = await fs.resolve(write.overlay)
+  if (await fs.stat(overlay, signal) !== undefined) return
+  const workspace = await fs.resolve(write.workspace)
+  const info = await fs.stat(workspace, signal)
+  if (info === undefined || info.type !== 'file') return
+  await fs.writeText(overlay, await fs.readText(workspace, signal))
+}
+
+/**
+ * Copy recorded overlay files back into the workspace.
+ * @param fs - provider serving both trees.
+ * @param writes - overlay/workspace pairs, in copy order.
+ * @param signal - aborts the commit between files.
+ * @returns workspace paths written, in input order; absent overlay copies are skipped.
+ */
+export async function commitOverlay(
+  fs: FileSystem,
+  writes: Iterable<OverlayWrite>,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const written: string[] = []
+  for (const write of writes) {
+    signal?.throwIfAborted()
+    const overlay = await fs.resolve(write.overlay)
+    if (await fs.stat(overlay, signal) === undefined) continue
+    await fs.writeText(await fs.resolve(write.workspace), await fs.readText(overlay, signal))
+    written.push(write.workspace)
+  }
+  return written
+}
+
+/**
+ * Delete recorded overlay files, leaving the workspace untouched.
+ * @param fs - provider serving both trees.
+ * @param writes - overlay/workspace pairs to drop.
+ * @param signal - aborts the discard between files.
+ * @returns overlay paths removed, in input order; absent copies are skipped.
+ */
+export async function discardOverlay(
+  fs: FileSystem,
+  writes: Iterable<OverlayWrite>,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const removed: string[] = []
+  for (const write of writes) {
+    signal?.throwIfAborted()
+    const overlay = await fs.resolve(write.overlay)
+    if (await fs.stat(overlay, signal) === undefined) continue
+    await fs.remove(write.overlay)
+    removed.push(write.overlay)
+  }
+  return removed
+}
+
 /** Arguments for one overlay proxy. */
 export interface OverlayOptions {
   /** Provider serving both the workspace and the overlay directory. */
@@ -66,9 +136,12 @@ export class OverlayFileSystem extends FileSystem {
     return `${this.#overlayRoot}/${absolute.slice(prefix.length)}`
   }
 
-  /** Workspace path mirroring one recorded overlay path; only recorded paths are passed. */
-  #workspaceForOverlay(absolute: string): string {
-    return `${this.#workspaceRoot}/${absolute.slice(this.#overlayRoot.length + 1)}`
+  /** Recorded overlay paths paired with the workspace files they mirror. */
+  #writes(): OverlayWrite[] {
+    return [...this.written].map(overlay => ({
+      overlay,
+      workspace: `${this.#workspaceRoot}/${overlay.slice(this.#overlayRoot.length + 1)}`,
+    }))
   }
 
   async #overlayTarget(target: FsTarget): Promise<FsTarget | undefined> {
@@ -206,17 +279,7 @@ export class OverlayFileSystem extends FileSystem {
    * @returns workspace paths written by the commit, in overlay order.
    */
   async commit(signal?: AbortSignal): Promise<string[]> {
-    const written: string[] = []
-    for (const overlayAbsolute of [...this.written]) {
-      signal?.throwIfAborted()
-      const workspaceAbsolute = this.#workspaceForOverlay(overlayAbsolute)
-      const overlayTarget = await this.#base.resolve(overlayAbsolute)
-      if (await this.#base.stat(overlayTarget, signal) === undefined) continue
-      const content = await this.#base.readText(overlayTarget, signal)
-      await this.#base.writeText(await this.#base.resolve(workspaceAbsolute), content)
-      written.push(workspaceAbsolute)
-    }
-    return written
+    return commitOverlay(this.#base, this.#writes(), signal)
   }
 
   /**
@@ -225,14 +288,7 @@ export class OverlayFileSystem extends FileSystem {
    * @returns overlay paths removed.
    */
   async discard(signal?: AbortSignal): Promise<string[]> {
-    const removed: string[] = []
-    for (const overlayAbsolute of [...this.written]) {
-      signal?.throwIfAborted()
-      const overlayTarget = await this.#base.resolve(overlayAbsolute)
-      if (await this.#base.stat(overlayTarget, signal) === undefined) continue
-      await this.#base.remove(this.#base.processPath(overlayTarget))
-      removed.push(overlayAbsolute)
-    }
+    const removed = await discardOverlay(this.#base, this.#writes(), signal)
     this.written.clear()
     return removed
   }

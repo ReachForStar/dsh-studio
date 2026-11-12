@@ -95,7 +95,7 @@ describe('accumulateTurn', () => {
     const assistant = live.append('assistant/message', {
       turn: 1,
       step: 1,
-      message: createAssistantMessage({ content: [{ type: 'text', text: 'answer' }] }),
+      message: createAssistantMessage({ content: [{ type: 'text', text: 'answer' }], source: { provider: 'mock', model: 'mock-fast' } }),
       stream: [],
     }, { surfaceOp: 'append' })
     expect(accumulateTurn(state, 1, assistant)).toBe(true)
@@ -111,7 +111,7 @@ describe('accumulateTurn', () => {
     const assistant = live.append('assistant/message', {
       turn: 1,
       step: 1,
-      message: createAssistantMessage({ content: [] }),
+      message: createAssistantMessage({ content: [], source: { provider: 'mock', model: 'mock-fast' } }),
       stream: [],
     }, { surfaceOp: 'append' })
     expect(accumulateTurn(state, 1, assistant)).toBe(false)
@@ -124,13 +124,13 @@ describe('accumulateTurn', () => {
     const live = ctx.sessions.create()
     const state = new Map<number, TurnExcerpt>()
     const user = live.append('user/message', createUserMessage({
-      content: [{ type: 'image', source: { kind: 'attachment', id: 'a' } }], source: { kind: 'user' },
+      content: [{ type: 'reasoning', text: 'hmm' }], source: { kind: 'user' },
     }), { surfaceOp: 'append' })
     expect(accumulateTurn(state, 1, user)).toBe(false)
     const assistant = live.append('assistant/message', {
       turn: 1,
       step: 1,
-      message: createAssistantMessage({ content: [{ type: 'reasoning', text: 'hmm' }] }),
+      message: createAssistantMessage({ content: [{ type: 'reasoning', text: 'hmm' }], source: { provider: 'mock', model: 'mock-fast' } }),
       stream: [],
     }, { surfaceOp: 'append' })
     expect(accumulateTurn(state, 1, assistant)).toBe(false)
@@ -145,7 +145,7 @@ describe('accumulateTurn', () => {
     const assistant = live.append('assistant/message', {
       turn: 7,
       step: 1,
-      message: createAssistantMessage({ content: [{ type: 'text', text: 'standalone' }] }),
+      message: createAssistantMessage({ content: [{ type: 'text', text: 'standalone' }], source: { provider: 'mock', model: 'mock-fast' } }),
       stream: [],
     }, { surfaceOp: 'append' })
     expect(accumulateTurn(state, 1, assistant)).toBe(true)
@@ -242,7 +242,7 @@ describe('apply', () => {
     session.append('assistant/message', {
       turn: 1,
       step: 1,
-      message: createAssistantMessage({ content: [{ type: 'text', text: 'fixed' }] }),
+      message: createAssistantMessage({ content: [{ type: 'text', text: 'fixed' }], source: { provider: 'mock', model: 'mock-fast' } }),
       stream: [],
     }, { surfaceOp: 'append' })
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } as never })
@@ -277,7 +277,7 @@ describe('apply', () => {
     await ctx.plugin(SessionStore)
     const session = ctx.sessions.create()
     let release: (() => void) | undefined
-    const gate = new Promise((resolve) => { release = () => { resolve() } })
+    const gate = new Promise<void>((resolve) => { release = () => { resolve() } })
     ctx.provide('llm', {
       prepareCall: () => Promise.resolve({
         config: { provider: 'mock', model: 'mock-fast', maxTokens: 256 },

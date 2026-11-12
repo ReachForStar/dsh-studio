@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-memory-notes",
   "description": "Project memory notes: MEMORY.md baseline context kept current",
-  "version": "0.1.0-rc.1",
+  "version": "0.2.2-rc.1",
   "publishConfig": {
     "access": "public"
   },

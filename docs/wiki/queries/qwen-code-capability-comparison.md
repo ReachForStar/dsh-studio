@@ -79,11 +79,13 @@ qwen 有 `/context detail`（逐项列出每个内置工具、MCP 工具、上�
 
 融入方式：摘要与建议做成纯展示层插件（不进模型上下文，天然满足「模型可见⟺日志」）；推测执行需要写时复制 overlay 与工具门，属新能力，可先只做读工具推测，写重定向依赖审批模式。
 
+本批进展（2026-11-11 至 2026-11-12）：三件套全部落地——`dsh-step-summary`（工具批次摘要）、`dsh-followup`（下一步建议）、`dsh-speculation`（门控 + overlay 代理 + runner 预测触发）。写入许可改用显式 `allowWrites` 配置（dsh 无 `auto-edit`/`yolo` 审批枚举），默认关闭；提交条件是用户下一条消息与预测归一化后完全相同。详见[推测执行门控](../entities/speculation.md)。
+
 ### 6. Arena（多模型对决）
 
 `packages/core/src/agents/arena/{ArenaManager.ts,ArenaAgentClient.ts,diff-summary.ts,arena-events.ts}`：每个模型一个独立 agent 与独立 worktree，逐个启动并行执行，结束后给状态、时长、轮次、token、工具调用数、共同改动与独有改动、按 diff 的思路摘要，选中胜者把 diff 应用到主工作区并清理。worktree 的脏状态镜像在 `packages/core/src/services/gitWorktreeService.ts`：`git stash create` 取已跟踪改动，未跟踪文件单独复制进每个 worktree（约 1452–1530 行），另处理符号链接的配置目录与 submodule（`docs/users/features/arena.md`）。
 
-本 fork 现状：`packages/experimental/worktree` 只从本地 commit 建隔离 checkout（README 原句：Create an isolated checkout from a local commit），不镜像未提交改动。无多会话对比与应用胜者。
+本 fork 现状：`packages/experimental/worktree` 已补脏状态镜像（`mirrorUncommitted` 与 `mirrorMaxFileBytes`，见 [worktree 脏状态镜像](../entities/worktree-dirty-mirror.md)），但仍无多会话对比与应用胜者。
 
 融入方式：先给 worktree 补脏状态快照能力（属核心或新增接缝），再做 Arena 插件；对比视图可在 Web 客户端插件里做。
 

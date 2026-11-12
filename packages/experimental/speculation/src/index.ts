@@ -17,18 +17,33 @@ import { isAbsolute, join, relative, resolve } from 'node:path'
 export type SpeculationAction = 'allow' | 'redirect' | 'boundary'
 
 /** Outcome of gating one speculative tool call. */
-export interface SpeculationDecision {
-  /** Effect on the speculative run. */
-  action: SpeculationAction
-  /** Tool name the decision applies to. */
-  tool: string
-  /** Filesystem argument key whose value the runner must rewrite, when redirecting. */
-  redirectKey?: string
-  /** Overlay path the argument must be rewritten to, when redirecting. */
-  redirectPath?: string
-  /** Machine-readable reason for a boundary or redirect decision. */
-  reason?: string
-}
+export type SpeculationDecision =
+  | {
+    /** The call may run unchanged. */
+    action: 'allow'
+    /** Tool name the decision applies to. */
+    tool: string
+  }
+  | {
+    /** The call may run once its path argument is rewritten into the overlay. */
+    action: 'redirect'
+    /** Tool name the decision applies to. */
+    tool: string
+    /** Machine-readable reason for the redirect. */
+    reason: string
+    /** Filesystem argument key whose value the runner must rewrite. */
+    redirectKey: string
+    /** Overlay path the argument must be rewritten to. */
+    redirectPath: string
+  }
+  | {
+    /** The call stops speculation. */
+    action: 'boundary'
+    /** Tool name the decision applies to. */
+    tool: string
+    /** Machine-readable reason for the boundary. */
+    reason: string
+  }
 
 /** Speculation policy configuration. */
 export interface Config {
@@ -180,7 +195,6 @@ export function rewriteArguments(
   decision: SpeculationDecision,
 ): Record<string, unknown> {
   if (decision.action !== 'redirect') return { ...args }
-  if (decision.redirectKey === undefined || decision.redirectPath === undefined) return { ...args }
   return { ...args, [decision.redirectKey]: decision.redirectPath }
 }
 

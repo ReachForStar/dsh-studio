@@ -843,3 +843,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 新增 `docs/wiki/queries/qwen-code-handoff.md`：已完成交付清单、三项未完成项的开工点与风险、门禁与踩坑清单（持久化记录流程、禁用同步历史读取、包名前缀陷阱、README 骨架、生成物顺序、覆盖率门禁、lint 拦截项）、临时文件授权状态。
 - 更新能力对比页的进度表并登记到 index。
+
+## [2026-11-12] feat | speculation 推测触发（runner）
+
+- 新增 `packages/experimental/speculation/src/runner.ts`（插件 `@deepseek-ai/dsh-speculation/runner`）：`turn/end` 后用一次 `speculation` 目的的辅助请求预测下一次请求与工具计划，`parsePlan` 用 zod 校验预测 JSON，`executePlan` 经 `gatePlan` 门控后逐个通过 `ctx.tools.execute`（不带 Agent）派发；重定向写入按改写后的参数落到 overlay 目录，写入前先把工作区原文预置为 overlay 副本。
+- 收敛：下一条 `user/message` 归一化后与预测相同且 `allowWrites` 开启时 `commitOverlay`，否则 `discardOverlay`；记录 log-only 的 `speculation/proposal` 与 `speculation/outcome`。在途运行被新输入中止，插件卸载时尽力清理残留副本。
+- 门控 API 收紧：`SpeculationDecision` 改为可判别联合，`redirect` 变体自带 `redirectKey`/`redirectPath`，`rewriteArguments` 与运行方都不再判空；overlay 的提交/丢弃/预置抽成 `commitOverlay`/`discardOverlay`/`seedOverlay` 供两处复用。
+- 持久化记录 `2026-11-12-speculation`（两个 log-only 事件根 + `dsh-speculation` 来源种类，same-version）。
+- 顺带清偿 handoff 遗留的门禁红项：五个包补进 `tsconfig.host.json` 的 references，修掉 `memory-notes`/`step-summary`/`tool-search`/`followup` 测试文件类型错误，`pnpm run typecheck` 由红转绿。
+- 验证：55 测试、src 逐文件 100% 全维度覆盖、本批包 lint 通过、`jscpd` 0 克隆、`doc-sync` 43 项、持久化检查 `ok: true`。

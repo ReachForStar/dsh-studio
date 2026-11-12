@@ -123,7 +123,7 @@ describe('OverlayFileSystem delegation', () => {
     const editSpy = vi.spyOn(base, 'editText').mockResolvedValue({
       version: 'v' as never, before: 'one\ntwo\n', after: 'one\nthree\n',
     })
-    const edited = await overlay.editText(target, {})
+    const edited = await overlay.editText(target, { oldString: 'two', newString: 'three', replaceAll: false })
     expect(edited.after).toContain('three')
     expect(editSpy).toHaveBeenCalled()
     editSpy.mockRestore()

@@ -3,7 +3,7 @@ title: fork 自研包的门禁红项清单
 type: query
 tags: [gates, doc-sync, lint, coverage, constraints, fork, 待办]
 created: 2026-09-18
-updated: 2026-10-30
+updated: 2026-11-12
 sources: []
 status: active
 ---
@@ -31,6 +31,8 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | ~~`verify-package-dependencies`~~ **已清偿（2026-09-19）** | `workspace-files` 引 `FsVersion`、`ui-polish` 引 `tool-excalidraw#sanitizeScene`/`SCENE_RELATIVE`、`home-paths#dshHomePath`、`dsh-llm#BlockAssembler`/`createUserMessage` 未分类；另有四个客户端包的非 cordis `peerDependencies` 分区不符 | office / excalidraw / ui-polish 批 | — |
 | `verify-package-dependencies`（新红项，2026-09-19 复检）~~已清偿（2026-09-19 第二批）~~ | `ui-polish/src/latex-service.ts` 引 `@deepseek-ai/dsh-llm#createAssistantMessage` 未分类 | LaTeX 写作批 | 与已登记的 `createUserMessage` 同类（纯构造器，无跨实例身份），已登记进 `SAFE_HOST_DEPENDENCY_EXPORTS`；分类表要求人工评审，提交正文已标注待所有者确认 |
 | ~~`verify-client-ui-i18n`~~ **已清偿（2026-09-19 ui-polish 批）** | 硬编码 UI 文案：`ui-polish` 的 `CompactionRow`（`80%（默认）`）、`GitPanel` 状态字母（`U`）与 diff 抽屉版本标记、`LatexPanel` 的 `Ctrl+S` 与 TeX 包名 | ui-polish 批 | — |
+| ~~`pnpm run typecheck`（Host 聚合）~~ **已清偿（2026-11-12 handoff 批）** | `agent-plugins`、`followup`、`speculation`、`step-summary`、`tool-search` 未登记进 `tsconfig.host.json` 的 `references`，导致 `TS6307`；登记后又暴露 `memory-notes`、`step-summary`、`tool-search`、`followup` 测试文件的类型错误（`createAssistantMessage` 缺 `source`、`LlmService` 默认导入、`new Promise<T>` 泛型、`ToolRunContext` 夹具） | handoff 批 | 已修：五个包补 references，并修掉上述测试类型错误；`pnpm run typecheck` 现 5 项全过 |
+| ~~`pnpm run constraints`（handoff 批新包）~~ **部分清偿（2026-11-12）** | `agent-plugins`、`followup`、`speculation`、`step-summary`、`tool-search` 未登记 `EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS`，版本与根不一致；`speculation` 的 `files` 缺两个子路径 bundle | handoff 批 | 已修：五个包补例外与版本，`speculation` 登记 `lib/overlay.js`/`lib/runner.js` 到 `packageFileExtras`。**仍红**：`pi-agent-loop`、`session-format-v4-to-v5` 版本未对齐；`@reachforstar/*` 的 cordis/schemastery 用 `workspace:*` 而非 `workspace:~`；`packages/web/web-search-{exa,perplexity}` 目录层级不合规；根包 `dsh` 依赖了两个 experimental 包 |
 | `test:coverage` per-file 100% | 实测：`a2a/src/{index,client,server,task-store}.ts` 82–98%、`a2a-host/src/{index,executor}.ts` 82–96%、`tool-a2a/src/index.ts` 83%、`remote/fs-sftp/src/index.ts` 73.8% 语句 / 62.9% 分支、`remote/subprocess-sftp/src/index.ts` 80.8% / 65.4%。`ui-polish` 2026-11-10 实测：`src/index.ts`、`src/client/index.ts`、`settings-store.ts`、三个设置行、`pricing-store.ts`、`compaction-control.ts`、`cost.ts`、`llm-route.ts`、`background-service.ts`、`excalidraw-service.ts`、`crypto-shim.ts`、`git-client.ts`、`latex-client.ts`、`git-llm.ts`、`ExcalidrawToolView.tsx` 已达 100%；`git-service.ts` 95.5%（余为超时/管道/旧格式防御分支）、`latex-service.ts` 76%、`SshPanel.tsx` 42.5%，`GitPanel.tsx`/`LatexPanel.tsx`/`ExcalidrawPanel.tsx` 仍近 0% | 各 fork 批 | 服务层可按路由补用例（git 已做，latex 待做）；三个面板需要浏览器级 harness 或先做组件级测试接缝 |
 
 ## 本批（2026-09-18 远端工作区）已修掉的红项

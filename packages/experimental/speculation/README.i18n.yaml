@@ -3,26 +3,29 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/speculation/README.md
 /:
-  en: 0a4e7b67e40238ed
-  zh: 30de9e27525d5eb8
+  en: 896b368c245cb309
+  zh: f6d302e74f5c77a8
 /deepseek-ai-dsh-speculation:
   en: 07942aaa3e7ac03b
   zh: 72f6f9d2ad79ddec
 /deepseek-ai-dsh-speculation/summary:
-  en: 54561545a9233ae5
-  zh: ebdbf32cd6fab46e
+  en: fcce35e6615fcac3
+  zh: 2e111c3b1fccb155
 /deepseek-ai-dsh-speculation/table-of-contents:
   en: d152484eb41ac6b4
   zh: 725b47765ee8f30b
 /deepseek-ai-dsh-speculation/use-this-package:
   en: 739437979435029e
   zh: 7dacaa6c5b64c354
+/deepseek-ai-dsh-speculation/use-this-package/mount-the-shipped-runner:
+  en: 50908735b65ffff0
+  zh: 01a1595bc848722e
 /deepseek-ai-dsh-speculation/use-this-package/configuration:
-  en: da31e5f029c40859
-  zh: a750153614374f6d
+  en: 654915ef63479cff
+  zh: ced8a3bf3b7d0fda
 /deepseek-ai-dsh-speculation/understand-the-implementation:
-  en: 8c30fbfa1aa82eb2
-  zh: 508936b0ca45e6e0
+  en: 45065d976c76368e
+  zh: 91792265d0693f86
 /deepseek-ai-dsh-speculation/further-exploration:
   en: 004fe571f30150a0
   zh: 4416be974b561c97
@@ -33,17 +36,29 @@
   en: e1b2fe609b309bbd
   zh: 9b91167a0321909b
 /deepseek-ai-dsh-speculation/model-experience/speculation-gate/what-the-model-sees:
-  en: fee64b62b244533e
-  zh: 6ea0b821b404f964
+  en: ff988a5d4d51e4d4
+  zh: 06617b7d44407270
 /deepseek-ai-dsh-speculation/model-experience/speculation-gate/token-effect:
   en: c5ccb45e653e3f86
-  zh: c9d3a0ea4a0451db
+  zh: 8c4d6889058698f8
 /deepseek-ai-dsh-speculation/model-experience/speculation-gate/kv-cache-effect:
   en: 82e96ad8ba70f1c4
-  zh: 59a97e2a2a0b7b25
+  zh: c47cb1c85bd07d1f
+/deepseek-ai-dsh-speculation/model-experience/speculation-runner:
+  en: 756d87e9d1741149
+  zh: 9a04c81dcc95345d
+/deepseek-ai-dsh-speculation/model-experience/speculation-runner/what-the-model-sees:
+  en: 8d7dc517f48901e2
+  zh: 20b04e906054427a
+/deepseek-ai-dsh-speculation/model-experience/speculation-runner/token-effect:
+  en: 2a36162162299a63
+  zh: 93340e1aae1585a7
+/deepseek-ai-dsh-speculation/model-experience/speculation-runner/kv-cache-effect:
+  en: 3948617716f82e3b
+  zh: f48d663d1efd94d8
 /deepseek-ai-dsh-speculation/known-limitations-and-deferred-work:
-  en: 73ad88ac8d7c4486
-  zh: 1957c0373acadc30
+  en: 84469b3e7a40e5df
+  zh: 8c32cb6abb3c3264
 /deepseek-ai-dsh-speculation/known-limitations-and-deferred-work/dev-note:
-  en: 54ea9439aebec5cc
-  zh: b284915de3a92df0
+  en: dd5d3902ca2ae7c3
+  zh: bf2c7e09991cb447

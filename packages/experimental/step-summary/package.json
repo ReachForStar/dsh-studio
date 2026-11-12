@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-step-summary",
   "description": "One-line model summaries of each step's tool batch, logged for presentation",
-  "version": "0.1.0-rc.1",
+  "version": "0.2.2-rc.1",
   "publishConfig": {
     "access": "public"
   },

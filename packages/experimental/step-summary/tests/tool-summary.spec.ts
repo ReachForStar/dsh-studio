@@ -4,7 +4,7 @@ import { Context } from '@deepseek-ai/cordis'
 import SessionStore from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
 import { ToolCallId, createToolResultMessage } from '@deepseek-ai/dsh-llm'
-import type { LlmService } from '@deepseek-ai/dsh-llm'
+import type { StreamChunk } from '@deepseek-ai/dsh-llm'
 import * as ToolSummary from '../src/index.ts'
 import {
   collectToolBatch,
@@ -46,8 +46,8 @@ function toolResult(session: Session, turn: number, step: number, callId: string
   }, { surfaceOp: 'append' })
 }
 
-function stubLlm(reply: string): LlmService {
-  const stream = async function* () {
+function stubLlm(reply: string) {
+  const stream = async function* (): AsyncIterable<StreamChunk> {
     yield { type: 'text-delta', index: 0, text: reply }
     yield { type: 'finish', reason: { kind: 'stop' } }
   }
@@ -110,7 +110,7 @@ describe('duplicate step events', () => {
     const session = ctx.sessions.create()
     const prepare = vi.fn()
     let release: (() => void) | undefined
-    const gate = new Promise((resolve) => { release = () => { resolve() } })
+    const gate = new Promise<void>((resolve) => { release = () => { resolve() } })
     ctx.provide('llm', {
       prepareCall: () => {
         prepare()

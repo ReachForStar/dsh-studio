@@ -69,9 +69,10 @@ describe('gateToolCall', () => {
   })
 
   it('stops writes whose path escapes the workspace or is missing', () => {
-    expect(gateToolCall('write', { file_path: '/etc/passwd' }, config).reason)
-      .toBe('path_outside_workspace:write')
-    expect(gateToolCall('write', {}, config).reason).toBe('path_outside_workspace:write')
+    const escaped = gateToolCall('write', { file_path: '/etc/passwd' }, config)
+    expect(escaped.action === 'boundary' && escaped.reason).toBe('path_outside_workspace:write')
+    const missing = gateToolCall('write', {}, config)
+    expect(missing.action === 'boundary' && missing.reason).toBe('path_outside_workspace:write')
   })
 
   it('honours custom tool lists and skips non-string paths', () => {
@@ -85,7 +86,8 @@ describe('gateToolCall', () => {
     }
     expect(gateToolCall('inspect', {}, custom).action).toBe('allow')
     expect(gateToolCall('write', { file_path: 'x' }, custom).action).toBe('boundary')
-    expect(gateToolCall('apply_patch', { target: 'a.ts', other: 1 }, custom).redirectPath)
+    const patched = gateToolCall('apply_patch', { target: 'a.ts', other: 1 }, custom)
+    expect(patched.action === 'redirect' && patched.redirectPath)
       .toBe('/tmp/overlay/a.ts')
     expect(gateToolCall('apply_patch', { target: '   ' }, custom).action).toBe('boundary')
   })
@@ -111,7 +113,6 @@ describe('rewriteArguments', () => {
     const args = { file_path: 'src/a.ts' }
     expect(rewriteArguments(args, gateToolCall('read', args, config))).toEqual(args)
     expect(rewriteArguments(args, gateToolCall('write', args, strict))).toEqual(args)
-    expect(rewriteArguments(args, { action: 'redirect', tool: 'write' })).toEqual(args)
   })
 })
 

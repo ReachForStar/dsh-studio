@@ -65,7 +65,7 @@ class StubFileSystem extends FileSystem {
     return this.files.get(String(target.targetKey)) ?? ''
   }
 
-  override async streamText(target: FsTarget): Promise<AsyncIterable<string>> {
+  override async streamText(_target: FsTarget): Promise<AsyncIterable<string>> {
     return (async function* () { yield await Promise.resolve('') })()
   }
 
@@ -96,7 +96,7 @@ beforeAll(async () => {
   userMemory = join(dshHome, 'memory')
   repo = await mkdtemp(join(tmpdir(), 'dsh-memory-repo-'))
   await isolatedInboxCtx.plugin(StubFileSystem)
-  await isolatedInboxCtx.plugin(MemoryNotesPlugin)
+  await isolatedInboxCtx.plugin(MemoryNotesPlugin, {})
 })
 
 beforeEach(() => {
@@ -292,7 +292,6 @@ describe('loadMemoryFiles edge cases', () => {
         layer: 'project' as const,
         absolutePath: join(repo, 'MEMORY.md'),
         displayPath: 'MEMORY.md',
-        target: undefined,
       },
     ], 100, provider, new AbortController().signal)).toEqual([])
   })
@@ -351,8 +350,8 @@ describe('applyPreStepMemory edge cases', () => {
       ctx, agent, { kind: 'enter', messages: [prompt] }, [prompt],
       resolveMemoryConfig(undefined), new AbortController().signal,
     )
-    const entered = out.messages as readonly UserMessage[]
-    expect(entered.map(message => (message.source as { kind: string }).kind)).toEqual(['user', 'memory-notes'])
+    if (out.kind !== 'enter') throw new Error('the note must keep the step admitted')
+    expect(out.messages.map(message => (message.source as { kind: string }).kind)).toEqual(['user', 'memory-notes'])
   })
 })
 

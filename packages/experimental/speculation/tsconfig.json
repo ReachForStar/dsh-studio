@@ -15,7 +15,22 @@
       "path": "../../../vendor/schemastery"
     },
     {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../experimental/followup"
+    },
+    {
       "path": "../../fs/fs"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../util/timeout"
     }
   ]
 }

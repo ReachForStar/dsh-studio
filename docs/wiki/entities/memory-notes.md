@@ -28,7 +28,7 @@ status: active
 
 ## 与既有页面关系
 
-- 复用 `agent/pre-step` 瀑布契约（[agent-instructions](agent-instructions.md) 同款机制）与 attribution-only source kind 模式。
+- 复用 `agent/pre-step` 瀑布契约（`packages/context/agent-instructions` 同款机制）与 attribution-only source kind 模式。
 - 与 qwen-code 记忆层的对照见 [qwen-code 能力对比](../queries/qwen-code-capability-comparison.md)：本包只做「写入文件的注入」，qwen 的自动提取/后台清理/预算折叠、`pinned/`、团队记忆均未实现。
 
 ## 验证

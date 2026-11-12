@@ -811,3 +811,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 核心逻辑抽为纯函数 `applyPreStepMemory`，瀑布接线仅一行委托；`agent/pre-step` 派发要求插件 ctx 与 agent 载体同 harness ctx（排查记录在实体页）。
 - 验证：21 测试、src 逐文件 100% 全维度覆盖、lint、聚合 typecheck、doc-sync 43 项全部通过；生成物重新生成（tsconfig paths、config-catalog、event-producer-consumer、plugin-packages、translation-pairing）。
 - 未实现（对照 qwen 记忆层）：自动提取、后台清理、逐条预算折叠、`pinned/`、团队记忆。
+
+## [2026-11-11] feat | step-summary 工具批次摘要（快模型第一件）
+
+- 新增 `packages/experimental/step-summary`：`step/end` 触发一次辅助模型请求，把工具批次压缩成一行，写 log-only 的 `tool/batch-summary` 事件供展示；输入/输出/截止时间三重预算，失败只警告。
+- 实现要点：不使用已弃用的同步历史读取，改为在 `session/event` 投递中增量累积 `turn:step` 批次；`inFlight` 去重防重复投递；包名避开 `gen-tool-catalog` 的 `tool-*` 工具包约定。
+- 持久化记录 `2026-11-11-tool-summary` 一并覆盖了上一轮 memory-notes 的 `memory-notes` 来源种类（attribution-only）与本次 `tool-summary` 来源种类、`tool/batch-summary` 事件根，双向兼容说明见记录正文。
+- 验证：17 测试、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项、持久化检查 `ok: true`。

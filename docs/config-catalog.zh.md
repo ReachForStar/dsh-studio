@@ -3683,6 +3683,33 @@ export type HelperLaunch = {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-ssh -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-step-summary -->
+<a id="deepseek-aidsh-step-summary"></a>
+
+## `@deepseek-ai/dsh-step-summary`
+
+- `inject`: `llm`
+- `source`: [`packages/experimental/step-summary/src/index.ts:59`](../packages/experimental/step-summary/src/index.ts)
+
+```ts config-catalog
+/** Auxiliary summary request defaults: a one-sentence reply fits a small budget. */
+export interface Config {
+  /** Output-token cap for one summary request. */
+  maxOutputTokens: number
+  /** End-to-end auxiliary request deadline in milliseconds. */
+  timeoutMs: number
+  /** Maximum UTF-8 bytes in the prepared batch description. */
+  maxInputBytes: number
+  /** Maximum characters retained in the accepted summary line. */
+  maxSummaryChars: number
+  /** Optional explicit provider route; must be paired with `model`. */
+  provider?: string
+  /** Optional explicit model id; must be paired with `provider`. */
+  model?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-step-summary -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-storage-domain -->
 <a id="deepseek-aidsh-storage-domain"></a>
 

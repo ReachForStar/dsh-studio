@@ -838,3 +838,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `packages/experimental/speculation/src/overlay.ts` 新增 `OverlayFileSystem`：`FileSystem` 代理，读取先探测 overlay 副本、所有变更写入 overlay，按产出路径集合 `commit` 回工作区或 `discard` 丢弃；越界写入直接抛错。
 - 实现取舍：代理自建独立 Cordis 上下文注册服务，避免与企业 `ctx.fs` 冲突；`commit` 不做版本冲突检测（记录为已知限制）。
 - 验证：24 测试（含真实临时目录与 `dsh-fs-local` 的读写/提交/丢弃/越界用例）、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项。
+
+## [2026-11-11] docs | qwen-code 采纳工作交接
+
+- 新增 `docs/wiki/queries/qwen-code-handoff.md`：已完成交付清单、三项未完成项的开工点与风险、门禁与踩坑清单（持久化记录流程、禁用同步历史读取、包名前缀陷阱、README 骨架、生成物顺序、覆盖率门禁、lint 拦截项）、临时文件授权状态。
+- 更新能力对比页的进度表并登记到 index。

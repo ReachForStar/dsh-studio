@@ -910,3 +910,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 运行期跳过（告警，不抛错）：无根、相对根、overlay 落在根内；加载期仍校验 overlay 绝对与固定根的放置。
 - 包内 60 项测试通过、src 逐文件 100%；`build:check`、`test:docs` 通过；实测 `/data/f/BDJ-Train` 会话记录到 `speculation/proposal`。
 - 记录于 [speculation](entities/speculation.md)。
+
+## [2026-11-12] docs | 对比 opencode v2.2.7 能力面
+
+- 只读分析 `tmp/opencode`（`@opencode/cli` 2.2.7）与 `packages/`，先核实本 fork 已覆盖的 12 项（PTC、增量 Markdown、tool_search、worktree/Arena/推测执行、jobs/schedule/goal/subagent、会话导出、按轮变更快照、MCP 资源、客户端插件面、逐轮 effort、token-meter），避免重复。
+- 产出 10 项候选与落点：缓存保活、权限规则化与参数纠正、HTTP 卡带录制、MCP OAuth/池化、代码模式按需目录与 OpenAPI/静态扫描、跨重启终端、会话文件回滚、侧问面板、流式尾部 heal、聊天内 mermaid；另列 7 个小项与 5 项不融入。
+- 记录于 [opencode v2.2.7 能力面与可融入清单](queries/opencode-v2-capability-comparison.md)。

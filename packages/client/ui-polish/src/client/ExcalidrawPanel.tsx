@@ -19,23 +19,14 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 // inlines this exact specifier into a <style> tag in the client bundle.
 import '@excalidraw/excalidraw/dist/prod/index.css'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 // Type-only: pulls the session/workspace slot hooks (useSession/useWorkspaces).
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import { workspacePathOf } from './panel-workspace.ts'
 import css from './ExcalidrawPanel.module.css'
 
 /** Full component props: conversation view share + the ui-polish locale seat. */
 export type ExcalidrawPanelProps = PropsRuntime<'conversation.view'> & PropsLocale<'ui-polish'>
-
-/** The workspace path owning the current session, if any. */
-function workspacePathOf(
-  sessionId: string | undefined,
-  items: readonly WorkspaceView[],
-): string | undefined {
-  if (sessionId === undefined) return undefined
-  return items.find(item => item.sessionIds.includes(sessionId as never))?.path
-}
 
 /** A scene payload: the serializable Excalidraw scene (elements + appState). */
 interface ScenePayload {
@@ -83,7 +74,7 @@ const PERSISTED_APPSTATE_KEYS = new Set([
 ])
 
 /** Keep only the persistable document subset of an AppState record. */
-function sanitizeAppState(appState: object): Record<string, unknown> {
+export function sanitizeAppState(appState: object): Record<string, unknown> {
   const clean: Record<string, unknown> = {}
   for (const key of PERSISTED_APPSTATE_KEYS) {
     const value = (appState as Record<string, unknown>)[key]
@@ -102,7 +93,7 @@ function sanitizeAppState(appState: object): Record<string, unknown> {
  * this is what lets the poll loop tell "the model drew something new" apart
  * from "the canvas saved its own edits".
  */
-function sceneFingerprint(scene: unknown): string | null {
+export function sceneFingerprint(scene: unknown): string | null {
   const record = (typeof scene === 'object' && scene !== null) ? scene as Record<string, unknown> : null
   if (record === null || !Array.isArray(record['elements'])) return null
   const parts = (record['elements'] as unknown[]).map((raw) => {

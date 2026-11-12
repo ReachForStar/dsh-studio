@@ -5,8 +5,9 @@ import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/cl
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
   basename, buildUntrackedTree, diffCounts, dirname, formatDate, isConflictMarker, isImagePath,
-  layoutGraph, parseUnifiedDiff, statusLetter, workspacePathOf,
+  layoutGraph, parseUnifiedDiff, statusLetter,
 } from '../src/client/GitPanel.tsx'
+import { workspacePathOf } from '../src/client/panel-workspace.ts'
 import type { GitCommit, GitFile } from '../src/client/git-client.ts'
 
 const t = (key: string): string => key

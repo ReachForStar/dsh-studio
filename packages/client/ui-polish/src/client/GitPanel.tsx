@@ -10,23 +10,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 // Type-only: pulls the session/workspace slot hooks (useSession/useWorkspaces).
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { gitApi, type GitBranches, type GitBlob, type GitCommit, type GitFile, type GitModel, type GitRepo, type GitRules, type GitStatus } from './git-client.ts'
+import { workspacePathOf } from './panel-workspace.ts'
 import css from './GitPanel.module.css'
 
 /** Full component props: conversation view share + the ui-polish locale seat. */
 export type GitPanelProps = PropsRuntime<'conversation.view'> & PropsLocale<'ui-polish'>
 
 type TFunc = TranslateNS<'ui-polish'>
-
-/** The workspace path owning the current session, if any. */
-export function workspacePathOf(sessionId: string | undefined, items: readonly WorkspaceView[]): string | undefined {
-  if (sessionId === undefined) return undefined
-  return items.find(item => item.sessionIds.includes(sessionId as never))?.path
-}
 
 /** Repository-relative basename (last path segment). */
 export function basename(path: string): string {

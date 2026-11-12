@@ -8,21 +8,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 // Type-only: pulls the session/workspace slot hooks (useSession/useWorkspaces).
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { latexApi, type LatexFile, type LatexModel, type LatexProject } from './latex-client.ts'
+import { workspacePathOf } from './panel-workspace.ts'
 import css from './LatexPanel.module.css'
 
 /** Full component props: conversation view share + the ui-polish locale seat. */
 export type LatexPanelProps = PropsRuntime<'conversation.view'> & PropsLocale<'ui-polish'>
-
-/** The workspace path owning the current session, if any. */
-function workspacePathOf(sessionId: string | undefined, items: readonly WorkspaceView[]): string | undefined {
-  if (sessionId === undefined) return undefined
-  return items.find(item => item.sessionIds.includes(sessionId as never))?.path
-}
 
 /**
  * Render the LaTeX panel as a conversation view tab.

@@ -957,3 +957,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 12 项候选逐项给出实施交接：执行策略与批准追加规则、审批词汇、世界状态增量注入、代码模式续取、apply_patch、钩子事件面、压缩矩阵、消息板/代理图/树预算、记忆写管线、外部迁移、沙箱网络、零散项。
 - 标注并行会话已完成的两项（PTC 预算目录、会话日志归档导入）不要重做；给出推荐批次与每批验证命令。
 - 记录于 [codex 能力落地交接](queries/codex-capability-handoff.md)。
+
+## [2026-11-13] feat | 完成 PTC 预算目录、会话导入与审批规则
+
+- PTC 生成 SDK 增加 `sdkBudgetTokens` 预算：超出后工具保留绑定，参数与返回值退化为无类型，并在声明后追加一行目录；两种运行时语言共用同一分区。
+- 会话日志新增 Host 侧导入与 `POST /api/session.import`：格式目录校验、跨代迁移、附件摘要校验、新 Session id、父链接重连与失败回滚。
+- 审批新增 `{action, resource, effect}` 规则求值与 `ToolDefinition.approvalResources`；fs `write`/`edit` 与 `bash` 提供动作与资源，规则先于 `never` 策略，支持无人值守精确放行。
+- 状态与剩余两项（MCP OAuth/连接池、侧问面板）记录于 [opencode 能力落地交接（余 2 项）](queries/opencode-capability-handoff.md)。

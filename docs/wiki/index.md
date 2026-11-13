@@ -94,6 +94,6 @@ updated: 2026-11-13
 - [发布 dsh 0.2.1-rc.3（含四平台桌面安装包）](queries/release-dsh-0.2.1-rc.3.md) — 家族版本对齐→`build:official`→`pack`→`tag -f`→`gh release create`（不带 `--target`）的完整流程，同名 tag 上移、手打路径被显示层掩码引发的误判与 `git add -u` 绕法、桌面工作流双触发。
 - [桌面未签名构建指向发布页的更新源（2026-10-27）](queries/desktop-github-release-update-feed.md) — `DSH_DESKTOP_UPDATE_RELEASES_URL` 让 unsigned 的 Windows/Linux 包带更新源、macOS 排除；含三种 GitHub 资产地址的实测状态（`releases/download` 404）、本地打包产出的 `nightly-linux.yml` 与应用内 `app-update.yml` 证据、以及「feed 依赖 Latest」的约束。
 - [opencode v2.2.7 能力面与可融入清单](queries/opencode-v2-capability-comparison.md) — 排除 12 项已覆盖能力后，按优先级给出 10 项候选：缓存保活、权限规则化与参数纠正、HTTP 卡带录制、MCP OAuth、代码模式按需目录/OpenAPI/静态扫描、跨重启终端、会话文件回滚、侧问面板、尾部 heal、聊天内 mermaid；含不融入项（Effect/Drizzle、Rust daemon、插件 bundle 沙箱）与待核验前提。
-- [opencode 能力落地交接（余 5 项）](queries/opencode-capability-handoff.md) — 前 10 项已交付（缓存保活、卡带、OpenAPI、尾部修复、Mermaid、续跑、fork 提示、参数修复、MCP 订阅、来源面板）；余下权限规则化、MCP OAuth、PTC 按需目录、侧问面板、会话导入的现状、落点、验收与已知缺口。
+- [opencode 能力落地交接（余 2 项）](queries/opencode-capability-handoff.md) — 前 13 项已交付（含 PTC 预算目录、会话日志导入、权限规则求值与无人值守放行）；余下 MCP OAuth 与连接池、侧问面板的现状、落点与验收，以及权限规则持久化与客户端交互缺口。
 - [openai/codex 能力面与可融入清单](queries/codex-capability-comparison.md) — 排除 11 项已覆盖能力后，按优先级列出执行策略（Starlark 前缀规则与“批准并追加规则”）、审批结果词汇、世界状态增量注入、代码模式 exec/wait、apply_patch、钩子事件面、压缩矩阵、rollout-trace、消息板/代理图/树预算、记忆写管线、外部迁移、沙箱网络与拒绝反馈等 13 项及落点。
 - [codex 能力落地交接（12 项）](queries/codex-capability-handoff.md) — 每项的现状、codex 参考路径、落地步骤、验收与风险；含推荐批次（权限/审批/钩子 → 世界状态 → apply_patch/代码模式 → 压缩 → 多智能体/记忆 → 沙箱与收尾）、已由并行会话完成的 PTC 预算目录与会话导入、全局门禁与约束。

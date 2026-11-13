@@ -18,7 +18,8 @@ import {
   type SessionLogExportReady,
 } from './archive.ts'
 import { formatSessionMarkdown } from './markdown.ts'
-import { SESSION_LOG_EXPORT_PATH, SESSION_MARKDOWN_EXPORT_PATH } from './routes.ts'
+import { importSessionLogZip, SessionLogImportError } from './importer.ts'
+import { SESSION_LOG_EXPORT_PATH, SESSION_LOG_IMPORT_PATH, SESSION_MARKDOWN_EXPORT_PATH } from './routes.ts'
 
 export {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
@@ -38,30 +39,46 @@ export type {
   SessionLogZipEntry,
 } from './archive.ts'
 export { formatSessionMarkdown } from './markdown.ts'
+export {
+  importSessionLogZip,
+  SessionLogImportError,
+} from './importer.ts'
+export type {
+  SessionLogImportDeps,
+  SessionLogImportErrorCode,
+  SessionLogImportOptions,
+  SessionLogImportResult,
+} from './importer.ts'
 
 export const name = 'session-log-download'
 export const inject = ['commands', 'connection']
 
-export { SESSION_LOG_EXPORT_PATH } from './routes.ts'
+export { SESSION_LOG_EXPORT_PATH, SESSION_LOG_IMPORT_PATH } from './routes.ts'
+
+/** Largest Session-log ZIP accepted by the import route. */
+export const DEFAULT_SESSION_LOG_IMPORT_MAX_BYTES = 256 * 1024 * 1024
 
 /** Session-log archive policy. */
 export interface Config {
   /** DEFLATE level for each ZIP entry. @default 6 */
   readonly compressionLevel?: SessionLogCompressionLevel
+  /** Largest accepted import archive in bytes. @default 268435456 */
+  readonly maxImportBytes?: number
 }
 
 /** Validate Session-log archive configuration. */
 export const Config: Schema<Config> = Schema.object({
   compressionLevel: Schema.number().step(1).min(0).max(9)
     .default(DEFAULT_SESSION_LOG_COMPRESSION_LEVEL) as Schema<SessionLogCompressionLevel>,
+  maxImportBytes: Schema.number().step(1).min(1).default(DEFAULT_SESSION_LOG_IMPORT_MAX_BYTES),
 })
 
 interface SessionLogConnection {
   readonly fetch: {
     register(route: {
       readonly path: string
-      readonly methods: readonly ('GET' | 'HEAD')[]
-      readonly requestBody: 'buffered'
+      readonly methods: readonly ('GET' | 'HEAD' | 'POST')[]
+      readonly requestBody: 'buffered' | 'streaming'
       readonly fetch: (request: Request) => Promise<Response>
     }): () => Promise<void>
   }
@@ -112,7 +129,82 @@ export function apply(ctx: Context, config: Config = {}): void {
       return new Response(null, { status: response.status, headers: response.headers })
     },
   })
+  connectionOf(ctx).fetch.register({
+    path: SESSION_LOG_IMPORT_PATH,
+    methods: ['POST'],
+    requestBody: 'streaming',
+    fetch: async request => sessionLogImportResponse(
+      ctx,
+      request,
+      config.maxImportBytes ?? DEFAULT_SESSION_LOG_IMPORT_MAX_BYTES,
+    ),
+  })
 }
+
+/**
+ * Accept one exported Session-log ZIP and create the Sessions it contains.
+ * @param ctx - host context carrying Connection, persistence, and attachments.
+ * @param request - authenticated POST whose body is the archive.
+ * @param maxBytes - largest accepted archive size.
+ * @returns the created root id as JSON, or a sanitized status.
+ */
+async function sessionLogImportResponse(ctx: Context, request: Request, maxBytes: number): Promise<Response> {
+  const sessionPersistence = ctx.get('sessionPersistence')
+  const attachments = ctx.get('attachments')
+  if (sessionPersistence === undefined || attachments === undefined) {
+    return new Response('session log import is unavailable: missing session-persistence or attachments service', { status: 500 })
+  }
+  let archive: Uint8Array
+  try {
+    archive = await readBoundedBody(request, maxBytes)
+  } catch (error: unknown) {
+    if (error instanceof SessionLogImportError) return new Response(error.message, { status: 413 })
+    request.signal.throwIfAborted()
+    return new Response('session log import failed to read the request body', { status: 400 })
+  }
+  try {
+    const result = await importSessionLogZip({ sessionPersistence, attachments }, archive, {
+      signal: request.signal,
+    })
+    return Response.json({ rootSessionId: result.rootSessionId }, { status: 201 })
+  } catch (error: unknown) {
+    request.signal.throwIfAborted()
+    if (error instanceof SessionLogImportError) return new Response(error.message, { status: 400 })
+    // Storage and provider failures stay opaque: the message may carry absolute host paths.
+    return new Response('session log import failed', { status: 500 })
+  }
+}
+
+/** Read one request body, refusing to accumulate more than `maxBytes`. */
+async function readBoundedBody(request: Request, maxBytes: number): Promise<Uint8Array> {
+  const body = request.body
+  if (body === null) return new Uint8Array()
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > maxBytes) {
+        throw new SessionLogImportError('TOO_LARGE', `the archive exceeds the ${maxBytes}-byte import limit`)
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const archive = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    archive.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return archive
+}
+
+
 
 function connectionOf(ctx: Context): SessionLogConnection {
   return Reflect.get(ctx, 'connection') as SessionLogConnection

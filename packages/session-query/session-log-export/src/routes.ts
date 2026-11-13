@@ -15,3 +15,9 @@ export const SESSION_MARKDOWN_EXPORT_PATH = '/api/session.markdown'
 
 /** Browser-relative form of {@link SESSION_MARKDOWN_EXPORT_PATH}. */
 export const SESSION_MARKDOWN_EXPORT_ROUTE = SESSION_MARKDOWN_EXPORT_PATH.slice(1)
+
+/** Absolute registration path for the ZIP import route. */
+export const SESSION_LOG_IMPORT_PATH = '/api/session.import'
+
+/** Browser-relative form of {@link SESSION_LOG_IMPORT_PATH}. */
+export const SESSION_LOG_IMPORT_ROUTE = SESSION_LOG_IMPORT_PATH.slice(1)

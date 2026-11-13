@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-session-log-export` lets the Web interface export a session's complete history. The Session Header's more-actions menu offers `Copy Session as Markdown` and `Download session log`; an `/export` slash command also starts the ZIP download. The ZIP contains the session, its sub-sessions, and attachments. The package owns both authenticated Host routes, the Markdown transcript formatter, and the browser controls and feedback. The browser chooses the download destination and owns the clipboard. Setup and usage come first; implementation details follow.
+`dsh-session-log-export` lets the Web interface export a session's complete history and import such an archive back as new Sessions. The Session Header's more-actions menu offers `Copy Session as Markdown` and `Download session log`; an `/export` slash command also starts the ZIP download. The ZIP contains the session, its sub-sessions, and attachments. The package owns the authenticated Host routes for export and import, the Markdown transcript formatter, the archive reader, and the browser controls and feedback. The browser chooses the download destination and owns the clipboard. Setup and usage come first; implementation details follow.
 
 ## Table of Contents
 
@@ -54,6 +54,14 @@ export function convertTranscript(events: readonly SessionEvent[], sourcePath?: 
 }
 ```
 
+### Importing a session log
+
+`importSessionLogZip(deps, archive, options?)` turns one exported ZIP into new stored Sessions. It reads the root log and every `subagents/<id>/session*.jsonl` member, decodes each through the installed format catalog (migrating older generations and refusing event types or headers this build cannot interpret), restores `media/` and `files/` objects after verifying that each content-addressed digest still matches, and writes every Session through Session persistence. The root and its descendants receive fresh Session ids, the root id may be supplied through `options.rootSessionId`, parent links are rewired to the imported ids, and the imported root keeps its recorded creation time, working directory, origin, delegation depth, and agent preset but loses fork-inheritance marking (the complete history becomes ordinary history). Descendants are created after their parent so a parent link always resolves.
+
+The Web Host also exposes `POST /api/session.import` with the archive as the request body. It answers `201` with `{"rootSessionId": "…"}`, `400` for an unreadable archive, uninterpretable log, or attachment digest drift, `413` when the body exceeds `maxImportBytes`, and `500` for a storage failure. Every failure removes the Sessions created by that call; content-addressed attachment objects may stay unreferenced. A conflict on a supplied root id surfaces as a rejection rather than overwriting the stored Session.
+
+The package has no browser control for import yet; the route and the backend function are the supported entry points.
+
 ### Composition
 
 ```yaml
@@ -68,6 +76,7 @@ The Web bundle mounts the package with Connection, `dsh-commands`, `dsh-client-u
 | Field | Default | Meaning |
 |---|---|---|
 | `compressionLevel` | `6` | DEFLATE level from 0 through 9 for each ZIP entry. |
+| `maxImportBytes` | `268435456` | Largest accepted import archive in bytes; a larger body answers `413`. |
 
 ### Command contract
 
@@ -161,6 +170,9 @@ These limits define when this package is a poor fit or needs special operational
 - **Transcript text is buffered in memory** — the complete Markdown string and its Blob are held before the clipboard accepts them. Browser clipboard limits can reject a large export; this package does not add a byte cap or truncate the requested complete transcript.
 - **Accepted clipboard writes cannot be rolled back** — disposal stops pending preparation and feedback, but an operating-system write that already succeeded remains on the clipboard.
 - **The source path is observed metadata, not an atomic log claim** — `stat` identifies the selected materialized artifact at export time. Live committed events can be ahead of that file, and an unmaterialized Session has no source-path block.
+- **Import has no browser control** — the authenticated `POST /api/session.import` route and `importSessionLogZip` are the entry points; no menu action opens a file picker.
+- **Import cannot restore a different digest** — an image or file whose bytes the mounted attachment backend stores under another digest rejects the import instead of rewriting log references.
+- **Imported Sessions lose fork marking** — inherited prefixes become ordinary history, because the archive does not carry the parent log that a fork cut would point into.
 
 <a id="dev-note"></a>
 ### Dev Note

@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-session-log-export` 让 Web 界面导出会话的完整历史。Session Header 的更多操作菜单提供 `复制会话为 Markdown` 与 `下载 Session 日志`；`/export` 斜杠命令也会启动 ZIP 下载。ZIP 包含会话本身、其子会话与附件。本包拥有两条经过认证的 Host 路由、Markdown 记录格式化器以及浏览器控件和反馈。下载目标位置由浏览器选择，剪贴板由浏览器持有。设置与用法在前，随后说明实现细节。
+`dsh-session-log-export` 让 Web 界面导出会话的完整历史，并把这类归档重新导入为新 Session。Session Header 的更多操作菜单提供 `复制会话为 Markdown` 与 `下载 Session 日志`；`/export` 斜杠命令也会启动 ZIP 下载。ZIP 包含会话本身、其子会话与附件。本包拥有导出与导入的认证 Host 路由、Markdown 记录格式化器、归档读取器以及浏览器控件和反馈。下载目标位置由浏览器选择，剪贴板由浏览器持有。设置与用法在前，随后说明实现细节。
 
 ## 目录
 
@@ -54,6 +54,14 @@ export function convertTranscript(events: readonly SessionEvent[], sourcePath?: 
 }
 ```
 
+### 导入会话日志
+
+`importSessionLogZip(deps, archive, options?)` 把一个导出的 ZIP 变成新的已存 Session。它读取根日志与每个 `subagents/<id>/session*.jsonl` 条目，用已安装的格式目录解码（迁移旧代次，并拒绝本版本无法解释的事件类型或头部），在确认内容寻址摘要仍然匹配后恢复 `media/` 与 `files/` 对象，并通过 Session 持久化写入每个 Session。根会话及其子会话获得新的 Session id；根 id 可通过 `options.rootSessionId` 指定；父链接重连到导入后的 id；导入的根保留记录的创建时间、工作目录、来源、委派深度与 agent 预设，但去掉 fork 继承标记（完整历史成为普通历史）。子会话在父会话之后创建，因此父链接总能解析。
+
+Web Host 还提供 `POST /api/session.import`，请求体即归档。成功返回 `201` 与 `{"rootSessionId": "…"}`；归档不可读、日志无法解释或附件摘要不一致返回 `400`；请求体超过 `maxImportBytes` 返回 `413`；存储失败返回 `500`。任何失败都会删除本次调用创建的 Session；内容寻址的附件对象可能保留为未引用状态。指定的根 id 冲突会以拒绝结束，不会覆盖已存 Session。
+
+本包目前没有导入的浏览器控件；路由与后端函数是受支持的入口。
+
 ### 组合
 
 ```yaml
@@ -68,6 +76,7 @@ Web bundle 将本包与 Connection、`dsh-commands`、`dsh-client-ui-commands`�
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `compressionLevel` | `6` | 每个 ZIP 条目的 DEFLATE 级别，范围为 0 到 9。 |
+| `maxImportBytes` | `268435456` | 接受的导入归档最大字节数；更大的请求体返回 `413`。 |
 
 ### 命令约定
 
@@ -161,6 +170,9 @@ Header 向 Markdown 复制控制器请求被点击的 Session。点击期间，�
 - **记录文本缓冲在内存中**——完整的 Markdown 字符串及其 Blob 在剪贴板接受前都会保留。浏览器剪贴板限制可能拒绝大型导出；本包不增加字节上限，也不截断请求的完整记录。
 - **已接受的剪贴板写入无法回滚**——释放会停止待处理的准备与反馈，但操作系统已经成功的写入会留在剪贴板中。
 - **来源路径是观察到的元数据，不是原子日志声明**——`stat` 标识导出时选中的已物化产物。实时已提交事件可能领先于该文件，未物化的 Session 没有来源路径块。
+- **导入没有浏览器控件**——入口是认证的 `POST /api/session.import` 路由与 `importSessionLogZip`；没有打开文件选择器的菜单操作。
+- **导入不能恢复不同摘要**——挂载的附件后端若把图片或文件按另一个摘要存储，导入会拒绝，而不是改写日志引用。
+- **导入的 Session 失去 fork 标记**——继承前缀成为普通历史，因为归档不包含 fork 切点所指向的父日志。
 
 <a id="dev-note"></a>
 ### 开发备注

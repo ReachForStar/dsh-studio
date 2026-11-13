@@ -2,7 +2,7 @@
 
 English | [中文](arena.zh.md)
 
-The experimental [`dsh-arena`](../../packages/experimental/arena/README.md) service provides `ctx.arena`. It runs one prompt through several models at once, each in its own Git worktree branched from the same commit, and returns comparable results. This page owns the service surface; the [package README](../../packages/experimental/arena/README.md) owns configuration and the request fields.
+The experimental [`dsh-arena`](../../packages/core/arena/README.md) service provides `ctx.arena`. It runs one prompt through several models at once, each in its own Git worktree branched from the same commit, and returns comparable results. This page owns the service surface; the [package README](../../packages/core/arena/README.md) owns configuration and the request fields.
 
 ## Running a comparison
 
@@ -71,5 +71,5 @@ async remove(runId: string, options: { readonly signal?: AbortSignal } = {}): Pr
 runs(): readonly ArenaRun[]
 ```
 
-Source: [`packages/experimental/arena/src/index.ts`](../../packages/experimental/arena/src/index.ts)
+Source: [`packages/core/arena/src/index.ts`](../../packages/core/arena/src/index.ts)
 <!-- END GENERATED cordis-surface -->

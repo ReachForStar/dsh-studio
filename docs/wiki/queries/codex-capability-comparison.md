@@ -25,7 +25,7 @@ codex 源码在 `tmp/codex`（Rust monorepo `codex-rs`，含 CLI、TUI、app-ser
 | 能力 | 本 fork 落点 |
 | --- | --- |
 | 程序化工具调用 | `packages/ptc-runtime`、`packages/core/tool-executor-ptc`（run_code + 生成 SDK + 子调用限流） |
-| 工具检索 | `packages/experimental/tool-search` |
+| 工具检索 | `packages/core/tool-search` |
 | 技能目录与按需加载 | `packages/skill/*`、`packages/tool-skill` |
 | 共享任务板 | `packages/team/agent-team` |
 | 计划模式 | `packages/plan/plan-mode` |
@@ -120,7 +120,7 @@ codex 的记忆读写分 crate：写侧在 root 会话启动后后台两阶段�
 
 codex 的 `external-agent-migration` 导入 Claude Code / Cursor 的配置、技能、AGENTS.md、插件、MCP、子代理、钩子、命令、记忆与会话（转写记录 + 导入台账去重，`external-agent-migration/src/sessions/{records_cla,records_cur,ledger}.rs`）。
 
-本 fork 现状：`packages/experimental/agent-plugins` 只加载可移植插件包；会话导入尚未实现（[交接页](opencode-capability-handoff.md) 待办 5）。
+本 fork 现状：`packages/boot/agent-plugins` 只加载可移植插件包；会话导入尚未实现（[交接页](opencode-capability-handoff.md) 待办 5）。
 
 融入方式：先做会话导入（复用 codex 的“导入台账 + 源格式版本”思路），再做配置迁移；源材料只读，导入后标注 `<EXTERNAL SESSION IMPORTED>`。
 

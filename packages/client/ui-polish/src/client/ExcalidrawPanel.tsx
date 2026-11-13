@@ -6,14 +6,15 @@
 // into the plugin client bundle; react/react-dom come from the platform.
 
 import { useCallback, useEffect, lazy, Suspense, useMemo, useRef, useState } from 'react'
+import type { LazyExoticComponent } from 'react'
 // Excalidraw loads lazily: its dist entry pulls an extensionless subpath
 // (roughjs/bin/rough) that only a bundler resolves, so the client module
 // import (roster boot, whole-client test) must not load it eagerly.
 import type { Excalidraw as ExcalidrawComponent } from '@excalidraw/excalidraw'
-const Excalidraw = lazy(async () => {
+const Excalidraw: LazyExoticComponent<typeof ExcalidrawComponent> = lazy(async () => {
   const mod = await import('@excalidraw/excalidraw')
   return { default: mod.Excalidraw }
-}) as unknown as typeof ExcalidrawComponent
+})
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 // Excalidraw ships no auto-injected stylesheet; the tsdown plain-css plugin
 // inlines this exact specifier into a <style> tag in the client bundle.
@@ -30,7 +31,7 @@ export type ExcalidrawPanelProps = PropsRuntime<'conversation.view'> & PropsLoca
 
 /** A scene payload: the serializable Excalidraw scene (elements + appState). */
 interface ScenePayload {
-  elements: unknown[]
+  elements?: unknown[]
   appState: Record<string, unknown>
 }
 
@@ -106,6 +107,16 @@ export function sceneFingerprint(scene: unknown): string | null {
   return `${parts.join('|')}#${parts.length}`
 }
 
+/** Read one scene response; a payload without an element array is still an appState-only scene. */
+function requireScenePayload(value: unknown): ScenePayload {
+  if (typeof value !== 'object' || value === null) throw new Error('scene response must be an object')
+  const elements = 'elements' in value && Array.isArray(value.elements) ? value.elements : undefined
+  const appState = 'appState' in value && typeof value.appState === 'object' && value.appState !== null
+    ? { ...value.appState }
+    : {}
+  return { ...elements === undefined ? {} : { elements }, appState }
+}
+
 /**
  * Render the Excalidraw canvas as a conversation view tab, embedded directly.
  * @param props - composed slot props.
@@ -152,7 +163,7 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
         if (response.status === 404) return // blank start
         const body = await response.json().catch(() => ({})) as Record<string, unknown>
         if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : `HTTP ${response.status}`)
-        const scene = body as unknown as ScenePayload
+        const scene = requireScenePayload(body)
         api.updateScene({
           elements: scene.elements as never,
           appState: sanitizeAppState(scene.appState) as never,
@@ -227,8 +238,8 @@ export function ExcalidrawPanel({ useSession, useWorkspaces, t }: ExcalidrawPane
         const fingerprint = sceneFingerprint(body)
         if (fingerprint === null || fingerprint === lastAppliedFingerprint.current) return
         // A different scene landed on disk (model drew) — apply it.
-        const scene = body as unknown as ScenePayload
-        console.log('[dsh-poll] applying scene', fingerprint, 'was', lastAppliedFingerprint.current, 'elements', scene.elements.length)
+        const scene = requireScenePayload(body)
+        console.log('[dsh-poll] applying scene', fingerprint, 'was', lastAppliedFingerprint.current, 'elements', scene.elements?.length ?? 0)
         apiRef.current.updateScene({
           elements: scene.elements as never,
           appState: sanitizeAppState(scene.appState) as never,

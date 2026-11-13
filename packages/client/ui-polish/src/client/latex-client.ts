@@ -75,7 +75,7 @@ export async function latexCall<T>(path: string, cwd: string, body?: Record<stri
   if (!response.ok) {
     throw new Error(typeof payload.error === 'string' ? payload.error : `latex panel: HTTP ${response.status}`)
   }
-  return payload as unknown as T
+  return payload as T
 }
 
 /**
@@ -163,7 +163,7 @@ async function latexGet<T>(path: string): Promise<T> {
   if (!response.ok) {
     throw new Error(typeof payload.error === 'string' ? payload.error : `latex panel: HTTP ${response.status}`)
   }
-  return payload as unknown as T
+  return payload as T
 }
 
 /** The fetch surface used by the panel. */

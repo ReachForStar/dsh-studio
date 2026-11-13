@@ -21,7 +21,7 @@ status: draft
 | 权限规则求值、静态扫描、项目规则、始终允许、修改后允许 | `packages/interaction/user-approval`、`packages/core/tool-executor-ptc/src/scan.ts`、`packages/client/ui-approval` |
 | 会话日志导入 | `packages/session-query/session-log-export/src/importer.ts` |
 | PTC SDK 预算目录 | `packages/core/tool-executor-ptc/src/sdk-catalog.ts` |
-| 侧问面板（btw） | `packages/experimental/btw` |
+| 侧问面板（btw） | `packages/interaction/btw` |
 | MCP 连接池 | `packages/mcp/mcp-client/src/{pool,pool-key,client}.ts`、`generation.ts` 的 `adopt`、`connection.ts` 的 `joinShared`、base 组合行 `mcp-pool` |
 | MCP OAuth | `packages/mcp/mcp-client/src/oauth.ts`（`./oauth`）、`transport.ts` 的 `authProvider`、`types.ts` 的 `waiting-authorization`、`mcp-manager` 的 `authorize`/`forgetAuthorization` |
 | Settings 授权界面 | `packages/client/ui-settings-mcp`（`settings.plugins.tab` 的 `mcp` 标签页）、`McpManagedServerView.oauth`、web-app 组合行 |
@@ -86,4 +86,4 @@ status: draft
 - 最小验证：`pnpm run typecheck`、`pnpm exec vitest run packages/mcp`、`pnpm run build`、`pnpm run test:docs`；改配置行时跑 `pnpm run verify-cordis-config`（当前有两条既有失败：browser-use 与 computer-use 缺少 experimental MCP 依赖声明）。
 - 每文件覆盖率 100%：新服务与改动文件都要覆盖；`connection.ts` 的分支已很密，优先抽出纯函数（键计算、持有者计数、回退判定）分别测试。
 - 参考实现：`tmp/opencode/packages/core/src/mcp/{oauth.ts,pool.ts,socket-client.ts}`、`packages/core/src/mcp/instructions.ts`。
-- 不改 `packages/experimental/speculation` 的未提交改动；不删除 `docs/raw/` 既有文件。
+- 不改 `packages/core/speculation` 的未提交改动；不删除 `docs/raw/` 既有文件。

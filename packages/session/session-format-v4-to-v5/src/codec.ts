@@ -63,13 +63,13 @@ export function assertV5RowAdmission(row: unknown, knownEventTypes?: ReadonlySet
   if (isSessionFormatJsonObject(row)) {
     if (row['type'] === 'developer/message' && row['ignorable'] === true
       && knownEventTypes?.has('developer/message') !== true) return
-    assertV5DeveloperData(row as unknown as SessionFormatEvent)
+    assertV5DeveloperData(row as SessionFormatEvent)
   }
   assertV5SourceRowAdmission(row)
   assertV5RetiredSyntax(row)
   assertV5SystemMessageFields(row)
   if (!isSessionFormatJsonObject(row) || row['type'] !== 'tool/result') return
-  const event = row as unknown as SessionFormatEvent
+  const event = row as SessionFormatEvent
   assertV5ToolResultMessage(event)
   assertV5ForkResult(event)
 }

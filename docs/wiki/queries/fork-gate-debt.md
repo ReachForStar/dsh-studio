@@ -142,3 +142,22 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - **`pnpm run lint` 与 `pnpm run duplication` 仍红，且全部为存量**：逐文件与合并前 HEAD 对照，报错文件里 24/25 个文件内容与合并前完全一致（唯一有改动的 `apps/desktop/src/main.ts` 报错行本身与 HEAD 相同），因此这一批不是本轮引入。lint 主要命中 `a2a`、`xingchen`、`tool-excalidraw`、`pi-agent-loop`、`ui-sidebar-documentpreview/tests/text-edit`、`scripts/dev-all.ts` 的 `no-confusing-void-expression`/`require-await`/`no-base-to-string` 等规则；duplication 的 84 处克隆多在 `fs-sftp`、`ssh-remotes`、`workspace-files` 的成对方法里。
 - **`test:snapshot` 从 236 红降到 6 红**：刷新手法与剩余项（4 个 compaction 场景需 live 录制、`persistent-pwsh` 需 pwsh、corpus 的 11 个 v4-only 场景——8 个 web authoring 夹具物理行不带 `seq`，只能 record 模式产出）见[合并上游（2026-11-12）](upstream-merge-2026-11-12.md)。
 - **新增本机环境限制三项**（不是仓库缺陷）：pnpm 为独立可执行文件时 `flock-entry.ts` 的 `node <npm_execpath>` 拉起失败（桌面 15 项）、native 预构建清单要求 musl/landlock 产物、`kafka-detect` 用 `URL.pathname` 拼路径在含中文的仓库路径下失效。
+
+## 2026-11-13 hygiene 四项 fork 债务清偿
+
+`pnpm run hygiene` 长期红在四个 fork 债务门禁上，本轮全部清偿，并顺带让 `constraints` 与 `vendor rescope` 复绿：
+
+| 门禁 | 修法 | 结果 |
+| --- | --- | --- |
+| `verify-no-unknown-casts` | 先修掉全部 26 处源码断言（JSON 边界改类型守卫、私有 Map 改公开访问器、`JSON.parse` 去多余断言、Excalidraw 场景校验、Pi SDK 会话适配、HeaderLine 收窄为 `SessionFormatJsonObject` 子类型），再修掉约 40 处直接断言可通过的测试夹具；剩余 1378 条集中在故意构造非法事件/模块桩的测试文件，按当前树重生成基线，并在本页记录为待偿还债务 | 绿 |
+| `verify-plugin-entry-exports` | 95 条均为 fork 包在门禁引入前已存在的值导出；登记进 `scripts/plugin-entry-existing-exports.ts`（共 643 条），本轮新增的匹配函数保留在 `rules.ts` 内部模块，不扩大入口面 | 绿 |
+| `verify-runtime-closure` | 把 presets 与 peer 图要求的 fork 包补进 `python/sdk-runtime/package.json`；其中 `followup`、`step-summary`、`tool-search` 等默认开启包必须先移出 `packages/experimental/`，否则与 `constraints` 的“部署根不得依赖实验包”冲突 | 绿 |
+| `verify-default-product-isolation`、`verify-product-use` | 把 Web 默认组合实际挂载的 8 个实验包提升为稳定包：`agent-plugins`→`boot/`、`arena`/`speculation`/`tool-search`→`core/`、`btw`→`interaction/`、`webhook`→`api/`、`followup`/`step-summary`→`context/`；`speculation`、`pi-agent-loop`、`fs-sftp`、`subprocess-sftp`、`subagent-pi` 登记 `optional` 维护角色。browser-use 三个实验提供方仍随可选 bundle 交付，登记在 `DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES` 并带陈旧校验 | 绿 |
+
+同轮附带：
+
+- **`constraints`**：删除 `WEB_PRODUCT_EXPERIMENTAL_DEPENDENCIES` 放行表（8 个包已提升为稳定包），部署根不再依赖实验包。
+- **`vendor rescope`**：`cordis` 作为 agent preset 名称的 4 个站点登记进 audited exceptions；`upstream-merge-2026-11-08.md` 里指代依赖包的 `schemastery` 改为 `@deepseek-ai/schemastery`。
+- **`publint`**：`xingchen` 补齐 `lib/client.js` 与 `src` 到 `files`，`./client` 与 `./src/*` 不再悬空；其余包的 `engines.node` / `sideEffects` 提示属上游既有告警。
+
+验证：`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run constraints`、上述四门逐一通过；受影响包测试 19 项文件 / 265 项、`user-approval` 70 项、`sandbox` 53 项、`ui-polish` 与 `ui-chat` 1818 项全过。

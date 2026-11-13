@@ -14,7 +14,7 @@ status: active
 
 把可移植的 [Agent Plugins v1](https://agent-plugins.org/) 包变成 harness 能力：`skills/<dir>/SKILL.md` 进 `ctx.skills`，根 `mcp.json` 的 `mcpServers` 注册到 `ctx.mcpManager`。只读包文件，唯一写入是每包的 `PLUGIN_DATA` 目录。
 
-落点：`packages/experimental/agent-plugins/`，包名 `@deepseek-ai/dsh-agent-plugins`，`inject: ['skills', 'mcpManager']`。
+落点：`packages/boot/agent-plugins/`，包名 `@deepseek-ai/dsh-agent-plugins`，`inject: ['skills', 'mcpManager']`。
 
 ## 关键文件
 

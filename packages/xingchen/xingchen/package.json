@@ -43,8 +43,10 @@
     "lib/index.js",
     "lib/clear.js",
     "lib/skills.js",
+    "lib/client.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
+    "src",
     "skills"
   ],
   "license": "MIT",

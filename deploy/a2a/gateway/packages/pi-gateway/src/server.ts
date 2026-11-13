@@ -74,7 +74,7 @@ export async function startPiGateway(cfg: BridgeConfig, bus: Bus): Promise<PiGat
       try {
         await session.prompt(ctx.text);
         // prompt 完成 = 终态；若全程无增量（如纯工具调用），从消息历史兜底取最后一条 assistant 文本
-        const msgs = (session as unknown as { messages?: Array<{ role?: string; content?: unknown }> }).messages ?? [];
+        const msgs = sessionMessages(session);
         let hasDelta = false;
         for (const m of msgs) {
           const c = m.content;
@@ -170,8 +170,21 @@ export async function startPiGateway(cfg: BridgeConfig, bus: Bus): Promise<PiGat
   };
 }
 
-// 仅用于 close：通过 duck typing 取 keys（registry 内部 Map 不暴露）
+// 仅用于 close：通过 registry 公开的 context 列表取键
 function registryIds(registry: PiSessionRegistry): string[] {
-  const m = (registry as unknown as { entries: Map<string, unknown> }).entries;
-  return [...m.keys()];
+  return registry.contextIds();
+}
+
+interface SessionMessage {
+  readonly role?: string;
+  readonly content?: unknown;
+}
+
+/** Read an SDK session's message history through its optional public field. */
+function sessionMessages(session: object): readonly SessionMessage[] {
+  if (!("messages" in session)) return [];
+  const value: unknown = session.messages;
+  if (!Array.isArray(value)) return [];
+  return value.filter((message): message is SessionMessage =>
+    typeof message === "object" && message !== null);
 }

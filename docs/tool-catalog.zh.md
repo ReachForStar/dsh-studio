@@ -2571,7 +2571,7 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 }
 ```
 
-来源：[`packages/experimental/tool-search/src/index.ts`](../packages/experimental/tool-search/src/index.ts)
+来源：[`packages/core/tool-search/src/index.ts`](../packages/core/tool-search/src/index.ts)
 
 tool_search 读取执行器解析的同一注册表，受限或作用域内的智能体只能搜到它能调用的工具。结果携带参数 schema；该工具从不代调用匹配到的工具。
 

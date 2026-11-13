@@ -623,7 +623,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
   {
     pkg: '@deepseek-ai/dsh-tool-search',
     dir: 'tool-search',
-    source: 'packages/experimental/tool-search/src/index.ts',
+    source: 'packages/core/tool-search/src/index.ts',
     requires: ['ctx.tools'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {

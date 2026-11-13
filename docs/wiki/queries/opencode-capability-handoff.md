@@ -33,7 +33,7 @@ status: draft
 | 权限规则求值 | `packages/interaction/user-approval/src/rules.ts`；`ToolDefinition.approvalResources`；fs `write`/`edit` 与 `bash` 分类 | 规则 6 项、服务 6 项、管道 2 项 |
 | 项目规则与始终允许 | `packages/interaction/user-approval` 的 `approval_rules` 域与 `/allow`；`packages/client/ui-approval` | 服务 61 项、客户端 46 项 |
 | 修改后允许 | `/correct` 命令与拒绝原因回传；审批面板纠正输入框 | 管道与客户端测试 |
-| 侧问面板（btw） | `packages/experimental/btw` 的 `POST /api/btw.ask` 与 Session Header 弹窗 | 12 项测试，新文件覆盖率 100% |
+| 侧问面板（btw） | `packages/interaction/btw` 的 `POST /api/btw.ask` 与 Session Header 弹窗 | 12 项测试，新文件覆盖率 100% |
 | MCP 连接池 | `packages/mcp/mcp-client` 的 `./pool` 服务、`pool-key.ts`、`client.ts`；base 组合行 `mcp-pool` | 池测试 24 项 |
 | MCP OAuth | `packages/mcp/mcp-client` 的 `./oauth` 提供方与回环流程、`waiting-authorization`、`mcpManager.authorize` | OAuth 测试 21 项，管理器 3 项，MCP 337 项 |
 
@@ -45,7 +45,7 @@ MCP 设置页目前只读状态；从页面触发单服务器探测（管理器�
 
 ## 全局约束与验证
 
-- 不改 `packages/experimental/speculation` 的未提交改动；不删除 `docs/raw/` 既有文件。
+- 不改 `packages/core/speculation` 的未提交改动；不删除 `docs/raw/` 既有文件。
 - 提交信息 `type(scope): 摘要`；只暂存具体文件；推送 `me/develop`。
 - 最小验证：`pnpm run typecheck`、受影响包 `pnpm exec vitest run <paths>`、`pnpm run build:artifacts && pnpm run build:check`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog`（改配置/服务面时）。
 - 新增包按 `packages/AGENTS.md` 与客户端新包清单接线：`tsconfig.base.json` paths、`tsconfig.host.json`/`tsconfig.client.json` references、`bundle/web-app` 行与依赖、README（含 Model Experience 与已知限制）、双语配对记录。

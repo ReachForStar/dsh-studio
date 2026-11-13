@@ -2,7 +2,7 @@
 
 [English](arena.md) | 中文
 
-实验性服务 [`dsh-arena`](../../packages/experimental/arena/README.zh.md) 提供 `ctx.arena`。它把同一提示同时交给多个模型，各自在一个从同一提交分出的 Git 工作树中执行，并返回可比较的结果。本页说明服务的对外接口；配置与请求字段由[包的 README](../../packages/experimental/arena/README.zh.md) 负责。
+实验性服务 [`dsh-arena`](../../packages/core/arena/README.zh.md) 提供 `ctx.arena`。它把同一提示同时交给多个模型，各自在一个从同一提交分出的 Git 工作树中执行，并返回可比较的结果。本页说明服务的对外接口；配置与请求字段由[包的 README](../../packages/core/arena/README.zh.md) 负责。
 
 ## 运行一次比较
 
@@ -71,5 +71,5 @@ async remove(runId: string, options: { readonly signal?: AbortSignal } = {}): Pr
 runs(): readonly ArenaRun[]
 ```
 
-Source: [`packages/experimental/arena/src/index.ts`](../../packages/experimental/arena/src/index.ts)
+Source: [`packages/core/arena/src/index.ts`](../../packages/core/arena/src/index.ts)
 <!-- END GENERATED cordis-surface -->

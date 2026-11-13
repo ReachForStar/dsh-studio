@@ -722,12 +722,26 @@ export function createA2AServer(opts: A2AServerOptions): A2AServer {
         }
         case "CreateTaskPushNotificationConfig": {
           requirePushSupport();
-          const cfg = params as unknown as TaskPushNotificationConfig;
-          if (typeof cfg?.url !== "string" || !cfg.url) throw a2aError(-32602, "INVALID_ARGUMENT", "params.url required");
-          if (typeof cfg?.taskId !== "string" || !cfg.taskId) throw a2aError(-32602, "INVALID_ARGUMENT", "params.taskId required");
-          if (!store.get(cfg.taskId)) {
-            throw a2aError(E_TASK_NOT_FOUND, "TASK_NOT_FOUND", `Task not found: ${cfg.taskId}`, { taskId: cfg.taskId });
+          const url = reqStr(params, "url");
+          const taskId = reqStr(params, "taskId");
+          if (!store.get(taskId)) {
+            throw a2aError(E_TASK_NOT_FOUND, "TASK_NOT_FOUND", `Task not found: ${taskId}`, { taskId });
           }
+          const authentication = optObject(params, "authentication");
+          const cfg: TaskPushNotificationConfig = {
+            url,
+            taskId,
+            ...optStr(params, "tenant") === undefined ? {} : { tenant: optStr(params, "tenant") },
+            ...optStr(params, "id") === undefined ? {} : { id: optStr(params, "id") },
+            ...optStr(params, "token") === undefined ? {} : { token: optStr(params, "token") },
+            ...authentication === undefined ? {} : {
+              authentication: {
+                scheme: reqStr(authentication, "scheme"),
+                ...optStr(authentication, "credentials") === undefined
+                  ? {} : { credentials: optStr(authentication, "credentials") },
+              },
+            },
+          };
           return jsonRpcResult(res, rpc.id, clone(pushStore.put(cfg)));
         }
         case "GetTaskPushNotificationConfig": {

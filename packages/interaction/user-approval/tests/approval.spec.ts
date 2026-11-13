@@ -539,7 +539,7 @@ describe('ApprovalService configured rules', () => {
   }
 
   it('grants a matching allow rule without consulting any answerer', async () => {
-    const ctx = await mountedWith({ rules: [{ action: 'write', resource: 'notes/**', effect: 'allow' }] })
+    const ctx = await mountedWith({ rules: [{ action: 'write', resource: 'notes/**', effect: 'allow', match: 'glob' }] })
     const { agent, appended } = fakeAgent(ctx)
     const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('rejected'))
     ctx.on('approval/request', answerer)
@@ -557,7 +557,7 @@ describe('ApprovalService configured rules', () => {
   it('rejects a matching deny rule before the answerers and even under the never policy', async () => {
     const ctx = await mountedWith({
       policy: 'never',
-      rules: [{ action: 'bash', resource: 'rm *', effect: 'deny' }],
+      rules: [{ action: 'bash', resource: 'rm *', effect: 'deny', match: 'glob' }],
     })
     const { agent } = fakeAgent(ctx)
     const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
@@ -572,7 +572,7 @@ describe('ApprovalService configured rules', () => {
   it('lets an explicit allow rule unlock the never policy for exactly its action and resource', async () => {
     const ctx = await mountedWith({
       policy: 'never',
-      rules: [{ action: 'bash', resource: 'git *', effect: 'allow' }],
+      rules: [{ action: 'bash', resource: 'git *', effect: 'allow', match: 'glob' }],
     })
     const { agent } = fakeAgent(ctx)
 
@@ -586,7 +586,7 @@ describe('ApprovalService configured rules', () => {
 
   it('falls through to the answerers for an ask effect', async () => {
     const ctx = await mountedWith({
-      rules: [{ action: 'write', resource: '**', effect: 'ask' }],
+      rules: [{ action: 'write', resource: '**', effect: 'ask', match: 'glob' }],
     })
     const { agent } = fakeAgent(ctx)
     const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
@@ -599,7 +599,7 @@ describe('ApprovalService configured rules', () => {
   })
 
   it('defaults an unclassified request to the tool name with no resources', async () => {
-    const ctx = await mountedWith({ rules: [{ action: 'echo', resource: 'notes.txt', effect: 'allow' }] })
+    const ctx = await mountedWith({ rules: [{ action: 'echo', resource: 'notes.txt', effect: 'allow', match: 'glob' }] })
     const { agent } = fakeAgent(ctx)
 
     await expect(ctx.approval.request(requestOf(agent))).resolves.toBe('unavailable')

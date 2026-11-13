@@ -52,25 +52,27 @@ The effective policy is the one set for the session, falling back to the configu
 | Field | Default | Meaning |
 |---|---|---|
 | `policy` | `ask` | Default for sessions without an `approval/policy` override |
-| `rules` | `[]` | Ordered `{action, resource, effect}` rules evaluated before the policy and the answerers |
+| `rules` | `[]` | Ordered `{action, resource, effect, match}` rules evaluated before the policy and the answerers |
 
 ### Rules
 
-Rules decide a request before the session policy and before any answerer. Each rule names an action pattern, a resource pattern, and an effect (`allow`, `deny`, or `ask`). `*` matches any run of characters — including path separators — and `?` matches exactly one character. The last matching rule wins, so a narrow exception can follow a broad rule.
+Rules decide a request before the session policy and before any answerer. Each rule names an action pattern, a resource, an effect (`allow`, `deny`, or `ask`), and a match mode. `*` matches any run of characters — including path separators — and `?` matches exactly one character. The last matching rule wins, so a narrow exception can follow a broad rule.
 
-A rule matches when its action pattern matches the request's action and, for a request with declared resources, at least one resource matches; a request without resources matches only a `*` resource. A matching `allow` settles `allowed-once` without prompting, a matching `deny` settles `rejected`, and `ask` (or no match) continues to the policy and answerers. Rules never grant more than the request they matched.
+`match: 'glob'` (the default) treats the resource as a pattern. `match: 'prefix'` treats it as a literal command prefix and compares whole command words, so `git status` grants `git status -s` but never `git statuspage`, another subcommand, or a command joined with `&&`. Quoting and backslash escapes are honored; control operators, redirection, command substitution, subshells, expansion, and unterminated quotes make the command ineligible, so it asks instead of matching.
+
+A rule matches when its action pattern matches the request's action and, for a request with declared resources, at least one resource matches; a request without resources matches only a `*` resource. A matching `allow` settles `allowed-once` without prompting, a matching `deny` settles `rejected`, and `ask` (or no match) continues to the policy and answerers. Rules never grant more than the request they matched, and a request marked `needsHuman` is never granted by a rule.
 
 Tools supply the action and resources through their definition: `write` and `edit` declare `write` with the target path, and `bash` declares `bash` with the command text. Any other tool, or a classifier that throws, falls back to its own tool name with no resources, so an unexpected classifier can only make a rule less specific, never wider. Because rules precede the `never` policy, an unattended run can permit exact actions while rejecting everything else.
 
-### Project rules and `/allow`
+### Project and session rules and `/allow`
 
-When a storage domain is mounted, the service also keeps rules per project directory in the `approval_rules` domain. Stored rules are appended after the configured ones, so they can narrow or extend them. The `/allow` command edits the invoking Session's project rules:
+When a storage domain is mounted, the service also keeps rules per project directory in the `approval_rules` domain. Stored rules are appended after the configured ones, so they can narrow or extend them. `--session` rules live only in memory for the live Session and are evaluated after project rules; ending the Session drops them and a restart cannot resurrect them. The `/allow` command edits the invoking Session's project rules, or its session rules with `--session`:
 
 | Input | Result |
 |---|---|
-| `/allow <action> <resource> [allow\|deny\|ask]` | Appends one rule; the effect defaults to `allow` |
-| `/allow list` | Lists the project's rules with 1-based positions |
-| `/allow remove <n>` | Removes the rule at position `n` |
+| `/allow [--session] [--prefix] <action> <resource> [allow\|deny\|ask]` | Appends one rule; the effect defaults to `allow`, and `--prefix` stores a literal command prefix |
+| `/allow [--session] list` | Lists the scope's rules with 1-based positions |
+| `/allow [--session] remove <n>` | Removes the rule at position `n` |
 | `/correct <callId> <text>` | Records replacement arguments for a pending call |
 
 `/correct` records the text against the exact tool call; when the user then rejects that call, the model receives `the user rejected tool "…" and asked you to retry with corrected arguments: <text>` as the failure reason and can retry. Reading the correction consumes it, so a later rejection cannot reuse it.
@@ -81,7 +83,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 ### Requesting a decision
 
-`request(req)` names the agent, tool, optional call id and reason, and an abort signal. Optional `displayReason` supplies localized presentation text without changing the logged reason. It requires an open turn: an idle or between-turn caller throws before auditing anything. Aborting withdraws the question — the request settles `cancelled` and a late answer is discarded. A failure that prevents either audit append from committing rejects instead of returning an unlogged decision.
+`request(req)` names the agent, tool, optional call id and reason, and an abort signal. Optional `displayReason` supplies localized presentation text without changing the logged reason. Set `needsHuman` when the decision must come from a person: rules cannot auto-allow such a request (a rule's `deny` still applies), and automated answerers must delegate with `next()` instead of deciding; sandbox escalation sets it. It requires an open turn: an idle or between-turn caller throws before auditing anything. Aborting withdraws the question — the request settles `cancelled` and a late answer is discarded. A failure that prevents either audit append from committing rejects instead of returning an unlogged decision.
 
 ### What the model and user see
 
@@ -193,7 +195,7 @@ Append-only; newly visible content follows the reusable request prefix and does 
 These limits define when the seam is a poor fit or needs special composition care. They are current package constraints, not a general permission comparison.
 
 - **Requests are valid only inside an open turn** — an idle or between-turn caller throws before auditing; a durable out-of-turn approval workflow is deferred.
-- **Only one-shot grants exist** — the outcome vocabulary has `allowed-once` but no `allow-always`, remembered rule, revocation, or grant store; session policy is only `ask` / `never`.
+- **No runtime grant store** — the outcome vocabulary has `allowed-once` but no `allow-always` outcome, revocation API, or grant store; `/allow` rules are explicit configuration and `--session` rules live only in memory. Session policy is only `ask` / `never`.
 - **The request carries no tool arguments** — an answerer sees the tool name, reason, and optional call id; the ACP machine channel requires a call id and delegates requests without one.
 - **No built-in answerer** — headless or incompletely composed deployments resolve `unavailable` and fail closed; the service itself never prompts a human.
 - **Pending approvals are process-local** — checkpoints restore policy and turn state, not pending answerer promises or one-shot grants. Recovery does not resubmit questions or repeat runtime effects.

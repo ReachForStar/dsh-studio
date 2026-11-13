@@ -95,7 +95,7 @@ describe.skipIf(MODE === 'record')('web e2e: GitHub ready-for-review', () => {
     scaffold = await launchWebScaffold({
       extraOverlayPath: OVERLAY,
       profile: { packages: [
-        { dir: fileURLToPath(new URL('../../../packages/experimental/webhook', import.meta.url)) },
+        { dir: fileURLToPath(new URL('../../../packages/api/webhook', import.meta.url)) },
         { dir: fileURLToPath(new URL('../../../packages/experimental/webhook-github', import.meta.url)) },
       ] },
     })

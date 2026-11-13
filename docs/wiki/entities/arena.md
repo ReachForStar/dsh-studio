@@ -16,8 +16,8 @@ status: active
 
 ## 关键文件
 
-- `packages/experimental/arena/src/index.ts`：`ArenaService`（`ctx.arena`）。`run(request, { signal })` 建 worktree 与会话并等待全部收敛；`apply(runId, label)` 应用某参选者 diff；`remove(runId)` 清理 checkout 与分支；`runs()` 列出保留中的运行。比较数据来自 `session/event` 投递（`turn/start`、`tool/call`、`assistant/message`），不读历史。
-- `packages/experimental/arena/src/git.ts`：`runGit` 经 `subprocess` + `sandbox` 按 `sandboxPolicy` 解析出的策略执行，清除仓库选择变量；`addWorktree` / `changedPaths` / `writePatch` / `applyPatch` / `removeWorktree` 封装所需命令。
+- `packages/core/arena/src/index.ts`：`ArenaService`（`ctx.arena`）。`run(request, { signal })` 建 worktree 与会话并等待全部收敛；`apply(runId, label)` 应用某参选者 diff；`remove(runId)` 清理 checkout 与分支；`runs()` 列出保留中的运行。比较数据来自 `session/event` 投递（`turn/start`、`tool/call`、`assistant/message`），不读历史。
+- `packages/core/arena/src/git.ts`：`runGit` 经 `subprocess` + `sandbox` 按 `sandboxPolicy` 解析出的策略执行，清除仓库选择变量；`addWorktree` / `changedPaths` / `writePatch` / `applyPatch` / `removeWorktree` 封装所需命令。
 - `docs/subsystems/arena.md`：服务面的对外说明（含生成的 Cordis API 区）。
 
 ## 设计决策

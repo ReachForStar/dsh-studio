@@ -36,7 +36,6 @@ Promotion requires a named product role, documented public behavior and limitati
 
 | Package | Role | ctx key |
 |---|---|---|
-| [`agent-plugins`](agent-plugins/README.md) | Agent Plugins v1 packages: portable skills and MCP servers published through the skill and MCP seams, read without rewriting package files | — |
 | [`action-cards`](action-cards/README.md) | Optional action cards below answers: the proposal tool, card state, user actions and status notices | `ctx.actionCards` |
 | [`client-ui-action-cards`](client-ui-action-cards/README.md) | Card frame below completed answers, kind bodies and the proposal process row | — |
 | [`creation-recommendations`](creation-recommendations/README.md) | Explicit-need creation of persistent removable interface plugins | — |
@@ -47,7 +46,6 @@ Promotion requires a named product role, documented public behavior and limitati
 | [`tool-session-query`](tool-session-query/README.md) | Workspace-authorized model session search, trace, and event reads | — |
 | [`session-search`](session-search/README.md) | Optional experimental global session search tools | — |
 | [`ralph-bundle`](ralph-bundle/README.md) | Optional repeated delegation with an isolated workflow engine | — |
-| [`tool-search`](tool-search/README.md) | Model-facing tool discovery: search the calling agent's visible tools by keyword or fetch one by exact name, returning each match with its parameter schema | — |
 | [`openapi-tools`](openapi-tools/README.md) | OpenAPI 3.x operations as model-visible tools, with one host-side credential and skipped constructs logged | — |
 | [`terminal-bundle`](terminal-bundle/README.md) | Optional global persistent terminal tools | — |
 | [`badge-skill-bundle`](badge-skill-bundle/README.md) | Optional powered-by-dsh badge skill | — |
@@ -55,7 +53,6 @@ Promotion requires a named product role, documented public behavior and limitati
 | [`hook-protocol`](hook-protocol/README.md) | Hook bridge wire types and durable events | — |
 | [`hooks-claude-code`](hooks-claude-code/README.md) | Claude Code hook bridge | — |
 | [`hooks-codex`](hooks-codex/README.md) | Codex hook bridge | — |
-| [`webhook`](webhook/README.md) | Authenticated delivery dispatch and Workspace Session creation | `ctx.webhookRuntime` |
 | [`webhook-github`](webhook-github/README.md) | Signed GitHub webhook ingress | — |
 | [`session-title-all-prompts-llm`](session-title-all-prompts-llm/README.md) | Session titles from all human prompts | — |
 | [`tool-terminal`](tool-terminal/README.md) | Persistent terminal tools | — |

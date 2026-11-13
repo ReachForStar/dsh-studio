@@ -64,7 +64,7 @@ Both new events are log-only and carry no surface operation, so an older reader 
 <a id="verification"></a>
 ## Verification
 
-pnpm exec vitest run packages/experimental/speculation: 55 tests passed across the gate, overlay, and runner suites; per-file coverage 100% statements, branches, functions, and lines.
+pnpm exec vitest run packages/core/speculation: 55 tests passed across the gate, overlay, and runner suites; per-file coverage 100% statements, branches, functions, and lines.
 
 <a id="dev-note"></a>
 ## Dev Note

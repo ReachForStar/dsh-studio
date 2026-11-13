@@ -1,13 +1,13 @@
 # Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write packages/experimental/speculation/README.md
+#   pnpm run verify-translation-pairing --write packages/core/speculation/README.md
 /:
   en: 896b368c245cb309
   zh: f6d302e74f5c77a8
 /deepseek-ai-dsh-speculation:
-  en: 07942aaa3e7ac03b
-  zh: 72f6f9d2ad79ddec
+  en: f6af4b3900ed0335
+  zh: 56ebbfe8dc831ee9
 /deepseek-ai-dsh-speculation/summary:
   en: fcce35e6615fcac3
   zh: 2e111c3b1fccb155

@@ -14,7 +14,7 @@
 
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
-import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
 
 /** A narrowing of the Pi tool surface this adapter consumes. */
 export interface PiToolDefinitionLike {
@@ -37,6 +37,7 @@ export interface PiRunnerLike {
 
 /** A minimal dsh-style parameter declaration. */
 interface DshSpec {
+  readonly [key: string]: unknown
   readonly type?: string
   readonly required?: boolean
   readonly description?: string
@@ -116,13 +117,13 @@ export function adaptPiTool(piTool: PiToolDefinitionLike, piRunner: PiRunnerLike
   return {
     name: piTool.name,
     description: piTool.description,
-    parameters: typeBoxToDshSpec(piTool.parameters) as unknown as ToolDefinition['parameters'],
+    parameters: typeBoxToDshSpec(piTool.parameters),
     output: {
       schema: { type: 'string' },
       render: (_args: unknown, value: JsonValue): ContentBlock[] =>
         piContentToBlocks([{ type: 'text', text: JSON.stringify(value ?? '') }]),
     },
-    execute: async (args: unknown, exec: { signal: AbortSignal; callId?: unknown }): Promise<unknown> => {
+    execute: async (args: unknown, exec: ToolRunContext): Promise<unknown> => {
       const callId = typeof exec.callId === 'string' ? exec.callId : ''
       const result = await piTool.execute(
         callId,
@@ -134,5 +135,5 @@ export function adaptPiTool(piTool: PiToolDefinitionLike, piRunner: PiRunnerLike
       const blocks = piContentToBlocks(result.content)
       return { text: blocks.map(block => (block.type === 'text' ? block.text : '')).join('') }
     },
-  } as unknown as ToolDefinition
+  }
 }

@@ -49,7 +49,7 @@ opencode 源码在 `tmp/opencode`（`@opencode/cli` 2.2.7，Effect + Bun + Solid
 | --- | --- |
 | 代码模式执行（`run_code` + 生成 SDK + 子调用限流） | `packages/core/tool-executor-ptc`、`packages/ptc-runtime` |
 | 流式 Markdown 增量解析（块级冻结、mdast） | `packages/client/ui-primitives/src/markdown/incremental.ts` |
-| 工具检索 `tool_search` | `packages/experimental/tool-search` |
+| 工具检索 `tool_search` | `packages/core/tool-search` |
 | 工作树快照、Arena、推测执行、步骤摘要、下一步建议 | `packages/experimental/{worktree,arena,speculation,step-summary,followup}` |
 | 后台作业、定时任务、目标、子代理 | `packages/{jobs,schedule,goal,subagent}` |
 | 会话 ZIP 导出（含子会话与附件） | `packages/session-query/session-log-export` |

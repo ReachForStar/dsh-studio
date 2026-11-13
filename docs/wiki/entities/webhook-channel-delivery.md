@@ -12,13 +12,13 @@ status: active
 
 ## 职责
 
-`packages/experimental/webhook` 是把外部事件变成实际工作的规则运行时。原有动作只有「新建 Workspace 会话」；本页记录新增的第二个动作：把一条消息投递到**已经活跃的会话**，对应 qwen-code 通道运行时的「投递」角色。
+`packages/api/webhook` 是把外部事件变成实际工作的规则运行时。原有动作只有「新建 Workspace 会话」；本页记录新增的第二个动作：把一条消息投递到**已经活跃的会话**，对应 qwen-code 通道运行时的「投递」角色。
 
 ## 关键文件
 
-- `packages/experimental/webhook/src/types.ts`：`WebhookAction = WebhookSessionRequest | WebhookMessageRequest`。`WebhookMessageRequest` 要求 `sessionId`、`prompt`、`target`（`next-turn` | `next-step`）；`WebhookSessionRequest` 增加可选 `kind?: 'session'` 作为判别式。
-- `packages/experimental/webhook/src/message.ts`：`deliverWebhookMessage`。校验请求 → `ctx.agents.get(sessionId)` → 组 `createUserMessage`（沿用 `webhook` 来源种类）→ `target === 'next-step' ? agent.steer : agent.followup`。
-- `packages/experimental/webhook/src/index.ts`：`dispatch` 分支在 `request.kind === 'message'` 时走投递，否则走原有会话创建。
+- `packages/api/webhook/src/types.ts`：`WebhookAction = WebhookSessionRequest | WebhookMessageRequest`。`WebhookMessageRequest` 要求 `sessionId`、`prompt`、`target`（`next-turn` | `next-step`）；`WebhookSessionRequest` 增加可选 `kind?: 'session'` 作为判别式。
+- `packages/api/webhook/src/message.ts`：`deliverWebhookMessage`。校验请求 → `ctx.agents.get(sessionId)` → 组 `createUserMessage`（沿用 `webhook` 来源种类）→ `target === 'next-step' ? agent.steer : agent.followup`。
+- `packages/api/webhook/src/index.ts`：`dispatch` 分支在 `request.kind === 'message'` 时走投递，否则走原有会话创建。
 
 ## 设计决策
 

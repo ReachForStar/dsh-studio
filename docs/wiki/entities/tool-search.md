@@ -12,7 +12,7 @@ status: active
 
 ## 职责
 
-给模型一个找回不在视野里的工具 schema 的入口。`tool_search` 按关键词搜索调用方智能体可见的工具，或按精确名称取回一个，返回名称、描述与参数 schema；模型随后直接调用该工具。落点 `packages/experimental/tool-search/`，`inject: ['tools']`。
+给模型一个找回不在视野里的工具 schema 的入口。`tool_search` 按关键词搜索调用方智能体可见的工具，或按精确名称取回一个，返回名称、描述与参数 schema；模型随后直接调用该工具。落点 `packages/core/tool-search/`，`inject: ['tools']`。
 
 ## 关键文件
 

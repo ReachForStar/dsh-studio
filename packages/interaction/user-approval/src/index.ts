@@ -55,13 +55,16 @@ declare module '@deepseek-ai/dsh-session/types' {
 
 import { ApprovalRequestId } from './types.ts'
 import type { ApprovalOutcome, ApprovalRequestEvent } from './types.ts'
-import { evaluateApprovalRules } from './rules.ts'
-import type { ApprovalRule } from './rules.ts'
+import { evaluateApprovalRules, splitCommandWords } from './rules.ts'
+import type { ApprovalRule, ApprovalRuleMatch } from './rules.ts'
 
 export { ApprovalRequestId } from './types.ts'
 export type { ApprovalOutcome } from './types.ts'
-export { evaluateApprovalRules, matchApprovalPattern } from './rules.ts'
-export type { ApprovalRule, ApprovalRuleEffect, ApprovalRuleRequest } from './rules.ts'
+export {
+  evaluateApprovalRules,
+  matchApprovalPattern,
+} from './rules.ts'
+export type { ApprovalRule, ApprovalRuleEffect, ApprovalRuleMatch, ApprovalRuleRequest } from './rules.ts'
 
 /** Every {@link ApprovalOutcome}, for runtime normalization of answerer returns. */
 const OUTCOMES: readonly ApprovalOutcome[] = ['allowed-once', 'rejected', 'cancelled', 'unavailable']
@@ -169,10 +172,12 @@ export interface Config {
    */
   readonly policy?: ApprovalPolicy
   /**
-   * Ordered `{action, resource, effect}` rules evaluated before the policy and
-   * the answerers. Later matching rules override earlier ones; a matching
-   * `'allow'` grants the request and a matching `'deny'` rejects it even under
-   * the `'never'` policy, which is how unattended runs permit exact actions.
+   * Ordered `{action, resource, effect, match}` rules evaluated before the
+   * policy and the answerers. Later matching rules override earlier ones; a
+   * matching `'allow'` grants the request and a matching `'deny'` rejects it
+   * even under the `'never'` policy, which is how unattended runs permit exact
+   * actions. `match: 'prefix'` treats the resource as a literal command prefix
+   * matched against whole command words.
    */
   readonly rules?: ApprovalRule[]
 }
@@ -191,12 +196,18 @@ export class ApprovalService extends Service {
       action: z.string(),
       resource: z.string(),
       effect: z.union(['allow', 'deny', 'ask'] as const),
+      match: z.union(['glob', 'prefix'] as const).default('glob'),
     })).default([]),
   })
 
   private approvalProjectionHandle!: ProjectionHandle<ApprovalState>
   private readonly rules: readonly ApprovalRule[]
   private projectRules: KvTable<string, ProjectApprovalRules> | undefined
+  /**
+   * Session-lifetime rules added through `/allow --session`. They live only in
+   * memory so ending the Session drops them; a restart cannot resurrect them.
+   */
+  private readonly sessionRules = new WeakMap<Session, ApprovalRule[]>()
   /** Correction text recorded through `/correct`, keyed by session then tool call. */
   private readonly corrections = new WeakMap<Session, Map<ToolCallId, string>>()
 
@@ -214,7 +225,7 @@ export class ApprovalService extends Service {
       scope.commands.register({
         definitionId: brandString<CommandDefinitionId>('@deepseek-ai/dsh-user-approval'),
         name: 'allow',
-        description: 'Add, list, or remove project approval rules',
+        description: 'Add, list, or remove project or session approval rules',
         handler: invocation => this.allowCommand(invocation),
       })
       scope.commands.register({
@@ -311,23 +322,30 @@ export class ApprovalService extends Service {
   }
 
   /**
-   * Apply configured rules before the session policy and the answerers: a
-   * matching `'allow'` grants this request, a matching `'deny'` rejects it even
-   * under the `'never'` policy, and `'ask'` or no match continues to the
-   * ordinary decision path. Rules never carry a wildcard grant beyond the
-   * request they matched.
+   * Apply configured, project, and session rules before the session policy and
+   * the answerers: a matching `'allow'` grants this request, a matching
+   * `'deny'` rejects it even under the `'never'` policy, and `'ask'` or no
+   * match continues to the ordinary decision path. Rules never carry a
+   * wildcard grant beyond the request they matched, and a `needsHuman`
+   * request turns a matching `'allow'` into a prompt because automation may
+   * not substitute for the person.
    * @param req - the pending decision with its classified action and resources.
    * @param session - the request agent's session used for policy lookup.
    * @returns the closed outcome.
    */
   private decideWithRules(req: ApprovalRequest, session: Session): Promise<ApprovalOutcome> {
     const projectRules = this.projectRulesFor(session.header.cwd)
-    const effect = evaluateApprovalRules(projectRules.length === 0 ? this.rules : [...this.rules, ...projectRules], {
+    const sessionRules = this.sessionRulesOf(session)
+    const effect = evaluateApprovalRules([
+      ...this.rules,
+      ...projectRules,
+      ...sessionRules,
+    ], {
       action: req.action ?? req.toolName,
       resources: req.resources ?? [],
     })
-    if (effect === 'allow') return Promise.resolve('allowed-once')
     if (effect === 'deny') return Promise.resolve('rejected')
+    if (effect === 'allow' && req.needsHuman !== true) return Promise.resolve('allowed-once')
     return this.decide(req, session)
   }
 
@@ -339,6 +357,48 @@ export class ApprovalService extends Service {
   projectRulesFor(cwd: string | undefined): readonly ApprovalRule[] {
     if (cwd === undefined) return []
     return this.projectRules?.get(cwd)?.rules ?? []
+  }
+
+  /**
+   * Read the rules added to one Session's memory for its lifetime.
+   * @param session - the session whose rules apply.
+   * @returns the session's ordered rules.
+   */
+  sessionRulesFor(session: Session): readonly ApprovalRule[] {
+    return this.sessionRulesOf(session)
+  }
+
+  /**
+   * Append one in-memory rule to a Session. The rule is evaluated after
+   * project rules and disappears with the Session; nothing is persisted.
+   * @param session - the session receiving the rule.
+   * @param rule - the rule to append.
+   * @returns the session's complete rule list after the write.
+   */
+  addSessionRule(session: Session, rule: ApprovalRule): readonly ApprovalRule[] {
+    assertRule(rule)
+    const existing = this.sessionRulesOf(session)
+    const rules = [...existing, rule]
+    this.sessionRules.set(session, rules)
+    return rules
+  }
+
+  /**
+   * Remove one in-memory rule from a Session by position.
+   * @param session - the session owning the rule.
+   * @param index - the rule's position in {@link sessionRulesFor}.
+   * @returns the removed rule, or `undefined` when the position does not exist.
+   */
+  removeSessionRule(session: Session, index: number): ApprovalRule | undefined {
+    const existing = this.sessionRulesOf(session)
+    const removed = existing[index]
+    if (removed === undefined) return undefined
+    this.sessionRules.set(session, existing.filter((_rule, position) => position !== index))
+    return removed
+  }
+
+  private sessionRulesOf(session: Session): readonly ApprovalRule[] {
+    return this.sessionRules.get(session) ?? []
   }
 
   /**
@@ -394,34 +454,45 @@ export class ApprovalService extends Service {
 
   /**
    * Run the `/allow` command: `list`, `remove <n>`, or `<action> <resource>
-   * [effect]`, scoped to the invoking session's project directory.
+   * [effect]`, scoped to the invoking session's project directory or, with
+   * `--session`, to the live session only.
    * @param invocation - the parsed command line and its agent.
    * @returns the command's user-facing result.
    */
   private async allowCommand(invocation: CommandInvocation): Promise<CommandResult> {
-    const cwd = invocation.agent.session.header.cwd
-    if (cwd === undefined) {
-      return { kind: 'error', text: 'Approval rules need a project directory; this Session records none.' }
-    }
+    const session = invocation.agent.session
+    const cwd = session.header.cwd
     const parsed = parseAllowInput(invocation.rawInput)
     if (parsed.kind === 'invalid') return { kind: 'error', text: parsed.message }
+    if (parsed.scope === 'project' && cwd === undefined) {
+      return { kind: 'error', text: 'Approval rules need a project directory; this Session records none.' }
+    }
+    const scope = parsed.scope
+    const list = scope === 'session' ? this.sessionRulesFor(session) : this.projectRulesFor(cwd)
+    const target = scope === 'session' ? 'this Session' : String(cwd)
     if (parsed.kind === 'list') {
-      const rules = this.projectRulesFor(cwd)
       return {
         kind: 'success',
-        text: rules.length === 0
-          ? `No approval rules for ${cwd}.`
-          : rules.map((rule, index) => `${index + 1}. ${rule.effect} ${rule.action} ${rule.resource}`).join('\n'),
+        text: list.length === 0
+          ? `No approval rules for ${target}.`
+          : list.map((rule, index) => `${index + 1}. ${describeRule(rule)}`).join('\n'),
       }
     }
     if (parsed.kind === 'remove') {
-      const removed = await this.removeProjectRule(cwd, parsed.index)
+      const removed = scope === 'session'
+        ? this.removeSessionRule(session, parsed.index)
+        : await this.removeProjectRule(String(cwd), parsed.index)
       return removed === undefined
-        ? { kind: 'error', text: `No approval rule ${parsed.index + 1} for ${cwd}.` }
-        : { kind: 'success', text: `Removed ${removed.effect} ${removed.action} ${removed.resource}.` }
+        ? { kind: 'error', text: `No approval rule ${parsed.index + 1} for ${target}.` }
+        : { kind: 'success', text: `Removed ${describeRule(removed)}.` }
     }
-    const rules = await this.addProjectRule(cwd, parsed.rule)
-    return { kind: 'success', text: `Approval rule ${rules.length} for ${cwd}: ${parsed.rule.effect} ${parsed.rule.action} ${parsed.rule.resource}.` }
+    const rules = scope === 'session'
+      ? this.addSessionRule(session, parsed.rule)
+      : await this.addProjectRule(String(cwd), parsed.rule)
+    return {
+      kind: 'success',
+      text: `Approval rule ${rules.length} for ${target}: ${describeRule(parsed.rule)}.`,
+    }
   }
 
   /**
@@ -545,35 +616,58 @@ function assertRule(rule: ApprovalRule): void {
   if (rule.action.length === 0 || rule.resource.length === 0) {
     throw new TypeError('approval rule action and resource must be non-empty')
   }
+  if (rule.match === 'prefix' && (splitCommandWords(rule.resource)?.length ?? 0) === 0) {
+    throw new TypeError('approval prefix rule resource must be a shell command prefix')
+  }
+}
+
+/** Render one rule for command output. */
+function describeRule(rule: ApprovalRule): string {
+  return `${rule.effect} ${rule.match} ${rule.action} ${rule.resource}`
 }
 
 /** One parsed `/allow` invocation. */
 type ParsedAllow =
-  | { readonly kind: 'list' }
-  | { readonly kind: 'remove'; readonly index: number }
-  | { readonly kind: 'add'; readonly rule: ApprovalRule }
+  | { readonly kind: 'list'; readonly scope: AllowScope }
+  | { readonly kind: 'remove'; readonly scope: AllowScope; readonly index: number }
+  | { readonly kind: 'add'; readonly scope: AllowScope; readonly rule: ApprovalRule }
   | { readonly kind: 'invalid'; readonly message: string }
 
-/** Parse the `/allow` grammar: `list`, `remove <n>`, or `<action> <resource> [effect]`. */
+/** Where added rules live: the project's storage or this Session's memory. */
+type AllowScope = 'project' | 'session'
+
+/** Usage text shared by every invalid `/allow` form. */
+const ALLOW_USAGE = 'Usage: /allow [--session] [--prefix] list | remove <n> | <action> <resource> [allow|deny|ask]'
+
+/**
+ * Parse the `/allow` grammar: optional `--session` and `--prefix` flags, then
+ * `list`, `remove <n>`, or `<action> <resource> [effect]`. Flags may appear in
+ * either order. A prefix rule takes the remaining words as its literal prefix.
+ */
 function parseAllowInput(rawInput: string): ParsedAllow {
   const tokens = rawInput.trim().split(/\s+/u).filter(token => token.length > 0)
-  const [first, ...rest] = tokens
-  if (first === undefined) {
-    return { kind: 'invalid', message: 'Usage: /allow list | /allow remove <n> | /allow <action> <resource> [allow|deny|ask]' }
+  let scope: AllowScope = 'project'
+  let match: ApprovalRuleMatch = 'glob'
+  while (tokens[0] === '--session' || tokens[0] === '--prefix') {
+    if (tokens[0] === '--session') scope = 'session'
+    else match = 'prefix'
+    tokens.shift()
   }
-  if (first === 'list') return rest.length === 0 ? { kind: 'list' } : { kind: 'invalid', message: 'Usage: /allow list' }
+  const [first, ...rest] = tokens
+  if (first === undefined) return { kind: 'invalid', message: ALLOW_USAGE }
+  if (first === 'list') return rest.length === 0 ? { kind: 'list', scope } : { kind: 'invalid', message: ALLOW_USAGE }
   if (first === 'remove') {
     const index = rest.length === 1 ? Number(rest[0]) : Number.NaN
     return Number.isSafeInteger(index) && index > 0
-      ? { kind: 'remove', index: index - 1 }
-      : { kind: 'invalid', message: 'Usage: /allow remove <n>' }
+      ? { kind: 'remove', scope, index: index - 1 }
+      : { kind: 'invalid', message: 'Usage: /allow [--session] remove <n>' }
   }
+  if (first.startsWith('--')) return { kind: 'invalid', message: ALLOW_USAGE }
   const last = rest.at(-1)
   const explicit = rest.length >= 2 && (last === 'allow' || last === 'deny' || last === 'ask') ? last : undefined
   const effect = explicit ?? 'allow'
   const resource = (explicit === undefined ? rest : rest.slice(0, -1)).join(' ')
-  if (resource.length === 0) {
-    return { kind: 'invalid', message: 'Usage: /allow <action> <resource> [allow|deny|ask]' }
-  }
-  return { kind: 'add', rule: { action: first, resource, effect } }
+  if (resource.length === 0) return { kind: 'invalid', message: ALLOW_USAGE }
+  const rule: ApprovalRule = { action: first, resource, effect, match }
+  return { kind: 'add', scope, rule }
 }

@@ -2565,7 +2565,7 @@ Find tools this session can call when their schemas are not in view. Search by k
 }
 ```
 
-Source: [`packages/experimental/tool-search/src/index.ts`](../packages/experimental/tool-search/src/index.ts)
+Source: [`packages/core/tool-search/src/index.ts`](../packages/core/tool-search/src/index.ts)
 
 tool_search reads the same registry the executor resolves, so a restricted or scoped agent searches only the tools it can call. Results carry parameter schemas; the tool never calls a matched tool itself.
 

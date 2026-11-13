@@ -31,6 +31,8 @@ context 组提供不定义任何工具、为每次请求添加模型可见上下
 | [`time-context/`](time-context/README.zh.md) | 每个步骤的当前时间、浏览器时区与经过时长 | — |
 | [`tmux-context/`](tmux-context/README.zh.md) | agent 所在的 tmux 会话、窗口与窗格位置 | — |
 | [`harness-dev-context/`](harness-dev-context/README.zh.md) | 以运行时上下文给出 harness checkout 与 Web GUI URL，使系统提示词跨进程保持稳定 | — |
+| [`followup/`](followup/README.zh.md) | 每个完成的轮次后给出下一步动作建议，仅记日志供展示 | — |
+| [`step-summary/`](step-summary/README.zh.md) | 为每个步骤的工具批次生成一行模型摘要，仅记日志供展示 | — |
 
 -----
 

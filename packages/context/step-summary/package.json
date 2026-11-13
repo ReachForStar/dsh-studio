@@ -1,6 +1,6 @@
 {
-  "name": "@deepseek-ai/dsh-followup",
-  "description": "Model-suggested next steps for the user after each completed turn",
+  "name": "@deepseek-ai/dsh-step-summary",
+  "description": "One-line model summaries of each step's tool batch, logged for presentation",
   "version": "0.2.2-rc.2",
   "publishConfig": {
     "access": "public"
@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
-    "directory": "packages/experimental/followup"
+    "directory": "packages/context/step-summary"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -35,7 +35,8 @@
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*",
-    "@deepseek-ai/dsh-timeout": "workspace:*"
+    "@deepseek-ai/dsh-timeout": "workspace:*",
+    "@deepseek-ai/dsh-util-values": "workspace:*"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~"
@@ -44,6 +45,7 @@
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*",
-    "@deepseek-ai/dsh-timeout": "workspace:*"
+    "@deepseek-ai/dsh-timeout": "workspace:*",
+    "@deepseek-ai/dsh-util-values": "workspace:*"
   }
 }

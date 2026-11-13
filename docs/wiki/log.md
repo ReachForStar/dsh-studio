@@ -772,14 +772,14 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-11-11] feat | Agent Plugins v1 加载器
 
-- 新包 `packages/experimental/agent-plugins`：`plugin.json` 校验、`skills/<dir>/SKILL.md` provider、`mcp.json` 的 stdio/streamable-http 注册、`realpath` 包含性校验与注册名规范化。
+- 新包 `packages/boot/agent-plugins`：`plugin.json` 校验、`skills/<dir>/SKILL.md` provider、`mcp.json` 的 stdio/streamable-http 注册、`realpath` 包含性校验与注册名规范化。
 - 验证：67 个测试、逐文件覆盖率 100%（语句/分支/函数/行）；新包 lint 与 `tsc -b` 通过；`doc-standard`、`verify-package-readme-model-experience`、`verify-package-paths`、`verify-translation-pairing`、`verify-plugin-packages` 通过。
 - 未清的漂移：`verify-config-catalog`、`verify-persistence-changes`、`verify-persistence-formats` 仍红，原因是工作区另有未提交的 ui-chat / ui-paper-reader 改动造成行号与事件种类漂移。
 - 新增实体页；qwen-code 清单页的仓库路径引用改为非 `packages/` 开头形式，避免误判为仓内路径。
 
 ## [2026-11-11] feat | 工具检索 dsh-tool-search
 
-- 新包 `packages/experimental/tool-search`：`tool_search` 按关键词或精确名返回可见工具的 schema，`maxResults` 与 `descriptionMaxLength` 可配并校验，输出经 `projectToolSchema` 投影。
+- 新包 `packages/core/tool-search`：`tool_search` 按关键词或精确名返回可见工具的 schema，`maxResults` 与 `descriptionMaxLength` 可配并校验，输出经 `projectToolSchema` 投影。
 - 验证：16 个测试、逐文件覆盖率 100%；`oxlint`、`tsc -b`、`doc-standard`、`verify-package-readme-model-experience`、`verify-translation-pairing`、`verify-plugin-packages` 通过；`config-catalog` 中英生成物各插入 19 行本包条目。
 - 上下文成本逐项分解（qwen 的 `/context detail` 与 idle cost）未做：现有 `contextBreakdown` 仍是三分类。
 
@@ -814,28 +814,28 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-11-11] feat | step-summary 工具批次摘要（快模型第一件）
 
-- 新增 `packages/experimental/step-summary`：`step/end` 触发一次辅助模型请求，把工具批次压缩成一行，写 log-only 的 `tool/batch-summary` 事件供展示；输入/输出/截止时间三重预算，失败只警告。
+- 新增 `packages/context/step-summary`：`step/end` 触发一次辅助模型请求，把工具批次压缩成一行，写 log-only 的 `tool/batch-summary` 事件供展示；输入/输出/截止时间三重预算，失败只警告。
 - 实现要点：不使用已弃用的同步历史读取，改为在 `session/event` 投递中增量累积 `turn:step` 批次；`inFlight` 去重防重复投递；包名避开 `gen-tool-catalog` 的 `tool-*` 工具包约定。
 - 持久化记录 `2026-11-11-tool-summary` 一并覆盖了上一轮 memory-notes 的 `memory-notes` 来源种类（attribution-only）与本次 `tool-summary` 来源种类、`tool/batch-summary` 事件根，双向兼容说明见记录正文。
 - 验证：17 测试、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项、持久化检查 `ok: true`。
 
 ## [2026-11-11] feat | followup 下一步建议（快模型第二件）
 
-- 新增 `packages/experimental/followup`：`turn/end` 后一次辅助模型请求，给出至多 `maxSuggestions` 条动作，写 log-only 的 `followup/suggestions` 事件；输入/输出/条数/字符/截止时间五重预算，失败只警告。
+- 新增 `packages/context/followup`：`turn/end` 后一次辅助模型请求，给出至多 `maxSuggestions` 条动作，写 log-only 的 `followup/suggestions` 事件；输入/输出/条数/字符/截止时间五重预算，失败只警告。
 - 关键点：`user/message` 事件不含 turn，按收到的 `turn/start` 归属；增量累积不读历史；`boundUtf8` 做码点安全截断。
 - 持久化记录 `2026-11-11-followup`：`followup/suggestions` 事件根（same-version allowed）与 `followup` 来源种类（双向兼容说明）。
 - 验证：20 测试、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项、持久化检查 `ok: true`。
 
 ## [2026-11-11] feat | speculation 推测执行门控（快模型第三件·上）
 
-- 新增 `packages/experimental/speculation`：`gateToolCall` / `gatePlan` / `overlayPath` / `rewriteArguments` 纯逻辑门控。只读工具放行；文件写入在 `allowWrites` 显式开启时重定向到 overlay；越界路径、未知工具与外部网络工具一律 boundary。
+- 新增 `packages/core/speculation`：`gateToolCall` / `gatePlan` / `overlayPath` / `rewriteArguments` 纯逻辑门控。只读工具放行；文件写入在 `allowWrites` 显式开启时重定向到 overlay；越界路径、未知工具与外部网络工具一律 boundary。
 - 与 qwen 的差异：dsh 无 `auto-edit`/`yolo` 审批枚举，写入许可改为显式配置；不做 shell AST 分类（一律 boundary）。
 - 延后：overlay `FileSystem` 代理与「接受即提交」、从用户意图生成推测计划。
 - 验证：13 测试、src 逐文件 100% 全维度覆盖、lint、`doc-sync` 43 项。
 
 ## [2026-11-11] feat | speculation overlay 代理（快模型第三件·下）
 
-- `packages/experimental/speculation/src/overlay.ts` 新增 `OverlayFileSystem`：`FileSystem` 代理，读取先探测 overlay 副本、所有变更写入 overlay，按产出路径集合 `commit` 回工作区或 `discard` 丢弃；越界写入直接抛错。
+- `packages/core/speculation/src/overlay.ts` 新增 `OverlayFileSystem`：`FileSystem` 代理，读取先探测 overlay 副本、所有变更写入 overlay，按产出路径集合 `commit` 回工作区或 `discard` 丢弃；越界写入直接抛错。
 - 实现取舍：代理自建独立 Cordis 上下文注册服务，避免与企业 `ctx.fs` 冲突；`commit` 不做版本冲突检测（记录为已知限制）。
 - 验证：24 测试（含真实临时目录与 `dsh-fs-local` 的读写/提交/丢弃/越界用例）、src 逐文件 100% 全维度覆盖、lint、typecheck、`doc-sync` 43 项。
 
@@ -846,7 +846,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-11-12] feat | speculation 推测触发（runner）
 
-- 新增 `packages/experimental/speculation/src/runner.ts`（插件 `@deepseek-ai/dsh-speculation/runner`）：`turn/end` 后用一次 `speculation` 目的的辅助请求预测下一次请求与工具计划，`parsePlan` 用 zod 校验预测 JSON，`executePlan` 经 `gatePlan` 门控后逐个通过 `ctx.tools.execute`（不带 Agent）派发；重定向写入按改写后的参数落到 overlay 目录，写入前先把工作区原文预置为 overlay 副本。
+- 新增 `packages/core/speculation/src/runner.ts`（插件 `@deepseek-ai/dsh-speculation/runner`）：`turn/end` 后用一次 `speculation` 目的的辅助请求预测下一次请求与工具计划，`parsePlan` 用 zod 校验预测 JSON，`executePlan` 经 `gatePlan` 门控后逐个通过 `ctx.tools.execute`（不带 Agent）派发；重定向写入按改写后的参数落到 overlay 目录，写入前先把工作区原文预置为 overlay 副本。
 - 收敛：下一条 `user/message` 归一化后与预测相同且 `allowWrites` 开启时 `commitOverlay`，否则 `discardOverlay`；记录 log-only 的 `speculation/proposal` 与 `speculation/outcome`。在途运行被新输入中止，插件卸载时尽力清理残留副本。
 - 门控 API 收紧：`SpeculationDecision` 改为可判别联合，`redirect` 变体自带 `redirectKey`/`redirectPath`，`rewriteArguments` 与运行方都不再判空；overlay 的提交/丢弃/预置抽成 `commitOverlay`/`discardOverlay`/`seedOverlay` 供两处复用。
 - 持久化记录 `2026-11-12-speculation`（两个 log-only 事件根 + `dsh-speculation` 来源种类，same-version）。
@@ -855,14 +855,14 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-11-12] feat | webhook 投递到活跃会话（通道运行时·投递角色）
 
-- `packages/experimental/webhook` 新增 `WebhookMessageRequest`（`sessionId` + `prompt` + `target`）与 `deliverWebhookMessage`：`next-turn` 走 `Agent.followup`，`next-step` 走 `Agent.steer`，沿用既有 `webhook` 来源种类，因此不需要新的持久化记录。
+- `packages/api/webhook` 新增 `WebhookMessageRequest`（`sessionId` + `prompt` + `target`）与 `deliverWebhookMessage`：`next-turn` 走 `Agent.followup`，`next-step` 走 `Agent.steer`，沿用既有 `webhook` 来源种类，因此不需要新的持久化记录。
 - 判别方式：`WebhookSessionRequest` 增加可选 `kind?: 'session'`，`run()` 返回值改为 `WebhookAction` 联合；`dispatch` 按 `kind === 'message'` 分流。
 - 设计取舍：不做去重（运行时本就无交付状态）、不等待目标轮次（即发即忘）、目标无活跃 Agent 时报错并记日志，规则可改返回会话请求兜底。
 - 验证：webhook 包 82 测试、src 逐文件 100%（语句 151、分支 94、函数 26、行 141）、lint、`doc-sync` 43 项。
 
 ## [2026-11-12] feat | Arena 多模型对比（dsh-arena）
 
-- 新增 `packages/experimental/arena`：`ctx.arena.run/apply/remove/runs`。每个参选者一个 `git worktree add -b` 检出 + 一个普通会话，prompt 以 `dsh-arena` 来源种类投递，收敛后返回回复、状态、耗时、轮次、工具调用数、token 与改动路径。
+- 新增 `packages/core/arena`：`ctx.arena.run/apply/remove/runs`。每个参选者一个 `git worktree add -b` 检出 + 一个普通会话，prompt 以 `dsh-arena` 来源种类投递，收敛后返回回复、状态、耗时、轮次、工具调用数、token 与改动路径。
 - 关键实现：diff 收集先 `git add --all` 再 `git diff --cached <base>`（从不提交的模型也给完整改动集）；补丁写出补回结尾换行；所有 git 命令经 `subprocess` + `sandbox` 按 `sandboxPolicy` 执行并清除仓库选择变量。
 - 生命周期：单参选者失败/取消只影响自身状态；会话收敛后释放，`remove()` 清理 checkout 与分支，删除失败只记日志。
 - 新增 `dsh-arena` 消息来源种类，持久化记录 `2026-11-12-arena`（same-version）；新子系统页 `docs/subsystems/arena.md` 与能力接缝表条目。
@@ -1021,3 +1021,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `constraints` 与 `verify-package-dependencies`：统一版本、`files`、`workspace:` 范围，补 `fork-notice` 实验名例外，登记 Web 产品包的 8 个实验依赖；`@reachforstar/*` 依赖改为 `workspace:~`，btw 与 session-log-export 的非服务 peer 收进 devDependencies，`adoptSessionEvent` 与 `sessionFormatCatalog` 登记为安全导出。
 - `verify-optional-dependency-imports`：OAuth 需要 `credentialKey`，把 `@deepseek-ai/dsh-credentials` 从可选 peer 改为必需 peer，避免可选依赖在模块作用域加载。
 - 取舍记录于 [客户端域分层与包元数据门禁](decisions/2026-11-13-client-domain-layering-and-package-metadata.md)。
+
+## [2026-11-13] fix | 审批收尾三项与 hygiene 四项债务
+
+- 审批：命令前缀规则（`match: prefix` + 保守词法匹配）、`needsHuman` 请求标志（规则不可自动放行，沙箱升权已标记）、会话级内存规则（`/allow --session`）。交接页进度见 [codex 与 ZCode 能力落地交接](queries/codex-zcode-capability-handoff.md#2026-11-13-落地进展)。
+- 门禁：`verify-no-unknown-casts`、`verify-plugin-entry-exports`、`verify-runtime-closure`、`verify-default-product-isolation` / `verify-product-use` 全部清偿；8 个默认开启的实验包提升为稳定包，`constraints` 与 `vendor rescope` 复绿。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-11-13-hygiene-四项-fork-债务清偿)。
+- 验证：`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run constraints`、四项门禁；受影响包测试全过。

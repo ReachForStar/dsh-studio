@@ -16,7 +16,7 @@ status: active
 
 ## 关键文件
 
-- `packages/experimental/step-summary/src/index.ts`：事件声明、Config、`collectToolBatch` / `renderBatchInput` / `normalizeSummary` / `requestSummary`、`apply`。
+- `packages/context/step-summary/src/index.ts`：事件声明、Config、`collectToolBatch` / `renderBatchInput` / `normalizeSummary` / `requestSummary`、`apply`。
 - 持久化记录：`docs/persistence-changes/2026-11-11-tool-summary.md`（同一记录覆盖了 memory-notes 的 `memory-notes` 来源种类与本次 `tool-summary` 来源种类、`tool/batch-summary` 事件根）。
 
 ## 设计决策

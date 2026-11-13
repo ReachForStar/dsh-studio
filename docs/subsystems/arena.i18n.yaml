@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/arena.md
 /model-comparison-arena:
-  en: 324d07018260ca3e
-  zh: b92fce4a53b606d3
+  en: 8df75bcbbb08bb40
+  zh: 93af4bba45693846
 /model-comparison-arena/running-a-comparison:
   en: 2d06e7f468e6285c
   zh: 423f89d9be0affa8

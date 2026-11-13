@@ -211,12 +211,6 @@
                   provider: spawn
               - id: tool-workflow
                 name: '@deepseek-ai/dsh-tool-workflow'
-              - id: tool-ralph
-                name: '@deepseek-ai/dsh-tool-ralph'
-                disabled: true
-                config:
-                  subagentProvider: spawn
-                  maxRounds: 64
 
           # ── 从 qwen-code 吸收的智能体层能力 ──────────────────────────────
           # 工具检索：在工具目录过长时先给模型一个短目录，再按需 `tool_search`。

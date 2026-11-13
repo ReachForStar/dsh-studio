@@ -73,6 +73,12 @@ export interface ApprovalRequestEvent {
   readonly callId?: ToolCallId
   /** Human-readable reason supplied by the asker. */
   readonly reason?: string
+  /**
+   * The decision must come from a human. Rules cannot auto-allow the request,
+   * and every automated answerer (hook, reviewer, bridge) must call `next()`
+   * instead of deciding. Denying remains available to any answerer.
+   */
+  readonly needsHuman?: boolean
   /** Localized presentation only; never persisted in approval audit events. */
   readonly displayReason?: { readonly en: string; readonly [locale: string]: string }
   /** Cancellation lifetime of the pending request. */

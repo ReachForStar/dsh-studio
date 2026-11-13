@@ -499,6 +499,24 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the stored rules, or none without a directory or storage.',
       },
       {
+        signature: 'sessionRulesFor(session: Session): readonly ApprovalRule[]',
+        description: 'Read the rules added to one Session\'s memory for its lifetime.',
+        parameters: [{ name: 'session', description: 'the session whose rules apply.' }],
+        returns: 'the session\'s ordered rules.',
+      },
+      {
+        signature: 'addSessionRule(session: Session, rule: ApprovalRule): readonly ApprovalRule[]',
+        description: 'Append one in-memory rule to a Session. The rule is evaluated after project rules and disappears with the Session; nothing is persisted.',
+        parameters: [{ name: 'session', description: 'the session receiving the rule.' }, { name: 'rule', description: 'the rule to append.' }],
+        returns: 'the session\'s complete rule list after the write.',
+      },
+      {
+        signature: 'removeSessionRule(session: Session, index: number): ApprovalRule | undefined',
+        description: 'Remove one in-memory rule from a Session by position.',
+        parameters: [{ name: 'session', description: 'the session owning the rule.' }, { name: 'index', description: 'the rule\'s position in {@link sessionRulesFor}.' }],
+        returns: 'the removed rule, or `undefined` when the position does not exist.',
+      },
+      {
         signature: 'async addProjectRule(cwd: string, rule: ApprovalRule): Promise<readonly ApprovalRule[]>',
         description: 'Append one rule to a project\'s stored rules.',
         parameters: [{ name: 'cwd', description: 'the project directory.' }, { name: 'rule', description: 'the rule to append.' }],
@@ -6354,15 +6372,19 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ApprovalRequestEvent',
-    declaration: 'export interface ApprovalRequestEvent {\n    readonly agent: Agent;\n    readonly toolName: string;\n    readonly action?: string;\n    readonly resources?: readonly string[];\n    readonly callId?: ToolCallId;\n    readonly reason?: string;\n    readonly displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n    readonly signal?: AbortSignal;\n}',
+    declaration: 'export interface ApprovalRequestEvent {\n    readonly agent: Agent;\n    readonly toolName: string;\n    readonly action?: string;\n    readonly resources?: readonly string[];\n    readonly callId?: ToolCallId;\n    readonly reason?: string;\n    readonly needsHuman?: boolean;\n    readonly displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n    readonly signal?: AbortSignal;\n}',
   },
   {
     name: 'ApprovalRule',
-    declaration: 'export interface ApprovalRule {\n    readonly action: string;\n    readonly resource: string;\n    readonly effect: ApprovalRuleEffect;\n}',
+    declaration: 'export interface ApprovalRule {\n    readonly action: string;\n    readonly resource: string;\n    readonly effect: ApprovalRuleEffect;\n    readonly match: ApprovalRuleMatch;\n}',
   },
   {
     name: 'ApprovalRuleEffect',
     declaration: 'export type ApprovalRuleEffect = \'allow\' | \'deny\' | \'ask\';',
+  },
+  {
+    name: 'ApprovalRuleMatch',
+    declaration: 'export type ApprovalRuleMatch = \'glob\' | \'prefix\';',
   },
   {
     name: 'ArchiveSessionOptions',

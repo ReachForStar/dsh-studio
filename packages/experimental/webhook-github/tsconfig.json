@@ -30,7 +30,7 @@
       "path": "../../host/webserver"
     },
     {
-      "path": "../webhook"
+      "path": "../../api/webhook"
     }
   ]
 }

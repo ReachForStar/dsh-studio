@@ -43,6 +43,14 @@ class OcRegistry {
   releaseSession(workspace: string, contextId: string): void {
     this.servers.get(workspace)?.releaseSession(contextId);
   }
+  /** One workspace's live server, or undefined before its first use. */
+  server(workspace: string): OcServer | undefined {
+    return this.servers.get(workspace);
+  }
+  /** Workspaces with a live server process. */
+  workspaces(): string[] {
+    return [...this.servers.keys()];
+  }
   private sweep(): void {
     const now = Date.now();
     for (const [ws, s] of this.servers) {
@@ -117,8 +125,8 @@ export async function startOcGateway(cfg: BridgeConfig, bus: Bus): Promise<OcGat
     },
     onCancel({ contextId }) {
       // 取消 = 远端 abort + 切断本地在途 POST（否则 POST /session/{id}/message 一直挂着，消费停摆）
-      for (const ws of registryWorkspaces(registry)) {
-        const s = (registry as unknown as { servers: Map<string, import("./opencode.js").OcServer> }).servers.get(ws);
+      for (const ws of registry.workspaces()) {
+        const s = registry.server(ws);
         void s?.sessions.get(contextId)?.interrupt().finally(() => registry.releaseSession(ws, contextId));
       }
     },
@@ -191,9 +199,4 @@ export async function startOcGateway(cfg: BridgeConfig, bus: Bus): Promise<OcGat
       await server.close();
     },
   };
-}
-
-// 仅用于 onCancel：registry 内部 Map 不暴露
-function registryWorkspaces(registry: OcRegistry): string[] {
-  return [...(registry as unknown as { servers: Map<string, unknown> }).servers.keys()];
 }

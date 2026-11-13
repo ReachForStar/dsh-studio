@@ -22,7 +22,7 @@ status: draft
   - 会话：日志归档导入；侧问面板（btw，child session）。
   - MCP：共享连接池与远程 OAuth。
   - PTC：按预算压缩 SDK 声明。
-- 已完成项的文件：`packages/interaction/user-approval/src/rules.ts`、`packages/client/ui-approval`、`packages/core/tool-executor-ptc/src/scan.ts`、`packages/experimental/btw`、`packages/mcp/mcp-client/src/{pool,oauth*}.ts`、`packages/session-query/session-log-export/src/importer.ts`。
+- 已完成项的文件：`packages/interaction/user-approval/src/rules.ts`、`packages/client/ui-approval`、`packages/core/tool-executor-ptc/src/scan.ts`、`packages/interaction/btw`、`packages/mcp/mcp-client/src/{pool,oauth*}.ts`、`packages/session-query/session-log-export/src/importer.ts`。
 
 ## 统一优先级
 
@@ -36,7 +36,7 @@ status: draft
 | 6 | 动态工作流：类型检查、结构化提问、依赖图、journal 重放 | zcode | `workflow/workflow` |
 | 7 | 多会话协作：跨会话控制工具、消息板、代理图、树级预算 | zcode + codex | 新工具包、`team`、`session-projection`、`token-meter` |
 | 8 | 记忆写管线：会话提取、合并锁与间隔、召回选择器与预算 | codex + zcode | `experimental/memory-notes` 旁 |
-| 9 | 迁移与分享：外部配置/会话迁移、按轮分享与导入 | codex + zcode | `session-log-export`、`experimental/agent-plugins` |
+| 9 | 迁移与分享：外部配置/会话迁移、按轮分享与导入 | codex + zcode | `session-log-export`、`boot/agent-plugins` |
 | 10 | 沙箱增强：网络代理与延迟审批、拒绝分类、完整性检查、进程加固 | codex | `sandbox/*` |
 | 11 | Provider 与扩展：三层配置、模型选项映射、插件能力授权与再确认 | zcode | `llm/*`、`ui-plugin-manager` |
 | 12 | 诊断与实验：rollout-trace、帧桶性能、关键路径计时、design-runtime、formal-proof | codex + zcode | 各自独立包 |
@@ -189,6 +189,19 @@ status: draft
 - 每批：`pnpm run typecheck`、受影响包 `pnpm exec vitest run <paths>`、`pnpm run build:artifacts && pnpm run build:check`、`pnpm run test:docs`。
 - 新包按 `packages/AGENTS.md` 接线（paths、references、README、双语配对）；改模型可见行为补 Agent Note；改会话格式补升级指南。
 - 不要改并行会话的未提交改动；发现工作区变化先读再动。
+
+## 2026-11-13 落地进展
+
+本批先做批次 A 中不依赖钩子与沙箱改动的三项，并同步清偿 hygiene 的四项 fork 债务。
+
+已完成：
+
+1. **命令前缀策略（A1）**：`user-approval` 新增 `match: 'glob' | 'prefix'` 规则模式与纯函数 `commandPrefixOf`、`matchCommandPrefix`、`splitCommandWords`。前缀规则按完整命令词比较，`git status` 放行 `git status -s`，不放行 `git push`、`git statuspage` 或用 `&&` 拼接的第二条命令；引号与转义会识别，控制运算符、重定向、命令替换、子 shell 与展开使命令不参与前缀匹配。`/allow --prefix bash git status` 追加前缀规则。
+2. **人工专属（A2）**：`ApprovalRequest.needsHuman` 已落地；规则不能自动放行这类请求（`deny` 仍生效），自动应答者需 `next()` 委托。沙箱升权请求已标记 `needsHuman: true`。
+3. **会话级允许（A4）**：`ApprovalService` 以 `WeakMap<Session, ApprovalRule[]>` 保存 `--session` 规则，求值排在项目规则之后，会话结束即丢弃，不写存储域。`/allow --session [--prefix] <action> <resource> [effect]`、`--session list`、`--session remove <n>` 已接线。
+4. **门禁债务**：四个 fork 债务门禁已清偿，做法见 [fork 自研包的门禁红项清单](fork-gate-debt.md#2026-11-13-hygiene-四项-fork-债务清偿)。
+
+仍未开始：A3 完全访问凭证、A5 结果词汇扩展（`timed-out`、规则/网络策略修订），以及 B–H 全部批次。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
 
 ## 参考页面
 

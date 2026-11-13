@@ -18,7 +18,6 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/hook-protocol': '@deepseek-ai/dsh-hook-protocol',
   'packages/experimental/hooks-claude-code': '@deepseek-ai/dsh-hooks-claude-code',
   'packages/experimental/hooks-codex': '@deepseek-ai/dsh-hooks-codex',
-  'packages/experimental/webhook': '@deepseek-ai/dsh-webhook',
   'packages/experimental/webhook-github': '@deepseek-ai/dsh-webhook-github',
   'packages/experimental/action-cards': '@deepseek-ai/dsh-action-cards',
   'packages/experimental/client-ui-action-cards': '@deepseek-ai/dsh-client-ui-action-cards',
@@ -27,16 +26,9 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/plugin-recommendations': '@deepseek-ai/dsh-plugin-recommendations',
   'packages/experimental/client-ui-plugin-recommendations': '@deepseek-ai/dsh-client-ui-plugin-recommendations',
   'packages/experimental/personalized-recommendations': '@deepseek-ai/dsh-personalized-recommendations',
-  'packages/experimental/agent-plugins': '@deepseek-ai/dsh-agent-plugins',
-  'packages/experimental/arena': '@deepseek-ai/dsh-arena',
-  'packages/experimental/followup': '@deepseek-ai/dsh-followup',
   'packages/experimental/fork-notice': '@deepseek-ai/dsh-fork-notice',
   'packages/experimental/warming': '@deepseek-ai/dsh-warming',
-  'packages/experimental/speculation': '@deepseek-ai/dsh-speculation',
-  'packages/experimental/step-summary': '@deepseek-ai/dsh-step-summary',
-  'packages/experimental/tool-search': '@deepseek-ai/dsh-tool-search',
   'packages/experimental/openapi-tools': '@deepseek-ai/dsh-openapi-tools',
-  'packages/experimental/btw': '@deepseek-ai/dsh-btw',
 } satisfies Record<`packages/experimental/${string}`, `@deepseek-ai/dsh-${string}`>
 
 /** Legacy npm namespace, allowed only in `LEGACY_PREFIXED_EXPERIMENTAL_PACKAGE_DIRECTORIES`. */
@@ -134,4 +126,17 @@ export function isPublicExperimentalPackageDirectory(
 ): boolean {
   return /^packages\/experimental\/[^/]+$/.test(directory)
     && !privateDirectories.includes(directory)
+}
+
+/**
+ * Experimental packages the fork deliberately keeps in its default product or
+ * in an officially shipped optional bundle. Each entry records the product
+ * role that made the capability available to every installation; the isolation
+ * gates accept these edges and reject a stale entry, so gaining or losing
+ * default reach requires updating this record.
+ */
+export const DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES: Readonly<Record<string, string>> = {
+  '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp': 'Playwright provider shipped inside the optional browser-use bundle.',
+  '@deepseek-ai/dsh-experimental-browser-use-runtime': 'Shared runtime used by the shipped browser-use providers.',
+  '@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp': 'Cua Driver provider shipped inside the optional computer-use bundle.',
 }

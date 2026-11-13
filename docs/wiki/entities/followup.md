@@ -16,7 +16,7 @@ status: active
 
 ## 关键文件
 
-- `packages/experimental/followup/src/index.ts`：事件与 source kind 声明、Config、`renderSuggestionInput`、`boundUtf8`、`parseSuggestions`、`accumulateTurn`、`requestSuggestions`、`apply`。
+- `packages/context/followup/src/index.ts`：事件与 source kind 声明、Config、`renderSuggestionInput`、`boundUtf8`、`parseSuggestions`、`accumulateTurn`、`requestSuggestions`、`apply`。
 - 持久化记录：`docs/persistence-changes/2026-11-11-followup.md`。
 
 ## 设计决策

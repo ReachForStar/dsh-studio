@@ -71,7 +71,7 @@ status: active
 - ui-polish 两个 spec：39 项通过；`session-usage.ts` 与 `StatsFloat.tsx` 分支、语句、函数、行覆盖均为 100%。
 - `session-title-llm`、`token-meter`、`session-title`、核心 session 与格式包：61 个文件、1,230 项通过；两个改动文件覆盖 100%。
 - `pnpm run test:gui`：803 个文件、13,824 项通过（2 项跳过）。
-- `pnpm run typecheck`：host compiler 与 client compiler 通过；host aggregate 被并行开发的 `packages/experimental/agent-plugins` 与 `tool-search` 阻断。
+- `pnpm run typecheck`：host compiler 与 client compiler 通过；host aggregate 被并行开发的 `packages/boot/agent-plugins` 与 `tool-search` 阻断。
 - `verify-persistence-changes`：69 个根、28 条历史记录一致；新增记录与生成目录通过 `verify-formats` 类别检查。
 - 文档：`verify-type-equiv` 仅剩并行开发留下的 `worktrees.md` 漂移；`verify-md-links` 仅剩并行开发的 `tool-search/README.zh.md` 锚点。
 

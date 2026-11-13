@@ -149,7 +149,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-agent-plugins`
 
 - `inject`: `skills` · `mcpManager`
-- `source`: [`packages/experimental/agent-plugins/src/index.ts:27`](../packages/experimental/agent-plugins/src/index.ts)
+- `source`: [`packages/boot/agent-plugins/src/index.ts:27`](../packages/boot/agent-plugins/src/index.ts)
 
 ```ts config-catalog
 /** Agent Plugins loader configuration. */
@@ -444,7 +444,7 @@ export interface SearchLimits {
 ## `@deepseek-ai/dsh-arena`
 
 - `inject`: `agents` · `fs` · `sandbox` · `sandboxPolicy` · `subprocess`
-- `source`: [`packages/experimental/arena/src/index.ts:113`](../packages/experimental/arena/src/index.ts)
+- `source`: [`packages/core/arena/src/index.ts:113`](../packages/core/arena/src/index.ts)
 
 ```ts config-catalog
 /** Arena service configuration. */
@@ -550,6 +550,27 @@ export interface Config {
 export type Config = LocalConfig
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-bash-sandbox -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-btw -->
+<a id="deepseek-aidsh-btw"></a>
+
+## `@deepseek-ai/dsh-btw`
+
+- `inject`: `agents` · `subagents` · `connection`
+- `source`: [`packages/interaction/btw/src/index.ts:31`](../packages/interaction/btw/src/index.ts)
+
+```ts config-catalog
+/** Side-question policy accepted from configuration; every field falls back to its default. */
+export interface ConfigInput {
+  /** Registered subagent provider that inherits the parent's context (default `fork`). */
+  provider?: string
+  /** Longest accepted question in characters (default 4000). */
+  maxQuestionChars?: number
+  /** Wall-clock budget for one question in milliseconds (default 120000). */
+  timeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-btw -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-client-connection -->
 <a id="deepseek-aidsh-client-connection"></a>
@@ -1708,7 +1729,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-followup`
 
 - `inject`: `llm`
-- `source`: [`packages/experimental/followup/src/index.ts:54`](../packages/experimental/followup/src/index.ts)
+- `source`: [`packages/context/followup/src/index.ts:54`](../packages/context/followup/src/index.ts)
 
 ```ts config-catalog
 /** Auxiliary suggestion request configuration. */
@@ -2558,7 +2579,7 @@ export interface LspLocalServerConfig {
 ## `@deepseek-ai/dsh-mcp-client`
 
 - `inject`: `tools`
-- `source`: [`packages/mcp/mcp-client/src/index.ts:146`](../packages/mcp/mcp-client/src/index.ts)
+- `source`: [`packages/mcp/mcp-client/src/index.ts:167`](../packages/mcp/mcp-client/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for one stdio or Streamable HTTP MCP server. */
@@ -2634,6 +2655,12 @@ export interface StreamableHttpConfig {
   maxInstructionBytes?: number
   /** Automatic reconnect policy after a lost connection; omission uses the defaults. */
   reconnect?: ReconnectConfig
+  /**
+   * OAuth for a server that requires it. Omission connects without an
+   * authorization grant; a server that answers 401 then reports
+   * `waiting-authorization` until `mcp-manager.authorize` stores one.
+   */
+  oauth?: OAuthConfig
 }
 
 /** Automatic reconnect policy for one MCP server connection. */
@@ -2647,6 +2674,20 @@ export interface ReconnectConfig {
   /** Consecutive failed attempts per outage before giving up for good (default 10). */
   maxAttempts?: number
 }
+
+/** OAuth client settings for one remote MCP server. */
+export interface OAuthConfig {
+  /** Pre-registered client id; omission registers this client dynamically with the authorization server. */
+  clientId?: string
+  /** Client secret for a pre-registered confidential client. */
+  clientSecret?: string
+  /** Scopes to request; omission uses the server's challenge or its metadata. */
+  scope?: string
+  /** Fixed loopback callback port; omission uses an ephemeral port. */
+  callbackPort?: number
+  /** Budget for one interactive authorization in milliseconds (default 600000). */
+  authorizationTimeoutMs?: number
+}
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mcp-client -->
 
@@ -2656,8 +2697,8 @@ export interface ReconnectConfig {
 ## `@deepseek-ai/dsh-mcp-manager`
 
 - `inject`: `tools`
-- `refs`: [`ReconnectConfig`](../packages/mcp/mcp-client/src/index.ts) · `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/mcp/mcp-manager/src/index.ts:71`](../packages/mcp/mcp-manager/src/index.ts)
+- `refs`: [`OAuthConfig`](../packages/mcp/mcp-client/src/index.ts) · [`ReconnectConfig`](../packages/mcp/mcp-client/src/index.ts) · `Volatile` (`@deepseek-ai/cordis`)
+- `source`: [`packages/mcp/mcp-manager/src/index.ts:74`](../packages/mcp/mcp-manager/src/index.ts)
 
 ```ts config-catalog
 /** Manager configuration with live server entries. */
@@ -2697,6 +2738,8 @@ export interface McpManagedServerEntry {
   closeTimeoutMs?: number
   /** Reconnect policy; the schema fills the mcp-client defaults. */
   reconnect: ReconnectConfig
+  /** OAuth client settings for a remote server that requires authorization. */
+  oauth?: OAuthConfig
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-mcp-manager -->
@@ -2999,7 +3042,7 @@ export interface PiAgentSessionLike {
   subscribe(listener: (event: unknown) => void): () => void
   /** Pi's extension runner, when present, for late-registering custom tools. */
   extensionRunner?: {
-    registerTool(tool: unknown): void
+    registerTool?(tool: unknown): void
     getAllRegisteredTools(): Array<{ definition: unknown }>
     createContext(): unknown
   }
@@ -3910,7 +3953,7 @@ export type HelperLaunch = {
 ## `@deepseek-ai/dsh-step-summary`
 
 - `inject`: `llm`
-- `source`: [`packages/experimental/step-summary/src/index.ts:59`](../packages/experimental/step-summary/src/index.ts)
+- `source`: [`packages/context/step-summary/src/index.ts:59`](../packages/context/step-summary/src/index.ts)
 
 ```ts config-catalog
 /** Auxiliary summary request defaults: a one-sentence reply fits a small budget. */
@@ -4803,7 +4846,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-tool-search`
 
 - `inject`: `tools`
-- `source`: [`packages/experimental/tool-search/src/index.ts:32`](../packages/experimental/tool-search/src/index.ts)
+- `source`: [`packages/core/tool-search/src/index.ts:32`](../packages/core/tool-search/src/index.ts)
 
 ```ts config-catalog
 /** Tool discovery configuration. */
@@ -5092,7 +5135,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-user-approval`
 
 - `inject`: `sessionProjections`
-- `source`: [`packages/interaction/user-approval/src/index.ts:156`](../packages/interaction/user-approval/src/index.ts)
+- `source`: [`packages/interaction/user-approval/src/index.ts:166`](../packages/interaction/user-approval/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config. All optional — `static Config` supplies the defaults. */
@@ -5105,10 +5148,12 @@ export interface Config {
    */
   readonly policy?: ApprovalPolicy
   /**
-   * Ordered `{action, resource, effect}` rules evaluated before the policy and
-   * the answerers. Later matching rules override earlier ones; a matching
-   * `'allow'` grants the request and a matching `'deny'` rejects it even under
-   * the `'never'` policy, which is how unattended runs permit exact actions.
+   * Ordered `{action, resource, effect, match}` rules evaluated before the
+   * policy and the answerers. Later matching rules override earlier ones; a
+   * matching `'allow'` grants the request and a matching `'deny'` rejects it
+   * even under the `'never'` policy, which is how unattended runs permit exact
+   * actions. `match: 'prefix'` treats the resource as a literal command prefix
+   * matched against whole command words.
    */
   readonly rules?: ApprovalRule[]
 }
@@ -5129,14 +5174,23 @@ export type ApprovalPolicy = 'ask' | 'never'
 export interface ApprovalRule {
   /** Action pattern, matched against the tool's declared action or its tool name. */
   readonly action: string
-  /** Resource pattern, matched against every declared resource name. */
+  /**
+   * Resource pattern for `glob` rules, or the literal command prefix for
+   * `prefix` rules. A prefix matches whole command words only, so `git status`
+   * never grants `git statuspage` or a second command joined by `&&`.
+   */
   readonly resource: string
   /** Decision for a matching request. */
   readonly effect: ApprovalRuleEffect
+  /** Resource matching mode. */
+  readonly match: ApprovalRuleMatch
 }
 
 /** What a matching rule decides before any answerer is consulted. */
 export type ApprovalRuleEffect = 'allow' | 'deny' | 'ask'
+
+/** How a rule's resource field matches a declared resource name. */
+export type ApprovalRuleMatch = 'glob' | 'prefix'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-user-approval -->
 
@@ -5852,6 +5906,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-client-ui-settings` | — | [`packages/client/ui-settings/src/index.ts`](../packages/client/ui-settings/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-agent-loop` | — | [`packages/client/ui-settings-agent-loop/src/index.ts`](../packages/client/ui-settings-agent-loop/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-general` | — | [`packages/client/ui-settings-general/src/index.ts`](../packages/client/ui-settings-general/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-settings-mcp` | — | [`packages/client/ui-settings-mcp/src/index.ts`](../packages/client/ui-settings-mcp/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-plugin-inventory` | — | [`packages/client/ui-settings-plugin-inventory/src/index.ts`](../packages/client/ui-settings-plugin-inventory/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-plugins` | — | [`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-session-log` | — | [`packages/client/ui-settings-session-log/src/index.ts`](../packages/client/ui-settings-session-log/src/index.ts) |
@@ -5922,7 +5977,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-tool-working-directory` | `tools` · `workingDirectory` | [`packages/session/tool-working-directory/src/index.ts`](../packages/session/tool-working-directory/src/index.ts) |
 | `@deepseek-ai/dsh-tools` | `systemPrompt` | [`packages/core/tools/src/index.ts`](../packages/core/tools/src/index.ts) |
 | `@deepseek-ai/dsh-user-questions` | — | [`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts) |
-| `@deepseek-ai/dsh-webhook` | `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry` | [`packages/experimental/webhook/src/index.ts`](../packages/experimental/webhook/src/index.ts) |
+| `@deepseek-ai/dsh-webhook` | `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry` | [`packages/api/webhook/src/index.ts`](../packages/api/webhook/src/index.ts) |
 | `@deepseek-ai/dsh-workspace` | `storageDomain` · `sessionPersistence` | [`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts) |
 | `@reachforstar/dsh-a2a-status` | — | [`packages/a2a/a2a-status/src/index.ts`](../packages/a2a/a2a-status/src/index.ts) |
 | `@reachforstar/dsh-client-ui-a2a-status` | — | [`packages/client/ui-a2a-status/src/index.ts`](../packages/client/ui-a2a-status/src/index.ts) |
@@ -6029,7 +6084,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 | `@deepseek-ai/dsh-session-snapshot` | — | [`packages/test-support/session-snapshot/src/index.ts`](../packages/test-support/session-snapshot/src/index.ts) |
 | `@deepseek-ai/dsh-session-telemetry` | — | [`packages/session/session-telemetry/src/index.ts`](../packages/session/session-telemetry/src/index.ts) |
 | `@deepseek-ai/dsh-session-title-llm` | — | [`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts) |
-| `@deepseek-ai/dsh-speculation` | — | [`packages/experimental/speculation/src/index.ts`](../packages/experimental/speculation/src/index.ts) |
+| `@deepseek-ai/dsh-speculation` | — | [`packages/core/speculation/src/index.ts`](../packages/core/speculation/src/index.ts) |
 | `@deepseek-ai/dsh-ssh-helper-runtime` | — | [`packages/ssh/ssh-helper-runtime/src/index.ts`](../packages/ssh/ssh-helper-runtime/src/index.ts) |
 | `@deepseek-ai/dsh-test-support-http-cassette` | — | [`packages/test-support/http-cassette/src/index.ts`](../packages/test-support/http-cassette/src/index.ts) |
 | `@deepseek-ai/dsh-timeout` | — | [`packages/util/timeout/src/index.ts`](../packages/util/timeout/src/index.ts) |

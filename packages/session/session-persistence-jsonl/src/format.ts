@@ -22,7 +22,7 @@ import type {
   SessionLogOffset as SessionLogOffsetType,
 } from '@deepseek-ai/dsh-session'
 import { parseSessionFormatLogFilename, sessionFormatLogFilename, SessionFormatUnsupportedMigrationError } from '@deepseek-ai/dsh-session-format'
-import type { SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
+import type { SessionFormatEvent, SessionFormatJsonObject } from '@deepseek-ai/dsh-session-format'
 import type { SessionFormatRecovery, SessionFormatRestore } from '@deepseek-ai/dsh-session-format'
 import { sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog'
 import { assertV5RowAdmission, assertReleasedV5Relationships } from '@deepseek-ai/dsh-session-format-v4-to-v5'
@@ -81,7 +81,7 @@ export function parseGenerationLogFilename(
  * The current physical header stored as the first JSONL record. The exact
  * inherited cut lives on the last tagged `session/end-seed` event.
  */
-interface HeaderLine {
+interface HeaderLine extends SessionFormatJsonObject {
   type: 'session'
   version: number
   id: SessionId
@@ -134,7 +134,7 @@ export function toHeaderLine(
     delegationDepth: header.delegationDepth ?? 0,
     ...header.agentPreset !== undefined ? { agentPreset: header.agentPreset } : {},
     ...header.backend !== undefined ? { backend: header.backend } : {},
-  }, cut) as unknown as HeaderLine
+  }, cut) as HeaderLine
 }
 
 /**

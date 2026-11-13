@@ -162,7 +162,7 @@ async function readSkill(locator: SkillLocator): Promise<ParsedSkill | undefined
 function frontmatterOf(raw: string): unknown {
   const document = parseDocument(raw)
   if (document.errors.length > 0) return undefined
-  return document.toJS() as unknown
+  return document.toJS()
 }
 
 function isPortableSkillName(value: unknown): value is string {

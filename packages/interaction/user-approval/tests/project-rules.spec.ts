@@ -55,7 +55,7 @@ async function harness(options: { storage?: boolean; cwd?: string | null } = {})
   return { ctx, agent: { session } as Agent, commands, storage: pool, serviceFiber }
 }
 
-const writeRule: ApprovalRule = { action: 'write', resource: 'notes/**', effect: 'allow' }
+const writeRule: ApprovalRule = { action: 'write', resource: 'notes/**', effect: 'allow', match: 'glob' }
 
 describe('project approval rules', () => {
   it('persists rules per project and lets a stored allow rule grant without an answerer', async () => {
@@ -82,7 +82,7 @@ describe('project approval rules', () => {
 
   it('removes a rule by position and deletes the record with the last rule', async () => {
     const { ctx } = await harness()
-    const deny: ApprovalRule = { action: 'bash', resource: 'rm *', effect: 'deny' }
+    const deny: ApprovalRule = { action: 'bash', resource: 'rm *', effect: 'deny', match: 'glob' }
     await ctx.approval.addProjectRule('/work', writeRule)
     await ctx.approval.addProjectRule('/work', deny)
     await expect(ctx.approval.removeProjectRule('/work', 0)).resolves.toEqual(writeRule)
@@ -113,16 +113,16 @@ describe('project approval rules', () => {
     expect((await run('write notes/** deny')).kind).toBe('success')
     expect((await run('write build/** allow')).kind).toBe('success')
     expect(ctx.approval.projectRulesFor('/work')).toEqual([
-      { action: 'write', resource: 'notes/guide.txt', effect: 'allow' },
-      { action: 'write', resource: 'notes/**', effect: 'deny' },
-      { action: 'write', resource: 'build/**', effect: 'allow' },
+      { action: 'write', resource: 'notes/guide.txt', effect: 'allow', match: 'glob' },
+      { action: 'write', resource: 'notes/**', effect: 'deny', match: 'glob' },
+      { action: 'write', resource: 'build/**', effect: 'allow', match: 'glob' },
     ])
-    expect((await run('list')).text).toContain('1. allow write notes/guide.txt')
+    expect((await run('list')).text).toContain('1. allow glob write notes/guide.txt')
     expect((await run('remove 1')).kind).toBe('success')
     expect((await run('remove 9')).kind).toBe('error')
     expect(ctx.approval.projectRulesFor('/work')).toEqual([
-      { action: 'write', resource: 'notes/**', effect: 'deny' },
-      { action: 'write', resource: 'build/**', effect: 'allow' },
+      { action: 'write', resource: 'notes/**', effect: 'deny', match: 'glob' },
+      { action: 'write', resource: 'build/**', effect: 'allow', match: 'glob' },
     ])
     expect((await run('')).kind).toBe('error')
     expect((await run('list now')).kind).toBe('error')
@@ -155,5 +155,81 @@ describe('project approval rules', () => {
     const result = await allow.handler({ agent, rawInput: 'list' })
     expect(result.kind).toBe('error')
     expect(ctx.approval.projectRulesFor(undefined)).toEqual([])
+  })
+
+  it('keeps --session rules in memory and out of project storage', async () => {
+    const { ctx, agent, commands } = await harness()
+    const allow = commands.get('allow')
+    if (allow === undefined) throw new Error('allow command was not registered')
+    const run = (rawInput: string): Promise<{ kind: string; text?: string }> => allow.handler({ agent, rawInput })
+
+    expect((await run('--session bash git status allow')).kind).toBe('success')
+    expect(ctx.approval.sessionRulesFor(agent.session)).toEqual([
+      { action: 'bash', resource: 'git status', effect: 'allow', match: 'glob' },
+    ])
+    expect(ctx.approval.projectRulesFor('/work')).toEqual([])
+
+    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('rejected'))
+    ctx.on('approval/request', answerer)
+    await expect(ctx.approval.request({
+      agent, toolName: 'bash', action: 'bash', resources: ['git status'],
+    })).resolves.toBe('allowed-once')
+    expect(answerer).not.toHaveBeenCalled()
+    await expect(ctx.approval.request({
+      agent, toolName: 'bash', action: 'bash', resources: ['git push'],
+    })).resolves.toBe('rejected')
+
+    expect((await run('--session list')).text).toContain('1. allow glob bash git status')
+    expect((await run('--session remove 1')).kind).toBe('success')
+    expect(ctx.approval.sessionRulesFor(agent.session)).toEqual([])
+    expect((await run('--session remove 9')).kind).toBe('error')
+  })
+
+  it('adds prefix rules that do not spill across commands', async () => {
+    const { ctx, agent, commands } = await harness()
+    const allow = commands.get('allow')
+    if (allow === undefined) throw new Error('allow command was not registered')
+    const run = (rawInput: string): Promise<{ kind: string; text?: string }> => allow.handler({ agent, rawInput })
+
+    expect((await run('--prefix bash git status allow')).kind).toBe('success')
+    expect(ctx.approval.projectRulesFor('/work')).toEqual([
+      { action: 'bash', resource: 'git status', effect: 'allow', match: 'prefix' },
+    ])
+    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('rejected'))
+    ctx.on('approval/request', answerer)
+    await expect(ctx.approval.request({
+      agent, toolName: 'bash', action: 'bash', resources: ['git status -s'],
+    })).resolves.toBe('allowed-once')
+    await expect(ctx.approval.request({
+      agent, toolName: 'bash', action: 'bash', resources: ['git status && rm -rf build'],
+    })).resolves.toBe('rejected')
+    await expect(ctx.approval.request({
+      agent, toolName: 'bash', action: 'bash', resources: ['git push'],
+    })).resolves.toBe('rejected')
+    expect(answerer).toHaveBeenCalledTimes(2)
+  })
+
+  it('never lets a rule auto-allow a human-only request', async () => {
+    const { ctx, agent } = await harness()
+    await ctx.approval.addProjectRule('/work', { action: 'sandbox', resource: '*', effect: 'allow', match: 'glob' })
+    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('rejected'))
+    ctx.on('approval/request', answerer)
+
+    await expect(ctx.approval.request({
+      agent, toolName: 'bash', action: 'sandbox', resources: ['workspace-write'], needsHuman: true,
+    })).resolves.toBe('rejected')
+    expect(answerer).toHaveBeenCalledTimes(1)
+  })
+
+  it('still lets a deny rule reject a human-only request', async () => {
+    const { ctx, agent } = await harness()
+    await ctx.approval.addProjectRule('/work', { action: 'sandbox', resource: '*', effect: 'deny', match: 'glob' })
+    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
+    ctx.on('approval/request', answerer)
+
+    await expect(ctx.approval.request({
+      agent, toolName: 'bash', action: 'sandbox', resources: ['workspace-write'], needsHuman: true,
+    })).resolves.toBe('rejected')
+    expect(answerer).not.toHaveBeenCalled()
   })
 })

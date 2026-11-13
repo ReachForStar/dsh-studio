@@ -44,7 +44,7 @@ export interface PiAgentSessionLike {
   subscribe(listener: (event: unknown) => void): () => void
   /** Pi's extension runner, when present, for late-registering custom tools. */
   extensionRunner?: {
-    registerTool(tool: unknown): void
+    registerTool?(tool: unknown): void
     getAllRegisteredTools(): Array<{ definition: unknown }>
     createContext(): unknown
   }
@@ -218,7 +218,7 @@ export class PiLoopAgent implements Agent {
       const tool = runtime.get(schema.name)
       if (tool === undefined) continue
       try {
-        runner.registerTool(adaptDshTool(tool as never, runtime as never, this))
+        runner.registerTool?.(adaptDshTool(tool as never, runtime as never, this))
       } catch (error: unknown) {
         // One unadaptable dsh tool must not block the session from opening.
         this.ctx.logger.warn(`pi agent: failed to register dsh tool "${schema.name}": ${String(error)}`)

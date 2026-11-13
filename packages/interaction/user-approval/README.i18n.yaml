@@ -21,17 +21,17 @@
   en: 3618ddc3386e65f0
   zh: d6c0ac91aae122bb
 /deepseek-ai-dsh-user-approval/use-this-package/setting-the-policy:
-  en: 9ceca9312c5c39fd
-  zh: d51e34f8b288071d
+  en: 0618b676c51c4fed
+  zh: c7f031bf2a4ac31c
 /deepseek-ai-dsh-user-approval/use-this-package/rules:
-  en: d0c125ab1050f98a
-  zh: 5ae4a8a98ca54301
-/deepseek-ai-dsh-user-approval/use-this-package/project-rules-and-allow:
-  en: 28cfddb534904129
-  zh: 471aed16fa70c2d9
+  en: 5a8024132434ee25
+  zh: 37d1d3b20e1fe558
+/deepseek-ai-dsh-user-approval/use-this-package/project-and-session-rules-and-allow:
+  en: 920cff3403b33716
+  zh: eb0a85ee7906f978
 /deepseek-ai-dsh-user-approval/use-this-package/requesting-a-decision:
-  en: dc465de82799bab0
-  zh: 51144cc77bb15689
+  en: d50e268e2a862e85
+  zh: d0d29da191240291
 /deepseek-ai-dsh-user-approval/use-this-package/what-the-model-and-user-see:
   en: 56e57ef3cac09a2a
   zh: 8f1faadcbba500e3
@@ -90,8 +90,8 @@
   en: f5d5f97a153f7c70
   zh: 4db81881ebdcfcc4
 /deepseek-ai-dsh-user-approval/known-limitations-and-deferred-work:
-  en: a5b751274c2c9ab6
-  zh: 5985bd144c1067ba
+  en: 7b6068ace1677457
+  zh: 2c0bb8894d2f788a
 /deepseek-ai-dsh-user-approval/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 3bb0c20c93f16f98

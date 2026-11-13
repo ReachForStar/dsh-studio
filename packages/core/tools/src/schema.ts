@@ -541,7 +541,7 @@ export function repairArgs(schema: JsonSchemaNode, args: unknown): unknown {
 /** Parse one JSON text value, or `undefined` when it is not valid JSON. */
 function parseJsonText(text: string): unknown {
   try {
-    return JSON.parse(text) as unknown
+    return JSON.parse(text)
   } catch (_error: unknown) {
     return undefined
   }

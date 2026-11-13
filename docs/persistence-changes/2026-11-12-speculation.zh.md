@@ -64,7 +64,7 @@ changes:
 <a id="verification"></a>
 ## 验证
 
-pnpm exec vitest run packages/experimental/speculation：门控、overlay、runner 三个测试文件共 55 个用例通过；逐文件覆盖率 100%（语句、分支、函数、行）。
+pnpm exec vitest run packages/core/speculation：门控、overlay、runner 三个测试文件共 55 个用例通过；逐文件覆盖率 100%（语句、分支、函数、行）。
 
 <a id="dev-note"></a>
 ## 开发备注

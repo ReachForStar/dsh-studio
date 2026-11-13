@@ -20,7 +20,7 @@ import {
   collectRuntimeSourceSpecifiers,
 } from './verify-client-packages.ts'
 
-import { isExperimentalPackageName } from './experimental-package-policy.ts'
+import { isExperimentalPackageName, DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES } from './experimental-package-policy.ts'
 // The independently published entry package owns platform-engine dependencies.
 const EXTERNAL_KIT_PACKAGES = new Set(['@deepseek-ai/libreoffice-kit'])
 const PROFILE_SOURCE = 'packages/util/official-bundles/src/bundles.ts'
@@ -106,13 +106,19 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
   const visited = new Set<string>()
   const sources = new Set<string>()
   const configs = new Set<string>()
+  const defaultExperimental = new Set<string>()
   let webPluginCount = 0
   const isExperimental = (pkg: Package): boolean => isExperimentalPackageName(pkg.manifest.name)
     || display(pkg.directory).startsWith('packages/experimental/')
+  // The fork ships some experimental capabilities on purpose; the registry
+  // states the product role, and a stale entry fails below.
+  const isRegisteredDefaultExperimental = (pkg: Package): boolean =>
+    DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES[pkg.manifest.name] !== undefined
   const add = (pkg: Package, origin: string): void => {
-    if (isExperimental(pkg)) {
+    if (isExperimental(pkg) && !isRegisteredDefaultExperimental(pkg)) {
       failures.push(`${origin} -> ${pkg.manifest.name}: default product must not include experimental packages`)
     } else if (!visited.has(pkg.directory)) {
+      if (isExperimental(pkg)) defaultExperimental.add(pkg.manifest.name)
       visited.add(pkg.directory)
       queue.push(pkg)
     }
@@ -136,7 +142,7 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
       return
     }
     const packageName = barePackageName(name)
-    if (isExperimentalPackageName(packageName)) {
+    if (isExperimentalPackageName(packageName) && DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES[packageName] === undefined) {
       failures.push(`${origin} -> ${name}: default product must not include experimental packages`)
       return
     }
@@ -313,6 +319,12 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
     for (const path of files) {
       const sourcePath = resolve(pkg.directory, path)
       if (statSync(sourcePath).isFile()) scanSource(sourcePath)
+    }
+  }
+  for (const [name, reason] of Object.entries(DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES)) {
+    if (reason.trim() === '') failures.push(`${name}: default-product experimental exception requires a reason`)
+    if (!defaultExperimental.has(name)) {
+      failures.push(`${name}: stale default-product experimental exception; remove it or restore default reach`)
     }
   }
   return { failures: [...new Set(failures)], packageCount: visited.size,

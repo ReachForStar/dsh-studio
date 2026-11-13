@@ -31,6 +31,8 @@ The context group provides plugins that add model-visible context to each reques
 | [`time-context/`](time-context/README.md) | Current time, browser zone, and elapsed time per step | — |
 | [`tmux-context/`](tmux-context/README.md) | The agent's tmux session, window, and pane location | — |
 | [`harness-dev-context/`](harness-dev-context/README.md) | The harness checkout and Web GUI URL as runtime context, keeping the system prompt stable across processes | — |
+| [`followup/`](followup/README.md) | Model-suggested next steps after each completed turn, logged for presentation | — |
+| [`step-summary/`](step-summary/README.md) | One-line model summaries of each step's tool batch, logged for presentation | — |
 
 -----
 

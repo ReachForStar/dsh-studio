@@ -155,7 +155,7 @@ status: active
 | `ui-polish` prepare 报 TS7016：`js-yaml` 无声明文件 | 包内 `git-service.ts` 引入 `js-yaml`，但只声明了运行时依赖 | 补 `@types/js-yaml` 到 devDependencies |
 | `pnpm install` 报 `ERR_PNPM_IGNORED_BUILDS` | pnpm 11 默认不跑依赖的构建脚本，`ssh2`/`cpu-features` 需原生绑定 | `allowBuilds` 放行 `ssh2`、`cpu-features` |
 | 根 `tsdown.client.ts` 找不到 `lightningcss`、`tsdown` | 脚本直接 import 两个包，根 manifest 未声明；本地靠父目录或 `.pnpm/node_modules` 命中 | 根 devDependencies 显式声明 |
-| `ui-polish` 声明生成报 TS2883，`Config` 引用越界 | 同一 workspace 里 `schemastery` 同时存在 3.18.1 与 3.19.0 | overrides 固定 `@deepseek-ai/schemastery: 3.19.0` |
+| `ui-polish` 声明生成报 TS2883，`Config` 引用越界 | 同一 workspace 里 `@deepseek-ai/schemastery` 同时存在 3.18.1 与 3.19.0 | overrides 固定 `@deepseek-ai/schemastery: 3.19.0` |
 | `subagent-pi` 测试报 `Cannot find package 'tsx'` | 测试用 `import.meta.resolve('tsx')` 取 loader，包内未声明 | 包 devDependencies 补 `tsx` |
 | `ui-polish` 字体列表在 CI 返回 500 | `/latex/fonts` 的 `list` 分支先 `await xelatex()`，无 TeX 的 runner 直接抛错 | 字体列表改用可缺省的引擎解析，编译类路径保持 fail-loud（fork 已同步同一修复） |
 

@@ -129,9 +129,9 @@ function isToolObjectOf(parent: AnyNode | undefined, node: AnyNode): boolean {
 
 /** Visit every AST child of one node. */
 function forEachChild(node: AnyNode, visit: (child: AnyNode) => void): void {
-  const record = node as unknown as Record<string, unknown>
-  for (const [key, value] of Object.entries(record)) {
+  for (const key of Object.keys(node)) {
     if (key === 'type' || key === 'start' || key === 'end' || key === 'loc' || key === 'range' || key === 'parent') continue
+    const value: unknown = Reflect.get(node, key)
     if (Array.isArray(value)) {
       for (const item of value) {
         /* v8 ignore next -- acorn child arrays hold nodes or excluded primitives. */

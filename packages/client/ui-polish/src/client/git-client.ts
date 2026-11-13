@@ -112,7 +112,7 @@ export async function gitGet<T>(path: string, cwd: string, params?: Record<strin
   if (!response.ok) {
     throw new Error(typeof payload.error === 'string' ? payload.error : `git panel: HTTP ${response.status}`)
   }
-  return payload as unknown as T
+  return payload as T
 }
 
 /** POST a JSON body (cwd merged).
@@ -131,7 +131,7 @@ export async function gitPost<T>(path: string, cwd: string, body: Record<string,
   if (!response.ok) {
     throw new Error(typeof payload.error === 'string' ? payload.error : `git panel: HTTP ${response.status}`)
   }
-  return payload as unknown as T
+  return payload as T
 }
 
 /**

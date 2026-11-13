@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateApprovalRules, matchApprovalPattern } from '@deepseek-ai/dsh-user-approval'
 import type { ApprovalRule } from '@deepseek-ai/dsh-user-approval'
+import { commandPrefixOf, matchCommandPrefix, splitCommandWords } from '../src/rules.ts'
 
-const rule = (action: string, resource: string, effect: ApprovalRule['effect']): ApprovalRule => ({ action, resource, effect })
+const rule = (action: string, resource: string, effect: ApprovalRule['effect']): ApprovalRule =>
+  ({ action, resource, effect, match: 'glob' })
 
 describe('matchApprovalPattern', () => {
   it('matches literal text and wildcards across separators', () => {
@@ -56,5 +58,54 @@ describe('evaluateApprovalRules', () => {
     const rules = [rule('write', '**', 'allow'), rule('write', 'secrets/**', 'ask')]
     expect(evaluateApprovalRules(rules, { action: 'write', resources: ['secrets/key'] })).toBe('ask')
     expect(evaluateApprovalRules(rules, { action: 'write', resources: ['notes/guide.txt'] })).toBe('allow')
+  })
+})
+
+describe('command prefixes', () => {
+  it('matches whole leading words only', () => {
+    expect(matchCommandPrefix('git status', 'git status')).toBe(true)
+    expect(matchCommandPrefix('git status', 'git status -s')).toBe(true)
+    expect(matchCommandPrefix('git status', 'git statuspage')).toBe(false)
+    expect(matchCommandPrefix('git status', 'git push')).toBe(false)
+    expect(matchCommandPrefix('git', 'git push')).toBe(true)
+    expect(matchCommandPrefix('git status -s', 'git status')).toBe(false)
+  })
+
+  it('rejects commands whose effect is not visible in their words', () => {
+    for (const command of [
+      'git status && rm -rf build',
+      'git status; rm -rf build',
+      'git status | tee log',
+      'git status > out.txt',
+      'git status $(rm -rf build)',
+      'git status `rm -rf build`',
+      'git status\nrm -rf build',
+      'git "unterminated',
+    ]) {
+      expect(matchCommandPrefix('git status', command)).toBe(false)
+    }
+  })
+
+  it('honors quoting and escapes without treating quoted separators as operators', () => {
+    expect(splitCommandWords('git commit -m "one two"')).toEqual(['git', 'commit', '-m', 'one two'])
+    expect(splitCommandWords('git commit -m \'a;b\'')).toEqual(['git', 'commit', '-m', 'a;b'])
+    expect(splitCommandWords('git\\ status')).toEqual(['git status'])
+    expect(matchCommandPrefix('git commit', 'git commit -m "a && b"')).toBe(true)
+  })
+
+  it('derives a conservative prefix from the first words', () => {
+    expect(commandPrefixOf('git status -s')).toBe('git status')
+    expect(commandPrefixOf('rm -rf build')).toBe('rm')
+    expect(commandPrefixOf('git -C repo status')).toBe('git')
+    expect(commandPrefixOf('git status && rm -rf build')).toBeUndefined()
+  })
+
+  it('evaluates prefix rules against commands while glob rules keep their reach', () => {
+    const rules: ApprovalRule[] = [
+      { action: 'bash', resource: 'git status', effect: 'allow', match: 'prefix' },
+    ]
+    expect(evaluateApprovalRules(rules, { action: 'bash', resources: ['git status -s'] })).toBe('allow')
+    expect(evaluateApprovalRules(rules, { action: 'bash', resources: ['git push'] })).toBeUndefined()
+    expect(evaluateApprovalRules(rules, { action: 'bash', resources: ['git status && sudo rm -rf /'] })).toBeUndefined()
   })
 })

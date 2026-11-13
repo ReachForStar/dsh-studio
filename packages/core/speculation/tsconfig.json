@@ -21,7 +21,7 @@
       "path": "../../core/tools"
     },
     {
-      "path": "../../experimental/followup"
+      "path": "../../context/followup"
     },
     {
       "path": "../../fs/fs"

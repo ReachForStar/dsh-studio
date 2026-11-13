@@ -139,6 +139,30 @@ async request(req: ApprovalRequest): Promise<ApprovalOutcome>
 projectRulesFor(cwd: string | undefined): readonly ApprovalRule[]
 
 /**
+ * Read the rules added to one Session's memory for its lifetime.
+ * @param session - the session whose rules apply.
+ * @returns the session's ordered rules.
+ */
+sessionRulesFor(session: Session): readonly ApprovalRule[]
+
+/**
+ * Append one in-memory rule to a Session. The rule is evaluated after
+ * project rules and disappears with the Session; nothing is persisted.
+ * @param session - the session receiving the rule.
+ * @param rule - the rule to append.
+ * @returns the session's complete rule list after the write.
+ */
+addSessionRule(session: Session, rule: ApprovalRule): readonly ApprovalRule[]
+
+/**
+ * Remove one in-memory rule from a Session by position.
+ * @param session - the session owning the rule.
+ * @param index - the rule's position in {@link sessionRulesFor}.
+ * @returns the removed rule, or `undefined` when the position does not exist.
+ */
+removeSessionRule(session: Session, index: number): ApprovalRule | undefined
+
+/**
  * Append one rule to a project's stored rules.
  * @param cwd - the project directory.
  * @param rule - the rule to append.

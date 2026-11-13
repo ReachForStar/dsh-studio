@@ -161,6 +161,7 @@ export interface EscalationApprover<A = object, C = string> {
     action?: string
     resources?: readonly string[]
     displayReason?: { readonly en: string; readonly [locale: string]: string }
+    needsHuman?: boolean
     signal?: AbortSignal
   }): Promise<EscalationOutcome>
 }
@@ -245,6 +246,9 @@ export async function approveEscalation<A, C>(request: EscalationRequest, approv
     ...approval.action !== undefined ? { action: approval.action } : {},
     ...approval.resources !== undefined ? { resources: approval.resources } : {},
     displayReason: escalationDisplayReason(mode, justification),
+    // Widening confinement is a person's decision: an approval rule or an
+    // automated answerer must not grant it.
+    needsHuman: true,
     ...approval.signal ? { signal: approval.signal } : {},
   })
   switch (outcome) {

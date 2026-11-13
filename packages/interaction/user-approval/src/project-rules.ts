@@ -19,6 +19,7 @@ const approvalRuleSchema = z.object({
   action: z.string(),
   resource: z.string(),
   effect: z.enum(['allow', 'deny', 'ask']),
+  match: z.enum(['glob', 'prefix']).default('glob'),
 })
 
 /**

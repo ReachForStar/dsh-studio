@@ -28,6 +28,7 @@ boot 组负责启动 profile 应用并管理其已安装组合。`app-boot` 解�
 | [`config-editor`](config-editor/README.zh.md) | 通过 Loader 应用并持久化当前 profile 配置 | `configEditor` |
 | [`plugin-manager`](plugin-manager/README.zh.md) | 通过共享 CLI 操作管理当前 profile 插件与组合包 | `pluginManager` |
 | [`plugin-market`](plugin-market/README.zh.md) | 读取用户配置的插件索引，供发现页和 `plugin_market` 工具使用 | `pluginMarket` |
+| [`agent-plugins`](agent-plugins/README.zh.md) | Agent Plugins v1 加载器：把可移植 `plugin.json` 包的技能与 MCP 服务器发布到技能与 MCP 接缝 | — |
 
 <a id="related-documentation"></a>
 ## 相关文档

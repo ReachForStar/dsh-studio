@@ -70,7 +70,7 @@ export async function loadManifest(pluginRoot: string): Promise<AgentPluginManif
 
 function parseManifestJson(raw: string, manifestPath: string): unknown {
   try {
-    return JSON.parse(raw) as unknown
+    return JSON.parse(raw)
   } catch (error) {
     throw new Error(`Agent Plugins manifest "${manifestPath}" is not valid JSON: ${String(error)}`)
   }

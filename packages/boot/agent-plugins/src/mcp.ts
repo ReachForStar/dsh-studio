@@ -97,7 +97,7 @@ export async function loadPluginMcpServers(source: AgentPluginMcpSource): Promis
 
 function parseMcpJson(raw: string, mcpFile: string): unknown {
   try {
-    return JSON.parse(raw) as unknown
+    return JSON.parse(raw)
   } catch (error) {
     throw new Error(`Agent Plugins MCP file "${mcpFile}" is not valid JSON: ${String(error)}`)
   }

@@ -16,9 +16,9 @@ status: active
 
 ## 关键文件
 
-- `packages/experimental/speculation/src/index.ts`：`Config`（`workspaceRoot` / `overlayRoot` / `allowWrites` / 工具与路径键覆盖）、`gateToolCall`、`gatePlan`、`overlayPath`、`rewriteArguments`、`resolvePolicy`、`BOUNDARY_TOOLS`。`SpeculationDecision` 是可判别联合，`redirect` 变体自带 `redirectKey` 与 `redirectPath`，消费者无需再判空。
-- `packages/experimental/speculation/src/overlay.ts`：`OverlayFileSystem`（`FileSystem` 代理）：读取先探测 `<overlayRoot>/<相对路径>`，所有变更落到 overlay，按产出的路径集合 `commit` / `discard`。提交、丢弃、预置副本三段按路径列表抽成 `commitOverlay` / `discardOverlay` / `seedOverlay`，供不改参数而改提供者的调用方复用。
-- `packages/experimental/speculation/src/runner.ts`：Cordis 插件（`@deepseek-ai/dsh-speculation/runner`，`inject = ['llm', 'tools', 'fs']`）。`turn/end` 触发一次 `speculation` 目的的辅助请求 → `parsePlan` 校验预测 JSON → `executePlan` 门控并逐个派发 → 记录 `speculation/proposal`；下一条 `user/message` 归一化后与预测相同且 `allowWrites` 开启时 `commitOverlay`，否则 `discardOverlay`，并记录 `speculation/outcome`。
+- `packages/core/speculation/src/index.ts`：`Config`（`workspaceRoot` / `overlayRoot` / `allowWrites` / 工具与路径键覆盖）、`gateToolCall`、`gatePlan`、`overlayPath`、`rewriteArguments`、`resolvePolicy`、`BOUNDARY_TOOLS`。`SpeculationDecision` 是可判别联合，`redirect` 变体自带 `redirectKey` 与 `redirectPath`，消费者无需再判空。
+- `packages/core/speculation/src/overlay.ts`：`OverlayFileSystem`（`FileSystem` 代理）：读取先探测 `<overlayRoot>/<相对路径>`，所有变更落到 overlay，按产出的路径集合 `commit` / `discard`。提交、丢弃、预置副本三段按路径列表抽成 `commitOverlay` / `discardOverlay` / `seedOverlay`，供不改参数而改提供者的调用方复用。
+- `packages/core/speculation/src/runner.ts`：Cordis 插件（`@deepseek-ai/dsh-speculation/runner`，`inject = ['llm', 'tools', 'fs']`）。`turn/end` 触发一次 `speculation` 目的的辅助请求 → `parsePlan` 校验预测 JSON → `executePlan` 门控并逐个派发 → 记录 `speculation/proposal`；下一条 `user/message` 归一化后与预测相同且 `allowWrites` 开启时 `commitOverlay`，否则 `discardOverlay`，并记录 `speculation/outcome`。
 
 ## 设计决策
 

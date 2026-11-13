@@ -28,6 +28,7 @@ The boot group launches profile applications and manages their installed composi
 | [`config-editor`](config-editor/README.md) | Persists active profile configuration through Loader reconciliation | `configEditor` |
 | [`plugin-manager`](plugin-manager/README.md) | Manages current-profile plugins and bundle packages through shared CLI operations | `pluginManager` |
 | [`plugin-market`](plugin-market/README.md) | Reads the plugin indexes the user configures for Discover and the `plugin_market` tool | `pluginMarket` |
+| [`agent-plugins`](agent-plugins/README.md) | Agent Plugins v1 loader: publish a portable `plugin.json` package's skills and MCP servers through the skill and MCP seams | — |
 
 <a id="related-documentation"></a>
 ## Related documentation

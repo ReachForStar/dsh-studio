@@ -49,6 +49,7 @@ updated: 2026-11-13
 - [实验能力可视化开关：沿用上游 OPTIONAL_BUNDLES 模式](decisions/2026-09-visual-experimental-toggle.md) — Browser Use / Computer Use / Auto review 成为可选 bundle，Web 插件页一键开关；用户专属配置不进 bundle。
 - [跨包运行时导出的重复安装分类（2026-09-19）](decisions/2026-09-19-runtime-export-classification.md) — 六条导出登记 safe 的逐条依据、分类与依赖分区的连带关系，以及四个客户端包 peerDependencies 收敛到 cordis 后的发布布局变化。
 - [星域专家席经 A2A 抵达（2026-09-19）](decisions/2026-09-19-xingchen-external-specialist-seats.md) — 已被当前本地/A2A 可选席位模式取代；保留早期三个方案的取舍与后果。
+- [客户端域分层与包元数据门禁（2026-11-13）](decisions/2026-11-13-client-domain-layering-and-package-metadata.md) — 资源导入不计入分层、按包 `layers.json` 声明共享层与无环 DAG、可选 bundle 与 Web 产品包的实验依赖例外、8 语言元数据与 `ConfigInput` 约定。
 - [A2A 对接改用 a2a-bridge 方案（2026-09-20）](decisions/2026-09-20-a2a-bridge-scheme.md) — 双通道（直连 + Kafka 总线）、skill 契约、配置单一来源，以及不依赖跨仓本地包的理由。
 - [启动器改用构建产物面（2026-09-24）](decisions/2026-09-24-launcher-artifact-plane.md) — 三个方案取舍；插件行永远由加载器解析到 `lib/`，故默认 `dsh` 改走产物面（新增 `dsh:source` 保留 tsx 向量），以及门禁与文档的连带更新。
 

@@ -37,6 +37,8 @@ Add this row to a composition with `dsh-tools` mounted. The nearest scoped execu
 
 `maxSubCallsPerMinute`, `maxParallelSubCalls`, and `sdkBudgetTokens` are validated when the executor loads; an out-of-range value fails activation.
 
+An escalation approval for `run_code` carries the tools the program names through static `tools.<path>` chains. Dynamic access, aliasing `tools`, a shadowing declaration, or an unparseable program yields no resources, so an approval rule cannot be widened by source the scan cannot prove.
+
 `sdkBudgetTokens` caps the expanded part of the generated SDK. Tools in lexicographic order stay fully typed until the approximate budget is spent; every later tool keeps its binding with untyped arguments and results and appears in a one-line catalog after the declaration block, which lists parameter names and requiredness. Call the compact tools the same way; when `tool_search` is among the visible tools, the catalog points at it for the exact signature. The estimate counts schema nodes and bytes, not rendered text, so one budget selects the same tools under every runtime language. The default is `4000`; `0` expands every tool.
 
 Root `run_code` calls are exclusive and execute serially. `maxParallelSubCalls` limits parallel-safe nested calls within each program and defaults to `10`; it must be a positive integer, with `1` selecting serial execution. Exclusive calls form barriers.

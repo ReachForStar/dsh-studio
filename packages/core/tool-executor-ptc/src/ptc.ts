@@ -29,6 +29,7 @@ import { scopeTarget } from '@deepseek-ai/dsh-scope'
 import type { PtcCalls } from './ptc-calls.ts'
 import { CodeRunFailedError, ToolCallLimitExceededError } from './errors.ts'
 import type { Config } from './config.ts'
+import { scanToolReferences } from './scan.ts'
 import type { RunCodeToolOptions } from './run-code.ts'
 import type { ToolDefinition, ToolExecution, ToolExecutionFailure, ToolExecutionResult, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type {} from './types.ts'
@@ -368,6 +369,10 @@ export function createRunCodeTransport(
       },
       ...RUN_CODE_CONTROLS,
     },
+    // An escalation approval names the tools the source statically calls, so an
+    // unattended rule can allow exactly those; a dynamic or ambiguous program
+    // yields no resources and stays denied/asked.
+    approvalResources: args => ({ action: toolName, resources: scanToolReferences(args.code).tools }),
     output: {
       schema: {
         type: 'object',
@@ -413,7 +418,7 @@ export function createRunCodeTransport(
             subject: 'program',
           }, {
             approver: ctx.get('approval'), agent: exec.agent, callId: exec.callId,
-            toolName, signal: callSignal,
+            toolName, action: toolName, resources: scanToolReferences(args.code).tools, signal: callSignal,
           })
           policy = { ...standingPolicy, mode: approvedMode }
         }

@@ -2890,6 +2890,40 @@ describe('per-program execution controls', () => {
     } finally { await ctx.fiber.dispose() }
   })
 
+  it('classifies an escalation approval by the tools the program statically calls', async () => {
+    const { ctx, execute } = await controlledSetup()
+    const seen: ApprovalRequest[] = []
+    ctx.on('approval/request', (request) => {
+      seen.push(request)
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+    try {
+      await execute({
+        code: 'await tools.bash({ command: "ls" })\nawait tools.write({ file_path: "a.txt" })',
+        sandbox_permissions: 'workspace-write',
+        justification: 'Write generated source',
+      })
+      expect(seen[0]).toMatchObject({ toolName: RUN_CODE_NAME, action: RUN_CODE_NAME, resources: ['bash', 'write'] })
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('declares no escalation resources for a program whose tools are dynamic', async () => {
+    const { ctx, execute } = await controlledSetup()
+    const seen: ApprovalRequest[] = []
+    ctx.on('approval/request', (request) => {
+      seen.push(request)
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+    try {
+      await execute({
+        code: 'const name = "bash"\nawait tools[name]({})',
+        sandbox_permissions: 'workspace-write',
+        justification: 'Write generated source',
+      })
+      expect(seen[0]).toMatchObject({ action: RUN_CODE_NAME, resources: [] })
+    } finally { await ctx.fiber.dispose() }
+  })
+
   it.each(['rejected', 'cancelled', 'unavailable'] as const)('does not start a program after approval returns %s', async (outcome) => {
     const { ctx, runtime, session, execute } = await controlledSetup()
     ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>(outcome))

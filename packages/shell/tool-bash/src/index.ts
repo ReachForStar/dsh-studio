@@ -244,6 +244,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   const approveBashEscalation = (
     mode: string,
     justification: string,
+    command: string,
     exec: ToolExecution,
     standingPolicy: SandboxExecutionPolicy | undefined,
   ): Promise<SandboxMode> => {
@@ -261,6 +262,8 @@ export function apply(ctx: Context, config: Config = {}): void {
         agent: exec.agent,
         callId: exec.callId,
         toolName: 'bash',
+        action: 'bash',
+        resources: [command],
         signal: exec.signal,
       },
     )
@@ -505,7 +508,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         const standingPolicy = resolveSandboxPolicy(exec)
         validateBashArgs(args, standingPolicy?.mode)
         const approvedMode = args.sandbox_permissions !== undefined && args.justification !== undefined
-          ? await approveBashEscalation(args.sandbox_permissions, args.justification, exec, standingPolicy)
+          ? await approveBashEscalation(args.sandbox_permissions, args.justification, args.command, exec, standingPolicy)
           : undefined
         const policy = approvedMode === undefined
           ? standingPolicy

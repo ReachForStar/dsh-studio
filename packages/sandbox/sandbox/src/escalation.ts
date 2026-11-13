@@ -158,6 +158,8 @@ export interface EscalationApprover<A = object, C = string> {
     toolName: string
     callId: C
     reason: string
+    action?: string
+    resources?: readonly string[]
     displayReason?: { readonly en: string; readonly [locale: string]: string }
     signal?: AbortSignal
   }): Promise<EscalationOutcome>
@@ -179,6 +181,9 @@ export interface EscalationApproval<A = object, C = string> {
   callId: C
   /** The tool name recorded on the approval request. */
   toolName: string
+  /** Action and resources the tool classified for approval rules. */
+  action?: string
+  resources?: readonly string[]
   /** The tool-execution abort signal the approval request rides, when present. */
   signal?: AbortSignal
 }
@@ -237,6 +242,8 @@ export async function approveEscalation<A, C>(request: EscalationRequest, approv
     toolName: approval.toolName,
     callId: approval.callId,
     reason: `escalate sandbox to ${mode}: ${justification}`,
+    ...approval.action !== undefined ? { action: approval.action } : {},
+    ...approval.resources !== undefined ? { resources: approval.resources } : {},
     displayReason: escalationDisplayReason(mode, justification),
     ...approval.signal ? { signal: approval.signal } : {},
   })

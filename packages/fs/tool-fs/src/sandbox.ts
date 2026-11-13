@@ -22,6 +22,8 @@ import { FsError } from '@deepseek-ai/dsh-fs'
 export interface FsEscalationArgs {
   sandbox_permissions?: string
   justification?: string
+  /** Target path, when the mutating tool declares one, for approval rules. */
+  file_path?: string
 }
 
 /** The schema fields for the escalation arguments, spread into a tool's `parameters` when a confining backend is mounted. */
@@ -107,6 +109,8 @@ export class FsSandboxController {
         agent: exec.agent,
         callId: exec.callId,
         toolName,
+        action: 'write',
+        ...args.file_path === undefined ? {} : { resources: [args.file_path] },
         signal: exec.signal,
       },
     )

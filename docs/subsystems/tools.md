@@ -83,6 +83,16 @@ interface ToolDefinition extends ToolSchema {
    */
   isConcurrencySafe?(args: unknown): boolean
   /**
+   * Classify one accepted call for approval rules: the action name and the
+   * resource names a `{action, resource, effect}` rule can match. Pure and
+   * synchronous; a throw or omission falls back to the tool name with no
+   * resources, so a failing classifier cannot widen a rule. Never
+   * model-visible.
+   * @param args - parsed arguments after the schema boundary.
+   * @returns the action and zero or more resource names.
+   */
+  approvalResources?(args: unknown): { readonly action: string; readonly resources: readonly string[] }
+  /**
    * Optional: how to present the PENDING state of one call in a UI, derived from
    * the call's `args` (parsed arguments, `unknown` — the tool validates/narrows
    * its own input). Returns a {@link ToolCallView} (a `card`-tagged render intent),

@@ -426,6 +426,28 @@ export class ToolExecutionPipeline {
   }
 
   /**
+   * Read one call's approval classification from its visible definition.
+   * A throwing or malformed classifier falls back to the tool name with no
+   * resources, so an ask still happens and rules cannot be widened by a
+   * broken classifier.
+   * @param exec - the execution whose definition supplies the classifier.
+   * @returns the action and resource names a rule may match.
+   */
+  private classifyApprovalResources(exec: ToolExecution): {
+    readonly action: string
+    readonly resources: readonly string[]
+  } {
+    const fallback = { action: exec.name, resources: [] as readonly string[] }
+    const tool = this.get(exec.name, exec.agent, exec.toolSet)
+    if (tool?.approvalResources === undefined) return fallback
+    try {
+      return tool.approvalResources(exec.arguments)
+    } catch {
+      return fallback
+    }
+  }
+
+  /**
    * Resolve an `ask` decision to allow/deny through the approval seam. The
    * seam is consumed opportunistically with `ctx.get('approval')` — a
    * deployment that composes no ApprovalService keeps the historical degrade
@@ -454,9 +476,12 @@ export class ToolExecutionPipeline {
         approvalCancelled: false,
       }
     }
+    const classified = this.classifyApprovalResources(exec)
     const outcome = await approval.request({
       agent: exec.agent,
       toolName: exec.name,
+      action: classified.action,
+      resources: classified.resources,
       callId: exec.callId,
       ...ask.reason !== undefined ? { reason: ask.reason } : {},
       ...ask.displayReason !== undefined ? { displayReason: ask.displayReason } : {},

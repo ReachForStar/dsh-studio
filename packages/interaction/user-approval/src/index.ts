@@ -48,9 +48,13 @@ declare module '@deepseek-ai/dsh-session/types' {
 
 import { ApprovalRequestId } from './types.ts'
 import type { ApprovalOutcome, ApprovalRequestEvent } from './types.ts'
+import { evaluateApprovalRules } from './rules.ts'
+import type { ApprovalRule } from './rules.ts'
 
 export { ApprovalRequestId } from './types.ts'
 export type { ApprovalOutcome } from './types.ts'
+export { evaluateApprovalRules, matchApprovalPattern } from './rules.ts'
+export type { ApprovalRule, ApprovalRuleEffect, ApprovalRuleRequest } from './rules.ts'
 
 /** Every {@link ApprovalOutcome}, for runtime normalization of answerer returns. */
 const OUTCOMES: readonly ApprovalOutcome[] = ['allowed-once', 'rejected', 'cancelled', 'unavailable']
@@ -157,6 +161,13 @@ export interface Config {
    * prompting (the deterministic CI/unattended stance).
    */
   readonly policy?: ApprovalPolicy
+  /**
+   * Ordered `{action, resource, effect}` rules evaluated before the policy and
+   * the answerers. Later matching rules override earlier ones; a matching
+   * `'allow'` grants the request and a matching `'deny'` rejects it even under
+   * the `'never'` policy, which is how unattended runs permit exact actions.
+   */
+  readonly rules?: ApprovalRule[]
 }
 
 /**
@@ -169,12 +180,19 @@ export class ApprovalService extends Service {
 
   static Config: z<Config> = z.object({
     policy: z.union(['ask', 'never'] as const).default('ask'),
+    rules: z.array(z.object({
+      action: z.string(),
+      resource: z.string(),
+      effect: z.union(['allow', 'deny', 'ask'] as const),
+    })).default([]),
   })
 
   private approvalProjectionHandle!: ProjectionHandle<ApprovalState>
+  private readonly rules: readonly ApprovalRule[]
 
   constructor(ctx: Context, public config: Config) {
     super(ctx, 'approval')
+    this.rules = config.rules ?? []
   }
 
   protected async [Service.init](): Promise<void> {
@@ -255,9 +273,29 @@ export class ApprovalService extends Service {
       ...req.callId !== undefined ? { callId: req.callId } : {},
       ...req.reason !== undefined ? { reason: req.reason } : {},
     })
-    const outcome = await this.decide(req, session)
+    const outcome = await this.decideWithRules(req, session)
     session.append('approval/decided', { id, outcome })
     return outcome
+  }
+
+  /**
+   * Apply configured rules before the session policy and the answerers: a
+   * matching `'allow'` grants this request, a matching `'deny'` rejects it even
+   * under the `'never'` policy, and `'ask'` or no match continues to the
+   * ordinary decision path. Rules never carry a wildcard grant beyond the
+   * request they matched.
+   * @param req - the pending decision with its classified action and resources.
+   * @param session - the request agent's session used for policy lookup.
+   * @returns the closed outcome.
+   */
+  private decideWithRules(req: ApprovalRequest, session: Session): Promise<ApprovalOutcome> {
+    const effect = evaluateApprovalRules(this.rules, {
+      action: req.action ?? req.toolName,
+      resources: req.resources ?? [],
+    })
+    if (effect === 'allow') return Promise.resolve('allowed-once')
+    if (effect === 'deny') return Promise.resolve('rejected')
+    return this.decide(req, session)
   }
 
   /**

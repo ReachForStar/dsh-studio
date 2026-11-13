@@ -109,6 +109,7 @@ export function applyWriteTool(ctx: Context, sandbox: FsSandboxController): void
             .map(({ path, oldText, newText }) => ({ path, oldText, newText })),
       }),
     },
+    approvalResources: (args: WriteToolArgs) => ({ action: 'write', resources: [args.file_path] }),
     async execute(args: WriteToolArgs, exec) {
       const input = parseWriteArgs(args)
       // Resolve the per-call sandbox policy (approved mode > session override

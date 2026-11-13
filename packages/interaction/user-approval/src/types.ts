@@ -65,6 +65,10 @@ export interface ApprovalRequestEvent {
   readonly agent: Agent
   /** Tool whose operation requires a decision. */
   readonly toolName: string
+  /** Action name the tool declared for approval rules; defaults to the tool name. */
+  readonly action?: string
+  /** Resource names the tool declared for approval rules. */
+  readonly resources?: readonly string[]
   /** Exact tool call being decided, when available. */
   readonly callId?: ToolCallId
   /** Human-readable reason supplied by the asker. */

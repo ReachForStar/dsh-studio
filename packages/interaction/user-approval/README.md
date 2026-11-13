@@ -40,11 +40,27 @@ The effective policy is the one set for the session, falling back to the configu
 - name: '@deepseek-ai/dsh-user-approval'
   config:
     policy: ask
+    rules:
+      - action: write
+        resource: docs/**
+        effect: allow
+      - action: bash
+        resource: 'git *'
+        effect: allow
 ```
 
 | Field | Default | Meaning |
 |---|---|---|
 | `policy` | `ask` | Default for sessions without an `approval/policy` override |
+| `rules` | `[]` | Ordered `{action, resource, effect}` rules evaluated before the policy and the answerers |
+
+### Rules
+
+Rules decide a request before the session policy and before any answerer. Each rule names an action pattern, a resource pattern, and an effect (`allow`, `deny`, or `ask`). `*` matches any run of characters — including path separators — and `?` matches exactly one character. The last matching rule wins, so a narrow exception can follow a broad rule.
+
+A rule matches when its action pattern matches the request's action and, for a request with declared resources, at least one resource matches; a request without resources matches only a `*` resource. A matching `allow` settles `allowed-once` without prompting, a matching `deny` settles `rejected`, and `ask` (or no match) continues to the policy and answerers. Rules never grant more than the request they matched.
+
+Tools supply the action and resources through their definition: `write` and `edit` declare `write` with the target path, and `bash` declares `bash` with the command text. Any other tool, or a classifier that throws, falls back to its own tool name with no resources, so an unexpected classifier can only make a rule less specific, never wider. Because rules precede the `never` policy, an unattended run can permit exact actions while rejecting everything else.
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-user-approval) is the exhaustive source for every accepted field and its JSDoc. `setPolicy(agent, policy)` switches a live agent and queues the switch notice described under Model Experience for its next model step; `setApprovalPolicy(session, policy)` is the direct durable write path used by session initialization.
 

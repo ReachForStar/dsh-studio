@@ -499,6 +499,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         }],
         presentationMeta: (_args, value) => ({ cwd: value.cwd }),
       },
+      approvalResources: (args: BashToolArgs) => ({ action: 'bash', resources: [args.command] }),
       async execute(args: BashToolArgs, exec) {
         // Description is display metadata; workdir defaults to the caller's session.
         const standingPolicy = resolveSandboxPolicy(exec)

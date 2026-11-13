@@ -40,11 +40,27 @@ kind: "package-reference"
 - name: '@deepseek-ai/dsh-user-approval'
   config:
     policy: ask
+    rules:
+      - action: write
+        resource: docs/**
+        effect: allow
+      - action: bash
+        resource: 'git *'
+        effect: allow
 ```
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `policy` | `ask` | 没有 `approval/policy` 覆盖的会话的默认策略 |
+| `rules` | `[]` | 在策略与应答者之前求值的有序 `{action, resource, effect}` 规则 |
+
+### 规则
+
+规则在会话策略与任何应答者之前决定请求。每条规则给出动作模式、资源模式与效果（`allow`、`deny` 或 `ask`）。`*` 匹配任意长度字符（包括路径分隔符），`?` 匹配恰好一个字符。最后匹配的规则生效，因此可以在宽规则之后追加窄例外。
+
+当动作模式与请求动作匹配，且对声明了资源的请求至少有一个资源匹配时，规则命中；没有资源的请求只匹配 `*` 资源。命中的 `allow` 不询问任何人并结算为 `allowed-once`，命中的 `deny` 结算为 `rejected`，`ask`（或无命中）继续走策略与应答者。规则授予的范围不会超过命中的请求。
+
+工具通过定义提供动作与资源：`write` 与 `edit` 声明 `write` 与目标路径，`bash` 声明 `bash` 与命令文本。其他工具，以及会抛出的分类函数，回退到自身工具名且没有资源，因此异常分类只会让规则更窄，不会更宽。由于规则先于 `never` 策略，无人值守运行可以放行精确动作并拒绝其他一切。
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-user-approval)是每个受支持字段及其 JSDoc 的穷尽式真源。`setPolicy(agent, policy)` 切换运行中的 agent 的策略，并为它的下一个模型步骤排队一条模型体验一节所述的切换通知；`setApprovalPolicy(session, policy)` 是会话初始化使用的直接持久写入路径。
 

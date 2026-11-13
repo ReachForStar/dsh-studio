@@ -9,6 +9,7 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ApprovalService, { ApprovalOutcome, ApprovalRequest, setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import type { ApprovalRule } from '@deepseek-ai/dsh-user-approval'
 
 // Keep the Agent structural while exercising committed events on a real managed Session.
 function fakeAgent(ctx: Context, seed: Array<{ type: 'turn/start' | 'turn/end' | 'user/message' }> = [{ type: 'turn/start' }, { type: 'user/message' }]): { agent: Agent; appended: Array<{ type: string; data: Record<string, unknown> }> } {
@@ -522,5 +523,86 @@ describe('approval policy (the approval/policy fold)', () => {
     expect(await contextFor()).toBeDefined()
     await fiber.dispose()
     expect(await contextFor()).toBeUndefined()
+  })
+})
+
+describe('ApprovalService configured rules', () => {
+  it('defaults to no rules when the configuration omits them', async () => {
+    const ctx = await context()
+    expect(new ApprovalService(ctx, {})).toBeDefined()
+  })
+
+  async function mountedWith(config: { policy?: 'ask' | 'never'; rules?: ApprovalRule[] }): Promise<Context> {
+    const ctx = await context()
+    await ctx.plugin(ApprovalService, config)
+    return ctx
+  }
+
+  it('grants a matching allow rule without consulting any answerer', async () => {
+    const ctx = await mountedWith({ rules: [{ action: 'write', resource: 'docs/**', effect: 'allow' }] })
+    const { agent, appended } = fakeAgent(ctx)
+    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('rejected'))
+    ctx.on('approval/request', answerer)
+
+    const outcome = await ctx.approval.request(requestOf(agent, {
+      toolName: 'write', action: 'write', resources: ['notes/guide.txt'],
+    }))
+
+    expect(outcome).toBe('allowed-once')
+    expect(answerer).not.toHaveBeenCalled()
+    expect(appended.map(event => event.type)).toEqual(['approval/asked', 'approval/decided'])
+    expect(appended[1]?.data).toMatchObject({ outcome: 'allowed-once' })
+  })
+
+  it('rejects a matching deny rule before the answerers and even under the never policy', async () => {
+    const ctx = await mountedWith({
+      policy: 'never',
+      rules: [{ action: 'bash', resource: 'rm *', effect: 'deny' }],
+    })
+    const { agent } = fakeAgent(ctx)
+    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
+    ctx.on('approval/request', answerer)
+
+    await expect(ctx.approval.request(requestOf(agent, {
+      toolName: 'bash', action: 'bash', resources: ['rm -rf build'],
+    }))).resolves.toBe('rejected')
+    expect(answerer).not.toHaveBeenCalled()
+  })
+
+  it('lets an explicit allow rule unlock the never policy for exactly its action and resource', async () => {
+    const ctx = await mountedWith({
+      policy: 'never',
+      rules: [{ action: 'bash', resource: 'git *', effect: 'allow' }],
+    })
+    const { agent } = fakeAgent(ctx)
+
+    await expect(ctx.approval.request(requestOf(agent, {
+      toolName: 'bash', action: 'bash', resources: ['git status'],
+    }))).resolves.toBe('allowed-once')
+    await expect(ctx.approval.request(requestOf(agent, {
+      toolName: 'bash', action: 'bash', resources: ['npm test'],
+    }))).resolves.toBe('rejected')
+  })
+
+  it('falls through to the answerers for an ask effect', async () => {
+    const ctx = await mountedWith({
+      rules: [{ action: 'write', resource: '**', effect: 'ask' }],
+    })
+    const { agent } = fakeAgent(ctx)
+    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
+    ctx.on('approval/request', answerer)
+
+    await expect(ctx.approval.request(requestOf(agent, {
+      toolName: 'write', action: 'write', resources: ['notes/guide.txt'],
+    }))).resolves.toBe('allowed-once')
+    expect(answerer).toHaveBeenCalledOnce()
+  })
+
+  it('defaults an unclassified request to the tool name with no resources', async () => {
+    const ctx = await mountedWith({ rules: [{ action: 'echo', resource: 'notes.txt', effect: 'allow' }] })
+    const { agent } = fakeAgent(ctx)
+
+    await expect(ctx.approval.request(requestOf(agent))).resolves.toBe('unavailable')
+    await expect(ctx.approval.request(requestOf(agent, { resources: ['notes.txt'] }))).resolves.toBe('allowed-once')
   })
 })

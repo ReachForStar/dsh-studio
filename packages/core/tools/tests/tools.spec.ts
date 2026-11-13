@@ -922,6 +922,58 @@ describe('ToolRuntime', () => {
       expect(seen[0]?.signal).toBe(controller.signal)
     })
 
+    it('forwards the definition-declared action and resources to the approval seam', async () => {
+      const ctx = await approvalSetup()
+      const seen: ApprovalRequest[] = []
+      ctx.on('approval/request', (req) => {
+        seen.push(req)
+        return Promise.resolve<ApprovalOutcome>('allowed-once')
+      })
+      ctx.tools.register(defineTool({
+        name: 'classify',
+        description: 'classify approval resources',
+        parameters: { path: { type: 'string', required: true } },
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        approvalResources: args => ({ action: 'write', resources: [args.path] }),
+        execute: async args => args.path,
+      }))
+      ctx.on('tools/pre-execute', async (): Promise<PreToolDecision> => ({ kind: 'ask' }))
+
+      const result = await executeToolFixture(ctx, {
+        signal: testToolSignal, callId: ToolCallId('c1'), name: 'classify',
+        arguments: { path: 'notes/guide.txt' }, agent: fakeAgent(),
+      })
+
+      expect(result.isError).toBe(false)
+      expect(seen[0]).toMatchObject({ toolName: 'classify', action: 'write', resources: ['notes/guide.txt'] })
+    })
+
+    it('falls back to the tool name when the approval classifier throws', async () => {
+      const ctx = await approvalSetup()
+      const seen: ApprovalRequest[] = []
+      ctx.on('approval/request', (req) => {
+        seen.push(req)
+        return Promise.resolve<ApprovalOutcome>('allowed-once')
+      })
+      ctx.tools.register(defineTool({
+        name: 'broken-classifier',
+        description: 'throw from the classifier',
+        parameters: {},
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        approvalResources: () => { throw new Error('classifier failed') },
+        execute: async () => 'ok',
+      }))
+      ctx.on('tools/pre-execute', async (): Promise<PreToolDecision> => ({ kind: 'ask' }))
+
+      const result = await executeToolFixture(ctx, {
+        signal: testToolSignal, callId: ToolCallId('c2'), name: 'broken-classifier',
+        arguments: {}, agent: fakeAgent(),
+      })
+
+      expect(result.isError).toBe(false)
+      expect(seen[0]).toMatchObject({ toolName: 'broken-classifier', action: 'broken-classifier', resources: [] })
+    })
+
     it('denies with the user-rejection reason on rejected', async () => {
       const ctx = await approvalSetup()
       ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>('rejected'))

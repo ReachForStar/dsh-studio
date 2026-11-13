@@ -5092,7 +5092,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-user-approval`
 
 - `inject`: `sessionProjections`
-- `source`: [`packages/interaction/user-approval/src/index.ts:152`](../packages/interaction/user-approval/src/index.ts)
+- `source`: [`packages/interaction/user-approval/src/index.ts:156`](../packages/interaction/user-approval/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config. All optional — `static Config` supplies the defaults. */
@@ -5104,6 +5104,13 @@ export interface Config {
    * prompting (the deterministic CI/unattended stance).
    */
   readonly policy?: ApprovalPolicy
+  /**
+   * Ordered `{action, resource, effect}` rules evaluated before the policy and
+   * the answerers. Later matching rules override earlier ones; a matching
+   * `'allow'` grants the request and a matching `'deny'` rejects it even under
+   * the `'never'` policy, which is how unattended runs permit exact actions.
+   */
+  readonly rules?: ApprovalRule[]
 }
 
 /**
@@ -5117,6 +5124,19 @@ export interface Config {
  *   the policy whose outcome is knowable without asking.
  */
 export type ApprovalPolicy = 'ask' | 'never'
+
+/** One ordered approval rule; later matches override earlier ones. */
+export interface ApprovalRule {
+  /** Action pattern, matched against the tool's declared action or its tool name. */
+  readonly action: string
+  /** Resource pattern, matched against every declared resource name. */
+  readonly resource: string
+  /** Decision for a matching request. */
+  readonly effect: ApprovalRuleEffect
+}
+
+/** What a matching rule decides before any answerer is consulted. */
+export type ApprovalRuleEffect = 'allow' | 'deny' | 'ask'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-user-approval -->
 

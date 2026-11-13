@@ -116,6 +116,7 @@ export function applyEditTool(ctx: Context, sandbox: FsSandboxController): void 
           .map(({ path, oldText, newText }) => ({ path, oldText, newText })),
       }),
     },
+    approvalResources: (args: EditToolArgs) => ({ action: 'write', resources: [args.file_path] }),
     async execute(args: EditToolArgs, exec) {
       const input = parseEditArgs(args)
       // Resolve the per-call sandbox policy (approved mode > session override

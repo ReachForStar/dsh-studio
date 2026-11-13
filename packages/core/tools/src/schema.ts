@@ -580,6 +580,12 @@ export interface DefineToolOptions<S extends ParameterSchemaSpec, O extends Valu
    */
   isConcurrencySafe?(args: InferArgs<S>): boolean
   /**
+   * Classify one call for approval rules.
+   * @param args - typed validated arguments.
+   * @returns the action and resource names a rule may match.
+   */
+  approvalResources?(args: InferArgs<S>): { readonly action: string; readonly resources: readonly string[] }
+  /**
    * Execute the tool after argument validation.
    * @param args - typed validated arguments.
    * @param exec - execution identity, caller, cancellation, and nesting data.
@@ -644,6 +650,8 @@ export function defineTool<const S extends ParameterSchemaSpec, const O extends 
   const userPresentResult = options.presentResult
   // oxlint-disable-next-line typescript/unbound-method
   const userIsConcurrencySafe = options.isConcurrencySafe
+  // oxlint-disable-next-line typescript/unbound-method
+  const userApprovalResources = options.approvalResources
   if (options.timeoutMs !== undefined && (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0)) {
     throw new Error(`defineTool(${options.name}): timeoutMs must be a positive finite number`)
   }
@@ -701,6 +709,9 @@ export function defineTool<const S extends ParameterSchemaSpec, const O extends 
       if (validate(args).length > 0) return false
       return userIsConcurrencySafe(args as InferArgs<S>)
     }
+  }
+  if (userApprovalResources !== undefined) {
+    tool.approvalResources = (args: unknown) => userApprovalResources(args as InferArgs<S>)
   }
   return tool
 }

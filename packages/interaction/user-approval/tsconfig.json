@@ -37,6 +37,12 @@
     },
     {
       "path": "../../session/session-projection"
+    },
+    {
+      "path": "../commands"
+    },
+    {
+      "path": "../../storage/storage-domain"
     }
   ]
 }

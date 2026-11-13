@@ -68,6 +68,10 @@ export interface ApprovalPresentationRequest {
   readonly reason?: string
   /** Localized presentation copy; the audit reason remains unchanged. */
   readonly displayReason?: { readonly en: string; readonly [locale: string]: string }
+  /** Approval-rule action declared by the tool, when it classifies the call. */
+  readonly action?: string
+  /** Approval-rule resources declared by the tool. */
+  readonly resources?: readonly string[]
   /** Cancellation projected from the Host waterfall. */
   readonly signal?: AbortSignal
 }
@@ -94,6 +98,10 @@ export class PendingApproval {
   readonly reason: string | undefined
   /** Localized presentation copy, when supplied by the asker. */
   readonly displayReason: ApprovalPresentationRequest['displayReason']
+  /** Approval-rule action declared by the tool. */
+  readonly action: string | undefined
+  /** Approval-rule resources declared by the tool. */
+  readonly resources: readonly string[]
   /** Result returned by the Remote Event listener to the Host waterfall. */
   readonly result: Promise<ApprovalDecision>
 
@@ -116,6 +124,8 @@ export class PendingApproval {
     this.callId = request.callId
     this.reason = request.reason
     this.displayReason = request.displayReason
+    this.action = request.action
+    this.resources = request.resources ?? []
     const completion = Promise.withResolvers<ApprovalDecision>()
     this.result = completion.promise
     this.#resolve = completion.resolve
@@ -193,6 +203,11 @@ export interface ApprovalInjected {
    * @returns text for the active UI language.
    */
   resolveReason(reason: NonNullable<ApprovalPresentationRequest['displayReason']>): string
+  /**
+   * Save the request's action and resources as project rules, then grant it.
+   * @param approval - the pending request whose scope becomes a rule.
+   */
+  alwaysAllow(approval: PendingApproval): Promise<void>
 }
 
 /** Full props of the approval composer takeover. */

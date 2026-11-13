@@ -62,6 +62,18 @@ kind: "package-reference"
 
 工具通过定义提供动作与资源：`write` 与 `edit` 声明 `write` 与目标路径，`bash` 声明 `bash` 与命令文本。其他工具，以及会抛出的分类函数，回退到自身工具名且没有资源，因此异常分类只会让规则更窄，不会更宽。由于规则先于 `never` 策略，无人值守运行可以放行精确动作并拒绝其他一切。
 
+### 项目规则与 `/allow`
+
+挂载存储域时，服务还会在 `approval_rules` 域中按项目目录保存规则。存储的规则排在配置规则之后，因此可以收窄或扩展它们。`/allow` 命令编辑发起会话所属项目的规则：
+
+| 输入 | 结果 |
+|---|---|
+| `/allow <action> <resource> [allow\|deny\|ask]` | 追加一条规则；效果默认为 `allow` |
+| `/allow list` | 按从 1 开始的位置列出项目规则 |
+| `/allow remove <n>` | 删除位置 `n` 的规则 |
+
+没有记录工作目录的会话会拒绝该命令。`addProjectRule(cwd, rule)`、`removeProjectRule(cwd, index)` 与 `projectRulesFor(cwd)` 是供 Host 调用方使用的同一组操作。未挂载存储域时项目规则为空，修改操作会拒绝。
+
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-user-approval)是每个受支持字段及其 JSDoc 的穷尽式真源。`setPolicy(agent, policy)` 切换运行中的 agent 的策略，并为它的下一个模型步骤排队一条模型体验一节所述的切换通知；`setApprovalPolicy(session, policy)` 是会话初始化使用的直接持久写入路径。
 
 ### 请求决定

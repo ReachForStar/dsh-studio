@@ -16,5 +16,6 @@ export function ApprovalPanel(props: ApprovalComposerProps) {
     canAnswer: () => approval.answerable,
     onAllow: () => approval.answer('allowed-once'),
     onReject: () => approval.answer('rejected'),
+    ...approval.action === undefined ? {} : { onAlways: () => props.alwaysAllow(approval) },
   })
 }

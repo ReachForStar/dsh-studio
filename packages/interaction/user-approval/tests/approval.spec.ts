@@ -539,7 +539,7 @@ describe('ApprovalService configured rules', () => {
   }
 
   it('grants a matching allow rule without consulting any answerer', async () => {
-    const ctx = await mountedWith({ rules: [{ action: 'write', resource: 'docs/**', effect: 'allow' }] })
+    const ctx = await mountedWith({ rules: [{ action: 'write', resource: 'notes/**', effect: 'allow' }] })
     const { agent, appended } = fakeAgent(ctx)
     const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('rejected'))
     ctx.on('approval/request', answerer)

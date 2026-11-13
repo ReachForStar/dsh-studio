@@ -14048,6 +14048,9 @@ importers:
 
   packages/interaction/user-approval:
     dependencies:
+      '@deepseek-ai/dsh-storage-domain':
+        specifier: workspace:*
+        version: link:../../storage/storage-domain
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
@@ -14064,6 +14067,9 @@ importers:
       '@deepseek-ai/dsh-brand':
         specifier: workspace:*
         version: link:../../util/brand
+      '@deepseek-ai/dsh-commands':
+        specifier: workspace:*
+        version: link:../commands
       '@deepseek-ai/dsh-llm':
         specifier: workspace:*
         version: link:../../llm/llm

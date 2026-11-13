@@ -5,6 +5,7 @@ import type { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { ApprovalCard } from '../src/client/ApprovalCard.tsx'
 import { ApprovalWarning } from '../src/client/ApprovalWarning.tsx'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -27,6 +28,14 @@ type ApprovalListener = (
   next: () => Promise<'unavailable'>,
 ) => Promise<unknown>
 
+type CommandResultValue = { ok: true; value: { result: { kind: string } } } | { ok: false; error: { code: string; message: string } }
+type CommandExecuteMock = Mock<(
+  sessionId: SessionId,
+  line: string,
+  attachments: readonly never[],
+  signal: AbortSignal,
+) => Promise<CommandResultValue>>
+
 interface PluginBench {
   readonly ctx: Context
   readonly listener: ApprovalListener
@@ -37,6 +46,7 @@ interface PluginBench {
   readonly register: ReturnType<typeof vi.fn>
   readonly injectSlot: ReturnType<typeof vi.fn>
   readonly shortcuts: ReturnType<typeof vi.fn<(entry: { label: () => string }) => () => void>>
+  readonly commandsExecute: CommandExecuteMock
   releasePending(): Promise<void>
   registration(): {
     options: {
@@ -79,11 +89,13 @@ async function setupPlugin(): Promise<PluginBench> {
     const dispose = ctx.effect(() => mount())
     return () => { void dispose() }
   })
+  const commandsExecute: CommandExecuteMock = vi.fn(async () => ({ ok: true, value: { result: { kind: 'success' } } }))
   ctx.provide('remote', {
     $on: (_event: string, callback: ApprovalListener) => {
       listener = callback
       return () => {}
     },
+    commands: { execute: commandsExecute },
   } as never)
   ctx.provide('sessions', { scopeOf } as never)
   ctx.provide('uiSession', { registerPendingInteraction } as never)
@@ -109,6 +121,7 @@ async function setupPlugin(): Promise<PluginBench> {
     register,
     injectSlot,
     shortcuts,
+    commandsExecute,
     async releasePending() {
       const delegates = [...pending.values()]
       pending.clear()
@@ -213,6 +226,78 @@ describe('PendingApproval', () => {
 })
 
 describe('approval Remote Event consumer', () => {
+  it('saves project rules for a classified action before granting', async () => {
+    const bench = await setupPlugin()
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const next = vi.fn(() => Promise.resolve<'unavailable'>('unavailable'))
+    const result = bench.listener.call(scope.ctx, {
+      toolName: 'write', action: 'write', resources: ['notes/guide.txt', 'build/out.txt'],
+    }, next)
+    const pending = bench.pending.getSnapshot()[0]!
+    const { options } = bench.registration()
+
+    await options.inject().alwaysAllow(pending)
+
+    expect(bench.commandsExecute.mock.calls.map(([sessionId, line]): [string, string] => [sessionId, line])).toEqual([
+      ['s1', '/allow write notes/guide.txt'],
+      ['s1', '/allow write build/out.txt'],
+    ])
+    await expect(result).resolves.toBe('allowed-once')
+  })
+
+  it('saves a wildcard resource when the action declares none', async () => {
+    const bench = await setupPlugin()
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const result = bench.listener.call(scope.ctx, { toolName: 'bash', action: 'bash' }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+    await bench.registration().options.inject().alwaysAllow(pending)
+    expect(bench.commandsExecute.mock.calls.map(([, line]) => line)).toEqual(['/allow bash *'])
+    await expect(result).resolves.toBe('allowed-once')
+  })
+
+  it('grants without saving when the request declares no action', async () => {
+    const bench = await setupPlugin()
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const result = bench.listener.call(scope.ctx, { toolName: 'bash' }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+    await bench.registration().options.inject().alwaysAllow(pending)
+    expect(bench.commandsExecute).not.toHaveBeenCalled()
+    await expect(result).resolves.toBe('allowed-once')
+  })
+
+  it('still grants when the command reports a failure', async () => {
+    const bench = await setupPlugin()
+    bench.commandsExecute.mockResolvedValue({ ok: false, error: { code: 'DENIED', message: 'no' } })
+    const warn = vi.spyOn(bench.ctx.logger, 'warn').mockImplementation(() => {})
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const result = bench.listener.call(scope.ctx, {
+      toolName: 'bash', action: 'bash', resources: ['git status'],
+    }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+    await bench.registration().options.inject().alwaysAllow(pending)
+    expect(warn.mock.calls[0]?.[0]).toContain('DENIED')
+    await expect(result).resolves.toBe('allowed-once')
+  })
+
+  it('still grants when saving the rule fails', async () => {
+    const bench = await setupPlugin()
+    bench.commandsExecute.mockRejectedValue('transport closed')
+    const warn = vi.spyOn(bench.ctx.logger, 'warn').mockImplementation(() => {})
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const result = bench.listener.call(scope.ctx, {
+      toolName: 'bash', action: 'bash', resources: ['git status'],
+    }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+    await bench.registration().options.inject().alwaysAllow(pending)
+    expect(warn).toHaveBeenCalled()
+    await expect(result).resolves.toBe('allowed-once')
+  })
+
   it('delegates an event that has no Agent scope', async () => {
     const bench = await setupPlugin()
     const next = vi.fn(() => Promise.resolve<'unavailable'>('unavailable'))
@@ -327,6 +412,7 @@ describe('approval Remote Event consumer', () => {
 function panelProps(
   pending: PendingApproval,
   renderSlot: FactoryComponentPropsOf<'conversation.approval.card'>['renderSlot'] = vi.fn(() => null),
+  alwaysAllow: (approval: PendingApproval) => Promise<void> = vi.fn(async () => {}),
 ): ApprovalComposerProps {
   const messages: Record<string, string> = {
     waiting: 'Waiting',
@@ -341,6 +427,7 @@ function panelProps(
     renderFactorySlot: (_name: string, input: ApprovalCardInput) => <ApprovalCard {...{ ...input, renderSlot,
       t: (key: string) => messages[key] ?? key } as FactoryComponentPropsOf<'conversation.approval.card'>} />,
     resolveReason: (reason: NonNullable<PendingApproval['displayReason']>) => reason.en,
+    alwaysAllow,
     t: (key: string) => messages[key] ?? key,
   } as ApprovalComposerProps
 }
@@ -493,6 +580,25 @@ describe('ApprovalPanel', () => {
     fireEvent.keyDown(group, { key: 'Enter', code: 'Enter' })
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
     expect(answer).not.toHaveBeenCalled()
+  })
+
+  it('offers always-allow only for a classified action and saves the rule', async () => {
+    const alwaysAllow = vi.fn(async () => {})
+    const classified = new PendingApproval(id('s1'), {
+      toolName: 'write', action: 'write', resources: ['notes/guide.txt'],
+    })
+    const view = render(<ApprovalPanel {...panelProps(classified, undefined, alwaysAllow)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Always allow' }))
+    expect(alwaysAllow).toHaveBeenCalledWith(classified)
+    classified.abort(new Error('test cleanup'))
+    await classified.result.catch(() => {})
+    view.unmount()
+
+    const unclassified = new PendingApproval(id('s2'), { toolName: 'bash' })
+    render(<ApprovalPanel {...panelProps(unclassified, undefined, alwaysAllow)} />)
+    expect(screen.queryByRole('button', { name: 'Always allow' })).toBeNull()
+    unclassified.abort(new Error('test cleanup'))
+    await unclassified.result.catch(() => {})
   })
 
   it('re-enables actions when answering fails', async () => {

@@ -62,6 +62,18 @@ A rule matches when its action pattern matches the request's action and, for a r
 
 Tools supply the action and resources through their definition: `write` and `edit` declare `write` with the target path, and `bash` declares `bash` with the command text. Any other tool, or a classifier that throws, falls back to its own tool name with no resources, so an unexpected classifier can only make a rule less specific, never wider. Because rules precede the `never` policy, an unattended run can permit exact actions while rejecting everything else.
 
+### Project rules and `/allow`
+
+When a storage domain is mounted, the service also keeps rules per project directory in the `approval_rules` domain. Stored rules are appended after the configured ones, so they can narrow or extend them. The `/allow` command edits the invoking Session's project rules:
+
+| Input | Result |
+|---|---|
+| `/allow <action> <resource> [allow\|deny\|ask]` | Appends one rule; the effect defaults to `allow` |
+| `/allow list` | Lists the project's rules with 1-based positions |
+| `/allow remove <n>` | Removes the rule at position `n` |
+
+A Session without a recorded working directory refuses the command. `addProjectRule(cwd, rule)`, `removeProjectRule(cwd, index)`, and `projectRulesFor(cwd)` are the same operations for Host callers. Without a mounted storage domain, project rules stay empty and the mutators reject.
+
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-user-approval) is the exhaustive source for every accepted field and its JSDoc. `setPolicy(agent, policy)` switches a live agent and queues the switch notice described under Model Experience for its next model step; `setApprovalPolicy(session, policy)` is the direct durable write path used by session initialization.
 
 ### Requesting a decision

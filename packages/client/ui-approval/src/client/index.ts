@@ -51,6 +51,8 @@ async function answerApproval(
       : { callId: request.callId }),
     ...(request.reason === undefined ? {} : { reason: request.reason }),
     ...(request.displayReason === undefined ? {} : { displayReason: request.displayReason }),
+    ...(request.action === undefined ? {} : { action: request.action }),
+    ...(request.resources === undefined ? {} : { resources: request.resources }),
     ...(request.signal === undefined ? {} : { signal: request.signal }),
   })
   const completed = Promise.withResolvers<void>()
@@ -102,9 +104,40 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     inject: () => ({
       resolveReason: (reason: NonNullable<PendingApproval['displayReason']>) => ctx.locale.resolveText(reason),
+      alwaysAllow: (approval: PendingApproval) => saveAlwaysAllow(ctx, approval),
     }),
   }, ApprovalPanel))
   ctx.remote.$on('approval/request', function (request, next) {
     return answerApproval(ctx, this, request, next, registerPendingInteraction)
   })
+}
+
+/**
+ * Persist the pending request's scope as project allow rules through the
+ * `/allow` command, then grant this request. A failed save still grants the
+ * current request; the failure is logged instead of silently pretending the
+ * rule exists.
+ * @param ctx - client root context carrying the Remote command channel.
+ * @param approval - the pending request whose action and resources become rules.
+ */
+async function saveAlwaysAllow(ctx: ClientContext, approval: PendingApproval): Promise<void> {
+  if (approval.action === undefined) {
+    await approval.answer('allowed-once')
+    return
+  }
+  const resources = approval.resources.length === 0 ? ['*'] : approval.resources
+  try {
+    for (const resource of resources) {
+      const result = await ctx.remote.commands.execute(
+        approval.sessionId,
+        `/allow ${approval.action} ${resource}`,
+        [],
+        new AbortController().signal,
+      )
+      if (!result.ok) throw new Error(`approval rule save failed: ${result.error.code}: ${result.error.message}`)
+    }
+  } catch (error: unknown) {
+    ctx.logger.warn(`approval: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  await approval.answer('allowed-once')
 }

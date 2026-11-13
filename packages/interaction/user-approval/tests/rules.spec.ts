@@ -30,7 +30,7 @@ describe('evaluateApprovalRules', () => {
   })
 
   it('matches a rule against any one declared resource', () => {
-    expect(evaluateApprovalRules([rule('write', 'docs/**', 'allow')], {
+    expect(evaluateApprovalRules([rule('write', 'notes/**', 'allow')], {
       action: 'write', resources: ['src/a.ts', 'notes/guide.txt'],
     })).toBe('allow')
   })

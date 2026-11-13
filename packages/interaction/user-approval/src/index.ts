@@ -17,10 +17,17 @@ declare module '@deepseek-ai/dsh-llm' {
   }
 }
 
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
+import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
 import { scopeTarget } from '@deepseek-ai/dsh-scope'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { ProjectionDefinition, ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
+import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
+import type {} from '@deepseek-ai/dsh-storage-domain'
 import type {} from '@deepseek-ai/dsh-system-prompt'
+import { projectApprovalRulesSpec } from './project-rules.ts'
+import type { ProjectApprovalRules } from './project-rules.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -189,6 +196,7 @@ export class ApprovalService extends Service {
 
   private approvalProjectionHandle!: ProjectionHandle<ApprovalState>
   private readonly rules: readonly ApprovalRule[]
+  private projectRules: KvTable<string, ProjectApprovalRules> | undefined
 
   constructor(ctx: Context, public config: Config) {
     super(ctx, 'approval')
@@ -199,6 +207,22 @@ export class ApprovalService extends Service {
     this.approvalProjectionHandle = await this.ctx.sessionProjections.register(approvalStateDefinition)
     // Registration can finish after an unload has started. Do not add effects then.
     if (this.ctx.fiber.uid === null) return
+
+    await this.ctx.inject(['commands'], (scope: Context) => {
+      scope.commands.register({
+        definitionId: brandString<CommandDefinitionId>('@deepseek-ai/dsh-user-approval'),
+        name: 'allow',
+        description: 'Add, list, or remove project approval rules',
+        handler: invocation => this.allowCommand(invocation),
+      })
+    })
+
+    const storageDomain = this.ctx.get('storageDomain')
+    if (storageDomain !== undefined) {
+      const domain = await storageDomain.open(projectApprovalRulesSpec)
+      this.projectRules = domain.table('projects')
+      this.ctx.effect(() => () => domain.close(), 'user-approval: project rules domain')
+    }
 
     const effective = (agent: Agent): ApprovalPolicy => this.effectivePolicy(agent.session)
 
@@ -289,13 +313,97 @@ export class ApprovalService extends Service {
    * @returns the closed outcome.
    */
   private decideWithRules(req: ApprovalRequest, session: Session): Promise<ApprovalOutcome> {
-    const effect = evaluateApprovalRules(this.rules, {
+    const projectRules = this.projectRulesFor(session.header.cwd)
+    const effect = evaluateApprovalRules(projectRules.length === 0 ? this.rules : [...this.rules, ...projectRules], {
       action: req.action ?? req.toolName,
       resources: req.resources ?? [],
     })
     if (effect === 'allow') return Promise.resolve('allowed-once')
     if (effect === 'deny') return Promise.resolve('rejected')
     return this.decide(req, session)
+  }
+
+  /**
+   * Read the rules stored for one project directory.
+   * @param cwd - the session's recorded working directory.
+   * @returns the stored rules, or none without a directory or storage.
+   */
+  projectRulesFor(cwd: string | undefined): readonly ApprovalRule[] {
+    if (cwd === undefined) return []
+    return this.projectRules?.get(cwd)?.rules ?? []
+  }
+
+  /**
+   * Append one rule to a project's stored rules.
+   * @param cwd - the project directory.
+   * @param rule - the rule to append.
+   * @returns the project's complete rule list after the write.
+   * @throws when the deployment mounts no storage domain for rules.
+   */
+  async addProjectRule(cwd: string, rule: ApprovalRule): Promise<readonly ApprovalRule[]> {
+    assertRule(rule)
+    const table = this.requireProjectRules()
+    const existing = table.get(cwd)?.rules ?? []
+    const rules = [...existing, rule]
+    await table.put(cwd, { rules })
+    return rules
+  }
+
+  /**
+   * Remove one rule from a project by zero-based position.
+   * @param cwd - the project directory.
+   * @param index - the rule's position in {@link projectRulesFor}.
+   * @returns the removed rule, or `undefined` when the position does not exist.
+   * @throws when the deployment mounts no storage domain for rules.
+   */
+  async removeProjectRule(cwd: string, index: number): Promise<ApprovalRule | undefined> {
+    const table = this.requireProjectRules()
+    const existing = table.get(cwd)?.rules ?? []
+    const removed = existing[index]
+    if (removed === undefined) return undefined
+    const rules = existing.filter((_rule, position) => position !== index)
+    if (rules.length === 0) await table.delete(cwd)
+    else await table.put(cwd, { rules })
+    return removed
+  }
+
+  /**
+   * Run the `/allow` command: `list`, `remove <n>`, or `<action> <resource>
+   * [effect]`, scoped to the invoking session's project directory.
+   * @param invocation - the parsed command line and its agent.
+   * @returns the command's user-facing result.
+   */
+  private async allowCommand(invocation: CommandInvocation): Promise<CommandResult> {
+    const cwd = invocation.agent.session.header.cwd
+    if (cwd === undefined) {
+      return { kind: 'error', text: 'Approval rules need a project directory; this Session records none.' }
+    }
+    const parsed = parseAllowInput(invocation.rawInput)
+    if (parsed.kind === 'invalid') return { kind: 'error', text: parsed.message }
+    if (parsed.kind === 'list') {
+      const rules = this.projectRulesFor(cwd)
+      return {
+        kind: 'success',
+        text: rules.length === 0
+          ? `No approval rules for ${cwd}.`
+          : rules.map((rule, index) => `${index + 1}. ${rule.effect} ${rule.action} ${rule.resource}`).join('\n'),
+      }
+    }
+    if (parsed.kind === 'remove') {
+      const removed = await this.removeProjectRule(cwd, parsed.index)
+      return removed === undefined
+        ? { kind: 'error', text: `No approval rule ${parsed.index + 1} for ${cwd}.` }
+        : { kind: 'success', text: `Removed ${removed.effect} ${removed.action} ${removed.resource}.` }
+    }
+    const rules = await this.addProjectRule(cwd, parsed.rule)
+    return { kind: 'success', text: `Approval rule ${rules.length} for ${cwd}: ${parsed.rule.effect} ${parsed.rule.action} ${parsed.rule.resource}.` }
+  }
+
+  private requireProjectRules(): KvTable<string, ProjectApprovalRules> {
+    if (this.projectRules === undefined) {
+      throw new Error('project approval rules require a mounted storage domain')
+    }
+    return this.projectRules
   }
 
   /**
@@ -372,3 +480,41 @@ export class ApprovalService extends Service {
 }
 
 export default ApprovalService
+
+/** Refuse a rule whose fields cannot be evaluated. */
+function assertRule(rule: ApprovalRule): void {
+  if (rule.action.length === 0 || rule.resource.length === 0) {
+    throw new TypeError('approval rule action and resource must be non-empty')
+  }
+}
+
+/** One parsed `/allow` invocation. */
+type ParsedAllow =
+  | { readonly kind: 'list' }
+  | { readonly kind: 'remove'; readonly index: number }
+  | { readonly kind: 'add'; readonly rule: ApprovalRule }
+  | { readonly kind: 'invalid'; readonly message: string }
+
+/** Parse the `/allow` grammar: `list`, `remove <n>`, or `<action> <resource> [effect]`. */
+function parseAllowInput(rawInput: string): ParsedAllow {
+  const tokens = rawInput.trim().split(/\s+/u).filter(token => token.length > 0)
+  const [first, ...rest] = tokens
+  if (first === undefined) {
+    return { kind: 'invalid', message: 'Usage: /allow list | /allow remove <n> | /allow <action> <resource> [allow|deny|ask]' }
+  }
+  if (first === 'list') return rest.length === 0 ? { kind: 'list' } : { kind: 'invalid', message: 'Usage: /allow list' }
+  if (first === 'remove') {
+    const index = rest.length === 1 ? Number(rest[0]) : Number.NaN
+    return Number.isSafeInteger(index) && index > 0
+      ? { kind: 'remove', index: index - 1 }
+      : { kind: 'invalid', message: 'Usage: /allow remove <n>' }
+  }
+  const last = rest.at(-1)
+  const explicit = rest.length >= 2 && (last === 'allow' || last === 'deny' || last === 'ask') ? last : undefined
+  const effect = explicit ?? 'allow'
+  const resource = (explicit === undefined ? rest : rest.slice(0, -1)).join(' ')
+  if (resource.length === 0) {
+    return { kind: 'invalid', message: 'Usage: /allow <action> <resource> [allow|deny|ask]' }
+  }
+  return { kind: 'add', rule: { action: first, resource, effect } }
+}

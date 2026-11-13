@@ -97,5 +97,6 @@ updated: 2026-11-13
 - [opencode 能力落地交接（已完成）](queries/opencode-capability-handoff.md) — 17 项全部交付（含 PTC 预算目录、会话日志导入、权限规则求值与持久化、始终允许、修改后允许、侧问面板、MCP 连接池与 OAuth）；剩余可选项是 Settings 授权界面。
 - [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md) — 连接池与 OAuth 的落地事实：`./pool` 服务与租约、握手失败回退、通知转发；`./oauth` 提供方、回环回调、凭据记录与自动刷新、`waiting-authorization`、管理器授权入口与验证结果。
 - [openai/codex 能力面与可融入清单](queries/codex-capability-comparison.md) — 排除 11 项已覆盖能力后，按优先级列出执行策略（Starlark 前缀规则与“批准并追加规则”）、审批结果词汇、世界状态增量注入、代码模式 exec/wait、apply_patch、钩子事件面、压缩矩阵、rollout-trace、消息板/代理图/树预算、记忆写管线、外部迁移、沙箱网络与拒绝反馈等 13 项及落点。
-- [codex 能力落地交接（12 项）](queries/codex-capability-handoff.md) — 每项的现状、codex 参考路径、落地步骤、验收与风险；含推荐批次（权限/审批/钩子 → 世界状态 → apply_patch/代码模式 → 压缩 → 多智能体/记忆 → 沙箱与收尾）、已由并行会话完成的 PTC 预算目录与会话导入、全局门禁与约束。
+- [codex 与 ZCode 能力落地交接（合并版）](queries/codex-zcode-capability-handoff.md) — 两份分析的合并交接：审批收尾、上下文缓存稳定、文件面、钩子信任与事件、压缩与低峰、动态工作流、多会话协作、记忆、迁移与分享、沙箱、Provider 与扩展授权、诊断实验；去掉重复主题，每项一个落点。
+- [codex 能力落地交接（已取代）](queries/codex-capability-handoff.md) — 单项细节保留，仅作合并版的 codex 侧参考。
 - [ZCode 能力面与可融入清单](queries/zcode-capability-comparison.md) — 排除 11 项已覆盖能力后，按优先级列出动态工作流日志化与类型化、权限四补强、跨会话控制的安全边界、提示快照与 meta_user、编辑匹配器、文件回滚、钩子信任准入、依赖拓扑调度、压缩熔断与 off-peak、按轮分享、记忆管线、客户端渲染与 provider 配置等 15 项及落点。

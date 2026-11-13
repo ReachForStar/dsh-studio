@@ -996,3 +996,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 池键加入 OAuth 客户端身份；`liveshare` 端点分类登记新入口；配置目录与子系统页已重新生成。
 - 验证：`pnpm exec vitest run packages/mcp` 337 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog`。
 - 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。
+
+
+## [2026-11-13] docs | 合并 codex 与 ZCode 交接
+
+- 新增合并版交接：重复主题（权限、上下文、压缩、钩子、记忆、文件编辑、多智能体）各保留一个落点，其余按 12 项统一优先级与 A–H 批次组织。
+- 标注并行会话已完成项（审批规则/项目允许/拒绝改写/静态扫描、侧问面板、MCP 连接池与 OAuth、PTC 预算、归档导入）不要重做；`codex-capability-handoff` 标 `superseded` 并链接合并版。
+- 记录于 [codex 与 ZCode 能力落地交接](queries/codex-zcode-capability-handoff.md)。

@@ -5,10 +5,12 @@ tags: [交接, codex, 执行策略, 世界状态, 代码模式, 压缩, 多智�
 created: 2026-11-13
 updated: 2026-11-13
 sources: []
-status: draft
+status: superseded
 ---
 
 # codex 能力落地交接（12 项）
+
+> 已被 [codex 与 ZCode 合并版交接](codex-zcode-capability-handoff.md) 取代；本页保留作 codex 单项细节参考。
 
 ## 一句话结论
 

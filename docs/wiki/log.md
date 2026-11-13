@@ -942,3 +942,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 交接页给出余 5 项的现状、参考实现路径、落点、风险与验收：权限规则化、MCP OAuth 与连接池、PTC 按需目录与静态扫描、侧问面板、会话导入。
 - 附全局约束、门禁命令、前批遗留缺口（web 金样未刷新、openapi 覆盖率、warming TTL、mcp 等待配置未暴露）与待授权临时文件清单。
 - 记录于 [opencode 能力落地交接](queries/opencode-capability-handoff.md)。
+
+
+## [2026-11-13] docs | 对比 openai/codex 能力面
+
+- 只读分析 `tmp/codex`（codex-rs Rust monorepo）：核心循环、rollout、压缩、世界状态、code mode、execpolicy、沙箱、审批、钩子、多智能体、记忆、插件与外部迁移。
+- 排除 11 项本 fork 已覆盖能力（PTC、tool_search、技能目录、任务板、计划模式、auto-review、会话分叉、沙箱模式、warming、MCP、Mermaid）。
+- 产出 13 项候选与落点，最高优先是与待办“权限规则化”同源的 execpolicy 与“批准并追加规则”，其次为世界状态增量注入、代码模式 exec/wait、apply_patch 与钩子事件面。
+- 记录于 [codex 能力面与可融入清单](queries/codex-capability-comparison.md)。

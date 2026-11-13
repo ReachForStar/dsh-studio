@@ -88,9 +88,6 @@
     },
     "@deepseek-ai/dsh-system-prompt": {
       "optional": true
-    },
-    "@deepseek-ai/dsh-credentials": {
-      "optional": true
     }
   }
 }

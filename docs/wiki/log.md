@@ -1018,5 +1018,6 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 其余客户端违规按声明或搬移处理：`documentpreview` 声明 `document`/`zoom` 共享层与 `docx`/`pptx` → `office` → `pdf` 边，`conversation` 声明 `skeleton` → `input`，`paper-reader` 声明 `pdf` 共享层；`ui-chat`/`ui-tool` 的契约类型移入 `contract/`，账号引导文案移到顶层。
 - `verify-cordis-config`：两个可选 bundle 声明其实验提供方为 `optionalDependencies`；隔离规则允许可选 bundle 依赖它交付的实验能力。
 - `verify-locale-metadata`：btw 改用具名 `ConfigInput`；11 个包补齐 8 语言 `locale/*.json`、`./locale/*.json` 导出与规范 `files`。
-- `constraints`：统一版本、`files`、`workspace:` 范围，补 `fork-notice` 实验名例外，登记 Web 产品包的 8 个实验依赖，`adoptSessionEvent` 与 `sessionFormatCatalog` 登记为安全导出。
+- `constraints` 与 `verify-package-dependencies`：统一版本、`files`、`workspace:` 范围，补 `fork-notice` 实验名例外，登记 Web 产品包的 8 个实验依赖；`@reachforstar/*` 依赖改为 `workspace:~`，btw 与 session-log-export 的非服务 peer 收进 devDependencies，`adoptSessionEvent` 与 `sessionFormatCatalog` 登记为安全导出。
+- `verify-optional-dependency-imports`：OAuth 需要 `credentialKey`，把 `@deepseek-ai/dsh-credentials` 从可选 peer 改为必需 peer，避免可选依赖在模块作用域加载。
 - 取舍记录于 [客户端域分层与包元数据门禁](decisions/2026-11-13-client-domain-layering-and-package-metadata.md)。

@@ -934,3 +934,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 默认值：续跑默认关闭；`privacy` 与既有审批语义不变；新增包均为 opt-in。
 - 验证：受影响 11 个包 4300 项测试通过、`typecheck`、`build:artifacts`、`build:check`、`test:docs` 全绿。
 - 未实施：权限规则化、MCP OAuth/池化、PTC 按需目录与静态扫描、侧问面板、会话导入（见对比页实施结果表）。
+
+
+## [2026-11-13] docs | 交接 opencode 能力余 5 项
+
+- 前 10 项已完成并推送（`me/develop`，三次提交：能力落地、wiki 记录、MCP 收尾）。
+- 交接页给出余 5 项的现状、参考实现路径、落点、风险与验收：权限规则化、MCP OAuth 与连接池、PTC 按需目录与静态扫描、侧问面板、会话导入。
+- 附全局约束、门禁命令、前批遗留缺口（web 金样未刷新、openapi 覆盖率、warming TTL、mcp 等待配置未暴露）与待授权临时文件清单。
+- 记录于 [opencode 能力落地交接](queries/opencode-capability-handoff.md)。

@@ -1,0 +1,28 @@
+{
+  "extends": "../../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.client.tsbuildinfo"
+  },
+  "files": [
+    "src/routes.ts",
+    "src/css-modules.d.ts",
+    "src/client/index.ts",
+    "src/client/controller.ts",
+    "src/client/BtwDialog.tsx",
+    "src/client/locales.ts"
+  ],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../client/store" },
+    { "path": "../../client/locale/tsconfig.client.json" },
+    { "path": "../../client/ui-context-menu" },
+    { "path": "../../client/ui-layout" },
+    { "path": "../../client/ui-primitives" },
+    { "path": "../../client/ui-slots" },
+    { "path": "../../client/ui-conversation/tsconfig.client.json" },
+    { "path": "../../client/ui-renderer" },
+    { "path": "../../core/session" }
+  ]
+}

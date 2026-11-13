@@ -35,6 +35,7 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/step-summary': '@deepseek-ai/dsh-step-summary',
   'packages/experimental/tool-search': '@deepseek-ai/dsh-tool-search',
   'packages/experimental/openapi-tools': '@deepseek-ai/dsh-openapi-tools',
+  'packages/experimental/btw': '@deepseek-ai/dsh-btw',
 } satisfies Record<`packages/experimental/${string}`, `@deepseek-ai/dsh-${string}`>
 
 /** Legacy npm namespace, allowed only in `LEGACY_PREFIXED_EXPERIMENTAL_PACKAGE_DIRECTORIES`. */

@@ -301,6 +301,7 @@
     { "path": "./packages/experimental/agent-plugins" },
     { "path": "./packages/experimental/arena" },
     { "path": "./packages/experimental/followup" },
+    { "path": "./packages/experimental/btw/tsconfig.host.json" },
     { "path": "./packages/experimental/fork-notice" },
     { "path": "./packages/experimental/warming" },
     { "path": "./packages/experimental/speculation" },

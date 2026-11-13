@@ -67,6 +67,11 @@
     - id: session-log-download
       name: '@deepseek-ai/dsh-session-log-export'
 
+    # Side questions about the displayed Session: one forked child per question,
+    # answered from the completed history without adding a turn.
+    - id: btw
+      name: '@deepseek-ai/dsh-btw'
+
     # Session-menu application choices over Host resolution on macOS, Windows,
     # and Linux. An empty catalog hides the action. The Host routes and browser
     # controls also serve the file-tree directory opener.

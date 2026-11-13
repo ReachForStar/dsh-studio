@@ -17,6 +17,15 @@ export type McpConnectionStatus =
   | { state: 'closed'; result: McpCloseResult }
   | { state: 'waiting-credentials'; lastError: string }
   | {
+    /**
+     * The server answered 401 and no stored grant authorized this connection.
+     * The supervisor stops retrying until an interactive authorization stores
+     * one; `mcp-manager.authorize` starts that flow.
+     */
+    state: 'waiting-authorization'
+    lastError: string
+  }
+  | {
     /** A connection attempt is in flight. */
     state: 'connecting'
     /** Consecutive failed attempts in the current outage before this one; `0` on the first-ever attempt. */

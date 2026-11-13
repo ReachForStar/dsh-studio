@@ -12,7 +12,7 @@ status: draft
 
 ## 一句话结论
 
-连接池已落地并通过验证，opencode 能力清单只剩 MCP OAuth。池化由 `@deepseek-ai/dsh-mcp-client/pool` 服务（`ctx.mcpPool`）承担：解析后连接配置相同的实例共享一个 transport 与一次握手，各自保留工具注册、重连预算与状态。OAuth 按下文「待办」实现。
+连接池与 OAuth 都已落地并通过验证。池化由 `@deepseek-ai/dsh-mcp-client/pool` 服务（`ctx.mcpPool`）承担；OAuth 由 `@deepseek-ai/dsh-mcp-client/oauth` 的提供方、回环授权流程与凭据记录承担，`mcpManager.authorize(name)` 是入口。剩余只有可选的 Settings 授权界面。
 
 ## 已完成，不要重做
 
@@ -23,6 +23,7 @@ status: draft
 | PTC SDK 预算目录 | `packages/core/tool-executor-ptc/src/sdk-catalog.ts` |
 | 侧问面板（btw） | `packages/experimental/btw` |
 | MCP 连接池 | `packages/mcp/mcp-client/src/{pool,pool-key,client}.ts`、`generation.ts` 的 `adopt`、`connection.ts` 的 `joinShared`、base 组合行 `mcp-pool` |
+| MCP OAuth | `packages/mcp/mcp-client/src/oauth.ts`（`./oauth`）、`transport.ts` 的 `authProvider`、`types.ts` 的 `waiting-authorization`、`mcp-manager` 的 `authorize`/`forgetAuthorization` |
 
 清单状态见 [opencode 能力落地交接（余 1 项）](opencode-capability-handoff.md)。
 
@@ -50,32 +51,24 @@ status: draft
 - `packages/mcp/mcp-manager/tests/manager.spec.ts` 的 restart 断言改为等待替代客户端出现：管理器不等待子实例激活，凭据解析使客户端构造晚于重启返回。
 - `pnpm run typecheck`、`pnpm exec vitest run packages/mcp`（312 项）、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-translation-pairing` 全部通过。`pnpm run verify-cordis-config` 只剩既有两条失败（browser-use 与 computer-use 缺少 experimental MCP 依赖声明）。
 
-## 待办：OAuth
+## OAuth 落地事实
 
-目标：远程 MCP 服务器要求 OAuth 时完成授权并持久化 token，之后自动刷新。
-
-设计要点：
-
-- 实现 `OAuthClientProvider`：`redirectUrl`、`clientMetadata`、`clientInformation`、`tokens`、`saveTokens`、`redirectToAuthorization`、`saveCodeVerifier`/`codeVerifier`；需要时实现动态注册回调。字段以 SDK `@modelcontextprotocol/client` 的类型为准（`node_modules` 内 `index.d.mts` 可查）。
-- 存储用 `packages/credentials` 的记录 API（`readRecord`/`modifyRecord`/`delete`），键按服务器与授权服务器 issuer 区分；token 不得进入日志或诊断，`mcp-client` 的诊断已做脱敏，沿用同一套。
-- 回调走现有 `connection.fetch.register`（参考 `packages/session-query/session-log-export/src/index.ts` 的 `POST /api/session.import`）：注册一个只接受本机授权码的 GET 路由，校验 state/PKCE 后完成交换并关闭页面。
-- 授权入口：`mcp-manager` 或池服务暴露 `authorize(serverName)`；命令行/设置页触发。无浏览器环境要明确失败而不是挂起。
-- 与连接生命周期：未授权时连接进入「等待授权」状态，而不是无限重试；授权完成后触发一次该键的重连。
-- 池键要加入凭据选择（当前只由解析后的传输值体现），同一服务器不同账号不能共享连接。
-- 不要把 token 写进 `cordis.yml` 或会话日志；`${credential:REF}` 模板继续用于静态密钥。
-
-验收：
-
-- 本地 mock 授权服务器完成 discovery、动态注册、PKCE、code 交换、refresh 与失效重授权。
-- token 过期后自动刷新一次并继续调用；刷新失败要求重新授权且状态可诊断。
-- 取消授权、错误 state、错误 code、回调路由被非所有者访问均失败关闭。
-- 凭据更新事件不再导致重复授权风暴。
+- 配置：`StreamableHttpConfig.oauth`（`clientId`、`clientSecret`、`scope`、`callbackPort`、`authorizationTimeoutMs`）；`oauthSettings`/`isOAuthServer` 把 schema 产生的空对象视作未配置。
+- 存储：授权凭据存为 `credentialKey('mcp-client', 'server-<hash16>')` 的 `GrantRecord`，payload 含 `clientInformation`、`tokens`、`codeVerifier`、`state`、`redirectUri`，由 zod 在读取时校验；写入走 `modifyRecord` 的独占读改写，刷新令牌不会被两个进程同时覆盖。无法解析的记录直接报错并给出清理路径。
+- 流程：`beginAuthorization` 在 `127.0.0.1` 绑定回环监听（`callbackPort` 可固定），用 SDK `auth()` 完成 discovery、动态注册（未配 `clientId` 时）、PKCE 与 code 交换；state 用定长比较校验，重复回调返回 409，错误 state 与 `error` 参数都失败关闭，`authorizationTimeoutMs` 与调用方信号都能终止流程。
+- 连接：`createOAuthProvider` 交给 `StreamableHTTPClientTransport` 的 `authProvider`；已存令牌时 401 由 SDK 自动刷新。没有令牌时不发起注定失败的握手，直接进入 `waiting-authorization`；刷新被拒后同样回到该状态，不进入重连翻腾。
+- 入口：`mcpManager.authorize(name)` 返回要打开的 URL，凭据落盘后重建实例；`forgetAuthorization(name)` 删除凭据并重建。两者都经 Remote 暴露，未授权条目的分类在 `liveshare` 端点表登记为 `owner-only`。
+- 池：池键加入 OAuth 客户端身份（`clientId`、`clientSecret` 指纹、`scope`），不同账号不共用连接。
+- 安全：token 不进入会话日志、`cordis.yml` 或诊断；`clientSecret` 是字面配置，文档要求用组合文件的环境展开而不是 `${credential:…}` 模板。
+- 与原计划的差异：回调没有走 `connection.fetch.register`，改为自建回环监听。回环方案在 headless/ACP 也能用，且不依赖 Web 宿主；代价是远程宿主需要转发端口，已写进 README 限制。
+- 测试：`oauth.spec.ts` 21 项（本地 mock 授权服务器覆盖 discovery、动态注册、PKCE、code 交换、刷新、错误 state、`error` 参数、取消、超时、端口占用、重复回调、已存令牌免交互、凭据记录异常），`manager.spec.ts` 3 项（授权、拒绝、清除凭据）。
+- 验证：`pnpm run typecheck`、`pnpm exec vitest run packages/mcp`（337 项）、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog` 全部通过；`pnpm run verify-cordis-config` 只剩既有两条失败。
 
 ## 顺序建议
 
-1. 已完成：抽池，`InMemoryTransport` 与真实 stdio 各一组测试，现有 MCP 测试全绿。
-2. 下一步：实现 OAuth provider 与回调路由，复用池的键与刷新路径。
-3. 最后把 Settings/入口接上，补 README 的 Model Experience 与 Known Limitations。
+1. 已完成：抽池，`InMemoryTransport` 与真实 stdio 各一组测试。
+2. 已完成：OAuth provider、回环回调、凭据存储与刷新，复用池的键。
+3. 剩余：Settings 授权界面（展示 `waiting-authorization`、调用 `authorize`/`forgetAuthorization`、打开返回的 URL）。
 
 ## 约束与验证
 

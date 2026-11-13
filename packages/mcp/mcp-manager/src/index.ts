@@ -24,7 +24,8 @@ import z from '@deepseek-ai/schemastery'
 import * as McpClient from '@deepseek-ai/dsh-mcp-client'
 import { ReconnectSchema, SERVER_NAME_PATTERN, connectionStatusOf, probeServer, resolveReconnectPolicy } from '@deepseek-ai/dsh-mcp-client'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import type { McpCloseResult, McpProbeOptions, McpProbeResult, ReconnectConfig } from '@deepseek-ai/dsh-mcp-client'
+import type { McpCloseResult, McpProbeOptions, McpProbeResult, OAuthConfig, ReconnectConfig } from '@deepseek-ai/dsh-mcp-client'
+import { OAuthSchema, beginAuthorization, clearAuthorization, isOAuthServer } from '@deepseek-ai/dsh-mcp-client/oauth'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { assertTemplateSyntax } from '@deepseek-ai/dsh-mcp-client'
 import type { McpManagedServerStatus, McpManagedServerView } from './types.ts'
@@ -65,6 +66,8 @@ export interface McpManagedServerEntry {
   closeTimeoutMs?: number
   /** Reconnect policy; the schema fills the mcp-client defaults. */
   reconnect: ReconnectConfig
+  /** OAuth client settings for a remote server that requires authorization. */
+  oauth?: OAuthConfig
 }
 
 /** Manager configuration with live server entries. */
@@ -97,6 +100,7 @@ const ServerEntrySchema = z.object({
   startupTimeoutMs: z.number().min(1).max(MAX_TIMER_DELAY_MS).default(30_000),
   closeTimeoutMs: z.number().min(1).max(MAX_TIMER_DELAY_MS),
   reconnect: ReconnectSchema,
+  oauth: OAuthSchema,
 }) as z<EntryInput, McpManagedServerEntry>
 
 
@@ -139,6 +143,9 @@ function validateEntries(entries: Readonly<Record<string, ResolvedEntry>>): void
       }
       if (Object.keys(entry.headers).length > 0) {
         throw new Error(`${path}: "headers" is not a stdio field — remove it or set transport: streamable-http`)
+      }
+      if (entry.oauth !== undefined && Object.keys(entry.oauth).length > 0) {
+        throw new Error(`${path}: "oauth" is not a stdio field — remove it or set transport: streamable-http`)
       }
     } else {
       if (entry.url === '') {
@@ -363,6 +370,70 @@ export default class McpServerManager extends TypertRemoteService {
   @Remote('probe')
   probeFromClient(name: string, signal: AbortSignal): Promise<McpProbeResult> {
     return this.probe(name, { signal })
+  }
+
+  /**
+   * Start an interactive OAuth authorization for one remote server.
+   *
+   * Returns as soon as the authorization URL exists; the flow keeps running and
+   * the instance is rebuilt once the grant is stored. The flow ends on the
+   * configured timeout or when the manager stops.
+   * @param name - the configured or registered server key.
+   * @returns the URL to open, or undefined when stored tokens already authorized.
+   * @throws when the manager is disposed, the entry is absent or not OAuth-configured, or the credentials provider is missing.
+   */
+  async authorize(name: string): Promise<string | undefined> {
+    const entry = this.oauthEntry(name)
+    const flow = await beginAuthorization(this.ownerContext, entry, this.lifetime.signal)
+    void flow.completed.then(
+      () => this.schedule(() => this.remount(name), `authorization of "${name}"`),
+      (error: unknown) => {
+        this.ctx.logger.warn(`mcp-manager: authorization of "${name}" did not complete`)
+        this.ctx.logger.warn(error)
+      },
+    )
+    return flow.url
+  }
+
+  /**
+   * Authorize one server for a management surface.
+   * @param name - the configured or registered server key.
+   * @returns the URL to open, or undefined when stored tokens already authorized.
+   */
+  @Remote('authorize')
+  authorizeFromClient(name: string): Promise<string | undefined> {
+    return this.authorize(name)
+  }
+
+  /**
+   * Remove one server's stored grant and rebuild its instance, which then
+   * reports `waiting-authorization` until the user authorizes again.
+   * @param name - the configured or registered server key.
+   * @throws when the manager is disposed, the entry is absent or not OAuth-configured.
+   */
+  async forgetAuthorization(name: string): Promise<void> {
+    const entry = this.oauthEntry(name)
+    await clearAuthorization(this.ownerContext, entry.url)
+    await this.enqueue(() => this.remount(name))
+  }
+
+  /**
+   * Remove one server's stored grant for a management surface.
+   * @param name - the configured or registered server key.
+   */
+  @Remote('forgetAuthorization')
+  forgetAuthorizationFromClient(name: string): Promise<void> {
+    return this.forgetAuthorization(name)
+  }
+
+  /** Resolve one entry that can authorize, refusing every other case. */
+  private oauthEntry(name: string): McpClient.StreamableHttpConfig {
+    if (this.stopped) throw new Error('mcp-manager: the manager is disposed')
+    const entry = this.entries()[name]
+    if (entry === undefined) throw new Error(`mcp-manager: unknown server "${name}"`)
+    const config = this.toClientConfig(name, entry)
+    if (!isOAuthServer(config)) throw new Error(`mcp-manager: "${name}" is not configured for OAuth`)
+    return config
   }
 
   /**
@@ -599,6 +670,7 @@ export default class McpServerManager extends TypertRemoteService {
       url: entry.url,
       headers: { ...entry.headers },
       ...shared,
+      ...entry.oauth === undefined || Object.keys(entry.oauth).length === 0 ? {} : { oauth: entry.oauth },
     })
   }
 }

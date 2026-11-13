@@ -15,6 +15,7 @@
  * @module
  */
 
+import { UnauthorizedError, type OAuthClientProvider } from '@modelcontextprotocol/client'
 import type { Context } from '@deepseek-ai/cordis'
 import { assertNever, deepEqualJson, type JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { ServerContext } from './server-context.ts'
@@ -24,6 +25,7 @@ import { McpLocalError } from './diagnostic.ts'
 import type { McpStatusCell } from './status.ts'
 import type { McpCloseResult } from './types.ts'
 import { createMcpClient } from './client.ts'
+import { createOAuthProvider, hasStoredTokens, isOAuthServer, storedRedirectUri } from './oauth.ts'
 import { McpGeneration } from './generation.ts'
 import type { McpLease } from './pool.ts'
 import { McpTemplateBinding } from './credentials.ts'
@@ -175,6 +177,9 @@ export interface ConnectionHandle extends ServerContext {
  */
 export function startConnection(ctx: Context, config: Config, policy: ResolvedReconnectPolicy, status: McpStatusCell): ConnectionHandle {
   const label = `mcp-client(${config.serverName})`
+  if (isOAuthServer(config) && ctx.get('credentials') === undefined) {
+    throw new McpLocalError(`${label}: OAuth requires a credentials provider`)
+  }
   const binding = new McpTemplateBinding(ctx, config)
   const diagnostic = (error: unknown, operation: string): string => binding.diagnostic(error, operation)
   const watchLimits = resolveResourceWatchLimits(config, label)
@@ -340,6 +345,15 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     }
   }
 
+  /** OAuth client for one resolved configuration, when the server requires authorization. */
+  async function oauthProvider(resolved: Config): Promise<OAuthClientProvider | undefined> {
+    if (!isOAuthServer(resolved)) return undefined
+    // The persisted redirect URI lets the SDK refresh tokens on the transport's
+    // own 401 path instead of treating the provider as non-interactive.
+    const redirectUri = await storedRedirectUri(ctx, resolved.url)
+    return createOAuthProvider(ctx, resolved, redirectUri === undefined ? {} : { redirectUri })
+  }
+
   /** Create this instance's own generation; the caller dials it. */
   function openPrivate(): Generation {
     const client = createMcpClient(onToolListChanged)
@@ -368,7 +382,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
    * configuration. Returns undefined when this composition has no pool or the
    * configuration is no longer shared, leaving the caller to dial on its own.
    */
-  async function joinShared(resolved: Config): Promise<Generation | undefined> {
+  async function joinShared(resolved: Config, authProvider?: OAuthClientProvider): Promise<Generation | undefined> {
     const pool = ctx.get('mcpPool')
     if (pool === undefined) return undefined
     let lease: McpLease | undefined
@@ -376,6 +390,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       lease = await pool.acquire(resolved, {
         signal: lifetime.signal,
         ...config.expandTemplates ? { redact: (text: string) => binding.redact(text) } : {},
+        ...authProvider === undefined ? {} : { authProvider },
       })
     } catch (error) {
       // Disposal cancels the wait; a failed handshake was already reported by the pool.
@@ -412,14 +427,23 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     status.update({ state: 'connecting', attempt: failedAttempts })
     let record: Generation | undefined
     try {
+      // A server that needs OAuth cannot connect before a grant exists; asking
+      // it would only produce an authorization error on every attempt.
+      if (isOAuthServer(config) && !await hasStoredTokens(ctx, config.url)) {
+        const error = new McpLocalError(`${label}: this server requires authorization`)
+        readiness.resolve({ error })
+        status.update({ state: 'waiting-authorization', lastError: error.message })
+        return
+      }
       const resolution = binding.resolve(lifetime.signal)
       const resolveBudget = remaining()
       const resolved = await (resolveBudget === undefined ? resolution : withDeadline(resolution, resolveBudget, `${label}: startup timed out`))
       bindingValue = { config: resolved }
-      const shared = await joinShared(resolved)
+      const authProvider = await oauthProvider(resolved)
+      const shared = await joinShared(resolved, authProvider)
       if (shared === undefined) {
         record = openPrivate()
-        await record.wire.connect(resolved, remaining())
+        await record.wire.connect(resolved, remaining(), authProvider)
       } else record = shared
       if (!isCurrent(record)) return
       const text = record.wire.client.getInstructions()?.trimEnd() ?? ''
@@ -445,6 +469,12 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       if (error instanceof MissingTemplateValue) {
         bindingValue = {}
         status.update({ state: 'waiting-credentials', lastError: diagnostic(error, 'credential resolution') })
+        return
+      }
+      // Retrying cannot grant access: the user must authorize, and the manager
+      // restarts this instance once the grant is stored.
+      if (error instanceof UnauthorizedError) {
+        status.update({ state: 'waiting-authorization', lastError: diagnostic(error, 'authorization') })
         return
       }
       ctx.logger.warn(`${label}: connection attempt failed: ${diagnostic(error, 'startup')}`)

@@ -493,6 +493,37 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['when no turn is open or either audit event fails before the session append commit point.'],
       },
       {
+        signature: 'projectRulesFor(cwd: string | undefined): readonly ApprovalRule[]',
+        description: 'Read the rules stored for one project directory.',
+        parameters: [{ name: 'cwd', description: 'the session\'s recorded working directory.' }],
+        returns: 'the stored rules, or none without a directory or storage.',
+      },
+      {
+        signature: 'async addProjectRule(cwd: string, rule: ApprovalRule): Promise<readonly ApprovalRule[]>',
+        description: 'Append one rule to a project\'s stored rules.',
+        parameters: [{ name: 'cwd', description: 'the project directory.' }, { name: 'rule', description: 'the rule to append.' }],
+        returns: 'the project\'s complete rule list after the write.',
+        throws: ['when the deployment mounts no storage domain for rules.'],
+      },
+      {
+        signature: 'async removeProjectRule(cwd: string, index: number): Promise<ApprovalRule | undefined>',
+        description: 'Remove one rule from a project by zero-based position.',
+        parameters: [{ name: 'cwd', description: 'the project directory.' }, { name: 'index', description: 'the rule\'s position in {@link projectRulesFor}.' }],
+        returns: 'the removed rule, or `undefined` when the position does not exist.',
+        throws: ['when the deployment mounts no storage domain for rules.'],
+      },
+      {
+        signature: 'recordCorrection(agent: Agent, callId: ToolCallId, text: string): void',
+        description: 'Record the user\'s replacement arguments for one pending call. The pipeline consumes the text when the answer is `rejected`, so the model receives it as the tool failure reason and can retry with the corrected arguments.',
+        parameters: [{ name: 'agent', description: 'the agent whose session owns the call.' }, { name: 'callId', description: 'the exact tool call the correction belongs to.' }, { name: 'text', description: 'the user\'s replacement arguments or instruction.' }],
+      },
+      {
+        signature: 'takeCorrection(agent: Agent, callId: ToolCallId): string | undefined',
+        description: 'Consume one recorded correction. Reading removes it, so a stale rejection reason cannot leak into a later call.',
+        parameters: [{ name: 'agent', description: 'the agent whose session owns the call.' }, { name: 'callId', description: 'the exact tool call being rejected.' }],
+        returns: 'the correction text, or `undefined` when none was recorded.',
+      },
+      {
         signature: 'overrideOf(session: Session): ApprovalPolicy | undefined',
         description: 'Read the session override without applying the configured default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
@@ -2373,11 +2404,48 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the stage-classified probe outcome and independent cleanup result.',
       },
       {
+        signature: 'async authorize(name: string): Promise<string | undefined>',
+        description: 'Start an interactive OAuth authorization for one remote server.\n\nReturns as soon as the authorization URL exists; the flow keeps running and the instance is rebuilt once the grant is stored. The flow ends on the configured timeout or when the manager stops.',
+        parameters: [{ name: 'name', description: 'the configured or registered server key.' }],
+        returns: 'the URL to open, or undefined when stored tokens already authorized.',
+        throws: ['when the manager is disposed, the entry is absent or not OAuth-configured, or the credentials provider is missing.'],
+      },
+      {
+        signature: '@Remote(\'authorize\') authorizeFromClient(name: string): Promise<string | undefined>',
+        description: 'Authorize one server for a management surface.',
+        parameters: [{ name: 'name', description: 'the configured or registered server key.' }],
+        returns: 'the URL to open, or undefined when stored tokens already authorized.',
+      },
+      {
+        signature: 'async forgetAuthorization(name: string): Promise<void>',
+        description: 'Remove one server\'s stored grant and rebuild its instance, which then reports `waiting-authorization` until the user authorizes again.',
+        parameters: [{ name: 'name', description: 'the configured or registered server key.' }],
+        throws: ['when the manager is disposed, the entry is absent or not OAuth-configured.'],
+      },
+      {
+        signature: '@Remote(\'forgetAuthorization\') forgetAuthorizationFromClient(name: string): Promise<void>',
+        description: 'Remove one server\'s stored grant for a management surface.',
+        parameters: [{ name: 'name', description: 'the configured or registered server key.' }],
+      },
+      {
         signature: 'async probe(name: string, options?: McpProbeOptions): Promise<McpProbeResult>',
         description: 'Probe one configured server without touching its live instance: resolve the entry\'s templates, connect, list tools, close. A disabled entry can be probed — that is how a management surface tests it before enabling. Configuration changes and manager disposal cancel the probe.',
         parameters: [{ name: 'name', description: 'the configured or registered server key.' }, { name: 'options', description: 'probe budget, listing caps, and abort signal.' }],
         returns: 'the stage-classified probe outcome and independent cleanup result.',
         throws: ['when the manager is disposed, the entry is absent or changing, cleanup is incomplete, options are invalid, or a required credentials provider is missing.'],
+      },
+    ],
+  },
+  {
+    key: 'mcpPool',
+    summary: 'Shared MCP connections.',
+    description: 'Shared MCP connections. Mount this plugin once per composition; every `dsh-mcp-client` instance reads it through `ctx.get(\'mcpPool\')` and connects on its own when the service is absent.',
+    methods: [
+      {
+        signature: 'async acquire(config: Config, options: McpAcquireOptions): Promise<McpLease | undefined>',
+        description: 'Join or open the connection for one resolved configuration.\n\nThe returned lease keeps the connection open until `release()`. A failed shared handshake rejects this call, logs once, and stops sharing that key; callers then connect on their own. Cancelling `options.signal` removes only this holder\'s wait.',
+        parameters: [{ name: 'config', description: 'configuration after credential expansion.' }, { name: 'options', description: 'cancellation for this wait and the diagnostic filter.' }],
+        returns: 'the lease, or `undefined` when this configuration is not shared.',
       },
     ],
   },
@@ -6286,7 +6354,15 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ApprovalRequestEvent',
-    declaration: 'export interface ApprovalRequestEvent {\n    readonly agent: Agent;\n    readonly toolName: string;\n    readonly callId?: ToolCallId;\n    readonly reason?: string;\n    readonly displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n    readonly signal?: AbortSignal;\n}',
+    declaration: 'export interface ApprovalRequestEvent {\n    readonly agent: Agent;\n    readonly toolName: string;\n    readonly action?: string;\n    readonly resources?: readonly string[];\n    readonly callId?: ToolCallId;\n    readonly reason?: string;\n    readonly displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'ApprovalRule',
+    declaration: 'export interface ApprovalRule {\n    readonly action: string;\n    readonly resource: string;\n    readonly effect: ApprovalRuleEffect;\n}',
+  },
+  {
+    name: 'ApprovalRuleEffect',
+    declaration: 'export type ApprovalRuleEffect = \'allow\' | \'deny\' | \'ask\';',
   },
   {
     name: 'ArchiveSessionOptions',
@@ -7985,12 +8061,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type MatcherValue = string | number | boolean | null | RegExp | readonly (string | number | boolean | null)[];',
   },
   {
+    name: 'McpAcquireOptions',
+    declaration: 'export interface McpAcquireOptions {\n    signal: AbortSignal;\n    redact?: (text: string) => string;\n    authProvider?: OAuthClientProvider;\n}',
+  },
+  {
     name: 'McpCloseResult',
     declaration: 'export interface McpCloseResult {\n    closeConfirmed: boolean;\n    cleanupError?: string;\n}',
   },
   {
     name: 'McpConnectionStatus',
-    declaration: 'export type McpConnectionStatus = {\n    state: \'closed\';\n    result: McpCloseResult;\n} | {\n    state: \'waiting-credentials\';\n    lastError: string;\n} | {\n    state: \'connecting\';\n    attempt: number;\n} | {\n    state: \'connected\';\n    toolCount: number;\n    connectedAt: number;\n} | {\n    state: \'reconnecting\';\n    attempt: number;\n    maxAttempts: number;\n    nextRetryAtMs: number;\n    lastError: string;\n} | {\n    state: \'failed\';\n    reason: \'gave-up\' | \'reconnect-disabled\' | \'unclosed-generation\';\n    lastError?: string;\n};',
+    declaration: 'export type McpConnectionStatus = {\n    state: \'closed\';\n    result: McpCloseResult;\n} | {\n    state: \'waiting-credentials\';\n    lastError: string;\n} | {\n    state: \'waiting-authorization\';\n    lastError: string;\n} | {\n    state: \'connecting\';\n    attempt: number;\n} | {\n    state: \'connected\';\n    toolCount: number;\n    connectedAt: number;\n} | {\n    state: \'reconnecting\';\n    attempt: number;\n    maxAttempts: number;\n    nextRetryAtMs: number;\n    lastError: string;\n} | {\n    state: \'failed\';\n    reason: \'gave-up\' | \'reconnect-disabled\' | \'unclosed-generation\';\n    lastError?: string;\n};',
+  },
+  {
+    name: 'McpLease',
+    declaration: 'export interface McpLease {\n    readonly client: Client;\n    onClose(callback: () => void): () => void;\n    onToolsChanged(callback: () => void): () => void;\n    onResourceUpdated(callback: (uri: string) => void): () => void;\n    release(): Promise<McpCloseResult>;\n}',
   },
   {
     name: 'McpManagedServerStatus',
@@ -10586,7 +10670,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolDefinition',
-    declaration: 'export interface ToolDefinition extends ToolSchema {\n    readonly output: ToolOutputDefinition;\n    execute(args: unknown, exec: ToolRunContext): Promise<unknown>;\n    projectContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    finalizeContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    timeoutMs?: number;\n    isConcurrencySafe?(args: unknown): boolean;\n    presentCall?(args: unknown): ToolCallView | undefined;\n    presentResult?(args: unknown, result: ToolResult): ToolResultView | undefined;\n}',
+    declaration: 'export interface ToolDefinition extends ToolSchema {\n    readonly output: ToolOutputDefinition;\n    execute(args: unknown, exec: ToolRunContext): Promise<unknown>;\n    projectContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    finalizeContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    timeoutMs?: number;\n    isConcurrencySafe?(args: unknown): boolean;\n    approvalResources?(args: unknown): {\n        readonly action: string;\n        readonly resources: readonly string[];\n    };\n    presentCall?(args: unknown): ToolCallView | undefined;\n    presentResult?(args: unknown, result: ToolResult): ToolResultView | undefined;\n}',
   },
   {
     name: 'ToolDispatchExecution',

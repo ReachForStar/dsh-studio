@@ -17,7 +17,7 @@
  */
 
 import { Service, type Context } from '@deepseek-ai/cordis'
-import type { Client } from '@modelcontextprotocol/client'
+import type { Client, OAuthClientProvider } from '@modelcontextprotocol/client'
 import { createMcpClient } from './client.ts'
 import { describeError } from './diagnostic.ts'
 import { McpGeneration } from './generation.ts'
@@ -68,6 +68,8 @@ export interface McpAcquireOptions {
   signal: AbortSignal
   /** Replaces expanded credential values in diagnostics. Defaults to identity. */
   redact?: (text: string) => string
+  /** OAuth client the shared transport presents and refreshes tokens with. */
+  authProvider?: OAuthClientProvider
 }
 
 /** Removal of one connection from the pool's table. */
@@ -112,12 +114,14 @@ class SharedConnection {
    * @param key - sharing key computed by {@link poolKey}.
    * @param config - resolved configuration the connection dials.
    * @param redact - diagnostic filter for expanded credential values.
+   * @param authProvider - OAuth client the transport presents and refreshes tokens with.
    */
   constructor(
     private readonly registry: ConnectionRegistry,
     readonly key: string,
     config: Config,
     redact: (text: string) => string,
+    authProvider?: OAuthClientProvider,
   ) {
     this.client = createMcpClient(() => { this.toolsChanged() })
     this.client.onclose = () => { this.drop() }
@@ -127,7 +131,7 @@ class SharedConnection {
       }
     })
     this.wire = new McpGeneration(this.client, config.closeTimeoutMs, error => redact(describeError(error)))
-    this.settled = this.wire.connect(config, config.startupTimeoutMs)
+    this.settled = this.wire.connect(config, config.startupTimeoutMs, authProvider)
   }
 
   /**
@@ -199,7 +203,7 @@ export default class McpPool extends Service {
     let connection = this.connections.get(key)
     if (connection === undefined) {
       try {
-        connection = new SharedConnection(this.registry, key, config, options.redact ?? (text => text))
+        connection = new SharedConnection(this.registry, key, config, options.redact ?? (text => text), options.authProvider)
       } catch (error) {
         this.unpoolable.add(key)
         this.logFailure(config.serverName, error, options.redact)

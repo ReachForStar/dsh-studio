@@ -70,6 +70,7 @@ Add one entry per server; nothing else is required. After the harness starts, th
 | `reconnect.initialDelayMs` | `500` | First reconnect delay; doubles per consecutive failed attempt |
 | `reconnect.maxDelayMs` | `30,000` | Backoff ceiling; also the uptime after which the attempt budget resets |
 | `reconnect.maxAttempts` | `10` | Consecutive failed attempts per outage before giving up |
+| `oauth` | — | streamable-http: OAuth client settings for a server that requires authorization; see [OAuth for remote servers](#oauth-for-remote-servers) |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-mcp-client) is the exhaustive source for every accepted field.
 
@@ -110,6 +111,15 @@ Each instance keeps its own tool registrations, reconnect budget, status, and in
 
 The pool does not retry a failed handshake. A shared connection that cannot be established marks its configuration unshareable for the life of the process and logs one warning; that instance and every later one then dial their own connection, exactly as they would without a pool. Omitting the pool row disables sharing without changing any other behavior.
 
+<a id="oauth-for-remote-servers"></a>
+### OAuth for remote servers
+
+A Streamable HTTP server that requires OAuth needs an `oauth` section. The harness keeps the grant in one credential record keyed by the server URL, so a stored grant survives restarts and two processes refresh one refresh token under the credentials seam's lock. Without a grant the instance reports `waiting-authorization` instead of retrying; `dsh-mcp-manager` starts the interactive flow with `authorize(name)` and rebuilds the instance once tokens are stored.
+
+The flow discovers the authorization server from the server's challenge or its well-known metadata, registers this client dynamically unless `clientId` is configured, sends the browser to the authorization endpoint, and listens on `127.0.0.1` for the redirect. `clientId` and `clientSecret` pin a pre-registered client, `scope` requests explicit scopes, `callbackPort` fixes the loopback port (the default is ephemeral), and `authorizationTimeoutMs` bounds one interactive authorization. The transport refreshes the access token when the server answers 401; a refresh the authorization server refuses leaves the instance in `waiting-authorization`.
+
+Tokens never enter the session log, `cordis.yml`, or diagnostics. `clientSecret` is a literal configuration value: supply it from the composition file's own environment expansion (`!!js process.env.…`) rather than a `${credential:…}` template.
+
 <a id="runtime-templates-and-credentials"></a>
 ### Runtime templates and credentials
 
@@ -146,6 +156,7 @@ This section explains the design decisions behind the bridge and points at the c
 | [`src/client.ts`](src/client.ts) | SDK client construction shared by supervised and pooled connections |
 | [`src/pool.ts`](src/pool.ts) | Shared connections (`./pool`): lease lifetime, holder fan-out, private fallback |
 | [`src/pool-key.ts`](src/pool-key.ts) | Sharing key over the resolved connection inputs, with fingerprinted secrets |
+| [`src/oauth.ts`](src/oauth.ts) | OAuth client provider, loopback authorization flow, and the durable grant (`./oauth`) |
 | [`src/generation.ts`](src/generation.ts) | Transport ownership, cancellation, pending work, and confirmed closure |
 | [`src/resource-watch.ts`](src/resource-watch.ts) | Per-generation resource watches: era-specific subscriptions, sharing, notification routing, and release |
 | [`src/credentials.ts`](src/credentials.ts) | Runtime template binding and redaction of every resolved value |
@@ -252,6 +263,7 @@ These limits describe what you cannot do with this plugin and when it needs oper
 - **Whole-attempt startup budgets are opt-in** — `startupTimeoutMs` covers template resolution, negotiation, connect, and the initial tool sync when configured. A notification-driven re-sync's `tools/list` requests use the MCP SDK's 60-second request default and page limit. Plugin unload closes the transport to interrupt pending startup requests before awaiting teardown.
 - **Reconnect handles failed negotiation and transport close** — a failed initial connection or a crashed stdio child uses the configured reconnect budget. Ordinary HTTP request failures use the SDK transport's recovery; credential changes replace the connection.
 - **Sharing is per process and per resolved configuration** — identical resolved transport settings share one connection; a shared handshake that fails stops sharing that configuration until the Host restarts, and nothing is shared across processes or Hosts.
+- **OAuth callbacks are loopback-only** — the browser must reach the Host's `127.0.0.1` callback port, so a remote or SSH-hosted Host needs that port forwarded; the harness returns the authorization URL instead of opening a browser.
 - **Image is the only durable rich-result bridge** — PNG, JPEG, WebP, and GIF enter Native context after exact capability proof. Audio and embedded-resource payloads remain execution-local with explicit diagnostics, while resource links preserve only their name and URI as text.
 - **Invalid protocol results or output schemas fail through the SDK** — the bridge does not accept legacy `toolResult` substitutes or bypass advertised schema validation.
 - **Task-required MCP tools are rejected at call time** — a tool that requires the task-based execution extension throws instead of bridging; the extension is not implemented.

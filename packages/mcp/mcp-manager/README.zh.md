@@ -72,6 +72,7 @@ profile 的 `cordis.patch.yml` 会替换条目的完整 `servers` 映射。需�
 | `enabled` | `true` | 持久意图：`false` 卸载实例但保留条目 |
 | `startupTimeoutMs` | `30,000` | 模板解析、协商、连接与初次工具发现的预算 |
 | `toolCallTimeoutMs` / `closeTimeoutMs` / `reconnect` | mcp-client 默认值 | 逐服务器覆盖 |
+| `oauth` | — | streamable-http：OAuth 客户端设置（`clientId`、`clientSecret`、`scope`、`callbackPort`、`authorizationTimeoutMs`）；`authorize(name)` 启动流程 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-mcp-manager)是每个可接受字段的详尽出处。
 
@@ -107,11 +108,11 @@ export function apply(ctx: Context): void {
 
 `ctx.mcpManager.list()` 返回各服务器的 `name`、`configured` 标记与实时 `status`，配置条目排在注册条目之前。已移除、但仍在清理或清理失败的条目继续列出，`configured: false`；清理失败时该行保留到宿主重启。清理状态保留首个诊断；任一实例或探测未确认关闭时，`closeConfirmed` 保持 `false`。管理器存活期间，已发布状态的变化会发出 `mcp-manager/status`，包括条目移除后的清理失败。生命周期操作不等待监听器完成；监听器同步抛错或返回的 Promise 拒绝都会被记录，其他监听器仍会收到通知。
 
-重连留在 mcp-client 内。`restart(name)` 替换实例并重置重连预算，预算耗尽后同样适用。传输关闭未确认或本地清理出错时，会阻止该服务器的替换与后续探测；需要重启宿主恢复。`probe(name, options)` 解析模板、连接、读取服务器身份与工具名，再关闭，不注册工具或预留 namespace。已停用条目也可探测。探测有独立的截止时间与取消信号，并分别报告连接/列表查询成功与关闭、清理结果。
+重连留在 mcp-client 内。`restart(name)` 替换实例并重置重连预算，预算耗尽后同样适用。配置了 `oauth` 但没有已存凭据的远程条目会报告 `waiting-authorization` 而不重试；`authorize(name)` 启动交互流程并返回要打开的 URL，凭据存入后重建实例。`forgetAuthorization(name)` 删除已存凭据并重建实例。传输关闭未确认或本地清理出错时，会阻止该服务器的替换与后续探测；需要重启宿主恢复。`probe(name, options)` 解析模板、连接、读取服务器身份与工具名，再关闭，不注册工具或预留 namespace。已停用条目也可探测。探测有独立的截止时间与取消信号，并分别报告连接/列表查询成功与关闭、清理结果。
 
 ### Remote 操作
 
-浏览器客户端经 [`dsh-api-remotes`](../../api/remotes/README.zh.md) 以 `ctx.remote.mcpManager` 访问管理器。`watch(signal)` 在订阅时推送完整服务器列表，之后每次状态或条目变化再推送一次，订阅方尚未读取的变化会合并；中止信号结束该流，管理器销毁结束所有流。`restart(name)` 与 `probe(name, signal)` 执行上述操作。配置写入仍走 Settings Remote；管理器不提供写入方法，因此浏览器无法定义服务器命令。
+浏览器客户端经 [`dsh-api-remotes`](../../api/remotes/README.zh.md) 以 `ctx.remote.mcpManager` 访问管理器。`watch(signal)` 在订阅时推送完整服务器列表，之后每次状态或条目变化再推送一次，订阅方尚未读取的变化会合并；中止信号结束该流，管理器销毁结束所有流。`restart(name)`、`probe(name, signal)`、`authorize(name)` 与 `forgetAuthorization(name)` 执行上述操作。配置写入仍走 Settings Remote；管理器不提供写入方法，因此浏览器无法定义服务器命令。
 
 -----
 
@@ -175,7 +176,7 @@ export function apply(ctx: Context): void {
 
 这些限制描述今天用本管理器做不到的事。它们是当前包约束，不是任务清单。
 
-- **没有 OAuth 流程**——服务器返回授权挑战时表现为普通连接失败与重连翻腾；没有 needs-auth 状态、token 存储或交互式登录。
+- **OAuth 需要可达的回环回调**——交互流程监听 `127.0.0.1`，浏览器必须能访问该端口，远程或 SSH 宿主要转发端口；管理器只返回授权 URL，不打开浏览器。
 - **只治理全局面**——agent preset 或静态 `cordis.yml` 行挂载的实例既不被列出也不受治理；静态实例只在受管条目试图复用其名字时以 `serverName` 冲突现身。
 - **重建存在工具空窗**——变更的条目先销毁再重挂，其工具会从模型工具集消失直到新实例完成初次同步；没有旧代继续服务到换代完成的交接。
 - **注册条目由其插件固定**——Settings 无法覆盖注册条目的预算；注册插件需要的可调参数放在它自己的配置中。
@@ -189,7 +190,6 @@ export function apply(ctx: Context): void {
 
 本开发备注是维护者的工作上下文：开放设计问题与尚未决定的方向。它明确不具权威性——已交付行为、限制与既定理由以上文、包代码与所链接的 Agent Note 为准。
 
-- OAuth 应落在凭据记录与 authorization seam 加上 MCP SDK 的 `OAuthClientProvider` 之上；`needs-auth` 状态位为其保留。
 - 滚动换代（先起新实例再销毁旧实例、保持公开工具名稳定）可以消除重建空窗；同类产品用代理世代实现这一点。
 - 逐服务器的工具允许/禁用清单是条目的自然扩展，待出现真实消费方再加。
 

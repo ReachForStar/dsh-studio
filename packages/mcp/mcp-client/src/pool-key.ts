@@ -10,6 +10,7 @@
 
 import { createHash } from 'node:crypto'
 import type { Config } from './index.ts'
+import { oauthSettings } from './oauth.ts'
 
 /**
  * Fingerprint a set of transport values so no resolved secret sits in a map
@@ -18,8 +19,16 @@ import type { Config } from './index.ts'
  * @returns the hexadecimal SHA-256 digest.
  */
 function fingerprint(values: Record<string, string>): string {
-  const entries = Object.entries(values).toSorted(([left], [right]) => left.localeCompare(right))
-  return createHash('sha256').update(JSON.stringify(entries)).digest('hex')
+  return fingerprintText(JSON.stringify(Object.entries(values).toSorted(([left], [right]) => left.localeCompare(right))))
+}
+
+/**
+ * Fingerprint one transport value so a resolved secret stays out of a key.
+ * @param text - value to hash.
+ * @returns the hexadecimal SHA-256 digest.
+ */
+function fingerprintText(text: string): string {
+  return createHash('sha256').update(text).digest('hex')
 }
 
 /**
@@ -35,7 +44,18 @@ function fingerprint(values: Record<string, string>): string {
  */
 export function poolKey(config: Config): string {
   const budgets = [config.startupTimeoutMs ?? null, config.closeTimeoutMs]
-  return config.transport === 'stdio'
-    ? JSON.stringify(['stdio', config.command, config.args, config.cwd, fingerprint(config.env), ...budgets])
-    : JSON.stringify(['streamable-http', config.url, fingerprint(config.headers), ...budgets])
+  if (config.transport === 'stdio') {
+    return JSON.stringify(['stdio', config.command, config.args, config.cwd, fingerprint(config.env), ...budgets])
+  }
+  // The OAuth client decides which account a shared connection acts as, so two
+  // configurations that authorize differently must not share one connection.
+  const settings = oauthSettings(config)
+  const oauth = settings === undefined
+    ? null
+    : {
+      clientId: settings.clientId ?? null,
+      clientSecret: settings.clientSecret === undefined ? null : fingerprintText(settings.clientSecret),
+      scope: settings.scope ?? null,
+    }
+  return JSON.stringify(['streamable-http', config.url, fingerprint(config.headers), oauth, ...budgets])
 }

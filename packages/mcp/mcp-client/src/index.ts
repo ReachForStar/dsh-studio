@@ -18,6 +18,7 @@ import z from '@deepseek-ai/schemastery'
 import { scopeOf } from '@deepseek-ai/dsh-scope'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { DEFAULT_MAX_INSTRUCTION_BYTES, DEFAULT_MAX_RESOURCE_WATCH_TIMEOUT_MS, DEFAULT_RESOURCE_WATCH_TIMEOUT_MS, RECONNECT_DEFAULTS, resolveReconnectPolicy, startConnection } from './connection.ts'
+import { OAuthSchema } from './oauth.ts'
 
 export { resolveReconnectPolicy } from './connection.ts'
 import type { ReconnectConfig } from './connection.ts'
@@ -108,6 +109,20 @@ export interface StdioConfig {
   reconnect?: ReconnectConfig
 }
 
+/** OAuth client settings for one remote MCP server. */
+export interface OAuthConfig {
+  /** Pre-registered client id; omission registers this client dynamically with the authorization server. */
+  clientId?: string
+  /** Client secret for a pre-registered confidential client. */
+  clientSecret?: string
+  /** Scopes to request; omission uses the server's challenge or its metadata. */
+  scope?: string
+  /** Fixed loopback callback port; omission uses an ephemeral port. */
+  callbackPort?: number
+  /** Budget for one interactive authorization in milliseconds (default 600000). */
+  authorizationTimeoutMs?: number
+}
+
 /** Config for connecting to an MCP server over Streamable HTTP (SSE). */
 export interface StreamableHttpConfig {
   /** Selects Streamable HTTP transport. */
@@ -140,6 +155,12 @@ export interface StreamableHttpConfig {
   maxInstructionBytes?: number
   /** Automatic reconnect policy after a lost connection; omission uses the defaults. */
   reconnect?: ReconnectConfig
+  /**
+   * OAuth for a server that requires it. Omission connects without an
+   * authorization grant; a server that answers 401 then reports
+   * `waiting-authorization` until `mcp-manager.authorize` stores one.
+   */
+  oauth?: OAuthConfig
 }
 
 /** Configuration for one stdio or Streamable HTTP MCP server. */
@@ -198,6 +219,7 @@ export const Config = z.union([
     failOnStartupError: z.boolean().default(false),
     maxInstructionBytes: z.number().step(1).min(1).default(DEFAULT_MAX_INSTRUCTION_BYTES),
     reconnect: ReconnectSchema,
+    oauth: OAuthSchema,
   }),
 ]) as z<ConfigInput, Config>
 /* jscpd:ignore-end */

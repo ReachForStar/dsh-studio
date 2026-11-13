@@ -183,6 +183,39 @@ register(name: string, entry: McpServerRegistration): () => void
 @Remote('probe') probeFromClient(name: string, signal: AbortSignal): Promise<McpProbeResult>
 
 /**
+ * Start an interactive OAuth authorization for one remote server.
+ *
+ * Returns as soon as the authorization URL exists; the flow keeps running and
+ * the instance is rebuilt once the grant is stored. The flow ends on the
+ * configured timeout or when the manager stops.
+ * @param name - the configured or registered server key.
+ * @returns the URL to open, or undefined when stored tokens already authorized.
+ * @throws when the manager is disposed, the entry is absent or not OAuth-configured, or the credentials provider is missing.
+ */
+async authorize(name: string): Promise<string | undefined>
+
+/**
+ * Authorize one server for a management surface.
+ * @param name - the configured or registered server key.
+ * @returns the URL to open, or undefined when stored tokens already authorized.
+ */
+@Remote('authorize') authorizeFromClient(name: string): Promise<string | undefined>
+
+/**
+ * Remove one server's stored grant and rebuild its instance, which then
+ * reports `waiting-authorization` until the user authorizes again.
+ * @param name - the configured or registered server key.
+ * @throws when the manager is disposed, the entry is absent or not OAuth-configured.
+ */
+async forgetAuthorization(name: string): Promise<void>
+
+/**
+ * Remove one server's stored grant for a management surface.
+ * @param name - the configured or registered server key.
+ */
+@Remote('forgetAuthorization') forgetAuthorizationFromClient(name: string): Promise<void>
+
+/**
  * Probe one configured server without touching its live instance: resolve
  * the entry's templates, connect, list tools, close. A disabled entry can be
  * probed — that is how a management surface tests it before enabling.
@@ -197,6 +230,29 @@ async probe(name: string, options?: McpProbeOptions): Promise<McpProbeResult>
 ```
 
 Source: [`packages/mcp/mcp-manager/src/index.ts`](../../packages/mcp/mcp-manager/src/index.ts)
+
+<a id="ctxmcppool--mcppool"></a>
+
+### `ctx.mcpPool` — `McpPool`
+
+Shared MCP connections. Mount this plugin once per composition; every `dsh-mcp-client` instance reads it through `ctx.get('mcpPool')` and connects on its own when the service is absent.
+
+```ts cordis-catalog
+/**
+ * Join or open the connection for one resolved configuration.
+ *
+ * The returned lease keeps the connection open until `release()`. A failed
+ * shared handshake rejects this call, logs once, and stops sharing that key;
+ * callers then connect on their own. Cancelling `options.signal` removes only
+ * this holder's wait.
+ * @param config - configuration after credential expansion.
+ * @param options - cancellation for this wait and the diagnostic filter.
+ * @returns the lease, or `undefined` when this configuration is not shared.
+ */
+async acquire(config: Config, options: McpAcquireOptions): Promise<McpLease | undefined>
+```
+
+Source: [`packages/mcp/mcp-client/src/pool.ts`](../../packages/mcp/mcp-client/src/pool.ts)
 
 <a id="ctxmcpresources--mcpresourceruntime"></a>
 

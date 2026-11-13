@@ -132,6 +132,50 @@ setPolicy(agent: Agent, policy: ApprovalPolicy): void
 async request(req: ApprovalRequest): Promise<ApprovalOutcome>
 
 /**
+ * Read the rules stored for one project directory.
+ * @param cwd - the session's recorded working directory.
+ * @returns the stored rules, or none without a directory or storage.
+ */
+projectRulesFor(cwd: string | undefined): readonly ApprovalRule[]
+
+/**
+ * Append one rule to a project's stored rules.
+ * @param cwd - the project directory.
+ * @param rule - the rule to append.
+ * @returns the project's complete rule list after the write.
+ * @throws when the deployment mounts no storage domain for rules.
+ */
+async addProjectRule(cwd: string, rule: ApprovalRule): Promise<readonly ApprovalRule[]>
+
+/**
+ * Remove one rule from a project by zero-based position.
+ * @param cwd - the project directory.
+ * @param index - the rule's position in {@link projectRulesFor}.
+ * @returns the removed rule, or `undefined` when the position does not exist.
+ * @throws when the deployment mounts no storage domain for rules.
+ */
+async removeProjectRule(cwd: string, index: number): Promise<ApprovalRule | undefined>
+
+/**
+ * Record the user's replacement arguments for one pending call. The pipeline
+ * consumes the text when the answer is `rejected`, so the model receives it
+ * as the tool failure reason and can retry with the corrected arguments.
+ * @param agent - the agent whose session owns the call.
+ * @param callId - the exact tool call the correction belongs to.
+ * @param text - the user's replacement arguments or instruction.
+ */
+recordCorrection(agent: Agent, callId: ToolCallId, text: string): void
+
+/**
+ * Consume one recorded correction. Reading removes it, so a stale rejection
+ * reason cannot leak into a later call.
+ * @param agent - the agent whose session owns the call.
+ * @param callId - the exact tool call being rejected.
+ * @returns the correction text, or `undefined` when none was recorded.
+ */
+takeCorrection(agent: Agent, callId: ToolCallId): string | undefined
+
+/**
  * Read the session override without applying the configured default.
  * @param session - session whose log supplies the override.
  * @returns the last logged policy, or `undefined` without one.
@@ -139,7 +183,7 @@ async request(req: ApprovalRequest): Promise<ApprovalOutcome>
 overrideOf(session: Session): ApprovalPolicy | undefined
 ```
 
-Types: [Agent](core.zh.md) · [Session](session.zh.md)
+Types: [Agent](core.zh.md) · [Session](session.zh.md) · [ToolCallId](llm-streaming.zh.md)
 
 Source: [`packages/interaction/user-approval/src/index.ts`](../../packages/interaction/user-approval/src/index.ts)
 

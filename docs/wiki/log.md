@@ -987,3 +987,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 排除 11 项已覆盖能力（workflow 基础、子代理控制、压缩裁剪、流式渲染、插件市场、工作区快照、会话导出/导入、沙箱、MCP、技能、上下文分节）。
 - 产出 15 项候选与落点，最高优先是动态工作流的 journal/类型化、权限四补强、跨会话控制的安全边界与提示快照。
 - 记录于 [ZCode 能力面与可融入清单](queries/zcode-capability-comparison.md)。
+
+## [2026-11-13] feat | 实现 MCP OAuth
+
+- 新增 `@deepseek-ai/dsh-mcp-client/oauth`：`OAuthClientProvider` 实现、`127.0.0.1` 回环授权流程（discovery、动态注册、PKCE、code 交换）、zod 校验的凭据记录与自动刷新。
+- 授权凭据按服务器 URL 存入 `credentials` 记录的 `GrantRecord`，读改写走 `modifyRecord` 的独占锁；token 不进入日志、配置或诊断。
+- 连接侧新增 `waiting-authorization` 状态：无凭据不发握手，刷新被拒也不进入重连翻腾；`mcpManager.authorize`/`forgetAuthorization` 提供 Remote 入口，授权完成后重建实例。
+- 池键加入 OAuth 客户端身份；`liveshare` 端点分类登记新入口；配置目录与子系统页已重新生成。
+- 验证：`pnpm exec vitest run packages/mcp` 337 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog`。
+- 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。

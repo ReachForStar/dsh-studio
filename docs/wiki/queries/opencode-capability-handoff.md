@@ -1,5 +1,5 @@
 ---
-title: opencode 能力落地交接（余 1 项）
+title: opencode 能力落地交接（已完成）
 type: query
 tags: [交接, opencode, 权限规则, MCP OAuth, 代码模式, 侧问面板, 会话导入]
 created: 2026-11-13
@@ -8,11 +8,11 @@ sources: []
 status: draft
 ---
 
-# opencode 能力落地交接（余 1 项）
+# opencode 能力落地交接（已完成）
 
 ## 一句话结论
 
-前 16 项已实现并推送，权限规则化含求值、静态扫描、项目持久规则、始终允许与修改后允许，MCP 连接池已落地。清单只剩 MCP OAuth，细则见 [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)。清单依据见 [能力面与可融入清单](opencode-v2-capability-comparison.md)。
+17 项已实现并推送：权限规则化含求值、静态扫描、项目持久规则、始终允许与修改后允许，MCP 连接池与 OAuth 已落地。剩余可选项是 Settings 授权界面，细则见 [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)。清单依据见 [能力面与可融入清单](opencode-v2-capability-comparison.md)。
 
 ## 已完成部分（不要重做）
 
@@ -34,13 +34,14 @@ status: draft
 | 项目规则与始终允许 | `packages/interaction/user-approval` 的 `approval_rules` 域与 `/allow`；`packages/client/ui-approval` | 服务 61 项、客户端 46 项 |
 | 修改后允许 | `/correct` 命令与拒绝原因回传；审批面板纠正输入框 | 管道与客户端测试 |
 | 侧问面板（btw） | `packages/experimental/btw` 的 `POST /api/btw.ask` 与 Session Header 弹窗 | 12 项测试，新文件覆盖率 100% |
-| MCP 连接池 | `packages/mcp/mcp-client` 的 `./pool` 服务、`pool-key.ts`、`client.ts`；base 组合行 `mcp-pool` | 池测试 24 项，MCP 313 项 |
+| MCP 连接池 | `packages/mcp/mcp-client` 的 `./pool` 服务、`pool-key.ts`、`client.ts`；base 组合行 `mcp-pool` | 池测试 24 项 |
+| MCP OAuth | `packages/mcp/mcp-client` 的 `./oauth` 提供方与回环流程、`waiting-authorization`、`mcpManager.authorize` | OAuth 测试 21 项，管理器 3 项，MCP 337 项 |
 
 行为取舍记录在 [循环与工具行为](../../../.agents/notes/implemented/feature/2026-11-12-opencode-core-behaviors.md)。
 
-## 待办：MCP OAuth
+## 剩余可选项
 
-连接池已完成，剩余 OAuth 细则见 [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)。
+Settings 授权界面：展示 `waiting-authorization`，调用 `authorize`/`forgetAuthorization`，打开返回的授权 URL。细则见 [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)。
 
 ## 全局约束与验证
 

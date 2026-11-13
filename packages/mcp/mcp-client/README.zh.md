@@ -70,6 +70,7 @@ kind: "package-reference"
 | `reconnect.initialDelayMs` | `500` | 首次重连延迟；每次连续失败尝试翻倍 |
 | `reconnect.maxDelayMs` | `30,000` | 退避上限；同时是重置尝试预算所需的正常运行时长 |
 | `reconnect.maxAttempts` | `10` | 每次中断内连续失败尝试次数上限，超出后放弃 |
+| `oauth` | — | streamable-http：需要授权的服务器所用的 OAuth 客户端设置；见[远程服务器的 OAuth](#oauth-for-remote-servers) |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-mcp-client)是每个受支持字段的穷尽式真源。
 
@@ -110,6 +111,15 @@ kind: "package-reference"
 
 连接池不重试失败的握手。无法建立的共享连接会在进程生命周期内把该配置标记为不可共享，并记录一条警告；该实例及之后的所有实例改为各自建立连接，行为与没有连接池时一致。省略连接池行会关闭共享，不影响其他行为。
 
+<a id="oauth-for-remote-servers"></a>
+### 远程服务器的 OAuth
+
+需要 OAuth 的 Streamable HTTP 服务器要配置 `oauth` 段。harness 按服务器 URL 把授权凭据存为一条凭据记录，因此已授权的凭据在重启后仍然有效，两个进程也会在凭据接缝的锁下刷新同一个刷新令牌。没有凭据时，实例报告 `waiting-authorization` 而不是重试；`dsh-mcp-manager` 用 `authorize(name)` 启动交互流程，并在令牌存入后重建实例。
+
+流程从服务器的质询或 well-known 元数据发现授权服务器，在未配置 `clientId` 时动态注册本客户端，把浏览器送到授权端点，并在 `127.0.0.1` 上等待回调。`clientId` 与 `clientSecret` 固定预注册客户端，`scope` 请求明确的作用域，`callbackPort` 固定回环端口（默认随机），`authorizationTimeoutMs` 约束一次交互授权。服务器返回 401 时传输层刷新访问令牌；授权服务器拒绝刷新时实例回到 `waiting-authorization`。
+
+令牌不会进入会话日志、`cordis.yml` 或诊断。`clientSecret` 是字面配置值：用组合文件自身的环境展开（`!!js process.env.…`）提供，而不是 `${credential:…}` 模板。
+
 <a id="runtime-templates-and-credentials"></a>
 ### 运行时模板与凭据
 
@@ -146,6 +156,7 @@ kind: "package-reference"
 | [`src/client.ts`](src/client.ts) | 受监督连接与共享连接共用的 SDK 客户端构造 |
 | [`src/pool.ts`](src/pool.ts) | 共享连接（`./pool`）：租约生命周期、持有者通知、独占回退 |
 | [`src/pool-key.ts`](src/pool-key.ts) | 基于解析后连接输入的共享键，密钥只取指纹 |
+| [`src/oauth.ts`](src/oauth.ts) | OAuth 客户端提供方、回环授权流程与持久凭据（`./oauth`） |
 | [`src/generation.ts`](src/generation.ts) | 传输归属、取消、待处理工作与关闭确认 |
 | [`src/resource-watch.ts`](src/resource-watch.ts) | 单世代资源等待：双协议世代订阅、共享计数、通知路由与释放 |
 | [`src/credentials.ts`](src/credentials.ts) | 运行时模板绑定，并替换每个已解析的值 |
@@ -252,6 +263,7 @@ SDK 通过旧版通知或现代协议订阅接收工具列表变化。监督器�
 - **整次启动尝试的预算需主动配置**——设置 `startupTimeoutMs` 后，它覆盖模板解析、协商、连接与初次工具同步。通知驱动的重同步发出的 `tools/list` 请求使用 MCP SDK 的 60 秒请求默认值及其页数上限。插件卸载先关闭传输以中断待处理的启动请求，再等待清理。
 - **重连处理协商失败与传输关闭**——初始连接失败或 stdio 子进程崩溃都会使用配置的重连预算。普通 HTTP 请求失败使用 SDK 传输的恢复机制；凭据变化则替换连接。
 - **共享以进程和解析后配置为界**——解析后的传输设置相同才共用一个连接；共享握手失败会停止共享该配置，直到宿主重启；跨进程或跨宿主不共享。
+- **OAuth 回调只走回环地址**——浏览器必须能访问宿主的 `127.0.0.1` 回调端口，远程或 SSH 环境需要转发该端口；harness 返回授权 URL，不自动打开浏览器。
 - **图片是唯一的持久丰富结果桥接**——PNG、JPEG、WebP 与 GIF 在确切能力得到证明后进入 Native 上下文。音频与嵌入资源载荷仍只存在于执行局部并带明确诊断，资源链接只以文本保留名称与 URI。
 - **无效的协议结果或输出 schema 由 SDK 拒绝**——桥接器不接受旧式 `toolResult` 替代结果，也不绕过已声明的 schema 校验。
 - **要求基于任务的 MCP 工具在调用时被拒绝**——要求使用基于任务的执行（task-based execution）扩展的工具会抛出异常而非被桥接；该扩展未实现。

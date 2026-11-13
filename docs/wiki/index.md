@@ -94,8 +94,8 @@ updated: 2026-11-13
 - [发布 dsh 0.2.1-rc.3（含四平台桌面安装包）](queries/release-dsh-0.2.1-rc.3.md) — 家族版本对齐→`build:official`→`pack`→`tag -f`→`gh release create`（不带 `--target`）的完整流程，同名 tag 上移、手打路径被显示层掩码引发的误判与 `git add -u` 绕法、桌面工作流双触发。
 - [桌面未签名构建指向发布页的更新源（2026-10-27）](queries/desktop-github-release-update-feed.md) — `DSH_DESKTOP_UPDATE_RELEASES_URL` 让 unsigned 的 Windows/Linux 包带更新源、macOS 排除；含三种 GitHub 资产地址的实测状态（`releases/download` 404）、本地打包产出的 `nightly-linux.yml` 与应用内 `app-update.yml` 证据、以及「feed 依赖 Latest」的约束。
 - [opencode v2.2.7 能力面与可融入清单](queries/opencode-v2-capability-comparison.md) — 排除 12 项已覆盖能力后，按优先级给出 10 项候选：缓存保活、权限规则化与参数纠正、HTTP 卡带录制、MCP OAuth、代码模式按需目录/OpenAPI/静态扫描、跨重启终端、会话文件回滚、侧问面板、尾部 heal、聊天内 mermaid；含不融入项（Effect/Drizzle、Rust daemon、插件 bundle 沙箱）与待核验前提。
-- [opencode 能力落地交接（余 1 项）](queries/opencode-capability-handoff.md) — 前 16 项已交付（含 PTC 预算目录、会话日志导入、权限规则求值与持久化、始终允许、修改后允许、侧问面板、MCP 连接池）；只剩 MCP OAuth。
-- [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md) — 连接池落地事实（`./pool` 服务、池键、租约、握手失败回退、通知转发）与验证结果；OAuth provider、回调路由与凭据存储仍待实现。
+- [opencode 能力落地交接（已完成）](queries/opencode-capability-handoff.md) — 17 项全部交付（含 PTC 预算目录、会话日志导入、权限规则求值与持久化、始终允许、修改后允许、侧问面板、MCP 连接池与 OAuth）；剩余可选项是 Settings 授权界面。
+- [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md) — 连接池与 OAuth 的落地事实：`./pool` 服务与租约、握手失败回退、通知转发；`./oauth` 提供方、回环回调、凭据记录与自动刷新、`waiting-authorization`、管理器授权入口与验证结果。
 - [openai/codex 能力面与可融入清单](queries/codex-capability-comparison.md) — 排除 11 项已覆盖能力后，按优先级列出执行策略（Starlark 前缀规则与“批准并追加规则”）、审批结果词汇、世界状态增量注入、代码模式 exec/wait、apply_patch、钩子事件面、压缩矩阵、rollout-trace、消息板/代理图/树预算、记忆写管线、外部迁移、沙箱网络与拒绝反馈等 13 项及落点。
 - [codex 能力落地交接（12 项）](queries/codex-capability-handoff.md) — 每项的现状、codex 参考路径、落地步骤、验收与风险；含推荐批次（权限/审批/钩子 → 世界状态 → apply_patch/代码模式 → 压缩 → 多智能体/记忆 → 沙箱与收尾）、已由并行会话完成的 PTC 预算目录与会话导入、全局门禁与约束。
 - [ZCode 能力面与可融入清单](queries/zcode-capability-comparison.md) — 排除 11 项已覆盖能力后，按优先级列出动态工作流日志化与类型化、权限四补强、跨会话控制的安全边界、提示快照与 meta_user、编辑匹配器、文件回滚、钩子信任准入、依赖拓扑调度、压缩熔断与 off-peak、按轮分享、记忆管线、客户端渲染与 provider 配置等 15 项及落点。

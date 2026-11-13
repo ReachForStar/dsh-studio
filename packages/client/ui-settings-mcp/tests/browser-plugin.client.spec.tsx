@@ -90,12 +90,14 @@ describe('ui-settings-mcp browser plugin', () => {
     expect(entry.options).toMatchObject({ id: 'mcp', order: 20 })
     expect(entry.locale).toBe(NS)
     expect(resolveSlotLabel(entry.options.label)).toBe('MCP 服务器')
-    expect(b.watch).toHaveBeenCalledOnce()
+    // The stream opens with the first subscriber, not with plugin activation.
+    expect(b.watch).not.toHaveBeenCalled()
 
     const injected = (entry.inject as unknown as () => McpSettingsTabInjected)()
     expect(injected.snapshot()).toEqual({ servers: [] })
     const listener = vi.fn()
     const stop = injected.subscribe(listener)
+    expect(b.watch).toHaveBeenCalledOnce()
     b.push([VIEW])
     await vi.waitFor(() => { expect(listener).toHaveBeenCalled() })
     expect(injected.snapshot()).toEqual({ servers: [VIEW] })
@@ -139,6 +141,8 @@ describe('ui-settings-mcp browser plugin', () => {
     onTestFinished(declared)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const injected = ((b.ctx.get('slots') as SlotRegistry).entries('settings.plugins.tab')[0]!.inject as unknown as () => McpSettingsTabInjected)()
+    const unsubscribe = injected.subscribe(() => {})
+    onTestFinished(unsubscribe)
     const options = b.$stream.mock.calls[0]![0] as unknown as { carrierFailed: () => void }
     options.carrierFailed()
     expect(injected.snapshot()).toMatchObject({ failure: 'unavailable' })

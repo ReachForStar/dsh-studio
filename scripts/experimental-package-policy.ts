@@ -30,6 +30,7 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/agent-plugins': '@deepseek-ai/dsh-agent-plugins',
   'packages/experimental/arena': '@deepseek-ai/dsh-arena',
   'packages/experimental/followup': '@deepseek-ai/dsh-followup',
+  'packages/experimental/fork-notice': '@deepseek-ai/dsh-fork-notice',
   'packages/experimental/warming': '@deepseek-ai/dsh-warming',
   'packages/experimental/speculation': '@deepseek-ai/dsh-speculation',
   'packages/experimental/step-summary': '@deepseek-ai/dsh-step-summary',

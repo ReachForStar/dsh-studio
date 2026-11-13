@@ -57,29 +57,43 @@ export function apply(ctx: ClientContext): void {
     for (const listener of listeners) listener()
   }
   // The manager publishes the complete list on subscription and after every
-  // status or entry change, so one reconnecting stream keeps this tab current.
-  const stream = ctx.remote.$stream<McpManagedServerView[]>({
-    name: 'mcp server list',
-    open: signal => ctx.remote.mcpManager.watch(signal),
-    ended: () => new Error('mcp server list stream ended'),
-    carrierFailed: () => { publish(servers, 'unavailable') },
-  })
-  ctx.effect(() => () => stream.dispose(), 'ui-settings-mcp: server list stream')
-  void (async () => {
-    for await (const frame of stream) {
-      publish(frame.value)
-      frame.accept()
-    }
-  })().catch((error: unknown) => {
-    ctx.logger.warn('ui-settings-mcp: server list stream failed')
-    ctx.logger.warn(error)
-    publish(servers, 'failed')
-  })
+  // status or entry change. The stream opens on the first subscriber — the
+  // mounted tab — so a composition that never shows it never calls the Remote.
+  let stream: { dispose: () => void } | undefined
+  const start = (): void => {
+    if (stream !== undefined) return
+    const open = ctx.remote.$stream<McpManagedServerView[]>({
+      name: 'mcp server list',
+      open: signal => ctx.remote.mcpManager.watch(signal),
+      ended: () => new Error('mcp server list stream ended'),
+      carrierFailed: () => { publish(servers, 'unavailable') },
+    })
+    stream = open
+    void (async () => {
+      for await (const frame of open) {
+        publish(frame.value)
+        frame.accept()
+      }
+    })().catch((error: unknown) => {
+      ctx.logger.warn('ui-settings-mcp: server list stream failed')
+      ctx.logger.warn(error)
+      publish(servers, 'failed')
+    })
+  }
+  const stop = (): void => {
+    stream?.dispose()
+    stream = undefined
+  }
+  ctx.effect(() => () => { stop() }, 'ui-settings-mcp: server list stream')
 
   const injected = (): McpSettingsTabInjected => ({
     subscribe: (listener) => {
       listeners.add(listener)
-      return () => { listeners.delete(listener) }
+      start()
+      return () => {
+        listeners.delete(listener)
+        if (listeners.size === 0) stop()
+      }
     },
     snapshot: (): McpServersSnapshot => ({ servers, ...failure === undefined ? {} : { failure } }),
     authorize: async (name) => {

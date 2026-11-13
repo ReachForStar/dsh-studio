@@ -52,5 +52,8 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "optionalDependencies": {
+    "@deepseek-ai/dsh-experimental-browser-use-playwright-mcp": "workspace:*"
   }
 }

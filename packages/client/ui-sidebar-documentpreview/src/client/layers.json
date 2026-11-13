@@ -1,0 +1,20 @@
+{
+  "shared": [
+    "document",
+    "zoom"
+  ],
+  "edges": {
+    "docx": [
+      "office"
+    ],
+    "pptx": [
+      "office"
+    ],
+    "office": [
+      "pdf"
+    ],
+    "TextPreview.tsx": [
+      "text"
+    ]
+  }
+}

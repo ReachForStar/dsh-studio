@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Cache-Aufwärmen",
+    "description": "Hält den Prompt-Cache des Anbieters zwischen den Runden warm."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "edges": {
+    "view": [
+      "browser"
+    ],
+    "electron": [
+      "browser"
+    ],
+    "pages.ts": [
+      "browser",
+      "view"
+    ]
+  }
+}

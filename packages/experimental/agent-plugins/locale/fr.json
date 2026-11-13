@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Extensions d’agent",
+    "description": "Charge les paquets Agent Plugins v1 et expose leurs compétences et commandes."
+  }
+}

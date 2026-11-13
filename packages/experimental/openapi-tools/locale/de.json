@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "OpenAPI-Werkzeuge",
+    "description": "Wandelt OpenAPI-Operationen in Modellwerkzeuge um."
+  }
+}

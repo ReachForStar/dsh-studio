@@ -53,12 +53,12 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-typert-protocol": "workspace:*",
     "@reachforstar/dsh-a2a-host": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-typert-protocol": "workspace:*",
     "@reachforstar/dsh-a2a-host": "workspace:*"
   }

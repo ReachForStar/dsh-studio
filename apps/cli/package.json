@@ -120,8 +120,6 @@
     "@deepseek-ai/dsh-experimental-forge-bundle": "workspace:*",
     "@deepseek-ai/dsh-browser-use": "workspace:*",
     "@deepseek-ai/dsh-computer-use": "workspace:*",
-    "@deepseek-ai/dsh-experimental-browser-use-playwright-mcp": "workspace:*",
-    "@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp": "workspace:*",
     "@deepseek-ai/dsh-pi-agent-loop": "workspace:*",
     "@reachforstar/dsh-tool-excalidraw": "workspace:*",
     "@reachforstar/dsh-tool-ssh": "workspace:*",

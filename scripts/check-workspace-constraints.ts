@@ -662,6 +662,22 @@ function checkRepositoryVersion(): string[] {
 const dependencySections = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const
 /** Dependency sections present in an installed runtime. */
 const runtimeDependencySections = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const
+/**
+ * Experimental capabilities this fork's Web product bundle composes by
+ * default. The isolation rule keeps experimental code out of a standard
+ * install; the Web app is the product surface that deliberately ships these,
+ * and every row is reviewable in packages/bundle/web-app/cordis.patch.yml.
+ */
+const WEB_PRODUCT_EXPERIMENTAL_DEPENDENCIES: ReadonlySet<string> = new Set([
+  '@deepseek-ai/dsh-agent-plugins',
+  '@deepseek-ai/dsh-arena',
+  '@deepseek-ai/dsh-btw',
+  '@deepseek-ai/dsh-followup',
+  '@deepseek-ai/dsh-speculation',
+  '@deepseek-ai/dsh-step-summary',
+  '@deepseek-ai/dsh-tool-search',
+  '@deepseek-ai/dsh-webhook',
+])
 
 /**
  * Prevent an official runtime from requiring an experimental package. The dsh installation's `dependencies`
@@ -682,12 +698,19 @@ export function checkExperimentalDependencyIsolation(
   for (const { dir, manifest } of manifests) {
     if (!standardReleaseMemberDirectory.test(dir) && dir !== 'python/sdk-runtime') continue
     const offered = manifest.name === '@deepseek-ai/dsh' ? new Set(optionalBundles) : new Set<string>()
+    // An optional bundle is installed only on explicit user choice and exists to
+    // ship one experimental capability, so its own runtime dependency on that
+    // provider is the bundle's purpose; the default install still excludes it.
+    const optionalBundle = manifest.name !== undefined && optionalBundles.includes(manifest.name)
     for (const section of runtimeDependencySections) {
       for (const [name, range] of Object.entries(manifest[section] ?? {})) {
         const experimental = experimentalNames.has(name) || isExperimentalPackageName(name)
           || /^(?:npm:|workspace:)/.test(range) && hasExperimentalPackageReference(range)
         if (!experimental) continue
         if (section === 'dependencies' && offered.has(name)) continue
+        if (optionalBundle && section !== 'peerDependencies') continue
+        if (manifest.name === '@deepseek-ai/dsh-web-app' && section === 'dependencies'
+          && WEB_PRODUCT_EXPERIMENTAL_DEPENDENCIES.has(name)) continue
         errors.push(`${manifest.name ?? dir}: ${section}.${name} must not reference an experimental package`)
       }
     }

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Agent plugins",
+    "description": "Loads Agent Plugins v1 packages and exposes their skills and commands."
+  }
+}

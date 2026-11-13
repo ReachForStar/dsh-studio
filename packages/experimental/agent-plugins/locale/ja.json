@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Agent プラグイン",
+    "description": "Agent Plugins v1 パッケージを読み込み、そのスキルとコマンドを公開します。"
+  }
+}

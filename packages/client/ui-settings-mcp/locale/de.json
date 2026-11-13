@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "MCP-Server",
+    "description": "Zeigt den Verbindungsstatus der MCP-Server dieses Hosts und erlaubt Autorisieren, Löschen der Autorisierung und Neustart."
+  }
+}

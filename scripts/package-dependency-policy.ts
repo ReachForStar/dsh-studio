@@ -54,6 +54,8 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
   '@deepseek-ai/dsh-atomic-write': ['withFileLock', 'writeFileAtomic'],
   '@deepseek-ai/dsh-computer-use/brand': ['ComputerUseProviderName'],
   '@deepseek-ai/dsh-credentials': ['credentialKey'],
+  // A plain format catalog; it is stateless over caller-owned values.
+  '@deepseek-ai/dsh-session-format-catalog': ['sessionFormatCatalog'],
   '@deepseek-ai/dsh-deque': ['Deque'],
   // Builds a dispatcher from the resolved proxy policy; the caller owns and closes it.
   '@deepseek-ai/dsh-http-proxy': ['createRouteDispatcher'],
@@ -70,7 +72,7 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
   '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createAssistantMessage', 'createUserMessage'],
   // Stateless provider/model routing over the LLM catalog; callers own their streams.
   '@deepseek-ai/dsh-llm/route': ['listLlmModels', 'llmRouteCandidates'],
-  '@deepseek-ai/dsh-session': ['SessionId'],
+  '@deepseek-ai/dsh-session': ['SessionId', 'adoptSessionEvent'],
   '@deepseek-ai/dsh-session-format': ['sessionFormatLogFilename'],
   '@deepseek-ai/dsh-storage-domain': ['defineDomain'],
   '@deepseek-ai/dsh-timeout': ['MAX_TIMER_DELAY_MS'],

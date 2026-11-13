@@ -27,7 +27,17 @@ export interface Config {
   timeoutMs: number
 }
 
-export const Config: z<Partial<Config>, Config> = z.object({
+/** Side-question policy accepted from configuration; every field falls back to its default. */
+export interface ConfigInput {
+  /** Registered subagent provider that inherits the parent's context (default `fork`). */
+  provider?: string
+  /** Longest accepted question in characters (default 4000). */
+  maxQuestionChars?: number
+  /** Wall-clock budget for one question in milliseconds (default 120000). */
+  timeoutMs?: number
+}
+
+export const Config: z<ConfigInput, Config> = z.object({
   provider: z.string().default('fork'),
   maxQuestionChars: z.natural().min(1).default(4000),
   timeoutMs: z.natural().min(1).default(120_000),
@@ -52,7 +62,7 @@ interface BtwConnection {
  * @param ctx - host context carrying agents, subagents, and the connection route registry.
  * @param config - resolved provider, size, and timeout policy.
  */
-export function apply(ctx: Context, config: Partial<Config> = {}): void {
+export function apply(ctx: Context, config: ConfigInput = {}): void {
   const resolved = Config(config)
   const connection = Reflect.get(ctx, 'connection') as BtwConnection
   connection.fetch.register({

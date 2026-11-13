@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Serveurs MCP",
+    "description": "Affiche l’état des serveurs MCP de cet hôte et permet d’autoriser, d’effacer l’autorisation ou de les redémarrer."
+  }
+}

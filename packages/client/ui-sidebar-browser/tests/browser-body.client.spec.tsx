@@ -8,7 +8,7 @@ import { createBrowserControllers, type BrowserControllerState, type BrowserInje
 import { createBrowserStore } from '../src/client/browser/store.ts'
 import type { BrowserBodyProps } from '../src/client/view/BrowserBody.tsx'
 import { BrowserBody } from '../src/client/view/BrowserBody.tsx'
-import { WEB_BROWSER_SANDBOX } from '../src/client/view/IframePresentation.ts'
+import { WEB_BROWSER_SANDBOX } from '../src/client/browser/IframePresentation.ts'
 import { createIframePage } from '../src/client/pages.ts'
 import { zh } from '../src/client/locales.ts'
 import { browserAddressCheckpoint, type BrowserTabState } from '../src/client/browser/BrowserPersistence.ts'

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Calentamiento de caché",
+    "description": "Mantiene caliente la caché de prompts del proveedor entre turnos."
+  }
+}

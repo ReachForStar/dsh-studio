@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Préchauffage du cache",
+    "description": "Maintient le cache de prompts du fournisseur chaud entre les tours."
+  }
+}

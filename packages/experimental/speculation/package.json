@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-speculation",
   "description": "Speculation gate and overlay path planning for ahead-of-input execution",
-  "version": "0.2.2-rc.1",
+  "version": "0.2.2-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -33,7 +33,10 @@
     "lib/index.js",
     "lib/overlay.js",
     "lib/runner.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {

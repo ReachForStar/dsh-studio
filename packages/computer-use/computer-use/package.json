@@ -52,5 +52,8 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "optionalDependencies": {
+    "@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp": "workspace:*"
   }
 }

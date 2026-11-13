@@ -964,3 +964,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 会话日志新增 Host 侧导入与 `POST /api/session.import`：格式目录校验、跨代迁移、附件摘要校验、新 Session id、父链接重连与失败回滚。
 - 审批新增 `{action, resource, effect}` 规则求值与 `ToolDefinition.approvalResources`；fs `write`/`edit` 与 `bash` 提供动作与资源，规则先于 `never` 策略，支持无人值守精确放行。
 - 状态与剩余两项（MCP OAuth/连接池、侧问面板）记录于 [opencode 能力落地交接（余 2 项）](queries/opencode-capability-handoff.md)。
+
+## [2026-11-13] docs | 交接 MCP 连接池与 OAuth
+
+- 从 opencode 交接页拆出 MCP 项：记录 mcp-client 的 Client/transport 创建点、重连与凭据刷新路径、mcp-manager 的公开面、SDK OAuth 类型、凭据记录 API 与 InMemoryTransport 测试设施。
+- 给出池化键、持有者计数、握手失败回退与 OAuth 授权/回调/刷新的落点，以及分两步落地的顺序和验收命令。
+- 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。

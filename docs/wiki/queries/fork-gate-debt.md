@@ -157,7 +157,7 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 同轮附带：
 
 - **`constraints`**：删除 `WEB_PRODUCT_EXPERIMENTAL_DEPENDENCIES` 放行表（8 个包已提升为稳定包），部署根不再依赖实验包。
-- **`vendor rescope`**：`cordis` 作为 agent preset 名称的 4 个站点登记进 audited exceptions；`upstream-merge-2026-11-08.md` 里指代依赖包的 `schemastery` 改为 `@deepseek-ai/schemastery`。
+- **`vendor rescope`**：cordis 作为 agent preset 名称的 4 个站点登记进 audited exceptions；`upstream-merge-2026-11-08.md` 里指代依赖包的 schemastery 改为 `@deepseek-ai/schemastery`。
 - **`publint`**：`xingchen` 补齐 `lib/client.js` 与 `src` 到 `files`，`./client` 与 `./src/*` 不再悬空；其余包的 `engines.node` / `sideEffects` 提示属上游既有告警。
 
 验证：`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run constraints`、上述四门逐一通过；受影响包测试 19 项文件 / 265 项、`user-approval` 70 项、`sandbox` 53 项、`ui-polish` 与 `ui-chat` 1818 项全过。

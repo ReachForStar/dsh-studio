@@ -198,6 +198,8 @@ flowchart LR
   cfg --> plugin_dsh_base_tool_web
   plugin_dsh_base_mcp_resources["mcp-resources<br/>@deepseek-ai/dsh-mcp-resources"]
   cfg --> plugin_dsh_base_mcp_resources
+  plugin_dsh_base_mcp_pool["mcp-pool<br/>@deepseek-ai/dsh-mcp-client/pool"]
+  cfg --> plugin_dsh_base_mcp_pool
   plugin_dsh_base_tools["tools<br/>@deepseek-ai/dsh-tools"]
   cfg --> plugin_dsh_base_tools
   plugin_dsh_base_tool_executor_native["tool-executor-native<br/>@deepseek-ai/dsh-tool-executor-native"]
@@ -313,6 +315,7 @@ flowchart LR
 | `web-fetch-http` | `@deepseek-ai/dsh-web-fetch-http` |
 | `tool-web` | `@deepseek-ai/dsh-tool-web` |
 | `mcp-resources` | `@deepseek-ai/dsh-mcp-resources` |
+| `mcp-pool` | `@deepseek-ai/dsh-mcp-client/pool` |
 | `tools` | `@deepseek-ai/dsh-tools` |
 | `tool-executor-native` | `@deepseek-ai/dsh-tool-executor-native` |
 | `tool-executor-ptc` | `@deepseek-ai/dsh-tool-executor-ptc` |

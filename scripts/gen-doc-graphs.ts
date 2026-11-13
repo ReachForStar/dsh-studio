@@ -743,7 +743,16 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'mcp-manager',
     title: 'Settings-driven MCP server fleet',
     mode: 'core',
-    note: 'Reconciles mcp-client instances against its volatile servers configuration, aggregates their connection statuses, and serves restart and probe to management surfaces.',
+    consumers: ['client-ui-settings-mcp'],
+    note: 'Reconciles mcp-client instances against its volatile servers configuration, aggregates their connection statuses, and serves restart, probe, and OAuth authorization to management surfaces.',
+  },
+  {
+    key: 'mcpPool',
+    pkg: 'mcp-client',
+    title: 'Shared MCP connections',
+    mode: 'service',
+    consumers: ['mcp-client'],
+    note: 'Holds one transport and handshake per identical resolved server configuration; instances lease it, and the last holder closes it.',
   },
   {
     key: 'schedule',

@@ -26,6 +26,12 @@ export interface McpManagedServerView {
   name: string
   /** Whether a configured or registered entry still exists; false for retained cleanup failures after removal. */
   configured: boolean
+  /**
+   * Whether the entry configures OAuth. A surface offers authorization and
+   * grant removal only for these servers; the state alone cannot tell, because
+   * a disconnected server without OAuth looks the same.
+   */
+  oauth: boolean
   /** Current runtime status. */
   status: McpManagedServerStatus
 }

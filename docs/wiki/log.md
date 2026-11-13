@@ -1003,3 +1003,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 新增合并版交接：重复主题（权限、上下文、压缩、钩子、记忆、文件编辑、多智能体）各保留一个落点，其余按 12 项统一优先级与 A–H 批次组织。
 - 标注并行会话已完成项（审批规则/项目允许/拒绝改写/静态扫描、侧问面板、MCP 连接池与 OAuth、PTC 预算、归档导入）不要重做；`codex-capability-handoff` 标 `superseded` 并链接合并版。
 - 记录于 [codex 与 ZCode 能力落地交接](queries/codex-zcode-capability-handoff.md)。
+
+## [2026-11-13] feat | 新增 MCP 设置授权界面
+
+- 新包 `@deepseek-ai/dsh-client-ui-settings-mcp`：Settings → 插件页的 MCP 服务器标签页，列出托管服务器与实时状态，提供授权、清除授权与重启。
+- 一条 `ctx.remote.$stream` 包住 `mcpManager.watch`；`McpManagedServerView` 新增 `oauth` 字段，授权按钮只对 OAuth 服务器出现；授权 URL 在新标签页打开。
+- web-app 组合挂载 `ui-settings-mcp` 行；模块图、能力接缝、事件表与 API 目录已重新生成。
+- 验证：`pnpm exec vitest run packages/mcp packages/client/ui-settings-mcp` 348 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog`、`pnpm run verify-doc-graphs`。
+- 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。

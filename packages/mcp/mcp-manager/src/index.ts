@@ -275,12 +275,16 @@ export default class McpServerManager extends TypertRemoteService {
    */
   list(): McpManagedServerView[] {
     const entries = this.entries()
-    return [...new Set([...Object.keys(entries), ...this.instances.keys()])].map(name => ({
-      name,
-      configured: Object.hasOwn(entries, name),
-      status: this.statuses.get(name)
-        ?? (entries[name]?.enabled ? { state: 'connecting', attempt: 0 } : { state: 'disabled' }),
-    }))
+    return [...new Set([...Object.keys(entries), ...this.instances.keys()])].map((name) => {
+      const entry = entries[name]
+      return {
+        name,
+        configured: Object.hasOwn(entries, name),
+        oauth: entry !== undefined && isOAuthServer(this.toClientConfig(name, entry)),
+        status: this.statuses.get(name)
+          ?? (entry?.enabled ? { state: 'connecting', attempt: 0 } : { state: 'disabled' }),
+      }
+    })
   }
 
   /**

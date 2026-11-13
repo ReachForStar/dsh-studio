@@ -8082,7 +8082,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'McpManagedServerView',
-    declaration: 'export interface McpManagedServerView {\n    name: string;\n    configured: boolean;\n    status: McpManagedServerStatus;\n}',
+    declaration: 'export interface McpManagedServerView {\n    name: string;\n    configured: boolean;\n    oauth: boolean;\n    status: McpManagedServerStatus;\n}',
   },
   {
     name: 'McpProbeFailure',

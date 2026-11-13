@@ -12,7 +12,7 @@ status: draft
 
 ## 一句话结论
 
-连接池与 OAuth 都已落地并通过验证。池化由 `@deepseek-ai/dsh-mcp-client/pool` 服务（`ctx.mcpPool`）承担；OAuth 由 `@deepseek-ai/dsh-mcp-client/oauth` 的提供方、回环授权流程与凭据记录承担，`mcpManager.authorize(name)` 是入口。剩余只有可选的 Settings 授权界面。
+连接池、OAuth 与 Settings 授权界面都已落地并通过验证。池化由 `@deepseek-ai/dsh-mcp-client/pool` 服务（`ctx.mcpPool`）承担；OAuth 由 `@deepseek-ai/dsh-mcp-client/oauth` 的提供方、回环授权流程与凭据记录承担，`mcpManager.authorize(name)` 是 Host 入口，Web 侧由 `@deepseek-ai/dsh-client-ui-settings-mcp` 的设置标签页消费。
 
 ## 已完成，不要重做
 
@@ -24,6 +24,7 @@ status: draft
 | 侧问面板（btw） | `packages/experimental/btw` |
 | MCP 连接池 | `packages/mcp/mcp-client/src/{pool,pool-key,client}.ts`、`generation.ts` 的 `adopt`、`connection.ts` 的 `joinShared`、base 组合行 `mcp-pool` |
 | MCP OAuth | `packages/mcp/mcp-client/src/oauth.ts`（`./oauth`）、`transport.ts` 的 `authProvider`、`types.ts` 的 `waiting-authorization`、`mcp-manager` 的 `authorize`/`forgetAuthorization` |
+| Settings 授权界面 | `packages/client/ui-settings-mcp`（`settings.plugins.tab` 的 `mcp` 标签页）、`McpManagedServerView.oauth`、web-app 组合行 |
 
 清单状态见 [opencode 能力落地交接（余 1 项）](opencode-capability-handoff.md)。
 
@@ -68,7 +69,16 @@ status: draft
 
 1. 已完成：抽池，`InMemoryTransport` 与真实 stdio 各一组测试。
 2. 已完成：OAuth provider、回环回调、凭据存储与刷新，复用池的键。
-3. 剩余：Settings 授权界面（展示 `waiting-authorization`、调用 `authorize`/`forgetAuthorization`、打开返回的 URL）。
+3. 已完成：Settings 授权界面。
+
+## Settings 授权界面落地事实
+
+- 新包 `@deepseek-ai/dsh-client-ui-settings-mcp`：浏览器半边注册 `settings.plugins.tab`（id `mcp`，order 20），宿主半边是空 `apply` 以保留 Loader 行；web-app 组合挂载 `ui-settings-mcp` 行。
+- 数据：一条 `ctx.remote.$stream` 包住 `mcpManager.watch(signal)`，每次发布写入快照并通知订阅者；载体失败显示不可用横幅，流自动重连。
+- 操作：`authorize` 解包 Remote 结果并在新标签页打开返回的 URL（无 URL 时不打开）；`forgetAuthorization` 删除凭据并让实例回到 `waiting-authorization`；`restart` 重建实例。错误文本显示在对应行下。
+- 视图：`McpManagedServerView` 新增 `oauth` 字段，页面只对 OAuth 服务器显示授权与清除授权；其余服务器只显示重启。状态按宿主状态原样展示，失败原因与最近诊断一并显示。
+- 测试：`tests/browser-plugin.client.spec.tsx` 5 项（注册、流发布、授权打开 URL、错误解包、载体失败），`tests/components.client.spec.tsx` 6 项（空列表、已连接、授权与清除仅限 OAuth、停用无操作、诊断与操作失败、列表失败）。
+- 验证：`pnpm run typecheck`、`pnpm exec vitest run packages/mcp packages/client/ui-settings-mcp`（348 项）、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog`、`pnpm run verify-doc-graphs`、`pnpm run verify-module-graph` 全部通过；`pnpm run verify-cordis-config` 只剩既有两条失败。
 
 ## 约束与验证
 

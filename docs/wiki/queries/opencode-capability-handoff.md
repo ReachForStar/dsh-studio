@@ -12,7 +12,7 @@ status: draft
 
 ## 一句话结论
 
-17 项已实现并推送：权限规则化含求值、静态扫描、项目持久规则、始终允许与修改后允许，MCP 连接池与 OAuth 已落地。剩余可选项是 Settings 授权界面，细则见 [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)。清单依据见 [能力面与可融入清单](opencode-v2-capability-comparison.md)。
+17 项已实现并推送：权限规则化含求值、静态扫描、项目持久规则、始终允许与修改后允许，MCP 连接池、OAuth 与 Settings 授权界面均已落地。细则见 [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)。清单依据见 [能力面与可融入清单](opencode-v2-capability-comparison.md)。
 
 ## 已完成部分（不要重做）
 
@@ -39,9 +39,9 @@ status: draft
 
 行为取舍记录在 [循环与工具行为](../../../.agents/notes/implemented/feature/2026-11-12-opencode-core-behaviors.md)。
 
-## 剩余可选项
+## 后续可选项
 
-Settings 授权界面：展示 `waiting-authorization`，调用 `authorize`/`forgetAuthorization`，打开返回的授权 URL。细则见 [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)。
+MCP 设置页目前只读状态；从页面触发单服务器探测（管理器已提供 `probe`）是开放方向。细则见 [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)。
 
 ## 全局约束与验证
 

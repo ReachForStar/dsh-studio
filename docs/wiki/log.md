@@ -979,3 +979,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - base 组合挂载 `mcp-pool` 行；README 增「共享连接」与限制条目，双语配对已重录。
 - 验证：`pnpm exec vitest run packages/mcp` 312 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`。
 - 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。
+
+
+## [2026-11-13] docs | 对比 ZCode 能力面
+
+- 只读分析 `tmp/zcode`（v3.18.1）：Agent 循环与会话、上下文与压缩、工具面、权限、技能/记忆/MCP/插件、客户端 UI、服务端与平台设施。
+- 排除 11 项已覆盖能力（workflow 基础、子代理控制、压缩裁剪、流式渲染、插件市场、工作区快照、会话导出/导入、沙箱、MCP、技能、上下文分节）。
+- 产出 15 项候选与落点，最高优先是动态工作流的 journal/类型化、权限四补强、跨会话控制的安全边界与提示快照。
+- 记录于 [ZCode 能力面与可融入清单](queries/zcode-capability-comparison.md)。

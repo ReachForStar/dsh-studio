@@ -7,10 +7,13 @@ export interface Config {
   maxSubCallsPerMinute: number
   /** Maximum overlapping concurrency-safe program subcalls. */
   maxParallelSubCalls: number
+  /** Approximate token budget for expanded SDK declarations; tools past it keep a callable binding and move to the one-line catalog. */
+  sdkBudgetTokens: number
 }
 
-/** Validated timeout-based call allowance and concurrency; parallelism of one makes subcalls serial. */
+/** Validated timeout-based call allowance, concurrency, and generated-SDK budget. */
 export const Config: z<Partial<Config>, Config> = z.object({
   maxSubCallsPerMinute: z.natural().min(1).default(1024),
   maxParallelSubCalls: z.natural().min(1).default(10),
+  sdkBudgetTokens: z.natural().default(4000),
 })

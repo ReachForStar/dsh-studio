@@ -166,6 +166,21 @@ describe('renderToolsSdkPy', () => {
     expect(text).toContain('tools: Tools')
   })
 
+  it('moves tools past the SDK budget into untyped methods and the compact catalog', () => {
+    const text = renderToolsSdkPy([bash, exotic, reserved], 1)
+    expect(text).toContain('async def bash(self, args: Any) -> Any: ...')
+    expect(text).toContain('# tools["my-mcp.tool"](args: Any) -> Any')
+    expect(text).toContain('# tools["class"](args: Any) -> Any')
+    expect(text).toContain('from typing import Any, Protocol')
+    expect(text).not.toContain('class BashArgs(TypedDict):')
+    expect(text).toContain('- `bash(command)`')
+  })
+
+  it('keeps an all-comment body parseable when every tool is compact and exotic', () => {
+    const text = renderToolsSdkPy([exotic], 1)
+    expect(text).toContain('class Tools(Protocol):\n    pass\n    # tools["my-mcp.tool"]')
+  })
+
   it('lists the program before its description', () => {
     const text = renderToolsSdkPy([bash])
     expect(text).toContain('`code`')

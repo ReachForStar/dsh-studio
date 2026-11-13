@@ -16,6 +16,7 @@
 import { assertSupportedJsonSchema } from '@deepseek-ai/dsh-tools'
 import type { JsonSchemaNode, JsonSchemaScalar } from '@deepseek-ai/dsh-tools'
 import type { ToolSdkSchema } from './ts-types.ts'
+import { partitionSdk, renderCompactCatalog } from './sdk-catalog.ts'
 
 /**
  * The reference grammar's `xid_start xid_continue*` — the set
@@ -757,10 +758,13 @@ The available tools:`
  * never carries a duplicate.
  * @param schemas - the tool schemas plus canonical output schemas to declare
  *   (the caller excludes `run_code` itself).
+ * @param budgetTokens - Approximate token budget for expanded declarations; tools
+ *   past it stay callable with `Any` arguments and move to the compact catalog.
+ *   Zero expands every tool.
  * @returns the complete section text.
  */
-export function renderToolsSdkPy(schemas: readonly ToolSdkSchema[]): string {
-  const sorted = [...schemas].sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+export function renderToolsSdkPy(schemas: readonly ToolSdkSchema[], budgetTokens = 0): string {
+  const { expanded: sorted, compact } = partitionSdk(schemas, budgetTokens)
   const state: RenderState = { classes: [], usedClassNames: new Set(), nextClassCounter: new Map(), typing: new Set(['Protocol']) }
   // ONE ordered member stream, matching the documented lexicographic contract
   // and the TypeScript flavor (which quotes exotic keys in place rather than
@@ -804,6 +808,15 @@ export function renderToolsSdkPy(schemas: readonly ToolSdkSchema[]): string {
       if (description !== undefined) members.push(`${pad(1)}#   ${description}`)
     }
   }
+  for (const schema of compact) {
+    state.typing.add('Any')
+    if (isBareIdentifier(schema.name) && !RESERVED.has(schema.name) && !schema.name.startsWith('_')) {
+      members.push(`${pad(1)}async def ${schema.name}(self, args: Any) -> Any: ...`)
+      statements += 1
+      continue
+    }
+    members.push(`${pad(1)}# tools[${JSON.stringify(schema.name)}](args: Any) -> Any`)
+  }
   // Subscript entries are COMMENTS, not statements: a class body of only
   // comments fails to parse, so `pass` is required whenever no method was
   // emitted — including the subscript-only tool set.
@@ -813,5 +826,6 @@ export function renderToolsSdkPy(schemas: readonly ToolSdkSchema[]): string {
   const classBlock = state.classes.length > 0 ? `${state.classes.join('\n\n')}\n\n` : ''
   const errorDeclaration = 'class ToolCallError(Exception):\n    toolName: str'
   const declaration = `from typing import ${imports.join(', ')}\n\n${errorDeclaration}\n\n${classBlock}class Tools(Protocol):\n${body}\n\ntools: Tools`
-  return `${SDK_INSTRUCTIONS}\n\n\`\`\`python\n${declaration}\n\`\`\``
+  const catalog = renderCompactCatalog(compact, schemas.some(schema => schema.name === 'tool_search'))
+  return `${SDK_INSTRUCTIONS}\n\n\`\`\`python\n${declaration}\n\`\`\`${catalog}`
 }

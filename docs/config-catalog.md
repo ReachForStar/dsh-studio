@@ -4520,6 +4520,8 @@ export interface Config {
   maxSubCallsPerMinute: number
   /** Maximum overlapping concurrency-safe program subcalls. */
   maxParallelSubCalls: number
+  /** Approximate token budget for expanded SDK declarations; tools past it keep a callable binding and move to the one-line catalog. */
+  sdkBudgetTokens: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-executor-ptc -->

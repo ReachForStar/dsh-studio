@@ -10,6 +10,7 @@ import type { ToolSchema } from '@deepseek-ai/dsh-llm'
 import type { PtcProgramFormat } from '@deepseek-ai/dsh-ptc-runtime'
 import { assertSupportedJsonSchema } from '@deepseek-ai/dsh-tools'
 import type { JsonSchemaNode, JsonSchemaScalar } from '@deepseek-ai/dsh-tools'
+import { partitionSdk, renderCompactCatalog } from './sdk-catalog.ts'
 /** Internal PTC mode projection: the model-facing schema plus the canonical output schema. */
 export interface ToolSdkSchema extends Readonly<ToolSchema> {
   /** Validated canonical value returned by the tool binding. */
@@ -303,18 +304,33 @@ function renderBashExample(schemas: ToolSdkSchema[]): string {
  * @param schemas - the tool schemas to declare (the caller excludes
  *   `run_code` itself).
  * @param programFormat - Runtime syntax selecting function-body, REPL, or Script instructions and examples.
+ * @param budgetTokens - Approximate token budget for expanded declarations; tools
+ *   past it keep their binding with untyped arguments and move to the compact
+ *   catalog. Zero expands every tool.
  * @returns the complete section text.
  */
-export function renderToolsSdk(schemas: readonly ToolSdkSchema[], programFormat: PtcProgramFormat = 'function-body'): string {
+export function renderToolsSdk(
+  schemas: readonly ToolSdkSchema[],
+  programFormat: PtcProgramFormat = 'function-body',
+  budgetTokens = 0,
+): string {
+  const { expanded, compact } = partitionSdk(schemas, budgetTokens)
   const sorted = [...schemas].sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
   const argsMembers: string[] = []
   const outputMembers: string[] = []
-  for (const schema of sorted) {
+  for (const schema of expanded) {
     argsMembers.push(...docLines(schema.description, 1))
     argsMembers.push(`${pad(1)}${renderKey(schema.name)}: ${jsonSchemaToTs(schema.parameters, 1)};`)
     // FIXME: Derive program return types from tool-declared adaptations, together with the binding adapter in ptc.ts.
     const output = schema.name === 'read_image' ? 'Image'
       : `${schema.name === 'cua' ? 'Image | ' : ''}${jsonSchemaToTs(schema.output, 1)}`
+    outputMembers.push(`${pad(1)}${renderKey(schema.name)}: ${output};`)
+  }
+  for (const schema of compact) {
+    argsMembers.push(`${pad(1)}${renderKey(schema.name)}: JsonValue;`)
+    // Image-producing tools keep their runtime value type even when compact.
+    const output = schema.name === 'read_image' ? 'Image'
+      : `${schema.name === 'cua' ? 'Image | ' : ''}JsonValue`
     outputMembers.push(`${pad(1)}${renderKey(schema.name)}: ${output};`)
   }
   const argsMap = `interface ToolArgsMap {${argsMembers.length > 0 ? `\n${argsMembers.join('\n')}\n` : ''}}`
@@ -331,5 +347,6 @@ export function renderToolsSdk(schemas: readonly ToolSdkSchema[], programFormat:
   const jsonValue = 'type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }'
   const instructions = renderSdkInstructions(programFormat)
   const programInstructions = renderSdkProgramInstructions()
-  return `${instructions}${renderBashExample(sorted)}\n\n${programInstructions}\n\n\`\`\`ts\n${jsonValue}\n\n${declaration}\n\`\`\``
+  const catalog = renderCompactCatalog(compact, sorted.some(schema => schema.name === 'tool_search'))
+  return `${instructions}${renderBashExample(sorted)}\n\n${programInstructions}\n\n\`\`\`ts\n${jsonValue}\n\n${declaration}\n\`\`\`${catalog}`
 }

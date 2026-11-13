@@ -15,10 +15,16 @@ import { CodeResetFailedError } from './errors.ts'
 
 const PTC_ONLY_INSTRUCTION = `\`${RUN_CODE_NAME}\` is the only tool you can call directly — a tool call naming any other tool fails. Reach every tool the SDK declares below from inside the program.`
 
+type SdkRenderer = (
+  schemas: readonly ToolSdkSchema[],
+  programFormat: PtcProgramFormat,
+  budgetTokens: number,
+) => string
+
 const SDK_RENDERERS = {
-  typescript: renderToolsSdk,
-  python: renderToolsSdkPy,
-} satisfies Record<PtcSdkLanguage, (schemas: readonly ToolSdkSchema[], programFormat: PtcProgramFormat) => string>
+  typescript: (schemas, programFormat, budgetTokens) => renderToolsSdk(schemas, programFormat, budgetTokens),
+  python: (schemas, _programFormat, budgetTokens) => renderToolsSdkPy(schemas, budgetTokens),
+} satisfies Record<PtcSdkLanguage, SdkRenderer>
 
 /** Runs programs whose nested tool calls use the shared guarded invocation pipeline. */
 export class PtcExecutor implements ToolExecutor {
@@ -54,7 +60,7 @@ export class PtcExecutor implements ToolExecutor {
     return render(tools.map(definition => ({
       ...projectToolSchema(definition, false),
       output: definition.output.schema,
-    })), runtime.programFormat)
+    })), runtime.programFormat, this.config.sdkBudgetTokens)
   }
 
   execute(input: ToolBatchInput): Promise<ToolBatchResult> {

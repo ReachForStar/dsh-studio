@@ -247,6 +247,27 @@ describe('renderToolsSdk', () => {
     expect(renderToolsSdk([bash, bash])).toBe(renderToolsSdk([bash, bash]))
   })
 
+  it('moves tools past the SDK budget into the compact catalog while keeping their bindings', () => {
+    const text = renderToolsSdk([bash, exotic], 'function-body', 1)
+    expect(text).toContain('bash: JsonValue;')
+    expect(text).toContain('"my-mcp.tool": JsonValue;')
+    expect(text).toContain('type ToolName = keyof ToolOutputMap')
+    expect(text).toContain('These tools are bound the same way but shown compactly')
+    expect(text).toContain('- `bash(command, description)` — Run a shell command.')
+    expect(text).toContain('- `my-mcp.tool()` — Exotic name.')
+    expect(text).not.toContain('/** Run a shell command. */')
+  })
+
+  it('keeps runtime image result types and the search hint for compact tools', () => {
+    const tools: ToolSdkSchema[] = ['read_image', 'cua', 'tool_search'].map(name => ({
+      name, description: 'Tool.', parameters: {}, output: { type: 'string' },
+    }))
+    const text = renderToolsSdk(tools, 'function-body', 1)
+    expect(text).toContain('read_image: Image;')
+    expect(text).toContain('cua: Image | JsonValue;')
+    expect(text).toContain('Call `tool_search` for the exact signature')
+  })
+
   it('renders an empty declaration for an empty tool set', () => {
     const text = renderToolsSdk([])
     expect(text).toContain('interface ToolArgsMap {}')

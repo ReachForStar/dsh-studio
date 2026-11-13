@@ -950,3 +950,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 排除 11 项本 fork 已覆盖能力（PTC、tool_search、技能目录、任务板、计划模式、auto-review、会话分叉、沙箱模式、warming、MCP、Mermaid）。
 - 产出 13 项候选与落点，最高优先是与待办“权限规则化”同源的 execpolicy 与“批准并追加规则”，其次为世界状态增量注入、代码模式 exec/wait、apply_patch 与钩子事件面。
 - 记录于 [codex 能力面与可融入清单](queries/codex-capability-comparison.md)。
+
+
+## [2026-11-13] docs | codex 能力落地交接
+
+- 12 项候选逐项给出实施交接：执行策略与批准追加规则、审批词汇、世界状态增量注入、代码模式续取、apply_patch、钩子事件面、压缩矩阵、消息板/代理图/树预算、记忆写管线、外部迁移、沙箱网络、零散项。
+- 标注并行会话已完成的两项（PTC 预算目录、会话日志归档导入）不要重做；给出推荐批次与每批验证命令。
+- 记录于 [codex 能力落地交接](queries/codex-capability-handoff.md)。

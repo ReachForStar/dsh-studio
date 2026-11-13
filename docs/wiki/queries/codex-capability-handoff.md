@@ -20,6 +20,7 @@ status: draft
 - 已由并行会话完成、**不要重做**：
   - PTC 按预算压缩 SDK 声明：`packages/core/tool-executor-ptc/src/sdk-catalog.ts`（提交 `feat(ptc): 按预算压缩生成的 SDK 声明`）。
   - 会话日志归档导入：`packages/session-query/session-log-export/src/importer.ts`（提交 `feat(session-log-export): 导入会话日志归档`）。
+- 并行会话正在实现权限规则（`user-approval`、`tools` 的审批资源契约、`fs` 写工具、`bash`），工作区有未提交改动且当前 `typecheck` 未通过。开工前先 `git status` 与 `git log` 核对：若该项已提交，直接跳过待办 1/2 的重复部分，只补本页列出的验收缺口。
 - 其余 opencode 交接项见 [opencode 能力落地交接](opencode-capability-handoff.md)，与本页不重叠。
 
 ## 推荐批次与顺序

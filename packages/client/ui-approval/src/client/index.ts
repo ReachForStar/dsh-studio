@@ -105,6 +105,7 @@ export function apply(ctx: ClientContext): void {
     inject: () => ({
       resolveReason: (reason: NonNullable<PendingApproval['displayReason']>) => ctx.locale.resolveText(reason),
       alwaysAllow: (approval: PendingApproval) => saveAlwaysAllow(ctx, approval),
+      rejectWithCorrection: (approval: PendingApproval, text: string) => rejectWithCorrection(ctx, approval, text),
     }),
   }, ApprovalPanel))
   ctx.remote.$on('approval/request', function (request, next) {
@@ -140,4 +141,28 @@ async function saveAlwaysAllow(ctx: ClientContext, approval: PendingApproval): P
     ctx.logger.warn(`approval: ${error instanceof Error ? error.message : String(error)}`)
   }
   await approval.answer('allowed-once')
+}
+
+/**
+ * Record replacement arguments for the pending call through `/correct`, then
+ * reject it. A failed save still rejects, so the user's refusal always stands.
+ * @param ctx - client root context carrying the Remote command channel.
+ * @param approval - the pending request being rejected.
+ * @param text - the user's replacement arguments or instruction.
+ */
+async function rejectWithCorrection(ctx: ClientContext, approval: PendingApproval, text: string): Promise<void> {
+  if (approval.callId !== undefined) {
+    try {
+      const result = await ctx.remote.commands.execute(
+        approval.sessionId,
+        `/correct ${String(approval.callId)} ${text.trim()}`,
+        [],
+        new AbortController().signal,
+      )
+      if (!result.ok) throw new Error(`approval correction failed: ${result.error.code}: ${result.error.message}`)
+    } catch (error: unknown) {
+      ctx.logger.warn(`approval: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  await approval.answer('rejected')
 }

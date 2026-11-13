@@ -197,3 +197,29 @@
 
 .withSubject .body { text-align: left; }
 .withSubject .actionRow { flex-wrap: wrap; }
+
+.correction {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--dsh-chat-content-width);
+  padding-top: 6px;
+}
+
+.correctionInput {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-specific-input-major);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.correctionInput:disabled {
+  opacity: 0.5;
+}

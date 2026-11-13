@@ -9,6 +9,8 @@ export const zh = {
   allow: '允许',
   allowOnce: '允许一次',
   allowAlways: '始终允许',
+  rejectWithCorrection: '修改后拒绝',
+  correctionPlaceholder: '写下正确的参数或做法',
 } satisfies Record<string, string>
 
 /** Approval dictionary key union. */
@@ -23,6 +25,8 @@ export const en = {
   allow: 'Allow',
   allowOnce: 'Allow once',
   allowAlways: 'Always allow',
+  rejectWithCorrection: 'Reject with correction',
+  correctionPlaceholder: 'Corrected arguments or approach',
 } satisfies Record<ApprovalKey, string>
 
 /** Japanese copy, checked against the English keys. */
@@ -34,6 +38,8 @@ export const ja = {
   'allow': '許可',
   'allowOnce': '1 回だけ許可',
   'allowAlways': '常に許可',
+  'rejectWithCorrection': '修正して拒否',
+  'correctionPlaceholder': '正しい引数や方法を入力',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -45,6 +51,8 @@ export const es = {
   allow: 'Permitir',
   allowOnce: 'permitir una vez',
   allowAlways: 'Permitir siempre',
+  rejectWithCorrection: 'Rechazar con corrección',
+  correctionPlaceholder: 'Argumentos o enfoque corregidos',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -56,6 +64,8 @@ export const fr = {
   allow: 'Autoriser',
   allowOnce: 'Autoriser une fois',
   allowAlways: 'Toujours autoriser',
+  rejectWithCorrection: 'Refuser avec correction',
+  correctionPlaceholder: 'Arguments ou approche corrigés',
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -67,6 +77,8 @@ export const de = {
   allow: 'Erlauben',
   allowOnce: 'Einmal zulassen',
   allowAlways: 'Immer zulassen',
+  rejectWithCorrection: 'Mit Korrektur ablehnen',
+  correctionPlaceholder: 'Korrigierte Argumente oder Vorgehensweise',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -78,6 +90,8 @@ export const ru = {
   allow: 'Разрешить',
   allowOnce: 'Разрешить один раз',
   allowAlways: 'Всегда разрешать',
+  rejectWithCorrection: 'Отклонить с исправлением',
+  correctionPlaceholder: 'Исправленные аргументы или подход',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -89,4 +103,6 @@ export const pt = {
   allow: 'Permitir',
   allowOnce: 'Permitir uma vez',
   allowAlways: 'Sempre permitir',
+  rejectWithCorrection: 'Rejeitar com correção',
+  correctionPlaceholder: 'Argumentos ou abordagem corrigidos',
 } satisfies Record<keyof typeof en, string>

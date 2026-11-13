@@ -974,6 +974,23 @@ describe('ToolRuntime', () => {
       expect(seen[0]).toMatchObject({ toolName: 'broken-classifier', action: 'broken-classifier', resources: [] })
     })
 
+    it('carries a recorded correction into the rejection reason', async () => {
+      const ctx = await approvalSetup()
+      ctx.on('approval/request', (req) => {
+        if (req.callId === undefined) throw new Error('approval request lost its call id')
+        ctx.approval.recordCorrection(req.agent, req.callId, 'use notes/guide.txt instead')
+        return Promise.resolve<ApprovalOutcome>('rejected')
+      })
+      ctx.on('tools/pre-execute', async (): Promise<PreToolDecision> => ({ kind: 'ask' }))
+
+      const result = await executeToolFixture(ctx, { signal: testToolSignal, callId: ToolCallId('c1'), name: 'echo', arguments: {}, agent: fakeAgent() })
+      expect(result.isError).toBe(true)
+      expect(result.content[0]).toMatchObject({
+        text: 'Error: the user rejected tool "echo" and asked you to retry with corrected arguments: use notes/guide.txt instead',
+      })
+      expect(result.error?.info).toEqual({ name: 'ApprovalError', code: 'APPROVAL_REJECTED' })
+    })
+
     it('denies with the user-rejection reason on rejected', async () => {
       const ctx = await approvalSetup()
       ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>('rejected'))

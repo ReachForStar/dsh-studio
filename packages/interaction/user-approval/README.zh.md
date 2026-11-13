@@ -71,8 +71,11 @@ kind: "package-reference"
 | `/allow <action> <resource> [allow\|deny\|ask]` | 追加一条规则；效果默认为 `allow` |
 | `/allow list` | 按从 1 开始的位置列出项目规则 |
 | `/allow remove <n>` | 删除位置 `n` 的规则 |
+| `/correct <callId> <text>` | 记录针对待处理调用的替换参数 |
 
-没有记录工作目录的会话会拒绝该命令。`addProjectRule(cwd, rule)`、`removeProjectRule(cwd, index)` 与 `projectRulesFor(cwd)` 是供 Host 调用方使用的同一组操作。未挂载存储域时项目规则为空，修改操作会拒绝。
+`/correct` 把文本记录到精确的工具调用；用户随后拒绝该调用时，模型会收到 `the user rejected tool "…" and asked you to retry with corrected arguments: <text>` 作为失败原因并可以重试。读取会消费掉纠正，后续拒绝不会复用。
+
+没有记录工作目录的会话会拒绝 `/allow` 命令。`addProjectRule(cwd, rule)`、`removeProjectRule(cwd, index)` 与 `projectRulesFor(cwd)` 是供 Host 调用方使用的同一组操作。未挂载存储域时项目规则为空，修改操作会拒绝。
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-user-approval)是每个受支持字段及其 JSDoc 的穷尽式真源。`setPolicy(agent, policy)` 切换运行中的 agent 的策略，并为它的下一个模型步骤排队一条模型体验一节所述的切换通知；`setApprovalPolicy(session, policy)` 是会话初始化使用的直接持久写入路径。
 

@@ -71,8 +71,11 @@ When a storage domain is mounted, the service also keeps rules per project direc
 | `/allow <action> <resource> [allow\|deny\|ask]` | Appends one rule; the effect defaults to `allow` |
 | `/allow list` | Lists the project's rules with 1-based positions |
 | `/allow remove <n>` | Removes the rule at position `n` |
+| `/correct <callId> <text>` | Records replacement arguments for a pending call |
 
-A Session without a recorded working directory refuses the command. `addProjectRule(cwd, rule)`, `removeProjectRule(cwd, index)`, and `projectRulesFor(cwd)` are the same operations for Host callers. Without a mounted storage domain, project rules stay empty and the mutators reject.
+`/correct` records the text against the exact tool call; when the user then rejects that call, the model receives `the user rejected tool "…" and asked you to retry with corrected arguments: <text>` as the failure reason and can retry. Reading the correction consumes it, so a later rejection cannot reuse it.
+
+A Session without a recorded working directory refuses the `/allow` command. `addProjectRule(cwd, rule)`, `removeProjectRule(cwd, index)`, and `projectRulesFor(cwd)` are the same operations for Host callers. Without a mounted storage domain, project rules stay empty and the mutators reject.
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-user-approval) is the exhaustive source for every accepted field and its JSDoc. `setPolicy(agent, policy)` switches a live agent and queues the switch notice described under Model Experience for its next model step; `setApprovalPolicy(session, policy)` is the direct durable write path used by session initialization.
 

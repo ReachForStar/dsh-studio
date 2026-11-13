@@ -197,6 +197,8 @@ export class ApprovalService extends Service {
   private approvalProjectionHandle!: ProjectionHandle<ApprovalState>
   private readonly rules: readonly ApprovalRule[]
   private projectRules: KvTable<string, ProjectApprovalRules> | undefined
+  /** Correction text recorded through `/correct`, keyed by session then tool call. */
+  private readonly corrections = new WeakMap<Session, Map<ToolCallId, string>>()
 
   constructor(ctx: Context, public config: Config) {
     super(ctx, 'approval')
@@ -214,6 +216,12 @@ export class ApprovalService extends Service {
         name: 'allow',
         description: 'Add, list, or remove project approval rules',
         handler: invocation => this.allowCommand(invocation),
+      })
+      scope.commands.register({
+        definitionId: brandString<CommandDefinitionId>('@deepseek-ai/dsh-user-approval'),
+        name: 'correct',
+        description: 'Reject a pending tool call with corrected arguments',
+        handler: invocation => Promise.resolve(this.correctCommand(invocation)),
       })
     })
 
@@ -368,6 +376,23 @@ export class ApprovalService extends Service {
   }
 
   /**
+   * Run `/correct <callId> <text>`: record replacement arguments for a pending
+   * call. The user still rejects the request; the pipeline attaches this text
+   * to the rejection the model sees.
+   * @param invocation - the parsed command line and its agent.
+   * @returns the command's user-facing result.
+   */
+  private correctCommand(invocation: CommandInvocation): CommandResult {
+    const [callId, ...text] = invocation.rawInput.trim().split(/\s+/u)
+    const correction = text.join(' ').trim()
+    if (callId === undefined || callId.length === 0 || correction.length === 0) {
+      return { kind: 'error', text: 'Usage: /correct <callId> <corrected arguments or instruction>' }
+    }
+    this.recordCorrection(invocation.agent, callId as ToolCallId, correction)
+    return { kind: 'success', text: `Correction recorded for ${callId}. Reject the request to send it to the model.` }
+  }
+
+  /**
    * Run the `/allow` command: `list`, `remove <n>`, or `<action> <resource>
    * [effect]`, scoped to the invoking session's project directory.
    * @param invocation - the parsed command line and its agent.
@@ -397,6 +422,40 @@ export class ApprovalService extends Service {
     }
     const rules = await this.addProjectRule(cwd, parsed.rule)
     return { kind: 'success', text: `Approval rule ${rules.length} for ${cwd}: ${parsed.rule.effect} ${parsed.rule.action} ${parsed.rule.resource}.` }
+  }
+
+  /**
+   * Record the user's replacement arguments for one pending call. The pipeline
+   * consumes the text when the answer is `rejected`, so the model receives it
+   * as the tool failure reason and can retry with the corrected arguments.
+   * @param agent - the agent whose session owns the call.
+   * @param callId - the exact tool call the correction belongs to.
+   * @param text - the user's replacement arguments or instruction.
+   */
+  recordCorrection(agent: Agent, callId: ToolCallId, text: string): void {
+    const trimmed = text.trim()
+    if (trimmed.length === 0) throw new TypeError('approval correction text must be non-empty')
+    const session = agent.session
+    let calls = this.corrections.get(session)
+    if (calls === undefined) {
+      calls = new Map()
+      this.corrections.set(session, calls)
+    }
+    calls.set(callId, trimmed)
+  }
+
+  /**
+   * Consume one recorded correction. Reading removes it, so a stale rejection
+   * reason cannot leak into a later call.
+   * @param agent - the agent whose session owns the call.
+   * @param callId - the exact tool call being rejected.
+   * @returns the correction text, or `undefined` when none was recorded.
+   */
+  takeCorrection(agent: Agent, callId: ToolCallId): string | undefined {
+    const calls = this.corrections.get(agent.session)
+    const correction = calls?.get(callId)
+    if (correction !== undefined) calls?.delete(callId)
+    return correction
   }
 
   private requireProjectRules(): KvTable<string, ProjectApprovalRules> {

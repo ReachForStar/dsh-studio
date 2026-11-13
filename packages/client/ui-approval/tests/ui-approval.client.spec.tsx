@@ -257,6 +257,49 @@ describe('approval Remote Event consumer', () => {
     await expect(result).resolves.toBe('allowed-once')
   })
 
+  it('records a correction then rejects the call', async () => {
+    const bench = await setupPlugin()
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const result = bench.listener.call(scope.ctx, { toolName: 'write', callId: 'call-7' as ToolCallId }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+    await bench.registration().options.inject().rejectWithCorrection(pending, 'use notes/guide.txt')
+    expect(bench.commandsExecute.mock.calls.map(([, line]): string => line)).toEqual(['/correct call-7 use notes/guide.txt'])
+    await expect(result).resolves.toBe('rejected')
+  })
+
+  it('rejects without a command when the request has no call id and keeps the refusal on failure', async () => {
+    const bench = await setupPlugin()
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const first = bench.listener.call(scope.ctx, { toolName: 'bash' }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+    await bench.registration().options.inject().rejectWithCorrection(pending, 'ignored')
+    expect(bench.commandsExecute).not.toHaveBeenCalled()
+    await expect(first).resolves.toBe('rejected')
+
+    bench.commandsExecute.mockRejectedValue('transport closed')
+    const warn = vi.spyOn(bench.ctx.logger, 'warn').mockImplementation(() => {})
+    const second = bench.listener.call(scope.ctx, { toolName: 'write', callId: 'call-8' as ToolCallId }, vi.fn())
+    const nextPending = bench.pending.getSnapshot()[0]!
+    await bench.registration().options.inject().rejectWithCorrection(nextPending, 'use notes/guide.txt')
+    expect(warn).toHaveBeenCalled()
+    await expect(second).resolves.toBe('rejected')
+  })
+
+  it('keeps the refusal when the correction command reports a failure', async () => {
+    const bench = await setupPlugin()
+    bench.commandsExecute.mockResolvedValue({ ok: false, error: { code: 'DENIED', message: 'no' } })
+    const warn = vi.spyOn(bench.ctx.logger, 'warn').mockImplementation(() => {})
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const result = bench.listener.call(scope.ctx, { toolName: 'write', callId: 'call-9' as ToolCallId }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+    await bench.registration().options.inject().rejectWithCorrection(pending, 'use notes/guide.txt')
+    expect(warn.mock.calls[0]?.[0]).toContain('DENIED')
+    await expect(result).resolves.toBe('rejected')
+  })
+
   it('grants without saving when the request declares no action', async () => {
     const bench = await setupPlugin()
     const scope = createScope(bench.ctx, id('s1'))
@@ -413,6 +456,7 @@ function panelProps(
   pending: PendingApproval,
   renderSlot: FactoryComponentPropsOf<'conversation.approval.card'>['renderSlot'] = vi.fn(() => null),
   alwaysAllow: (approval: PendingApproval) => Promise<void> = vi.fn(async () => {}),
+  rejectWithCorrection: (approval: PendingApproval, text: string) => Promise<void> = vi.fn(async () => {}),
 ): ApprovalComposerProps {
   const messages: Record<string, string> = {
     waiting: 'Waiting',
@@ -421,6 +465,8 @@ function panelProps(
     reject: 'Reject',
     allowOnce: 'Allow once',
     allowAlways: 'Always allow',
+    rejectWithCorrection: 'Reject with correction',
+    correctionPlaceholder: 'Corrected arguments or approach',
   }
   return {
     matched: pending,
@@ -428,6 +474,7 @@ function panelProps(
       t: (key: string) => messages[key] ?? key } as FactoryComponentPropsOf<'conversation.approval.card'>} />,
     resolveReason: (reason: NonNullable<PendingApproval['displayReason']>) => reason.en,
     alwaysAllow,
+    rejectWithCorrection,
     t: (key: string) => messages[key] ?? key,
   } as ApprovalComposerProps
 }
@@ -599,6 +646,30 @@ describe('ApprovalPanel', () => {
     expect(screen.queryByRole('button', { name: 'Always allow' })).toBeNull()
     unclassified.abort(new Error('test cleanup'))
     await unclassified.result.catch(() => {})
+  })
+
+  it('omits the correction field when the request has no call id', () => {
+    const pending = new PendingApproval(id('s1'), { toolName: 'bash' })
+    render(<ApprovalPanel {...panelProps(pending)} />)
+    expect(screen.queryByRole('textbox', { name: 'Corrected arguments or approach' })).toBeNull()
+    pending.abort(new Error('test cleanup'))
+    void pending.result.catch(() => {})
+  })
+
+  it('rejects with corrected arguments through the correction field', async () => {
+    const rejectWithCorrection = vi.fn(async () => {})
+    const pending = new PendingApproval(id('s1'), { toolName: 'write', callId: 'call-9' as ToolCallId })
+    render(<ApprovalPanel {...panelProps(pending, undefined, vi.fn(async () => {}), rejectWithCorrection)} />)
+    const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Corrected arguments or approach' })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    fireEvent.keyDown(input, { key: 'a' })
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
+    expect(rejectWithCorrection).not.toHaveBeenCalled()
+    fireEvent.change(input, { target: { value: 'use notes/guide.txt' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Reject with correction' }))
+    expect(rejectWithCorrection).toHaveBeenCalledWith(pending, 'use notes/guide.txt')
+    pending.abort(new Error('test cleanup'))
+    await pending.result.catch(() => {})
   })
 
   it('re-enables actions when answering fails', async () => {

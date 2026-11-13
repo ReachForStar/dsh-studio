@@ -489,9 +489,17 @@ export class ToolExecutionPipeline {
     })
     switch (outcome) {
       case 'allowed-once': return { decision: { kind: 'allow' }, approvalCancelled: false }
-      case 'rejected': return {
-        decision: approvalDenial(`the user rejected tool "${exec.name}"`, APPROVAL_REJECTED),
-        approvalCancelled: false,
+      case 'rejected': {
+        // A correction recorded through `/correct` reaches the model as the
+        // rejection reason, so it retries with the user's arguments instead of
+        // guessing why the call was refused.
+        const correction = approval.takeCorrection(exec.agent, exec.callId)
+        return {
+          decision: approvalDenial(correction === undefined
+            ? `the user rejected tool "${exec.name}"`
+            : `the user rejected tool "${exec.name}" and asked you to retry with corrected arguments: ${correction}`, APPROVAL_REJECTED),
+          approvalCancelled: false,
+        }
       }
       case 'cancelled': return {
         decision: approvalDenial(`approval for tool "${exec.name}" was cancelled`, APPROVAL_CANCELLED),

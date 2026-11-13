@@ -132,6 +132,22 @@ describe('project approval rules', () => {
     expect((await run('write notes/** maybe')).text).toContain('notes/** maybe')
   })
 
+  it('records and consumes corrected arguments through /correct', async () => {
+    const { ctx, agent, commands } = await harness()
+    const correct = commands.get('correct')
+    if (correct === undefined) throw new Error('correct command was not registered')
+    const run = (rawInput: string): Promise<{ kind: string; text?: string }> => correct.handler({ agent, rawInput })
+
+    expect((await run('call-1 use notes/a.txt instead')).kind).toBe('success')
+    expect(ctx.approval.takeCorrection(agent, 'call-1' as never)).toBe('use notes/a.txt instead')
+    ctx.approval.recordCorrection(agent, 'call-1' as never, 'second correction')
+    expect(ctx.approval.takeCorrection(agent, 'call-1' as never)).toBe('second correction')
+    expect(ctx.approval.takeCorrection(agent, 'call-1' as never)).toBeUndefined()
+    expect((await run('call-1')).kind).toBe('error')
+    expect((await run('')).kind).toBe('error')
+    expect(() => { ctx.approval.recordCorrection(agent, 'call-2' as never, '  ') }).toThrow(/non-empty/u)
+  })
+
   it('reports a session without a project directory', async () => {
     const { ctx, agent, commands } = await harness({ cwd: null })
     const allow = commands.get('allow')

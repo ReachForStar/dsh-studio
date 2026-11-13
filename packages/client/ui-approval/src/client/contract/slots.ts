@@ -208,6 +208,13 @@ export interface ApprovalInjected {
    * @param approval - the pending request whose scope becomes a rule.
    */
   alwaysAllow(approval: PendingApproval): Promise<void>
+  /**
+   * Record replacement arguments for the call, then reject it so the model
+   * receives the correction as the failure reason.
+   * @param approval - the pending request whose call is being corrected.
+   * @param text - the user's replacement arguments or instruction.
+   */
+  rejectWithCorrection(approval: PendingApproval, text: string): Promise<void>
 }
 
 /** Full props of the approval composer takeover. */

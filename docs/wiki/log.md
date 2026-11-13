@@ -1011,3 +1011,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - web-app 组合挂载 `ui-settings-mcp` 行；模块图、能力接缝、事件表与 API 目录已重新生成。
 - 验证：`pnpm exec vitest run packages/mcp packages/client/ui-settings-mcp` 348 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog`、`pnpm run verify-doc-graphs`。
 - 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。
+
+## [2026-11-13] fix | 修复既有门禁红项
+
+- `verify-client-domain-graph`：门禁忽略样式表/图片等资源导入，并支持按包 `src/client/layers.json` 声明共享层与无环域间依赖；`ui-sidebar-browser` 的 `browser` ↔ `view` 环通过把 `BrowserPresentation` 移入 `contract/` 消除，`IframePresentation` 归入 `browser` 域。
+- 其余客户端违规按声明或搬移处理：`documentpreview` 声明 `document`/`zoom` 共享层与 `docx`/`pptx` → `office` → `pdf` 边，`conversation` 声明 `skeleton` → `input`，`paper-reader` 声明 `pdf` 共享层；`ui-chat`/`ui-tool` 的契约类型移入 `contract/`，账号引导文案移到顶层。
+- `verify-cordis-config`：两个可选 bundle 声明其实验提供方为 `optionalDependencies`；隔离规则允许可选 bundle 依赖它交付的实验能力。
+- `verify-locale-metadata`：btw 改用具名 `ConfigInput`；11 个包补齐 8 语言 `locale/*.json`、`./locale/*.json` 导出与规范 `files`。
+- `constraints`：统一版本、`files`、`workspace:` 范围，补 `fork-notice` 实验名例外，登记 Web 产品包的 8 个实验依赖，`adoptSessionEvent` 与 `sessionFormatCatalog` 登记为安全导出。
+- 取舍记录于 [客户端域分层与包元数据门禁](decisions/2026-11-13-client-domain-layering-and-package-metadata.md)。

@@ -594,7 +594,6 @@ flowchart TD
   pkg_web_fetch_http --> pkg_timeout
   pkg_web_fetch_http --> pkg_web
   pkg_spill_local --> pkg_spill
-  pkg_session_log_export --> pkg_attachment
   pkg_session_log_export --> pkg_session
   pkg_session_log_export --> pkg_session_persistence
   pkg_config_editor --> pkg_app_boot
@@ -1501,18 +1500,6 @@ flowchart TD
   pkg_agent_plugins --> pkg_home_paths
   pkg_agent_plugins --> pkg_mcp_manager
   pkg_agent_plugins --> pkg_skill
-  pkg_btw --> pkg_agent
-  pkg_btw --> pkg_client_locale
-  pkg_btw --> pkg_client_store
-  pkg_btw --> pkg_client_ui_context_menu
-  pkg_btw --> pkg_client_ui_conversation
-  pkg_btw --> pkg_client_ui_layout
-  pkg_btw --> pkg_client_ui_primitives
-  pkg_btw --> pkg_client_ui_renderer
-  pkg_btw --> pkg_client_ui_slots
-  pkg_btw --> pkg_llm
-  pkg_btw --> pkg_session
-  pkg_btw --> pkg_subagent
   pkg_experimental_client_ui_forge --> pkg_experimental_forge
   pkg_experimental_client_ui_forge --> pkg_experimental_worktree
   pkg_experimental_client_ui_forge --> pkg_fs
@@ -1741,6 +1728,7 @@ flowchart TD
 | [`client-web`](../packages/client/web) | `client` | — |
 | [`credentials`](../packages/credentials/credentials) | `credentials` | — |
 | [`office-kit`](../packages/document/office-kit) | `document` | — |
+| [`btw`](../packages/experimental/btw) | `experimental` | — |
 | [`client-ui-action-cards`](../packages/experimental/client-ui-action-cards) | `experimental` | — |
 | [`client-ui-creation-recommendations`](../packages/experimental/client-ui-creation-recommendations) | `experimental` | — |
 | [`client-ui-plugin-recommendations`](../packages/experimental/client-ui-plugin-recommendations) | `experimental` | — |
@@ -1834,7 +1822,7 @@ flowchart TD
 | [`skill-office`](../packages/skill/skill-office) | `skill` | [`skill`](../packages/skill/skill) |
 | [`web-fetch-http`](../packages/web/web-fetch-http) | `web` | [`timeout`](../packages/util/timeout), [`web`](../packages/web/web) |
 | [`spill-local`](../packages/spill/spill-local) | `spill` | [`spill`](../packages/spill/spill) |
-| [`session-log-export`](../packages/session-query/session-log-export) | `session-query` | [`attachment`](../packages/attachment/attachment), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence) |
+| [`session-log-export`](../packages/session-query/session-log-export) | `session-query` | [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence) |
 | [`config-editor`](../packages/boot/config-editor) | `boot` | [`app-boot`](../packages/boot/app-boot), [`hmr`](../packages/boot/hmr) |
 | [`deliverable-file-references`](../packages/deliverables/deliverable-file-references) | `deliverables` | [`system-prompt`](../packages/core/system-prompt) |
 | [`experimental-speech-to-text`](../packages/experimental/speech-to-text) | `experimental` | [`settings`](../packages/settings/settings) |
@@ -2006,7 +1994,6 @@ flowchart TD
 | [`session-reference`](../packages/context/session-reference) | `context` | [`agent`](../packages/core/agent), [`compaction`](../packages/compaction/compaction), [`llm`](../packages/llm/llm), [`output-retention`](../packages/util/output-retention), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`session-projection-cache`](../packages/session/session-projection-cache), [`session-query`](../packages/session-query/session-query), [`session-title`](../packages/session/session-title), [`spill`](../packages/spill/spill), [`subagent`](../packages/subagent/subagent), [`system-prompt`](../packages/core/system-prompt), [`typert-protocol`](../packages/typert/protocol) |
 | [`tool-office`](../packages/document/tool-office) | `document` | [`agent`](../packages/core/agent), [`attachment`](../packages/attachment/attachment), [`fs`](../packages/fs/fs), [`llm`](../packages/llm/llm), [`office-kit`](../packages/document/office-kit), [`skill`](../packages/skill/skill), [`subagent`](../packages/subagent/subagent), [`tools`](../packages/core/tools), [`working-directory`](../packages/session/working-directory) |
 | [`agent-plugins`](../packages/experimental/agent-plugins) | `experimental` | [`home-paths`](../packages/util/home-paths), [`mcp-manager`](../packages/mcp/mcp-manager), [`skill`](../packages/skill/skill) |
-| [`btw`](../packages/experimental/btw) | `experimental` | [`agent`](../packages/core/agent), [`client-locale`](../packages/client/locale), [`client-store`](../packages/client/store), [`client-ui-context-menu`](../packages/client/ui-context-menu), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-layout`](../packages/client/ui-layout), [`client-ui-primitives`](../packages/client/ui-primitives), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-slots`](../packages/client/ui-slots), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent) |
 | [`experimental-client-ui-forge`](../packages/experimental/client-ui-forge) | `experimental` | [`experimental-forge`](../packages/experimental/forge), [`experimental-worktree`](../packages/experimental/worktree), [`fs`](../packages/fs/fs), [`session`](../packages/core/session), [`timeout`](../packages/util/timeout) |
 | [`experimental-subagent-oar`](../packages/experimental/subagent-oar) | `experimental` | [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent), [`subprocess`](../packages/subprocess/subprocess) |
 | [`experimental-tool-subagent-oar`](../packages/experimental/tool-subagent-oar) | `experimental` | [`subagent`](../packages/subagent/subagent), [`tools`](../packages/core/tools) |

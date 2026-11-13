@@ -44,6 +44,13 @@ export interface ResourceWatchOptions {
   defaultWaitMs: number
   /** Ceiling applied to a tool-requested wait, in milliseconds. */
   maxWaitMs: number
+  /**
+   * Whether this registry installs the client's `notifications/resources/updated`
+   * handler. Defaults to true; a shared connection installs it once and forwards
+   * updates through the holder's lease instead, because the client keeps one
+   * handler per method.
+   */
+  installHandler?: boolean
 }
 
 /**
@@ -115,7 +122,7 @@ export class ResourceWatchRegistry {
 
   /** Route update notifications to {@link notify} once per generation. */
   private routeUpdates(): void {
-    if (this.handlerRegistered) return
+    if (this.handlerRegistered || this.options.installHandler === false) return
     this.options.client.setNotificationHandler('notifications/resources/updated', (notification) => {
       this.notify(notification.params.uri)
     })

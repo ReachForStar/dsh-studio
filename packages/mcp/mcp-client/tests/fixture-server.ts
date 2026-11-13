@@ -5,6 +5,7 @@
  * Run: node fixture-server.ts
  */
 
+import { appendFileSync } from 'node:fs'
 import { McpServer, type CallToolResult } from '@modelcontextprotocol/server'
 import { serveStdio } from '@modelcontextprotocol/server/stdio'
 import { z } from 'zod'
@@ -76,3 +77,8 @@ function createFixtureServer(): McpServer {
 }
 
 serveStdio(createFixtureServer)
+
+// Pool tests count spawned processes through this marker; absent in every other
+// use of the fixture, where it writes nothing.
+const spawnMarker = process.env.DSH_MCP_FIXTURE_SPAWN_MARKER
+if (spawnMarker !== undefined) appendFileSync(spawnMarker, `${String(process.pid)}\n`)

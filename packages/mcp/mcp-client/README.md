@@ -101,6 +101,15 @@ The server's tools appear before the harness starts its first turn. Set `startup
 
 When a server connection drops — for example a local server process crashes — the plugin reconnects automatically with delays that double from 500 ms up to 30 s and then refreshes the tool set; reconnect progress is visible in the logs. During an outage the last known tools stay listed but calls to them fail until the server recovers. After ten consecutive failed attempts the server's tools are removed and reconnection stops until you reload the configuration or restart the harness; a server that stays connected for a while resets that counter. Set `reconnect.enabled: false` to disable automatic reconnection — tools then stay listed but fail until you reload. Editing the configuration entry reloads the server connection in place, and unchanged names stay unchanged.
 
+<a id="shared-connections"></a>
+### Shared connections
+
+A composition that mounts `@deepseek-ai/dsh-mcp-client/pool` once shares one transport and one handshake between instances whose resolved connection configuration is identical: transport, command, arguments, working directory, environment, URL, headers, `startupTimeoutMs`, and `closeTimeoutMs`. The server name is not part of that identity, so two Agent scopes that expose the same server under different names still share the connection and keep separate tool names. Environment and header values enter the identity only as fingerprints. The shipped base bundle mounts the pool row.
+
+Each instance keeps its own tool registrations, reconnect budget, status, and instruction attribution. The last instance to disconnect closes the transport; releasing one instance leaves the connection serving the others. A shared connection that closes reports the loss to every holder, and each holder applies its own reconnect policy. Resource watches keep their per-instance wait limits while the shared connection routes update notifications to every holder.
+
+The pool does not retry a failed handshake. A shared connection that cannot be established marks its configuration unshareable for the life of the process and logs one warning; that instance and every later one then dial their own connection, exactly as they would without a pool. Omitting the pool row disables sharing without changing any other behavior.
+
 <a id="runtime-templates-and-credentials"></a>
 ### Runtime templates and credentials
 
@@ -134,6 +143,9 @@ This section explains the design decisions behind the bridge and points at the c
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: `Config` schema, `serverName` reservation, activation await |
 | [`src/connection.ts`](src/connection.ts) | Connection supervisor: client generations, reconnect policy, attempt budget, disposal |
+| [`src/client.ts`](src/client.ts) | SDK client construction shared by supervised and pooled connections |
+| [`src/pool.ts`](src/pool.ts) | Shared connections (`./pool`): lease lifetime, holder fan-out, private fallback |
+| [`src/pool-key.ts`](src/pool-key.ts) | Sharing key over the resolved connection inputs, with fingerprinted secrets |
 | [`src/generation.ts`](src/generation.ts) | Transport ownership, cancellation, pending work, and confirmed closure |
 | [`src/resource-watch.ts`](src/resource-watch.ts) | Per-generation resource watches: era-specific subscriptions, sharing, notification routing, and release |
 | [`src/credentials.ts`](src/credentials.ts) | Runtime template binding and redaction of every resolved value |
@@ -239,6 +251,7 @@ These limits describe what you cannot do with this plugin and when it needs oper
 - **Resources are read on demand** — shipped profiles provide the [shared resource service](../mcp-resources/README.md); resource watches cover one URI and one update per call, and MCP prompt templates are unsupported.
 - **Whole-attempt startup budgets are opt-in** — `startupTimeoutMs` covers template resolution, negotiation, connect, and the initial tool sync when configured. A notification-driven re-sync's `tools/list` requests use the MCP SDK's 60-second request default and page limit. Plugin unload closes the transport to interrupt pending startup requests before awaiting teardown.
 - **Reconnect handles failed negotiation and transport close** — a failed initial connection or a crashed stdio child uses the configured reconnect budget. Ordinary HTTP request failures use the SDK transport's recovery; credential changes replace the connection.
+- **Sharing is per process and per resolved configuration** — identical resolved transport settings share one connection; a shared handshake that fails stops sharing that configuration until the Host restarts, and nothing is shared across processes or Hosts.
 - **Image is the only durable rich-result bridge** — PNG, JPEG, WebP, and GIF enter Native context after exact capability proof. Audio and embedded-resource payloads remain execution-local with explicit diagnostics, while resource links preserve only their name and URI as text.
 - **Invalid protocol results or output schemas fail through the SDK** — the bridge does not accept legacy `toolResult` substitutes or bypass advertised schema validation.
 - **Task-required MCP tools are rejected at call time** — a tool that requires the task-based execution extension throws instead of bridging; the extension is not implemented.

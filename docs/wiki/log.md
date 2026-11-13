@@ -970,3 +970,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 从 opencode 交接页拆出 MCP 项：记录 mcp-client 的 Client/transport 创建点、重连与凭据刷新路径、mcp-manager 的公开面、SDK OAuth 类型、凭据记录 API 与 InMemoryTransport 测试设施。
 - 给出池化键、持有者计数、握手失败回退与 OAuth 授权/回调/刷新的落点，以及分两步落地的顺序和验收命令。
 - 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。
+
+## [2026-11-13] feat | 实现 MCP 连接池
+
+- 新增 `ctx.mcpPool` 服务（`@deepseek-ai/dsh-mcp-client/pool`）：按解析后连接配置共享一个 transport 与一次握手，租约按持有者释放，最后一个持有者关闭连接。
+- 池键覆盖传输类型、端点/命令/环境（值只取 SHA-256 指纹）与启动/关闭预算，排除服务器名称；握手失败把该键标记为进程内不可共享并回退独占。
+- 监督器保留重连、工具同步、状态与资源等待；共享连接断开时通知每个持有者，各自重连并加入新槽位；资源更新由池统一转发。
+- base 组合挂载 `mcp-pool` 行；README 增「共享连接」与限制条目，双语配对已重录。
+- 验证：`pnpm exec vitest run packages/mcp` 312 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`。
+- 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。

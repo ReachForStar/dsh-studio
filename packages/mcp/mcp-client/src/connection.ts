@@ -15,7 +15,6 @@
  * @module
  */
 
-import { Client } from '@modelcontextprotocol/client'
 import type { Context } from '@deepseek-ai/cordis'
 import { assertNever, deepEqualJson, type JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { ServerContext } from './server-context.ts'
@@ -24,7 +23,9 @@ import { withDeadline } from './deadline.ts'
 import { McpLocalError } from './diagnostic.ts'
 import type { McpStatusCell } from './status.ts'
 import type { McpCloseResult } from './types.ts'
+import { createMcpClient } from './client.ts'
 import { McpGeneration } from './generation.ts'
+import type { McpLease } from './pool.ts'
 import { McpTemplateBinding } from './credentials.ts'
 import { MissingTemplateValue } from './templates.ts'
 import { ResourceWatchRegistry } from './resource-watch.ts'
@@ -325,12 +326,23 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     })
   }
 
-  async function connectGeneration(): Promise<void> {
-    if (isStopped()) return
-    const client = new Client({ name: 'dsh-mcp-client', version: '0.0.1' }, {
-      capabilities: {}, versionNegotiation: { mode: 'auto' },
-      listChanged: { tools: { autoRefresh: false, debounceMs: 0, onChanged: () => { void refreshTools() } } },
-    })
+  async function refreshTools(record: Generation): Promise<void> {
+    if (!isCurrent(record)) return
+    ctx.logger.info(`${label}: tool list changed, re-syncing`)
+    try {
+      await enqueueSync(record)
+      if (isCurrent(record) && record.connectedAt !== undefined) {
+        status.update({ state: 'connected', toolCount: disposers.size, connectedAt: record.connectedAt })
+      }
+    } catch (error) {
+      if (error instanceof McpToolRegistrationError) lost(record, diagnostic(error, 'tool synchronization'))
+      else if (isCurrent(record)) ctx.logger.error(`${label}: tool re-sync failed: ${diagnostic(error, 'tool synchronization')}`)
+    }
+  }
+
+  /** Create this instance's own generation; the caller dials it. */
+  function openPrivate(): Generation {
+    const client = createMcpClient(onToolListChanged)
     const watches = new ResourceWatchRegistry({
       client,
       label,
@@ -338,35 +350,79 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       defaultWaitMs: watchLimits.timeoutMs,
       maxWaitMs: watchLimits.maxTimeoutMs,
     })
-    const record: Generation = { wire: new McpGeneration(client, config.closeTimeoutMs, error => diagnostic(error, 'cleanup')), watches }
+    const record: Generation = {
+      wire: new McpGeneration(client, config.closeTimeoutMs, error => diagnostic(error, 'cleanup')),
+      watches,
+    }
     current = record
     status.opened()
-    status.update({ state: 'connecting', attempt: failedAttempts })
     client.onclose = () => {
       if (record.connectedAt !== undefined) lost(record, 'connection closed')
     }
-    async function refreshTools(): Promise<void> {
-      if (!isCurrent(record)) return
-      ctx.logger.info(`${label}: tool list changed, re-syncing`)
-      try {
-        await enqueueSync(record)
-        if (isCurrent(record) && record.connectedAt !== undefined) {
-          status.update({ state: 'connected', toolCount: disposers.size, connectedAt: record.connectedAt })
-        }
-      } catch (error) {
-        if (error instanceof McpToolRegistrationError) lost(record, diagnostic(error, 'tool synchronization'))
-        else if (isCurrent(record)) ctx.logger.error(`${label}: tool re-sync failed: ${diagnostic(error, 'tool synchronization')}`)
-      }
-    }
+    function onToolListChanged(): void { void refreshTools(record) }
+    return record
+  }
+
+  /**
+   * Join the connection other instances already hold under the same
+   * configuration. Returns undefined when this composition has no pool or the
+   * configuration is no longer shared, leaving the caller to dial on its own.
+   */
+  async function joinShared(resolved: Config): Promise<Generation | undefined> {
+    const pool = ctx.get('mcpPool')
+    if (pool === undefined) return undefined
+    let lease: McpLease | undefined
     try {
-      const startedAt = Date.now()
-      const remaining = (): number | undefined => config.startupTimeoutMs === undefined ? undefined
-        : config.startupTimeoutMs - (Date.now() - startedAt)
-      const resolved = await record.wire.run(signal => binding.resolve(signal), remaining())
+      lease = await pool.acquire(resolved, {
+        signal: lifetime.signal,
+        ...config.expandTemplates ? { redact: (text: string) => binding.redact(text) } : {},
+      })
+    } catch (error) {
+      // Disposal cancels the wait; a failed handshake was already reported by the pool.
+      if (lifetime.signal.aborted) throw error
+      return undefined
+    }
+    if (lease === undefined) return undefined
+    const watches = new ResourceWatchRegistry({
+      client: lease.client,
+      label,
+      requestTimeoutMs: config.toolCallTimeoutMs,
+      defaultWaitMs: watchLimits.timeoutMs,
+      maxWaitMs: watchLimits.maxTimeoutMs,
+      installHandler: false,
+    })
+    const record: Generation = {
+      wire: new McpGeneration(lease.client, config.closeTimeoutMs, error => diagnostic(error, 'cleanup')),
+      watches,
+    }
+    current = record
+    status.opened()
+    record.wire.adopt(lease)
+    lease.onClose(() => { if (record.connectedAt !== undefined) lost(record, 'connection closed') })
+    lease.onToolsChanged(() => { void refreshTools(record) })
+    lease.onResourceUpdated((uri) => { watches.notify(uri) })
+    return record
+  }
+
+  async function connectGeneration(): Promise<void> {
+    if (isStopped()) return
+    const startedAt = Date.now()
+    const remaining = (): number | undefined => config.startupTimeoutMs === undefined ? undefined
+      : config.startupTimeoutMs - (Date.now() - startedAt)
+    status.update({ state: 'connecting', attempt: failedAttempts })
+    let record: Generation | undefined
+    try {
+      const resolution = binding.resolve(lifetime.signal)
+      const resolveBudget = remaining()
+      const resolved = await (resolveBudget === undefined ? resolution : withDeadline(resolution, resolveBudget, `${label}: startup timed out`))
       bindingValue = { config: resolved }
-      await record.wire.connect(resolved, remaining())
+      const shared = await joinShared(resolved)
+      if (shared === undefined) {
+        record = openPrivate()
+        await record.wire.connect(resolved, remaining())
+      } else record = shared
       if (!isCurrent(record)) return
-      const text = client.getInstructions()?.trimEnd() ?? ''
+      const text = record.wire.client.getInstructions()?.trimEnd() ?? ''
       const instructions = text ? `### MCP server: ${config.serverName}\n\n${text}` : ''
       const maxInstructionBytes = config.maxInstructionBytes ?? DEFAULT_MAX_INSTRUCTION_BYTES
       if (Buffer.byteLength(instructions) > maxInstructionBytes) throw new McpLocalError(`${label}: server instructions exceed maxInstructionBytes (${maxInstructionBytes})`)
@@ -381,9 +437,9 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       readiness.resolve({})
       if (failedAttempts > 0) ctx.logger.info(`${label}: reconnected and re-synced tools (attempt ${failedAttempts}/${policy.maxAttempts})`)
     } catch (error) {
-      if (current !== record) return
-      current = undefined
-      const confirmed = await close(record)
+      if (record !== undefined && current !== record) return
+      if (record !== undefined) current = undefined
+      const confirmed = record === undefined ? true : await close(record)
       readiness.resolve({ error: config.expandTemplates ? new Error(diagnostic(error, 'startup')) : error })
       if (disposed || !confirmed) return
       if (error instanceof MissingTemplateValue) {

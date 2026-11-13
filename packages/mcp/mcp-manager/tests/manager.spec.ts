@@ -307,7 +307,9 @@ describe('mcp-manager', () => {
     // sibling referencing the same credential never mounted.
     await credentials!.set(credentialRef('MCP_SPEC_UNRELATED'), 'noise')
     await manager.restart('remote')
-    expect(instances.length).toBe(clientsBefore + 2)
+    // Restart remounts without awaiting activation, so the replacement client
+    // appears once the new instance resolves its credential and dials.
+    await vi.waitFor(() => { expect(instances.length).toBe(clientsBefore + 2) })
     expect(manager.list().find(view => view.name === 'dormant')!.status).toEqual({ state: 'disabled' })
   })
 

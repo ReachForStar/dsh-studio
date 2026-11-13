@@ -525,6 +525,12 @@
     - id: mcp-resources
       name: '@deepseek-ai/dsh-mcp-resources'
 
+    # One shared connection per identical resolved server configuration across
+    # every mcp-client instance in the composition. Instances read it through
+    # ctx.get('mcpPool') and dial on their own when this row is absent.
+    - id: mcp-pool
+      name: '@deepseek-ai/dsh-mcp-client/pool'
+
     # ── rows every mode mounts, whose values each overlay may state ──────────────
 
     # Shared tool definitions and the deployment’s native executor.

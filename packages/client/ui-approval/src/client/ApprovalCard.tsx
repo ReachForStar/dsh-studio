@@ -1,6 +1,6 @@
 /** Shared approval presentation; each caller retains its decision policy and answer channel. */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { Button, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, RiskConfirmation, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { FactoryComponentPropsOf } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from './contract/slots.ts'
 import css from './ApprovalPanel.module.css'
@@ -16,9 +16,11 @@ export function ApprovalCard(props: FactoryComponentPropsOf<'conversation.approv
 }
 
 function ApprovalFlow(props: FactoryComponentPropsOf<'conversation.approval.card'>) {
-  const { requestKey, title, description, subject, warning, allowLabel, canAnswer, onAllow, onReject, onAlways, t } = props
+  const { requestKey, title, description, subject, warning, allowLabel, canAnswer, onAllow, onReject, onAlways, onFullAccess, t } = props
   const detail = props.callId === undefined ? null : props.renderSlot('conversation.approval.detail', { callId: props.callId })
   const [answered, setAnswered] = useState(false)
+  const [confirmingFullAccess, setConfirmingFullAccess] = useState(false)
+  const [acknowledged, setAcknowledged] = useState(false)
   const waiting = useRef(false)
   const active = useRef(true)
   const composing = useRef(false)
@@ -51,43 +53,76 @@ function ApprovalFlow(props: FactoryComponentPropsOf<'conversation.approval.card
     answer(event.key === 'Enter' ? onAllow : onReject)
   }
   return (
-    <div className={css.root} data-approval-key={requestKey} aria-busy={answered}
-      onKeyDown={keydown}
-      onKeyUpCapture={() => { compositionEnded.current = false }}
-      onCompositionStartCapture={() => { composing.current = true }}
-      onCompositionEndCapture={() => { composing.current = false; compositionEnded.current = true }}>
-      <div className={subject === undefined ? css.card : `${css.card} ${css.withSubject}`}>
-        <div className={css.strip}><StateDot state={answered ? 'ongoing' : 'warning'} />{t('waiting')}</div>
-        <div
-          className={css.body}
-          data-approval-scroll=""
-          tabIndex={0}
-          role="group"
-          aria-label={t('detail.aria')}
-        >
-          {subject !== undefined && <div className={css.subject}>
-            {subject.icon !== undefined && <img src={subject.icon} alt="" width={40} height={40} draggable={false} />}
-            <strong>{subject.name}</strong>
-          </div>}
-          <div className={css.heading}>
-            <div className={css.headline}>{title}</div>
-            {warning !== undefined && <ApprovalWarning warning={warning} />}
+    <>
+      <div className={css.root} data-approval-key={requestKey} aria-busy={answered}
+        onKeyDown={keydown}
+        onKeyUpCapture={() => { compositionEnded.current = false }}
+        onCompositionStartCapture={() => { composing.current = true }}
+        onCompositionEndCapture={() => { composing.current = false; compositionEnded.current = true }}>
+        <div className={subject === undefined ? css.card : `${css.card} ${css.withSubject}`}>
+          <div className={css.strip}><StateDot state={answered ? 'ongoing' : 'warning'} />{t('waiting')}</div>
+          <div
+            className={css.body}
+            data-approval-scroll=""
+            tabIndex={0}
+            role="group"
+            aria-label={t('detail.aria')}
+          >
+            {subject !== undefined && <div className={css.subject}>
+              {subject.icon !== undefined && <img src={subject.icon} alt="" width={40} height={40} draggable={false} />}
+              <strong>{subject.name}</strong>
+            </div>}
+            <div className={css.heading}>
+              <div className={css.headline}>{title}</div>
+              {warning !== undefined && <ApprovalWarning warning={warning} />}
+            </div>
+            {description !== undefined && <p className={css.description}>{description}</p>}
+            {detail !== null && <div className={css.command}>{detail}</div>}
           </div>
-          {description !== undefined && <p className={css.description}>{description}</p>}
-          {detail !== null && <div className={css.command}>{detail}</div>}
-        </div>
-        <div className={css.actionRow}>
-          <Button variant="outline" className={css.reject} disabled={answered} onClick={() => { answer(onReject) }}>
-            {t('reject')}
-          </Button>
-          <Button variant={onAlways === undefined ? 'primary' : 'outline'} disabled={answered} onClick={() => { answer(onAllow) }}>
-            {allowLabel ?? t('allowOnce')}
-          </Button>
-          {onAlways !== undefined && <Button variant="primary" disabled={answered} onClick={() => { answer(onAlways) }}>
-            {t('allowAlways')}
-          </Button>}
+          <div className={css.actionRow}>
+            <Button variant="outline" className={css.reject} disabled={answered} onClick={() => { answer(onReject) }}>
+              {t('reject')}
+            </Button>
+            <Button variant={onAlways === undefined ? 'primary' : 'outline'} disabled={answered} onClick={() => { answer(onAllow) }}>
+              {allowLabel ?? t('allowOnce')}
+            </Button>
+            {onAlways !== undefined && <Button variant="primary" disabled={answered} onClick={() => { answer(onAlways) }}>
+              {t('allowAlways')}
+            </Button>}
+            {onFullAccess !== undefined && <Button
+              variant="outline"
+              disabled={answered}
+              onClick={() => {
+                setAcknowledged(false)
+                setConfirmingFullAccess(true)
+              }}
+            >
+              {t('fullAccess')}
+            </Button>}
+          </div>
         </div>
       </div>
-    </div>
+      {onFullAccess !== undefined && <RiskConfirmation
+        open={confirmingFullAccess}
+        title={t('fullAccessConfirm.title')}
+        description={t('fullAccessConfirm.description')}
+        acknowledgeLabel={t('fullAccessConfirm.acknowledge')}
+        cancelLabel={t('fullAccessConfirm.cancel')}
+        closeLabel={t('fullAccessConfirm.close')}
+        confirmLabel={t('fullAccessConfirm.enable')}
+        acknowledged={acknowledged}
+        disabled={answered}
+        onAcknowledgedChange={setAcknowledged}
+        onCancel={() => {
+          setAcknowledged(false)
+          setConfirmingFullAccess(false)
+        }}
+        onConfirm={() => {
+          setAcknowledged(false)
+          setConfirmingFullAccess(false)
+          answer(onFullAccess)
+        }}
+      />}
+    </>
   )
 }

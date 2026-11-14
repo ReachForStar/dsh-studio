@@ -1073,3 +1073,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `hooks-claude-code` 新增 `PreCompact`/`PostCompact` 观测映射；`PermissionRequest` 之后支持事件数降为 20 项未支持。
 - `compaction-basic` 新增 `summarizationFallback`（默认开启）：配置的摘要模型失败时改用会话当前路由模型重试。
 - 验证：`pnpm exec vitest run packages/experimental/hooks-claude-code/tests packages/compaction/compaction-basic/tests`、`pnpm run typecheck`、`pnpm run test:docs`。
+
+## [2026-11-14] feat | 完全访问审批提交
+
+- `user-approval` 新增 `approval/full-access` 回执与 `requestFullAccess`：提示身份固定、首次提交快照排队输入、重试复用回执、忙时与过期拒绝；`request()` 向应答者暴露 `requestId`，注册执行器时分发 `fullAccess`。
+- `permission-presets` 注册唯一执行器并通过 `fullAccessPreset`（默认 `danger-full-access`）应用；新增 `/full-access <requestId>` 命令。
+- `ui-approval` 在提示声明能力时提供「完全访问」，风险确认后提交；8 种语言补齐文案。
+- 持久化补 `docs/persistence-changes/2026-11-14-approval-full-access.md`，生成目录与已知事件清单刷新；决策见 [完全访问提交 Agent Note](../../.agents/notes/implemented/architecture/2026-11-14-approval-full-access-commit.md)。
+- 验证：`pnpm exec vitest run packages/interaction/user-approval/tests packages/interaction/permission-presets/tests packages/client/ui-approval/tests`（174 项）、`pnpm run typecheck`、`pnpm run test:docs`、持久化与目录门禁。

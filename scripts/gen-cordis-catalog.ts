@@ -597,6 +597,8 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   ApprovalRequest: 'approval.md',
   ApprovalRequestEvent: 'approval.md',
   ApprovalService: 'approval.md',
+  FullAccessCommit: 'approval.md',
+  FullAccessHandler: 'approval.md',
   AskUserQuestionRequestEvent: 'user-questions.md',
   AdmittedPromptContentPart: 'attachment.md',
   AttachmentAdmissionPart: 'attachment.md',

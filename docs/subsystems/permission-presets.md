@@ -39,10 +39,21 @@ interface Config {
    * sandbox and approval defaults is used.
    */
   defaultPreset: Volatile<string | undefined>
+  /**
+   * Preset an approval prompt's full-access grant applies. Defaults to
+   * `danger-full-access`; the name must be one of {@link presets}. This is the
+   * one destination of an explicit full-access commit, not a persistent allow
+   * rule, so switching it changes what that single action grants.
+   */
+  fullAccessPreset: Volatile<string | undefined>
 }
 ```
 
 The service requires a confining `ctx.shell` executor and `ctx.approval`, and misconfiguration fails at plugin load: configured entries named `custom` or `auto` throw, and composing over a bash executor that does not confine (no `sandboxMode` capability fact) throws because presets bundle a sandbox mode.
+
+## Full access from an approval prompt
+
+The service registers the one full-access applier of [approval](approval.md), which lets a pending prompt grant full access as an explicit action rather than an allow rule. The approval service owns the receipt, the fixed target set, and the busy gate; this service applies `fullAccessPreset` through the same write path as `/permission`. A replacement table that omits the shipped `danger-full-access` default withdraws the action without failing load, while an explicitly configured missing `fullAccessPreset` fails at load.
 
 ## Fixed current-session Auto registration
 

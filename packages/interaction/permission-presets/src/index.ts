@@ -28,7 +28,7 @@ import { SANDBOX_MODES, setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
 // `sandboxMode` this service reads), without a value dependency on the seam.
 import type {} from '@deepseek-ai/dsh-shell'
 import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
-import { APPROVAL_POLICIES, setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import { APPROVAL_POLICIES, ApprovalRequestId, FullAccessError, setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 // Type-only: resolves the required projection service and optional settings/command children.
 import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-commands'
@@ -74,6 +74,9 @@ export const CUSTOM_PRESET = 'custom'
 
 /** Canonical identity of the experimental per-call review preset. */
 export const AUTO_PRESET = 'auto'
+
+/** Preset an approval prompt's full-access grant applies unless configured otherwise. */
+const DEFAULT_FULL_ACCESS_PRESET = 'danger-full-access'
 
 /**
  * Fixed execution bundle for the live Auto integration. `ask` routes reviewer
@@ -163,6 +166,13 @@ export interface Config {
    * sandbox and approval defaults is used.
    */
   defaultPreset: Volatile<string | undefined>
+  /**
+   * Preset an approval prompt's full-access grant applies. Defaults to
+   * `danger-full-access`; the name must be one of {@link presets}. This is the
+   * one destination of an explicit full-access commit, not a persistent allow
+   * rule, so switching it changes what that single action grants.
+   */
+  fullAccessPreset: Volatile<string | undefined>
 }
 
 /**
@@ -190,6 +200,7 @@ export class PermissionPresetService extends TypertRemoteService {
       },
     }),
     defaultPreset: z.string().volatile(),
+    fullAccessPreset: z.string().volatile(),
   })
 
   static inject = ['shell', 'approval', 'sessions', 'agents', 'sessionProjections']
@@ -197,6 +208,8 @@ export class PermissionPresetService extends TypertRemoteService {
   private readonly presets: Record<string, PresetSpec>
   private autoAdmit: (() => void) | undefined
   private defaultSettings: () => PermissionSettings
+  /** Live source of the configured full-access destination (volatile settings). */
+  private readonly fullAccessPresetSetting: Config['fullAccessPreset']
 
   private permissionProjectionHandle: ProjectionHandle<PermissionProjectionState> | undefined
 
@@ -221,6 +234,10 @@ export class PermissionPresetService extends TypertRemoteService {
       throw new Error('permission: composed sandbox and approval defaults match no preset; configure defaultPreset explicitly')
     }
     this.resolve(defaultPreset)
+    this.fullAccessPresetSetting = config.fullAccessPreset
+    // An explicitly configured destination must exist; the shipped default may
+    // be absent from a replacement table, which only withdraws the capability.
+    this.resolveFullAccessPreset()
     this.defaultSettings = () => {
       const defaultPreset = config.defaultPreset.get() ?? inferredDefault
       if (!Object.hasOwn(this.presets, defaultPreset)) throw new Error(`permission: unknown default preset "${defaultPreset}"`)
@@ -248,6 +265,21 @@ export class PermissionPresetService extends TypertRemoteService {
       this.pinInitialPermission(agent.session)
     }
 
+    // The one applier of an approval full-access receipt. The approval
+    // service owns the receipt, fixed target set, and busy gate; switching
+    // the session to the configured preset is this action's whole effect. A
+    // deployment whose table has no full-access preset simply advertises none.
+    if (this.resolveFullAccessPreset() !== undefined) {
+      ctx.effect(
+        () => ctx.approval.registerFullAccess((commit) => {
+          this.apply(commit.agent.session, this.requireFullAccessPreset(), (policy) => {
+            this.ctx.approval.setPolicy(commit.agent, policy)
+          })
+        }),
+        'permissionPresets: full-access applier',
+      )
+    }
+
     // The /permission command: the one write path a web client uses (the
     // popup contribution submits the picked preset as this line). The child
     // activates only when a command registry is composed.
@@ -270,6 +302,25 @@ export class PermissionPresetService extends TypertRemoteService {
           }
           this.apply(agent.session, name, (policy) => { this.ctx.approval.setPolicy(agent, policy) })
           return { kind: 'success', text: `preset ${name}` }
+        },
+      })
+      commandCtx.commands.register({
+        definitionId: CommandDefinitionId('@deepseek-ai/dsh-permission-presets'),
+        name: 'full-access',
+        description: 'Grant full access for one pending approval prompt',
+        input: { hint: '<requestId>' },
+        handler: async ({ agent, rawInput }) => {
+          const requestId = rawInput.trim()
+          if (requestId.length === 0) return { kind: 'error', text: 'Usage: /full-access <requestId>' }
+          try {
+            const commit = await this.ctx.approval.requestFullAccess(agent, ApprovalRequestId(requestId))
+            return { kind: 'success', text: `full access granted; ${commit.targets.length} pending input(s) covered` }
+          } catch (error: unknown) {
+            // A stale prompt or one committing grant is a user-visible outcome,
+            // not a registry failure: report it and leave the prompt open.
+            if (error instanceof FullAccessError) return { kind: 'error', text: error.message }
+            throw error
+          }
         },
       })
     })
@@ -372,6 +423,30 @@ export class PermissionPresetService extends TypertRemoteService {
       throw new Error(`permission: unknown preset "${name}" (known: ${this.names.join(', ')})`)
     }
     return spec
+  }
+
+  /**
+   * The destination of an approval full-access grant, or none when this
+   * deployment offers no such preset.
+   * @returns the preset name that grant applies, or `undefined` when the
+   *   shipped default is absent from a replacement table.
+   * @throws when an explicitly configured name is not an available preset.
+   */
+  private resolveFullAccessPreset(): string | undefined {
+    const configured = this.fullAccessPresetSetting.get()
+    const name = configured ?? DEFAULT_FULL_ACCESS_PRESET
+    if (this.specOf(name) !== undefined) return name
+    if (configured !== undefined) {
+      throw new Error(`permission: unknown full-access preset "${name}" (known: ${this.names.join(', ')})`)
+    }
+    return undefined
+  }
+
+  /** The destination an applier may only be registered for. */
+  private requireFullAccessPreset(): string {
+    const name = this.resolveFullAccessPreset()
+    if (name === undefined) throw new Error('permission: no full-access preset is configured')
+    return name
   }
 
   /**

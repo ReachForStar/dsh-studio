@@ -64,6 +64,17 @@ declare module '@deepseek-ai/dsh-session/types' {
 export interface ApprovalRequestEvent {
   /** Agent identity projected to the corresponding Client Context in transit. */
   readonly agent: Agent
+  /**
+   * Durable identity of this pending request. A client cites it when it grants
+   * full access, so the grant binds to the exact prompt the user saw.
+   */
+  readonly requestId?: ApprovalRequestId
+  /**
+   * Whether the composition can grant full access from this prompt. Absent
+   * when no full-access handler is registered, so a client hides the action
+   * instead of offering a path the host cannot execute.
+   */
+  readonly fullAccess?: boolean
   /** Tool whose operation requires a decision. */
   readonly toolName: string
   /** Action name the tool declared for approval rules; defaults to the tool name. */

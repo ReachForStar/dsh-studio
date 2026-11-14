@@ -46,6 +46,8 @@ async function answerApproval(
   if (sessionId === undefined) return next()
   const pending = new PendingApproval(sessionId, {
     toolName: request.toolName,
+    ...(request.requestId === undefined ? {} : { requestId: request.requestId }),
+    ...(request.fullAccess === true ? { fullAccess: true } : {}),
     ...(request.callId === undefined
       ? {}
       : { callId: request.callId }),
@@ -105,6 +107,7 @@ export function apply(ctx: ClientContext): void {
     inject: () => ({
       resolveReason: (reason: NonNullable<PendingApproval['displayReason']>) => ctx.locale.resolveText(reason),
       alwaysAllow: (approval: PendingApproval) => saveAlwaysAllow(ctx, approval),
+      grantFullAccess: (approval: PendingApproval) => grantFullAccess(ctx, approval),
       rejectWithCorrection: (approval: PendingApproval, text: string) => rejectWithCorrection(ctx, approval, text),
     }),
   }, ApprovalPanel))
@@ -140,6 +143,29 @@ async function saveAlwaysAllow(ctx: ClientContext, approval: PendingApproval): P
   } catch (error: unknown) {
     ctx.logger.warn(`approval: ${error instanceof Error ? error.message : String(error)}`)
   }
+  await approval.answer('allowed-once')
+}
+
+/**
+ * Commit full access for the pending request through `/full-access`, then
+ * grant the request. The Host binds the grant to the request identity, applies
+ * its configured preset, and records a receipt; a failed command keeps the
+ * prompt open so the user can choose another outcome.
+ * @param ctx - client root context carrying the Remote command channel.
+ * @param approval - the pending request whose identity the grant cites.
+ */
+async function grantFullAccess(ctx: ClientContext, approval: PendingApproval): Promise<void> {
+  const requestId = approval.requestId
+  if (requestId === undefined) throw new Error('approval: full access requires a request identity')
+  const result = await ctx.remote.commands.execute(
+    approval.sessionId,
+    `/full-access ${requestId}`,
+    [],
+    new AbortController().signal,
+  )
+  if (!result.ok) throw new Error(`full access failed: ${result.error.code}: ${result.error.message}`)
+  if (result.value === undefined) throw new Error('the host offers no /full-access command')
+  if (result.value.result.kind !== 'success') throw new Error(result.value.result.text)
   await approval.answer('allowed-once')
 }
 

@@ -3,7 +3,7 @@ title: codex 与 ZCode 能力落地交接（合并版）
 type: query
 tags: [交接, codex, zcode, 权限, 上下文, 编辑, 钩子, 压缩, 工作流, 多智能体, 记忆, 沙箱]
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 sources: []
 status: draft
 ---
@@ -209,7 +209,19 @@ status: draft
 11. **上下文缓存稳定（B）**：运行时上下文首份快照提交后，变化集合只发送变化/新增节文本与被移除节名称，未变化的节不重复；恢复、旧格式与压缩后重述完整集合；仅顺序变化不产生消息。系统提示词仍按现有投影只在内容变化时追加，避免改写已缓存前缀。显式缓存断点位置（provider cache_control）沿用各适配器已有能力，未新增统一配置。
 12. **域名允许清单（H 部分）**：`web-fetch-http` 新增 `allowedHosts` / `blockedHosts`，对请求 URL 与每个同源重定向校验；阻止规则优先，允许清单为空表示不限制。代理、延迟网络审批、Provider 三层配置与诊断实验仍未实现。
 
-仍未开始：A3 完全访问凭证、D 的其余部分（`updated_input`、PreModelRequest/PostModelRequest、工作区信任）、F、H 的其余部分，以及 E 的窗口重置/后台推测/低峰调度/retained context、G 的其余部分。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
+## 2026-11-14 A3 完全访问凭证
+
+把「完全访问」做成审批提示上的独立提交动作，不是一条 allow 规则。
+
+1. **提交与回执归 `user-approval`**：`request()` 生成并以 `requestId` 交给应答者，注册执行器时分发的请求带 `fullAccess: true`。`registerFullAccess(handler)` 是唯一执行器注册点；`requestFullAccess(agent, requestId)` 要求该提示仍在等待（否则 `FULL_ACCESS_STALE`），同一会话已有提交在结算时拒绝（`FULL_ACCESS_BUSY`），没有执行器时失败（`FULL_ACCESS_UNAVAILABLE`）。首次提交追加 `approval/full-access` 回执，记录当时仍在排队的输入身份；同一请求重试复用回执，首次提交之后排队的输入不进入授权。执行器在回执之后运行，失败留下可用相同目标重试的授权。
+2. **策略应用归 `permission-presets`**：服务注册唯一执行器，通过与 `/permission` 相同的写入路径应用 `fullAccessPreset`（默认 `danger-full-access`）。显式配置未知预设加载即失败；替换表缺少内置默认项只是撤下该动作。新增 `/full-access <requestId>` 命令。
+3. **客户端**：`PendingApproval` 携带 `requestId` 与 `fullAccess`；卡片只在两者齐备时显示「完全访问」，先打开风险确认，勾选后通过 `/full-access <requestId>` 提交再回答提示；命令失败时提示保持打开。8 种语言补齐文案。
+4. **持久化**：新增仅日志事件 `approval/full-access`，`SESSION_FORMAT_VERSION` 不变（旧读取方拒绝未知必需事件，不会把缺失授权当成未授权）；已补 `docs/persistence-changes/2026-11-14-approval-full-access.md`、生成目录与已知事件清单。
+5. **决策记录**：[完全访问提交 Agent Note](../../../.agents/notes/implemented/architecture/2026-11-14-approval-full-access-commit.md)。
+
+验证：`pnpm exec vitest run packages/interaction/user-approval/tests packages/interaction/permission-presets/tests packages/client/ui-approval/tests`（174 项）、`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run verify-persistence-catalog`、`pnpm run verify-persistence-changes`、`pnpm run verify-type-equiv`、`pnpm run verify-cordis-catalog`、`pnpm run verify-config-catalog`、`pnpm run verify-doc-graphs`。
+
+仍未开始：D 的其余部分（`updated_input`、PreModelRequest/PostModelRequest、工作区信任）、F、H 的其余部分（代理与延迟审批、Provider 三层配置、诊断实验），以及 E 的窗口重置/后台推测/低峰调度/retained context、G 的后台提取/合并锁/召回选择器。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
 
 ## 参考页面
 

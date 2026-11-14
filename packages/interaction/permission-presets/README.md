@@ -48,12 +48,17 @@ The plugin config defines the preset table and the default for fresh sessions. E
 |---|---|---|
 | `presets` | `workspace-write`, `danger-full-access` | Table of preset name → sandbox/approval bundle |
 | `defaultPreset` | inferred | Preset pinned into fresh sessions; required when composition defaults match no preset |
+| `fullAccessPreset` | `danger-full-access` | Preset an approval prompt's full-access grant applies; an explicitly configured unknown name fails at load |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-permission-presets) is the exhaustive source for every accepted field and its JSDoc. `custom` is reserved for the derived not-a-preset state, while `auto` is reserved for the Auto review integration. Mounting requires a confining bash executor (one that reports a `sandboxMode`), the approval service, and the Agent registry.
 
 ### Switching presets
 
 Switching to Auto first runs its synchronous admission check; every preset switch then changes only the knobs whose effective value differs, and selecting the preset already in effect changes nothing. The current value resolves as the still-matching last recorded selection, including a recorded Auto selection under the `never` approval policy, else the first matching configured entry, else `custom`. Users switch through the `/permission` command: a bare invocation reports the current preset and every available entry, and a preset argument switches to it.
+
+### Full access from an approval prompt
+
+The service installs the one full-access applier of `dsh-user-approval`, so an approval prompt can grant full access as a distinct action instead of an allow rule. The approval service owns the receipt, the fixed target set, and the busy gate; this service applies `fullAccessPreset` through the same write path as `/permission`. The browser action invokes `/full-access <requestId>`, which requires that exact prompt to still be waiting. A replacement table without the shipped default simply withdraws the action, while an explicitly configured missing `fullAccessPreset` fails at load.
 
 ### What users see
 

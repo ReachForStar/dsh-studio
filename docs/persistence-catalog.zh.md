@@ -28,6 +28,7 @@
 | `event:agent/inbox/spliced` | event | `12767817f198a232255902a126e6cc6833c591bc396d76cf678235dd728d7465` | [`{ type: "agent/inbox/spliced" }`](#persistence-type-sha256-12767817f198a232255902a126e6cc6833c591bc396d76cf678235dd728d7465) |
 | `event:approval/asked` | event | `3bfeb47b58606f4661904bc723da612782214c463d01e6d61cd6d6193d7374e1` | [`{ type: "approval/asked" }`](#persistence-type-sha256-3bfeb47b58606f4661904bc723da612782214c463d01e6d61cd6d6193d7374e1) |
 | `event:approval/decided` | event | `c5028106a70826fc22717f5f83930bd6421fda0302e5bb8b61d258e3148c8890` | [`{ type: "approval/decided" }`](#persistence-type-sha256-c5028106a70826fc22717f5f83930bd6421fda0302e5bb8b61d258e3148c8890) |
+| `event:approval/full-access` | event | `8226c9a496472402b300e86c9d3bd7b7eefc3f327747c7e8fa7cb3002ad4ef9f` | [`{ type: "approval/full-access" }`](#persistence-type-sha256-8226c9a496472402b300e86c9d3bd7b7eefc3f327747c7e8fa7cb3002ad4ef9f) |
 | `event:approval/policy` | event | `26718e15e7e395bce9642dba5bbe09b3b1a4ce2213d20d566cd9207d7fc5fb78` | [`{ type: "approval/policy" }`](#persistence-type-sha256-26718e15e7e395bce9642dba5bbe09b3b1a4ce2213d20d566cd9207d7fc5fb78) |
 | `event:assistant/attempt` | event | `15d5dfdd822aa35e115afd74a8982825a493880457774e6850bc1520b50875e4` | [`{ type: "assistant/attempt" }`](#persistence-type-sha256-15d5dfdd822aa35e115afd74a8982825a493880457774e6850bc1520b50875e4) |
 | `event:assistant/message` | event | `1033093edd0db80ff410e00830b523405e00bb0c7684948e531ff65095799625` | [`{ type: "assistant/message" }`](#persistence-type-sha256-1033093edd0db80ff410e00830b523405e00bb0c7684948e531ff65095799625) |
@@ -262,6 +263,27 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 ```
 
 来源：[`packages/interaction/user-approval/src/types.ts:56`](../packages/interaction/user-approval/src/types.ts)
+
+<a id="approvalfull-access--log-only"></a>
+
+#### `approval/full-access` — log-only
+
+```ts persistence-catalog
+/**
+ * One full-access grant committed from a pending approval prompt — log-only
+ * (like the other `approval/*` events, no `surfaceOp`): durable receipt of
+ * the exact prompt and the input identities it covered at commit time.
+ * Input queued later is outside that receipt, and a retried grant for the
+ * same request id reuses these targets instead of widening the grant.
+ */
+'approval/full-access': {
+  requestId: ApprovalRequestId
+  /** Pending input identities captured when the grant committed, in inbox order. */
+  targets: readonly string[]
+}
+```
+
+来源：[`packages/interaction/user-approval/src/index.ts:60`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="approvalpolicy--log-only"></a>
 
@@ -1461,7 +1483,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'workspace/changes': { turn: number }
 ```
 
-来源：[`packages/deliverables/workspace-changes/src/types.ts:106`](../packages/deliverables/workspace-changes/src/types.ts)
+来源：[`packages/deliverables/workspace-changes/src/types.ts:138`](../packages/deliverables/workspace-changes/src/types.ts)
 
 ### `xingchen/*`
 
@@ -1617,6 +1639,14 @@ SHA-256: `cd186c309e2bef305705e1d324139240f5e681f4f6a957d6a25b0225f65560df`
 SHA-256: `378f90f9f6022a0991928a1eaf7991094ea1920fe89a9248358a1da106e1a970`
 
 `"approval/decided"`
+
+<a id="persistence-type-sha256-67f53b0a8a8e987045da44934fc5108772d56f6b1646f5fd181d04ee95634671"></a>
+
+### `"approval/full-access"`
+
+SHA-256: `67f53b0a8a8e987045da44934fc5108772d56f6b1646f5fd181d04ee95634671`
+
+`"approval/full-access"`
 
 <a id="persistence-type-sha256-36d6a9a871d949ea4f3edd919d81d66aa69218bebef38899d2a1282c39420a1f"></a>
 
@@ -3615,7 +3645,7 @@ SHA-256: `479ee6893e77489d4c004c86b6394c55b8411b245bec289f28dca594545be760`
 
 SHA-256: `05d2ae1e0c7f8770f83f9a09047afb39a335d8ac986df3193659aa1e581472cf`
 
-来源：[`packages/interaction/user-approval/src/index.ts:82`](../packages/interaction/user-approval/src/index.ts)
+来源：[`packages/interaction/user-approval/src/index.ts:94`](../packages/interaction/user-approval/src/index.ts)
 
 以下类型之一：
 
@@ -5845,7 +5875,7 @@ SHA-256: `43e311235aa537df1bacdd92d144df8a952337a76e9ac892cdf670f1a797bad8`
 
 SHA-256: `3cfc3a56502da1f8c6153c2c56657bab4b749056968634dd0991d325ec1c919f`
 
-来源：[`packages/core/tools/src/contracts.ts:405`](../packages/core/tools/src/contracts.ts)
+来源：[`packages/core/tools/src/contracts.ts:413`](../packages/core/tools/src/contracts.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -8111,7 +8141,7 @@ SHA-256: `ab7ec5f9eb2c6dfacca5da4c37cf7ba85d04172053ee6b1ebf1709ffcd99c1a7`
 
 SHA-256: `cf0c062dcae7f77329a62c599558210a8bc1d08dd140edab3a392880933e3f1f`
 
-来源：[`packages/context/memory-notes/src/index.ts:35`](../packages/context/memory-notes/src/index.ts)
+来源：[`packages/context/memory-notes/src/index.ts:36`](../packages/context/memory-notes/src/index.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -9385,6 +9415,19 @@ SHA-256: `e481c46af3813e0010558e93f578b2986acd658404cec2d1679e3ac2a6c48654`
 | `reason` | 必需 | [`TurnEndReason`](#persistence-type-sha256-f1687f982fa3d41ef29e159feed154ecd13af4dd209acaee16038f223f2e9402) |
 | `turn` | 必需 | `number` |
 
+<a id="persistence-type-sha256-e0331da7f45a8e96767eea1a288b4cc4d8af9fc265962d49c8ca9f827f4566f3"></a>
+
+### `{ requestId, targets }`
+
+SHA-256: `e0331da7f45a8e96767eea1a288b4cc4d8af9fc265962d49c8ca9f827f4566f3`
+
+来源：[`packages/interaction/user-approval/src/index.ts:60`](../packages/interaction/user-approval/src/index.ts)
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `requestId` | 必需 | `string` |
+| `targets` | 必需 | [`string[]`](#persistence-type-sha256-93c33d9687613293f8c95d46c4d922fe9ceae83b84c384beff5c3315abe005f2) |
+
 <a id="persistence-type-sha256-9a2a9029f8d7ede05336980d8342737557f487b913bfd28853d0ab5214600ab5"></a>
 
 ### `{ role: "user" }`
@@ -9510,7 +9553,7 @@ SHA-256: `79ddc907312f97cf9553d4841e8b3fc937097bd8d97900a790efad3c05255e99`
 
 SHA-256: `f90eb4ab2d3897bc20c521a038e3119d581f791ec974b1a0004f63a8ab9e232d`
 
-来源：[`packages/core/session/src/types.ts:311`](../packages/core/session/src/types.ts) · [`packages/deliverables/workspace-changes/src/types.ts:106`](../packages/deliverables/workspace-changes/src/types.ts)
+来源：[`packages/core/session/src/types.ts:311`](../packages/core/session/src/types.ts) · [`packages/deliverables/workspace-changes/src/types.ts:138`](../packages/deliverables/workspace-changes/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -9579,6 +9622,22 @@ SHA-256: `c5028106a70826fc22717f5f83930bd6421fda0302e5bb8b61d258e3148c8890`
 | `seq` | 必需 | `number` |
 | `time` | 必需 | `number` |
 | `type` | 必需 | `"approval/decided"` |
+
+<a id="persistence-type-sha256-8226c9a496472402b300e86c9d3bd7b7eefc3f327747c7e8fa7cb3002ad4ef9f"></a>
+
+<a id="persistence-type-eventapprovalfull-access"></a>
+
+### `{ type: "approval/full-access" }`
+
+SHA-256: `8226c9a496472402b300e86c9d3bd7b7eefc3f327747c7e8fa7cb3002ad4ef9f`
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `data` | 必需 | [`{ requestId, targets }`](#persistence-type-sha256-e0331da7f45a8e96767eea1a288b4cc4d8af9fc265962d49c8ca9f827f4566f3) |
+| `ignorable` | 可选 | `true` |
+| `seq` | 必需 | `number` |
+| `time` | 必需 | `number` |
+| `type` | 必需 | `"approval/full-access"` |
 
 <a id="persistence-type-sha256-26718e15e7e395bce9642dba5bbe09b3b1a4ce2213d20d566cd9207d7fc5fb78"></a>
 

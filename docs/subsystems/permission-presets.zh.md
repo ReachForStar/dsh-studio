@@ -39,10 +39,21 @@ interface Config {
    * sandbox and approval defaults is used.
    */
   defaultPreset: Volatile<string | undefined>
+  /**
+   * Preset an approval prompt's full-access grant applies. Defaults to
+   * `danger-full-access`; the name must be one of {@link presets}. This is the
+   * one destination of an explicit full-access commit, not a persistent allow
+   * rule, so switching it changes what that single action grants.
+   */
+  fullAccessPreset: Volatile<string | undefined>
 }
 ```
 
 该服务要求一个施加隔离的 `ctx.shell` 执行器和 `ctx.approval`，配置错误在插件加载时即失败：名为 `custom` 或 `auto` 的配置条目会抛出异常；在不施加隔离的 bash 执行器（没有 `sandboxMode` 能力事实）之上组合同样抛出异常，因为预设捆绑了一个沙箱模式。
+
+## 审批提示中的完全访问
+
+本服务注册[审批](approval.zh.md)唯一的完全访问执行器，使等待中的提示可以把完全访问作为显式动作授予，而不是一条允许规则。回执、固定目标集合与忙时门禁由审批服务拥有；本服务通过与 `/permission` 相同的写入路径应用 `fullAccessPreset`。替换后的预设表不含内置的 `danger-full-access` 默认项时，只是撤下该动作而不使加载失败；显式配置的 `fullAccessPreset` 缺失时在加载期失败。
 
 ## 固定的当前会话 Auto 注册
 

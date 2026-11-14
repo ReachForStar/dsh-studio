@@ -62,6 +62,10 @@ export interface ApprovalDetailOwnerProps {
 export interface ApprovalPresentationRequest {
   /** Tool requesting the decision. */
   readonly toolName: string
+  /** Durable identity the Host binds an explicit full-access grant to. */
+  readonly requestId?: string
+  /** Whether the Host can grant full access from this prompt. */
+  readonly fullAccess?: boolean
   /** Tool call correlated with the request. */
   readonly callId?: ToolCallId
   /** Human-readable reason supplied by the requester. */
@@ -92,6 +96,10 @@ export class PendingApproval {
   readonly key: string
   /** Tool requesting the decision. */
   readonly toolName: string
+  /** Durable identity the Host binds an explicit full-access grant to. */
+  readonly requestId: string | undefined
+  /** Whether the Host can grant full access from this prompt. */
+  readonly fullAccess: boolean
   /** Correlated Tool call, when supplied by the asker. */
   readonly callId: ToolCallId | undefined
   /** Human-readable reason supplied by the asker. */
@@ -121,6 +129,8 @@ export class PendingApproval {
     nextApprovalKey += 1
     this.key = `approval:${String(nextApprovalKey)}`
     this.toolName = request.toolName
+    this.requestId = request.requestId
+    this.fullAccess = request.fullAccess === true
     this.callId = request.callId
     this.reason = request.reason
     this.displayReason = request.displayReason
@@ -209,6 +219,12 @@ export interface ApprovalInjected {
    */
   alwaysAllow(approval: PendingApproval): Promise<void>
   /**
+   * Commit full access for the pending request, then grant it. The Host binds
+   * the grant to the request identity and applies its configured preset.
+   * @param approval - the pending request whose identity the grant cites.
+   */
+  grantFullAccess(approval: PendingApproval): Promise<void>
+  /**
    * Record replacement arguments for the call, then reject it so the model
    * receives the correction as the failure reason.
    * @param approval - the pending request whose call is being corrected.
@@ -249,4 +265,6 @@ export interface ApprovalCardInput {
   onReject: () => Promise<void>
   /** Explicit persistent choice; absent when the caller cannot save permission. */
   onAlways?: () => Promise<void>
+  /** Explicit full-access commit; absent when the Host cannot grant it. */
+  onFullAccess?: () => Promise<void>
 }

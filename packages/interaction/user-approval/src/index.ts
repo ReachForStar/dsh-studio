@@ -50,6 +50,18 @@ declare module '@deepseek-ai/dsh-session/types' {
       /** Marks an override seeded into a child at delegation. */
       source?: 'delegation'
     }
+    /**
+     * One full-access grant committed from a pending approval prompt — log-only
+     * (like the other `approval/*` events, no `surfaceOp`): durable receipt of
+     * the exact prompt and the input identities it covered at commit time.
+     * Input queued later is outside that receipt, and a retried grant for the
+     * same request id reuses these targets instead of widening the grant.
+     */
+    'approval/full-access': {
+      requestId: ApprovalRequestId
+      /** Pending input identities captured when the grant committed, in inbox order. */
+      targets: readonly string[]
+    }
   }
 }
 
@@ -99,6 +111,22 @@ interface ApprovalState {
   // Mirrors AgentRegistry's turn enclosure without requiring an agent registry.
   turnOpen: boolean
 }
+
+/** Full-access receipts folded from the log, keyed by the approval request they committed. */
+interface FullAccessState {
+  readonly receipts: Record<string, string[]>
+}
+
+const fullAccessStateDefinition = {
+  key: 'approvalFullAccess',
+  stateVersion: 1,
+  stateSchema: zod.object({ receipts: zod.record(zod.string(), zod.array(zod.string())) }),
+  init: (): FullAccessState => ({ receipts: {} }),
+  apply(state: FullAccessState, event: SessionEvent): FullAccessState {
+    if (event.type !== 'approval/full-access') return state
+    return { receipts: { ...state.receipts, [event.data.requestId]: [...event.data.targets] } }
+  },
+} satisfies ProjectionDefinition<'approvalFullAccess', FullAccessState>
 
 const approvalStateDefinition = {
   key: 'approvalState',
@@ -162,6 +190,48 @@ export interface ApprovalRequest extends ApprovalRequestEvent {
   readonly signal?: AbortSignal
 }
 
+/** The full-access receipt the service commits, handed to the registered applier. */
+export interface FullAccessCommit {
+  /** Agent whose pending request was granted. */
+  readonly agent: Agent
+  /** The exact approval request the grant covers. */
+  readonly requestId: ApprovalRequestId
+  /** Pending input identities captured when the receipt first committed. */
+  readonly targets: readonly string[]
+}
+
+/**
+ * Applies the wider policy after a full-access receipt commits. The applier
+ * owns the preset or mode it writes; the service owns the receipt, the fixed
+ * target set, and the busy gate. A retry re-invokes the applier with the same
+ * commit, so applying twice must converge on one policy state.
+ */
+export type FullAccessHandler = (commit: FullAccessCommit) => void | Promise<void>
+
+/** Every {@link FullAccessError} code. */
+export type FullAccessErrorCode = 'FULL_ACCESS_BUSY' | 'FULL_ACCESS_STALE' | 'FULL_ACCESS_UNAVAILABLE'
+
+/** A full-access commit that could not proceed; `code` is the stable routing key. */
+export class FullAccessError extends Error {
+  /** Stable machine-routable failure class. */
+  readonly code: FullAccessErrorCode
+
+  /**
+   * @param message - the user-facing reason and safe next step.
+   * @param code - the failure class consumers route on.
+   */
+  constructor(message: string, code: FullAccessErrorCode) {
+    super(message)
+    this.name = 'FullAccessError'
+    this.code = code
+  }
+}
+
+/** The stored part of one committed grant. */
+interface FullAccessReceipt {
+  readonly targets: readonly string[]
+}
+
 /** Plugin config. All optional — `static Config` supplies the defaults. */
 export interface Config {
   /**
@@ -208,6 +278,7 @@ export class ApprovalService extends Service {
   })
 
   private approvalProjectionHandle!: ProjectionHandle<ApprovalState>
+  private fullAccessProjectionHandle!: ProjectionHandle<FullAccessState>
   private readonly rules: readonly ApprovalRule[]
   private projectRules: KvTable<string, ProjectApprovalRules> | undefined
   /**
@@ -217,6 +288,14 @@ export class ApprovalService extends Service {
   private readonly sessionRules = new WeakMap<Session, ApprovalRule[]>()
   /** Correction text recorded through `/correct`, keyed by session then tool call. */
   private readonly corrections = new WeakMap<Session, Map<ToolCallId, string>>()
+  /** Requests currently awaiting an answerer decision, keyed by session. */
+  private readonly pendingRequests = new WeakMap<Session, Set<ApprovalRequestId>>()
+  /** Marker for a session whose full-access commit is still settling. */
+  private readonly fullAccessCommits = new WeakMap<Session, symbol>()
+  /** The one applier of a committed full-access receipt, when a deployment provides one. */
+  private fullAccessHandler: FullAccessHandler | undefined
+  /** Identity of the current applier registration; the service proxy wraps function values. */
+  private fullAccessRegistration: symbol | undefined
 
   constructor(ctx: Context, public config: Config) {
     super(ctx, 'approval')
@@ -226,7 +305,9 @@ export class ApprovalService extends Service {
   protected async [Service.init](): Promise<void> {
     this.approvalProjectionHandle = await this.ctx.sessionProjections.register(approvalStateDefinition)
     // Registration can finish after an unload has started. Do not add effects then.
-    if (this.ctx.fiber.uid === null) return
+    if (this.unloaded()) return
+    this.fullAccessProjectionHandle = await this.ctx.sessionProjections.register(fullAccessStateDefinition)
+    if (this.unloaded()) return
 
     await this.ctx.inject(['commands'], (scope: Context) => {
       scope.commands.register({
@@ -323,9 +404,125 @@ export class ApprovalService extends Service {
       ...req.callId !== undefined ? { callId: req.callId } : {},
       ...req.reason !== undefined ? { reason: req.reason } : {},
     })
-    const outcome = await this.decideWithRules(req, session)
-    session.append('approval/decided', { id, outcome })
-    return outcome
+    const dispatched: ApprovalRequest = {
+      ...req,
+      requestId: id,
+      ...this.fullAccessHandler === undefined ? {} : { fullAccess: true },
+    }
+    const pending = this.pendingRequestsOf(session)
+    pending.add(id)
+    try {
+      const outcome = await this.decideWithRules(dispatched, session)
+      session.append('approval/decided', { id, outcome })
+      return outcome
+    } finally {
+      pending.delete(id)
+    }
+  }
+
+  /**
+   * Record the one applier that grants full access from an approval prompt.
+   * A deployment registers at most one: the commit is a single explicit
+   * action, not a rule, and two independent appliers could widen the same
+   * session twice with different meanings. While a handler is registered,
+   * every dispatched request advertises `fullAccess`, so clients can offer
+   * the action only where the host can execute it.
+   * @param handler - invoked after the receipt commits; owns the policy write.
+   * @returns the disposer that withdraws this handler.
+   * @throws when another handler is already registered.
+   */
+  registerFullAccess(handler: FullAccessHandler): () => void {
+    if (this.fullAccessHandler !== undefined) {
+      throw new Error('approval: a full-access handler is already registered')
+    }
+    const registration = Symbol('full-access')
+    this.fullAccessHandler = handler
+    this.fullAccessRegistration = registration
+    return () => {
+      if (this.fullAccessRegistration !== registration) return
+      this.fullAccessRegistration = undefined
+      this.fullAccessHandler = undefined
+    }
+  }
+
+  /**
+   * Whether one approval request is still waiting for its decision.
+   * @param session - the session that owns the request.
+   * @param requestId - the request identity carried to the client.
+   * @returns whether an answerer chain is still awaiting this request.
+   */
+  isPending(session: Session, requestId: ApprovalRequestId): boolean {
+    return this.pendingRequestsOf(session).has(requestId)
+  }
+
+  /**
+   * Commit full access for one pending prompt. This is a distinct action, not
+   * an allowed-once outcome: it records a durable receipt for the exact
+   * request, covers the input identities pending when it commits, and then
+   * hands the receipt to the registered applier, which writes the wider
+   * policy. The targets are fixed at the first commit; a retry for the same
+   * request reuses them, so input queued after the commit stays outside the
+   * grant. One commit per session may be in flight: a concurrent retry fails
+   * with `FULL_ACCESS_BUSY` instead of racing the policy write.
+   * @param agent - the agent whose pending request is being granted.
+   * @param requestId - the exact pending request the user acted on.
+   * @returns the committed receipt: request identity and covered targets.
+   * @throws `FullAccessError` when the request is no longer pending, the
+   *   composition has no applier, or another commit is still in flight.
+   */
+  async requestFullAccess(agent: Agent, requestId: ApprovalRequestId): Promise<FullAccessCommit> {
+    const session = agent.session
+    const receipt = this.fullAccessReceiptOf(session, requestId)
+    if (receipt === undefined && !this.isPending(session, requestId)) {
+      throw new FullAccessError(
+        'this approval prompt is no longer waiting for a decision; grant full access from the live prompt',
+        'FULL_ACCESS_STALE',
+      )
+    }
+    if (this.fullAccessCommits.has(session)) {
+      throw new FullAccessError(
+        'another full-access grant is still committing for this session; retry after it settles',
+        'FULL_ACCESS_BUSY',
+      )
+    }
+    const handler = this.fullAccessHandler
+    if (handler === undefined) {
+      throw new FullAccessError('full access is unavailable in this composition', 'FULL_ACCESS_UNAVAILABLE')
+    }
+    const marker = Symbol('full-access')
+    this.fullAccessCommits.set(session, marker)
+    try {
+      const targets = receipt?.targets ?? this.pendingTargetsOf(agent)
+      if (receipt === undefined) session.append('approval/full-access', { requestId, targets })
+      const commit: FullAccessCommit = { agent, requestId, targets }
+      // The receipt is already durable: a failing applier leaves a retryable
+      // grant with the same fixed targets instead of a half-widened session
+      // the user cannot finish.
+      await handler(commit)
+      return commit
+    } finally {
+      if (this.fullAccessCommits.get(session) === marker) this.fullAccessCommits.delete(session)
+    }
+  }
+
+  private pendingRequestsOf(session: Session): Set<ApprovalRequestId> {
+    let pending = this.pendingRequests.get(session)
+    if (pending === undefined) {
+      pending = new Set()
+      this.pendingRequests.set(session, pending)
+    }
+    return pending
+  }
+
+  /** The pending input identities a commit covers, in inbox order. */
+  private pendingTargetsOf(agent: Agent): readonly string[] {
+    return [...agent.inbox.nextTurn, ...agent.inbox.nextStep].map(message => String(message.id))
+  }
+
+  /** The already-committed receipt for one request, if any. */
+  private fullAccessReceiptOf(session: Session, requestId: ApprovalRequestId): FullAccessReceipt | undefined {
+    const targets = this.fullAccessProjectionHandle.stateOf(session).receipts[requestId]
+    return targets === undefined ? undefined : { targets }
   }
 
   /**
@@ -534,6 +731,11 @@ export class ApprovalService extends Service {
     const correction = calls?.get(callId)
     if (correction !== undefined) calls?.delete(callId)
     return correction
+  }
+
+  /** Whether this service's fiber started unloading while activation awaited. */
+  private unloaded(): boolean {
+    return this.ctx.fiber.uid === null
   }
 
   private requireProjectRules(): KvTable<string, ProjectApprovalRules> {

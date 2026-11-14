@@ -9,8 +9,8 @@
   en: 1387c4505dde2faf
   zh: 48570fa1c13d6910
 /session-persistence-event-catalog/persistence-type-fingerprints:
-  en: 1187b35a1793e1a0
-  zh: 06e54d8be8916ea2
+  en: 5fd75865568a02a9
+  zh: 7ecb2afa10dccdad
 /session-persistence-event-catalog/event-envelope:
   en: 650e06b1aca65643
   zh: 949061c069a706a2
@@ -36,8 +36,11 @@
   en: 449f36c9fcb711d0
   zh: 68496597eb7bc7e3
 /session-persistence-event-catalog/events/approval/approval-decided-log-only:
-  en: 9484aa2bb41229ff
-  zh: c05565df26e74d7f
+  en: d4f764d3b6cb8bb2
+  zh: ddf7d56821ac2d45
+/session-persistence-event-catalog/events/approval/approval-full-access-log-only:
+  en: e8c0e398cada1db6
+  zh: c977a0895724fe33
 /session-persistence-event-catalog/events/approval/approval-policy-log-only:
   en: c6acdf692507ac35
   zh: 500d39bc97642189
@@ -330,8 +333,8 @@
   en: 63ee1a85e4b59ae3
   zh: 63ee1a85e4b59ae3
 /session-persistence-event-catalog/events/workspace/workspace-changes-log-only:
-  en: ee6b592f9e2193a7
-  zh: 7a7a69ae52aa714a
+  en: 2a802efc8afe8fae
+  zh: b1151b91cb396dcd
 /session-persistence-event-catalog/events/xingchen:
   en: 8618aae45077afb0
   zh: 8618aae45077afb0
@@ -384,8 +387,11 @@
   en: d44b6944cfd7fb6e
   zh: d44b6944cfd7fb6e
 /session-persistence-event-catalog/resolved-persistence-types/approval-decided:
-  en: b76aa7cbaf40ae93
-  zh: b76aa7cbaf40ae93
+  en: d71393ea8a7cf8af
+  zh: d71393ea8a7cf8af
+/session-persistence-event-catalog/resolved-persistence-types/approval-full-access:
+  en: f76e7f50705a0dc7
+  zh: f76e7f50705a0dc7
 /session-persistence-event-catalog/resolved-persistence-types/approval-policy:
   en: 8fa056f72e75785d
   zh: 8fa056f72e75785d
@@ -1113,8 +1119,8 @@
   en: 047cf2f36cb2d410
   zh: 08a1b1659d380499
 /session-persistence-event-catalog/resolved-persistence-types/approvalpolicy:
-  en: 3285819b68c56de5
-  zh: 3c284b63f7ae3b8c
+  en: e85de1baf374116f
+  zh: d5cee51469d0496d
 /session-persistence-event-catalog/resolved-persistence-types/assistantmessage:
   en: 2a8bc13a30855b26
   zh: 87f1f5fd2882a411
@@ -1455,8 +1461,8 @@
   en: 0080c345c319a4b5
   zh: de1a8b3ed621ce21
 /session-persistence-event-catalog/resolved-persistence-types/toolrestriction:
-  en: 6fa15d6aaa029511
-  zh: c49b36a538c4c9f3
+  en: 58b976533dfd754a
+  zh: 2f058486fbdbac1a
 /session-persistence-event-catalog/resolved-persistence-types/toolresultmessage:
   en: 7bb3924d2a174c6f
   zh: 5bae5fa0792a4aaa
@@ -1923,8 +1929,8 @@
   en: 3b62342d7e76b329
   zh: 4d530c59561937ba
 /session-persistence-event-catalog/resolved-persistence-types/kind-memory-notes:
-  en: 0a9e00cdbb5ec6c0
-  zh: f0ef2c54183fd1c6
+  en: 484656fdfd75f06c
+  zh: 96d1564613390a29
 /session-persistence-event-catalog/resolved-persistence-types/kind-model-selection:
   en: a5165486dca91116
   zh: b7051ca8167806ef
@@ -2250,8 +2256,11 @@
   en: 8ebd37343b638773
   zh: bf7ffa9a60ca42a8
 /session-persistence-event-catalog/resolved-persistence-types/reason-turn:
-  en: 8cbc17e969a1783a
-  zh: 9dc7535529615dc2
+  en: 5e88a4778f01251a
+  zh: d90c3f4fa3b03bef
+/session-persistence-event-catalog/resolved-persistence-types/requestid-targets:
+  en: 6c3903e8081c0dc0
+  zh: 9493d002be1c3fe5
 /session-persistence-event-catalog/resolved-persistence-types/role-user:
   en: 04b34b8ffe7e7764
   zh: a792d5371516fd9d
@@ -2280,8 +2289,8 @@
   en: 8ab873d30e062fd5
   zh: a138832c6e299ebb
 /session-persistence-event-catalog/resolved-persistence-types/turn:
-  en: f5340a56760293f6
-  zh: 6b0516be96eb496a
+  en: b218868d2b73fe75
+  zh: 0e1b173fc4d7d399
 /session-persistence-event-catalog/resolved-persistence-types/type-agent-preset-selected:
   en: acd8545ceb622850
   zh: a42adf012123dc46
@@ -2292,8 +2301,11 @@
   en: 1fa2375b11690812
   zh: 1d8ca825a85166a5
 /session-persistence-event-catalog/resolved-persistence-types/type-approval-decided:
-  en: c80da518daad6bef
-  zh: 57a162261b4120f1
+  en: f285f6b61b54cf25
+  zh: 054453d38068909d
+/session-persistence-event-catalog/resolved-persistence-types/type-approval-full-access:
+  en: 9d09810c319550f2
+  zh: 98baa0664ab79f73
 /session-persistence-event-catalog/resolved-persistence-types/type-approval-policy:
   en: 93fd7b4fd905626a
   zh: fce49536f66811a6

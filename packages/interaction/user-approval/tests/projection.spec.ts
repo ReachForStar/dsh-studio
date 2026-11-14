@@ -149,6 +149,9 @@ describe('approval state', () => {
     expect(loadingPrompt.contexts).not.toContainEqual(expect.objectContaining({ name: 'approval:policy' }))
     registration.release()
     await fiber
+    // Both registered units build their cells once; later reads advance
+    // incrementally instead of replaying history.
+    ctx.sessionProjections.checkpoint(session)
     const read = vi.spyOn(session, 'eventAt')
     const snapshot = vi.spyOn(session, 'snapshotEvents')
     expect(ctx.approval.overrideOf(session)).toBe('never')

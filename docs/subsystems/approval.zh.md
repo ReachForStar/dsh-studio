@@ -82,6 +82,10 @@ interface ApprovalRequest extends ApprovalRequestEvent {
 }
 ```
 
+## 完全访问提交
+
+审批提示也是人授予完全访问、而不是为单个动作做决定的地方。`registerFullAccess(handler)` 注册唯一的执行器；注册期间，每个分发的 `ApprovalRequestEvent` 都带有 `requestId` 与 `fullAccess: true`。`requestFullAccess(agent, requestId)` 要求那个确切的请求仍在等待（否则以 `FULL_ACCESS_STALE` 拒绝），同一会话上一个提交仍在结算时拒绝第二次提交（`FULL_ACCESS_BUSY`），没有执行器时失败（`FULL_ACCESS_UNAVAILABLE`）。它追加一条 `approval/full-access` 回执，记录仍在排队的输入身份，然后运行执行器；对同一请求的重试复用该回执，因此之后排队的输入不会进入授权。回执是仅日志的审计记录，不是规则：它不会自动放行之后的请求。
+
 ## 分发与审计
 
 `ctx.approval.request(req)` 要求发起请求的会话处于一个尚未结束的轮次内。它追加 `approval/asked`，获取一个结果，追加对应的 `approval/decided`，然后以该结果完成。`never` 策略在服务内部、waterfall 分发之前强制执行，因此即使后来以 `prepend` 注册的应答者也无法绕过它。应答者在负责处理该请求时返回结果，否则调用 `next()` 委托；第一个应答占据唯一的决策槽位。
@@ -131,6 +135,44 @@ setPolicy(agent: Agent, policy: ApprovalPolicy): void
  *   append commit point.
  */
 async request(req: ApprovalRequest): Promise<ApprovalOutcome>
+
+/**
+ * Record the one applier that grants full access from an approval prompt.
+ * A deployment registers at most one: the commit is a single explicit
+ * action, not a rule, and two independent appliers could widen the same
+ * session twice with different meanings. While a handler is registered,
+ * every dispatched request advertises `fullAccess`, so clients can offer
+ * the action only where the host can execute it.
+ * @param handler - invoked after the receipt commits; owns the policy write.
+ * @returns the disposer that withdraws this handler.
+ * @throws when another handler is already registered.
+ */
+registerFullAccess(handler: FullAccessHandler): () => void
+
+/**
+ * Whether one approval request is still waiting for its decision.
+ * @param session - the session that owns the request.
+ * @param requestId - the request identity carried to the client.
+ * @returns whether an answerer chain is still awaiting this request.
+ */
+isPending(session: Session, requestId: ApprovalRequestId): boolean
+
+/**
+ * Commit full access for one pending prompt. This is a distinct action, not
+ * an allowed-once outcome: it records a durable receipt for the exact
+ * request, covers the input identities pending when it commits, and then
+ * hands the receipt to the registered applier, which writes the wider
+ * policy. The targets are fixed at the first commit; a retry for the same
+ * request reuses them, so input queued after the commit stays outside the
+ * grant. One commit per session may be in flight: a concurrent retry fails
+ * with `FULL_ACCESS_BUSY` instead of racing the policy write.
+ * @param agent - the agent whose pending request is being granted.
+ * @param requestId - the exact pending request the user acted on.
+ * @returns the committed receipt: request identity and covered targets.
+ * @throws `FullAccessError` when the request is no longer pending, the
+ *   composition has no applier, or another commit is still in flight.
+ */
+async requestFullAccess(agent: Agent, requestId: ApprovalRequestId): Promise<FullAccessCommit>
 
 /**
  * Read the rules stored for one project directory.

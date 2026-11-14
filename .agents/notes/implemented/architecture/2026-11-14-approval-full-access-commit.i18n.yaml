@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-14-approval-full-access-commit.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-11-14-approval-full-access-commit.md
+/agent-note-full-access-is-an-approval-commit-not-an-allow-rule:
+  en: ec896293c76c22bf
+  zh: 0b1878f68df45aad
+/agent-note-full-access-is-an-approval-commit-not-an-allow-rule/problem:
+  en: a0a74d6af41ff25a
+  zh: 35874416a38c2816
+/agent-note-full-access-is-an-approval-commit-not-an-allow-rule/decision:
+  en: f374e4e939f54924
+  zh: c7a57a28cc97f418
+/agent-note-full-access-is-an-approval-commit-not-an-allow-rule/alternatives-considered:
+  en: ee0a8a33221b3396
+  zh: 4d803c41bb338fea
+/agent-note-full-access-is-an-approval-commit-not-an-allow-rule/consequences:
+  en: d4112f60ca98105a
+  zh: b6a86942b5d2ca63

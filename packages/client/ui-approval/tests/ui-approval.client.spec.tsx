@@ -20,6 +20,8 @@ type ApprovalListener = (
   this: Context,
   request: {
     toolName: string
+    requestId?: string
+    fullAccess?: boolean
     callId?: string
     reason?: string
     displayReason?: PendingApproval['displayReason']
@@ -341,6 +343,44 @@ describe('approval Remote Event consumer', () => {
     await expect(result).resolves.toBe('allowed-once')
   })
 
+  it('commits full access through /full-access and then grants the request', async () => {
+    const bench = await setupPlugin()
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const result = bench.listener.call(scope.ctx, {
+      toolName: 'bash', requestId: 'req-1', fullAccess: true,
+    }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+
+    expect(pending.requestId).toBe('req-1')
+    expect(pending.fullAccess).toBe(true)
+    await bench.registration().options.inject().grantFullAccess(pending)
+
+    expect(bench.commandsExecute.mock.calls.map(([, line]) => line)).toEqual(['/full-access req-1'])
+    await expect(result).resolves.toBe('allowed-once')
+  })
+
+  it('keeps the prompt open when the full-access command refuses or is missing', async () => {
+    const bench = await setupPlugin()
+    const scope = createScope(bench.ctx, id('s1'))
+    await scope.fiber.await()
+    const first = bench.listener.call(scope.ctx, {
+      toolName: 'bash', requestId: 'req-2', fullAccess: true,
+    }, vi.fn())
+    const pending = bench.pending.getSnapshot()[0]!
+    bench.commandsExecute.mockResolvedValue({ ok: false, error: { code: 'DENIED', message: 'no' } })
+    await expect(bench.registration().options.inject().grantFullAccess(pending)).rejects.toThrow(/DENIED/)
+    expect(pending.answerable).toBe(true)
+
+    bench.commandsExecute.mockResolvedValue({ ok: true, value: undefined } as never)
+    await expect(bench.registration().options.inject().grantFullAccess(pending)).rejects.toThrow(/no \/full-access command/)
+    bench.commandsExecute.mockResolvedValue({ ok: true, value: { result: { kind: 'error', text: 'stale' } } } as never)
+    await expect(bench.registration().options.inject().grantFullAccess(pending)).rejects.toThrow('stale')
+    expect(pending.answerable).toBe(true)
+    await pending.answer('rejected')
+    await expect(first).resolves.toBe('rejected')
+  })
+
   it('delegates an event that has no Agent scope', async () => {
     const bench = await setupPlugin()
     const next = vi.fn(() => Promise.resolve<'unavailable'>('unavailable'))
@@ -457,6 +497,7 @@ function panelProps(
   renderSlot: FactoryComponentPropsOf<'conversation.approval.card'>['renderSlot'] = vi.fn(() => null),
   alwaysAllow: (approval: PendingApproval) => Promise<void> = vi.fn(async () => {}),
   rejectWithCorrection: (approval: PendingApproval, text: string) => Promise<void> = vi.fn(async () => {}),
+  grantFullAccess: (approval: PendingApproval) => Promise<void> = vi.fn(async () => {}),
 ): ApprovalComposerProps {
   const messages: Record<string, string> = {
     waiting: 'Waiting',
@@ -465,6 +506,13 @@ function panelProps(
     reject: 'Reject',
     allowOnce: 'Allow once',
     allowAlways: 'Always allow',
+    fullAccess: 'Full access',
+    'fullAccessConfirm.title': 'Grant full access',
+    'fullAccessConfirm.description': 'This session switches to full access.',
+    'fullAccessConfirm.acknowledge': 'I understand the risk',
+    'fullAccessConfirm.enable': 'Grant full access',
+    'fullAccessConfirm.cancel': 'Cancel',
+    'fullAccessConfirm.close': 'Close',
     rejectWithCorrection: 'Reject with correction',
     correctionPlaceholder: 'Corrected arguments or approach',
   }
@@ -474,6 +522,7 @@ function panelProps(
       t: (key: string) => messages[key] ?? key } as FactoryComponentPropsOf<'conversation.approval.card'>} />,
     resolveReason: (reason: NonNullable<PendingApproval['displayReason']>) => reason.en,
     alwaysAllow,
+    grantFullAccess,
     rejectWithCorrection,
     t: (key: string) => messages[key] ?? key,
   } as ApprovalComposerProps
@@ -646,6 +695,33 @@ describe('ApprovalPanel', () => {
     expect(screen.queryByRole('button', { name: 'Always allow' })).toBeNull()
     unclassified.abort(new Error('test cleanup'))
     await unclassified.result.catch(() => {})
+  })
+
+  it('offers full access only for a Host that can grant it and requires the risk acknowledgement', async () => {
+    const grantFullAccess = vi.fn(async (approval: PendingApproval) => { await approval.answer('allowed-once') })
+    const pending = new PendingApproval(id('s1'), {
+      toolName: 'bash', requestId: 'req-1', fullAccess: true,
+    })
+    render(<ApprovalPanel {...panelProps(pending, undefined, undefined, undefined, grantFullAccess)} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Full access' }))
+    const confirm = screen.getByRole<HTMLButtonElement>('button', { name: 'Grant full access' })
+    expect(confirm.disabled).toBe(true)
+    expect(grantFullAccess).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I understand the risk' }))
+    expect(confirm.disabled).toBe(false)
+    fireEvent.click(confirm)
+
+    expect(grantFullAccess).toHaveBeenCalledWith(pending)
+    await expect(pending.result).resolves.toBe('allowed-once')
+  })
+
+  it('hides full access when the Host cannot grant it', async () => {
+    const pending = new PendingApproval(id('s1'), { toolName: 'bash', requestId: 'req-1' })
+    render(<ApprovalPanel {...panelProps(pending)} />)
+    expect(screen.queryByRole('button', { name: 'Full access' })).toBeNull()
+    pending.abort(new Error('test cleanup'))
+    void pending.result.catch(() => {})
   })
 
   it('omits the correction field when the request has no call id', () => {

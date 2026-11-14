@@ -493,6 +493,26 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['when no turn is open or either audit event fails before the session append commit point.'],
       },
       {
+        signature: 'registerFullAccess(handler: FullAccessHandler): () => void',
+        description: 'Record the one applier that grants full access from an approval prompt. A deployment registers at most one: the commit is a single explicit action, not a rule, and two independent appliers could widen the same session twice with different meanings. While a handler is registered, every dispatched request advertises `fullAccess`, so clients can offer the action only where the host can execute it.',
+        parameters: [{ name: 'handler', description: 'invoked after the receipt commits; owns the policy write.' }],
+        returns: 'the disposer that withdraws this handler.',
+        throws: ['when another handler is already registered.'],
+      },
+      {
+        signature: 'isPending(session: Session, requestId: ApprovalRequestId): boolean',
+        description: 'Whether one approval request is still waiting for its decision.',
+        parameters: [{ name: 'session', description: 'the session that owns the request.' }, { name: 'requestId', description: 'the request identity carried to the client.' }],
+        returns: 'whether an answerer chain is still awaiting this request.',
+      },
+      {
+        signature: 'async requestFullAccess(agent: Agent, requestId: ApprovalRequestId): Promise<FullAccessCommit>',
+        description: 'Commit full access for one pending prompt. This is a distinct action, not an allowed-once outcome: it records a durable receipt for the exact request, covers the input identities pending when it commits, and then hands the receipt to the registered applier, which writes the wider policy. The targets are fixed at the first commit; a retry for the same request reuses them, so input queued after the commit stays outside the grant. One commit per session may be in flight: a concurrent retry fails with `FULL_ACCESS_BUSY` instead of racing the policy write.',
+        parameters: [{ name: 'agent', description: 'the agent whose pending request is being granted.' }, { name: 'requestId', description: 'the exact pending request the user acted on.' }],
+        returns: 'the committed receipt: request identity and covered targets.',
+        throws: ['`FullAccessError` when the request is no longer pending, the composition has no applier, or another commit is still in flight.'],
+      },
+      {
         signature: 'projectRulesFor(cwd: string | undefined): readonly ApprovalRule[]',
         description: 'Read the rules stored for one project directory.',
         parameters: [{ name: 'cwd', description: 'the session\'s recorded working directory.' }],
@@ -6386,7 +6406,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ApprovalRequestEvent',
-    declaration: 'export interface ApprovalRequestEvent {\n    readonly agent: Agent;\n    readonly toolName: string;\n    readonly action?: string;\n    readonly resources?: readonly string[];\n    readonly callId?: ToolCallId;\n    readonly reason?: string;\n    readonly needsHuman?: boolean;\n    readonly displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n    readonly signal?: AbortSignal;\n}',
+    declaration: 'export interface ApprovalRequestEvent {\n    readonly agent: Agent;\n    readonly requestId?: ApprovalRequestId;\n    readonly fullAccess?: boolean;\n    readonly toolName: string;\n    readonly action?: string;\n    readonly resources?: readonly string[];\n    readonly callId?: ToolCallId;\n    readonly reason?: string;\n    readonly needsHuman?: boolean;\n    readonly displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n    readonly signal?: AbortSignal;\n}',
   },
   {
     name: 'ApprovalRule',
@@ -7535,6 +7555,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FsWriteOutcome',
     declaration: 'export interface FsWriteOutcome {\n    operation: \'create\' | \'update\';\n    version: FsVersion;\n    before: string | null;\n    after: string;\n}',
+  },
+  {
+    name: 'FullAccessCommit',
+    declaration: 'export interface FullAccessCommit {\n    readonly agent: Agent;\n    readonly requestId: ApprovalRequestId;\n    readonly targets: readonly string[];\n}',
+  },
+  {
+    name: 'FullAccessHandler',
+    declaration: 'export type FullAccessHandler = (commit: FullAccessCommit) => void | Promise<void>;',
   },
   {
     name: 'GenerateOptions',

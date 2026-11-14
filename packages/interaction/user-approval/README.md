@@ -84,7 +84,9 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 ### Requesting a decision
 
-`request(req)` names the agent, tool, optional call id and reason, and an abort signal. Optional `displayReason` supplies localized presentation text without changing the logged reason. Set `needsHuman` when the decision must come from a person: rules cannot auto-allow such a request (a rule's `deny` still applies), and automated answerers must delegate with `next()` instead of deciding; sandbox escalation sets it. The configured `timeoutMs` may settle a request `timed-out` without a decision; a late answer is discarded. It requires an open turn: an idle or between-turn caller throws before auditing anything. Aborting withdraws the question — the request settles `cancelled` and a late answer is discarded. A failure that prevents either audit append from committing rejects instead of returning an unlogged decision.
+`request(req)` names the agent, tool, optional call id and reason, and an abort signal. It mints the request identity answerers receive as `requestId`; while a full-access applier is registered the dispatched request also carries `fullAccess: true`. Optional `displayReason` supplies localized presentation text without changing the logged reason. Set `needsHuman` when the decision must come from a person: rules cannot auto-allow such a request (a rule's `deny` still applies), and automated answerers must delegate with `next()` instead of deciding; sandbox escalation sets it. The configured `timeoutMs` may settle a request `timed-out` without a decision; a late answer is discarded. It requires an open turn: an idle or between-turn caller throws before auditing anything. Aborting withdraws the question — the request settles `cancelled` and a late answer is discarded. A failure that prevents either audit append from committing rejects instead of returning an unlogged decision.
+
+`registerFullAccess(handler)` installs the single applier of an explicit full-access commit and withdraws it with the returned disposer; `isPending(session, requestId)` reports whether a prompt still waits. `requestFullAccess(agent, requestId)` records that commit. It refuses a prompt that already settled (`FULL_ACCESS_STALE`), a second commit for the same session while the first is still settling (`FULL_ACCESS_BUSY`), and a composition without an applier (`FULL_ACCESS_UNAVAILABLE`). The first commit appends one `approval/full-access` receipt holding the input identities pending at that moment; a retry for the same request reuses the receipt instead of covering input queued later. The registered applier runs after the receipt commits, so a failing applier leaves a retryable grant with the same fixed targets.
 
 ### What the model and user see
 
@@ -121,7 +123,7 @@ The system-prompt contribution `approval:policy` states the complete current mea
 
 ### Audit
 
-`request()` appends `approval/asked` with the request identity and tool, then `approval/decided` with the closed outcome; the exact appended fields live in [`src/index.ts`](src/index.ts). Both are log-only.
+`request()` appends `approval/asked` with the request identity and tool, then `approval/decided` with the closed outcome; the exact appended fields live in [`src/index.ts`](src/index.ts). `requestFullAccess()` appends one `approval/full-access` receipt for the same request identity. All three are log-only.
 
 </details>
 

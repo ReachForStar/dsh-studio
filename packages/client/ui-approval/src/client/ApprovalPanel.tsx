@@ -21,6 +21,9 @@ export function ApprovalPanel(props: ApprovalComposerProps) {
     onAllow: () => approval.answer('allowed-once'),
     onReject: () => approval.answer('rejected'),
     ...approval.action === undefined ? {} : { onAlways: () => props.alwaysAllow(approval) },
+    ...approval.fullAccess && approval.requestId !== undefined
+      ? { onFullAccess: () => props.grantFullAccess(approval) }
+      : {},
   })
   if (approval.callId === undefined) return card
   return (

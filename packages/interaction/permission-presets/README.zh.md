@@ -48,12 +48,17 @@ kind: "package-reference"
 |---|---|---|
 | `presets` | `workspace-write`、`danger-full-access` | 预设名称 → 沙箱／审批捆绑的表 |
 | `defaultPreset` | 推断 | 固定到新会话的预设；组合默认值不匹配任何预设时必填 |
+| `fullAccessPreset` | `danger-full-access` | 审批提示的完全访问授权所应用的预设；显式配置未知名称时在加载期失败 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-permission-presets)是每个受支持字段及其 JSDoc 的穷尽式真源。`custom` 保留给推导出的非预设状态，`auto` 则保留给 Auto review integration。挂载需要具有约束能力的 bash 执行器（会报告 `sandboxMode` 的执行器）、审批服务和 Agent 注册表。
 
 ### 切换预设
 
 切换到 Auto 时，服务先同步执行其准入检查；每次预设切换随后只改变实际值不同的旋钮，再次选择当前已生效的预设不会产生任何变化。当前值解析顺序为：仍匹配的最近一次记录选择（已记录的 Auto 选择在 `never` 审批策略下也匹配），其次是配置表中的第一个匹配项，否则为 `custom`。用户通过 `/permission` 命令切换：不带参数调用时报告当前预设与所有可用条目，带预设参数时切换过去。
+
+### 审批提示中的完全访问
+
+本服务安装 `dsh-user-approval` 唯一的完全访问执行器，因此审批提示可以把完全访问作为独立动作授予，而不是一条允许规则。回执、固定目标集合与忙时门禁由审批服务拥有；本服务通过与 `/permission` 相同的写入路径应用 `fullAccessPreset`。浏览器动作调用 `/full-access <requestId>`，要求那个确切的提示仍在等待。替换后的预设表若不含内置默认项，只是撤下该动作；显式配置的 `fullAccessPreset` 缺失时在加载期失败。
 
 ### 用户看到什么
 

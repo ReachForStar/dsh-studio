@@ -1049,3 +1049,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 新增 `tools/permission-request` waterfall：审批接缝在询问应答者前分发，监听器只能 deny 或委托，不能授予。
 - `hooks-claude-code` 支持 `PermissionRequest` 事件；子系统中英页面、事件图与 Cordis 目录同步。
 - 验证：`pnpm exec vitest run packages/core/tools/tests/tools.spec.ts packages/experimental/hooks-claude-code/tests/bridge.spec.ts`、`pnpm run typecheck`、`pnpm run test:docs`。
+
+## [2026-11-14] feat | 记忆写入工具
+
+- `memory-notes` 新增 `memory_write`：项目/用户 `MEMORY.md` 追加要点，按文件串行、拒绝疑似凭据、`maxWriteChars` 限长；`writeTool` 可关闭。
+- 工具目录、配置目录、中英文 README、模型体验与配对同步。
+- 验证：`pnpm exec vitest run packages/context/memory-notes/tests`、`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run hygiene`。

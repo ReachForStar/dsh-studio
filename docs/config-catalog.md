@@ -2766,6 +2766,10 @@ export interface Config {
    * are truncated with a marker; non-positive disables injection.
    */
   maxChars?: number
+  /** Character cap for one `memory_write` note. Defaults to 4000. */
+  maxWriteChars?: number
+  /** Register the `memory_write` tool. Defaults to `true`; requires `tools` and `fs`. */
+  writeTool?: boolean
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-memory-notes -->

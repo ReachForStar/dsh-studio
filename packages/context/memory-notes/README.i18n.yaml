@@ -20,9 +20,12 @@
 /deepseek-ai-dsh-memory-notes/use-this-package/what-the-agent-gets:
   en: 3d5c410e5a9e025d
   zh: 94ccaecd601fbc84
+/deepseek-ai-dsh-memory-notes/use-this-package/writing-notes:
+  en: 020cda6c12f88b9c
+  zh: 344a0b5d635f4fe4
 /deepseek-ai-dsh-memory-notes/use-this-package/configuration:
-  en: 40fd1203653ddc54
-  zh: 8d37a594769828ed
+  en: 4dea703a6d36aadc
+  zh: a6d5c0e5472ca1ba
 /deepseek-ai-dsh-memory-notes/understand-the-implementation:
   en: 347e8f4c7dfda6d6
   zh: f2a5539041602979
@@ -43,10 +46,22 @@
   zh: a563c706ab5abb89
 /deepseek-ai-dsh-memory-notes/model-experience/memory-note/kv-cache-effect:
   en: f35d9857f3a392e5
-  zh: 414e4a9afdc9b039
+  zh: 746b9f446f1c49ba
+/deepseek-ai-dsh-memory-notes/model-experience/memory-write-tool:
+  en: cbf1a3b0b86e19b1
+  zh: 2d5dfea8150a6fbb
+/deepseek-ai-dsh-memory-notes/model-experience/memory-write-tool/what-the-model-sees:
+  en: d94f81a55de6646b
+  zh: 0746f5f90e47db9f
+/deepseek-ai-dsh-memory-notes/model-experience/memory-write-tool/token-effect:
+  en: a99dd26c77063b4a
+  zh: b8b997301dd49a21
+/deepseek-ai-dsh-memory-notes/model-experience/memory-write-tool/kv-cache-effect:
+  en: bf1fe09c573484ca
+  zh: 563eb4b033a95f67
 /deepseek-ai-dsh-memory-notes/known-limitations-and-deferred-work:
-  en: 3e2e506dd5360163
-  zh: 4462a89164f98e61
+  en: 5323bcbbf989ba19
+  zh: 1d1d4c95fa2bbf1d
 /deepseek-ai-dsh-memory-notes/known-limitations-and-deferred-work/dev-note:
   en: 75836c8228f2a2f6
   zh: 6ae61b438562a501

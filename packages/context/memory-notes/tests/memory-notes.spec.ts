@@ -149,6 +149,8 @@ describe('config', () => {
       projectRootMarkers: ['.git'],
       memoryFileNames: ['MEMORY.md'],
       maxChars: 20_000,
+      maxWriteChars: 4000,
+      writeTool: true,
     })
   })
 

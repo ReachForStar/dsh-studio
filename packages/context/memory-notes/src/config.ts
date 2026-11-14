@@ -23,6 +23,10 @@ export interface Config {
    * are truncated with a marker; non-positive disables injection.
    */
   maxChars?: number
+  /** Character cap for one `memory_write` note. Defaults to 4000. */
+  maxWriteChars?: number
+  /** Register the `memory_write` tool. Defaults to `true`; requires `tools` and `fs`. */
+  writeTool?: boolean
 }
 
 /** User-facing memory note configuration. */
@@ -30,6 +34,8 @@ export const Config: z<Config> = z.object({
   projectRootMarkers: z.array(z.string()).default([...DEFAULT_PROJECT_ROOT_MARKERS]),
   memoryFileNames: z.array(z.string()).default([...DEFAULT_MEMORY_FILE_NAMES]),
   maxChars: z.number().min(0).default(DEFAULT_MAX_CHARS),
+  maxWriteChars: z.number().min(1).default(4000),
+  writeTool: z.boolean().default(true),
 })
 
 /** Normalized settings used by discovery and injection. */
@@ -37,6 +43,8 @@ export interface ResolvedConfig {
   projectRootMarkers: readonly string[]
   memoryFileNames: readonly string[]
   maxChars: number
+  maxWriteChars: number
+  writeTool: boolean
 }
 
 /**
@@ -49,6 +57,8 @@ export function resolveConfig(config: Config | undefined): ResolvedConfig {
     projectRootMarkers: config?.projectRootMarkers ?? DEFAULT_PROJECT_ROOT_MARKERS,
     memoryFileNames: config?.memoryFileNames ?? DEFAULT_MEMORY_FILE_NAMES,
     maxChars: config?.maxChars ?? DEFAULT_MAX_CHARS,
+    maxWriteChars: config?.maxWriteChars ?? 4000,
+    writeTool: config?.writeTool ?? true,
   }
 }
 

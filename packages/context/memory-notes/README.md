@@ -31,11 +31,17 @@ Add `/MEMORY.md` to a project (or `<dsh home>/memory/MEMORY.md` for personal not
 
 The memory note lands as a `user/message` with an attribution-only `memory-notes` source, placed after the claimed batch so the direct prompt precedes it. User notes load before project notes under one `maxChars` budget; each file is labeled with its layer and display path. A restated note — same content, same source — is a no-op; a changed note replaces the previous one; a deleted note removes its block from the next decision.
 
+### Writing notes
+
+When `tools` and `fs` are composed, the package also registers `memory_write`. It appends one bullet to the selected `MEMORY.md` — the nearest project root for `project`, `<dsh home>/memory` for `user` — and returns the saved path. Writes serialize per file, so concurrent calls cannot interleave. Text that looks like a credential, exceeds `maxWriteChars`, or is empty is rejected without touching the file. The note does not enter the current session; the next pre-step re-reads the file like any other edit.
+
 ### Configuration
 
 - `memoryFileNames` — candidate basenames in priority order; the first existing file wins per layer. Defaults to `MEMORY.md`.
 - `projectRootMarkers` — directory entries that identify the project root while walking upward. Defaults to `.git`.
 - `maxChars` — total text cap for the complete note; larger notes are truncated with a marker, non-positive disables injection. Defaults to `20000`.
+- `maxWriteChars` — character cap for one `memory_write` note. Defaults to `4000`.
+- `writeTool` — register `memory_write` when `tools` and `fs` are composed. Defaults to `true`.
 
 `dsh-base` does not enable this plugin: memory notes are an opt-in context source, mounted by profiles or hosts that want durable recollection without a dedicated memory service.
 
@@ -67,9 +73,23 @@ The note text is counted exactly as its `user/message` content; the attribution-
 
 The note enters through the standard user-message path, so KV-cache behavior follows the base conversation: no additional context blocks are created beyond the one note message.
 
+### Memory write tool
+
+#### What the model sees
+
+`memory_write` returns the saved layer and path, or a validation error naming the rejected scope, empty text, over-budget text, or credential-like content. The stored bullet is not echoed in the tool result; the next pre-step injects the updated note through the normal memory message.
+
+#### Token effect
+
+The tool call carries only the scope and note text. Its result is one short confirmation or validation sentence, so token cost is bounded by the caller's text plus that sentence; the stored note is not repeated in the result.
+
+#### KV Cache effect
+
+The call and result use the ordinary tool-call and tool-result messages, so KV-cache behavior follows the base conversation. The changed memory note reaches the model as a new `user/message` at the next pre-step, exactly like any other memory edit.
+
 ## Known Limitations and Deferred Work
 
-- No background extraction: the plugin reads notes written by users or other plugins; automatic extraction from turns is a future memory service.
+- No background extraction: notes are written explicitly through `memory_write` or by other tools; automatic extraction from completed turns is a future memory service.
 - No per-note budgets: one shared `maxChars` bounds the complete note; files beyond the budget are truncated, not individually sized.
 - No watched files: freshness comes from per-pre-step reads, which is cheap for small notes but rereads on every step.
 - No deletion of stale user notes: removal is a file-system operation, not a plugin policy.

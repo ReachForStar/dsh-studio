@@ -18,6 +18,7 @@ import { createUserMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
 import { isDeepStrictEqual } from 'node:util'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import { Config, resolveConfig, userMemoryDirectory, type ResolvedConfig } from './config.ts'
+import { registerMemoryWriteTool } from './write.ts'
 import {
   discoverMemoryFiles,
   findProjectRoot,
@@ -149,6 +150,7 @@ export async function applyPreStepMemory(
 
 export function apply(ctx: Context, config: Config): void {
   const resolved: ResolvedConfig = resolveConfig(config)
+  if (resolved.writeTool) registerMemoryWriteTool(ctx, resolved)
   ctx.on('agent/pre-step', async (
     { agent, messages, signal },
     next,

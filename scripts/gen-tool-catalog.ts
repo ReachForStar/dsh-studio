@@ -33,6 +33,7 @@ import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import WorkingDirectory from '@deepseek-ai/dsh-working-directory'
 import * as ToolWorkingDirectory from '@deepseek-ai/dsh-tool-working-directory'
+import * as MemoryNotes from '@deepseek-ai/dsh-memory-notes'
 import * as ToolWorktree from '@deepseek-ai/dsh-experimental-tool-worktree'
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
@@ -757,6 +758,17 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-memory-notes',
+    dir: 'memory-notes',
+    source: 'packages/context/memory-notes/src/write.ts',
+    requires: ['ctx.tools', 'ctx.fs', 'ctx.workingDirectory'],
+    writes: ['user/message'],
+    mount(ctx) {
+      MemoryNotes.apply(ctx, {})
+      return Promise.resolve()
+    },
   },
   {
     pkg: '@deepseek-ai/dsh-tool-working-directory',

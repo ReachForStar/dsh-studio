@@ -202,8 +202,9 @@ status: draft
 4. **门禁债务**：四个 fork 债务门禁已清偿，做法见 [fork 自研包的门禁红项清单](fork-gate-debt.md#2026-11-13-hygiene-四项-fork-债务清偿)。
 5. **结果词汇（A5 部分）**：新增 `timed-out`；`ApprovalService` 配置 `timeoutMs`，超时后结算 `timed-out` 并丢弃迟到回答。工具管道新增 `APPROVAL_TIMED_OUT`，沙箱升权新增 `SANDBOX_ESCALATION_TIMED_OUT`，统计面板补 8 语言文案。`abort` 继续由 `cancelled` 表达；规则修订与网络策略修订尚未落地。
 6. **编辑降级匹配（C1）**：`applyLiteralEdit` 在精确匹配失败后依次尝试引号归一、复制的行号前缀、转义、trim、缩进弹性与块锚点（行相似度 0.8）；多个候选仍报 `FS_AMBIGUOUS_EDIT` 并给出候选行号。`edit` 与 `str_replace_editor` 共用同一条接缝。`apply_patch` 工具（C2）已存在，本轮未重做。
+7. **文件回滚（C3）**：`ctx.workspaceChanges.rewind(sessionId, turn, signal)` 与 `/rewind <turn>` 先预检全部列出文件，当前文本不等于轮次结束侧、二进制、超限或缺少内容来源的文件保持不动并报告原因；预检通过后写回轮次开始文本或删除该轮新建文件。
 
-仍未开始：A3 完全访问凭证、C3 文件回滚、B、D、E、F、G、H。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
+仍未开始：A3 完全访问凭证、B、D、E、F、G、H。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
 
 ## 参考页面
 

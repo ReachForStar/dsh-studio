@@ -1,7 +1,7 @@
 /** Per-Session turn recorder: snapshots, captures around file-tool edits, the turn-end diff, and the records kept until disposal. */
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { captureFile, sameCapture, type Capture } from './capture.ts'
 import { compareText } from './compare.ts'
@@ -9,7 +9,9 @@ import {
   blobText, diffTrees, gitlinkPaths, ignoredPaths, locateGitWorkspace, snapshotTree, treeBlob, type GitRunner, type GitWorkspace,
 } from './git.ts'
 import { canonicalPath, compareDisplay, displayPathOf, durablePathOf, isInside, isTemporaryPath, temporaryRoots, toPosix } from './paths.ts'
-import type { WorkspaceChangedFile, WorkspaceChangesSummary, WorkspaceFileDiff } from './types.ts'
+import type {
+  WorkspaceChangedFile, WorkspaceChangesSummary, WorkspaceFileDiff, WorkspaceRewindResult, WorkspaceRewindSkip,
+} from './types.ts'
 
 /** Facts shared by every recorder of one plugin instance. */
 export interface RecorderEnvironment {
@@ -92,6 +94,9 @@ interface Listed { file: WorkspaceChangedFile; sources: FileSources }
 
 /** A snapshot side larger than the byte cap. */
 const OVERSIZED = Symbol('oversized')
+
+/** A current file that no longer holds text. */
+const BINARY = Symbol('binary')
 
 /**
  * Serializes one Session's recording work: the turn-start snapshot, the
@@ -235,6 +240,73 @@ export class TurnRecorder {
       throw error
     }
   }
+
+  /**
+   * Restore the files one recorded turn changed. Every file is preflighted
+   * before the first write: a side that is binary, oversized, missing its
+   * content source, or no longer equal to the turn's end state is skipped
+   * instead of overwritten.
+   * @param turn - the recorded turn to revert.
+   * @param signal - cancels the reads and writes.
+   * @returns the restored displays and skipped files, or undefined for an unknown turn.
+   */
+  async rewind(turn: number, signal: AbortSignal): Promise<WorkspaceRewindResult | undefined> {
+    await this.settled()
+    const record = [...this.records.values()].findLast(entry => entry.summary.turn === turn)
+    if (record === undefined) return undefined
+    const combined = AbortSignal.any([signal, this.lifetime.signal])
+    const actions: { absolute: string; display: string; before: string | null }[] = []
+    const skipped: WorkspaceRewindSkip[] = []
+    for (const [index, file] of record.summary.files.entries()) {
+      const sources = record.sources[index]
+      if (sources === undefined || sources.refusal !== undefined) {
+        skipped.push({ path: file.path, display: file.display, reason: sources?.refusal ?? 'unsupported' })
+        continue
+      }
+      const absolute = isAbsolute(file.path) ? file.path : resolve(this.cwd, file.path)
+      const [after, current, before] = await Promise.all([
+        this.readSide(sources.after, combined),
+        this.readCurrent(absolute, combined),
+        this.readSide(sources.before, combined),
+      ])
+      if (after === OVERSIZED || before === OVERSIZED) {
+        skipped.push({ path: file.path, display: file.display, reason: 'oversized' })
+        continue
+      }
+      if (current === BINARY) {
+        skipped.push({ path: file.path, display: file.display, reason: 'binary' })
+        continue
+      }
+      if (current !== after) {
+        skipped.push({ path: file.path, display: file.display, reason: 'changed' })
+        continue
+      }
+      actions.push({ absolute, display: file.display, before })
+    }
+    for (const action of actions) {
+      combined.throwIfAborted()
+      if (action.before === null) {
+        await rm(action.absolute, { force: true })
+        continue
+      }
+      await mkdir(dirname(action.absolute), { recursive: true })
+      await writeFile(action.absolute, action.before, 'utf8')
+    }
+    return { turn, restored: actions.map(action => action.display), skipped }
+  }
+
+  /** Read one current file, distinguishing absence from binary content. */
+  private async readCurrent(absolute: string, signal: AbortSignal): Promise<string | null | typeof BINARY> {
+    let bytes: Buffer
+    try {
+      bytes = await readFile(absolute, { signal })
+    } catch (error: unknown) {
+      if ((error as { code?: unknown }).code === 'ENOENT') return null
+      throw error
+    }
+    return bytes.subarray(0, 8000).includes(0) ? BINARY : bytes.toString('utf8')
+  }
+
 
   /**
    * Abort queued work, forget every record, and remove the temporary directory.

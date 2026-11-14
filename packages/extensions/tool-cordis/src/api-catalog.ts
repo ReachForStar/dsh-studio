@@ -5044,6 +5044,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the comparison, or undefined once its Session was disposed, when this Host never recorded it, or when no file has that index.',
         throws: ['when a snapshot read fails for a live Session.'],
       },
+      {
+        signature: 'rewind(sessionId: SessionId, turn: number, signal: AbortSignal): Promise<WorkspaceRewindResult | undefined>',
+        description: 'Restore the files one recorded turn changed, skipping unsafe sides.',
+        parameters: [{ name: 'sessionId', description: 'the Session that owns the turn.' }, { name: 'turn', description: 'the recorded turn to revert.' }, { name: 'signal', description: 'cancels the preflight and writes.' }],
+        returns: 'what was restored and why each remaining file was skipped, or undefined when the Host holds no record for that turn.',
+      },
     ],
   },
   {
@@ -11409,6 +11415,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WorkspaceRenameRequest',
     declaration: 'export interface WorkspaceRenameRequest {\n    readonly workspaceId: WorkspaceId;\n    readonly title: string;\n}',
+  },
+  {
+    name: 'WorkspaceRewindResult',
+    declaration: 'export interface WorkspaceRewindResult {\n    turn: number;\n    restored: string[];\n    skipped: WorkspaceRewindSkip[];\n}',
+  },
+  {
+    name: 'WorkspaceRewindSkip',
+    declaration: 'export interface WorkspaceRewindSkip {\n    path: string;\n    display: string;\n    reason: WorkspaceRewindSkipReason;\n}',
+  },
+  {
+    name: 'WorkspaceRewindSkipReason',
+    declaration: 'export type WorkspaceRewindSkipReason = \'binary\' | \'oversized\' | \'changed\' | \'unsupported\';',
   },
   {
     name: 'WorkspaceUnarchiveSessionRequest',

@@ -335,6 +335,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   ProductTelemetryScalar: 'product-telemetry.md',
   WorkspaceChangesSummary: 'deliverables.md',
   WorkspaceFileDiff: 'deliverables.md',
+  WorkspaceRewindResult: 'deliverables.md',
   Reload: 'boot.md',
   ProfileReconciliation: 'boot.md',
   PluginInfo: 'boot.md',

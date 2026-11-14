@@ -11,6 +11,8 @@
 import { homedir, tmpdir } from 'node:os'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
+import type {} from '@deepseek-ai/dsh-commands'
 import type {} from '@deepseek-ai/dsh-agent'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-subprocess'
@@ -22,6 +24,7 @@ import type { WorkspaceChanges } from './types.ts'
 
 export type {
   WorkspaceChangedFile, WorkspaceChanges, WorkspaceChangesSummary, WorkspaceDiffHunk, WorkspaceFileDiff,
+  WorkspaceRewindResult, WorkspaceRewindSkip, WorkspaceRewindSkipReason,
 } from './types.ts'
 
 /** Stable Loader identity. */
@@ -116,8 +119,35 @@ export function apply(ctx: Context, config: Config): void {
   const service: WorkspaceChanges = {
     summary: (sessionId, seq) => byId.get(sessionId)?.summary(seq),
     diff: (sessionId, seq, index, signal) => byId.get(sessionId)?.diff(seq, index, signal) ?? Promise.resolve(undefined),
+    rewind: (sessionId, turn, signal) => byId.get(sessionId)?.rewind(turn, signal) ?? Promise.resolve(undefined),
   }
   ctx.provide('workspaceChanges', service)
+  ctx.inject(['commands'], (commandCtx) => {
+    commandCtx.commands.register({
+      definitionId: CommandDefinitionId('@deepseek-ai/dsh-workspace-changes'),
+      name: 'rewind',
+      description: 'Restore the files one recorded turn changed',
+      input: { hint: '<turn>' },
+      handler: async ({ agent, rawInput }) => {
+        const turn = Number(rawInput.trim())
+        if (!Number.isSafeInteger(turn) || turn < 1) {
+          return { kind: 'error', text: 'Usage: /rewind <turn>' }
+        }
+        const recorder = recorders.get(agent.session)
+        const result = await recorder?.rewind(turn, new AbortController().signal)
+        if (result === undefined) {
+          return { kind: 'error', text: `No recorded changes for turn ${String(turn)}.` }
+        }
+        const restored = result.restored.length === 0
+          ? 'No files restored.'
+          : `Restored ${String(result.restored.length)} file(s): ${result.restored.join(', ')}.`
+        const skipped = result.skipped.length === 0
+          ? ''
+          : `Skipped ${result.skipped.map(entry => `${entry.display} (${entry.reason})`).join(', ')}.`
+        return { kind: 'success', text: `${restored}${skipped.length === 0 ? '' : ` ${skipped}`}` }
+      },
+    })
+  })
   let runner: Promise<GitRunner | null> | undefined
   const gitRunner = (): Promise<GitRunner | null> => {
     runner ??= resolveGit(ctx, lifetime.signal).then((executable) => {

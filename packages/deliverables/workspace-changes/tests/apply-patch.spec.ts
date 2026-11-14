@@ -144,6 +144,35 @@ describe.each(['non-git', 'git-unavailable'])('apply_patch Review in %s', (envir
     await expectDiff(t, 0, 'old\n', await t.bytes('a'))
   })
 
+  it('restores a recorded turn and removes a file the turn created', async () => {
+    const t = await boot(environment)
+    await t.seed('a')
+    startTurn(t.session, 1)
+    await t.read('a')
+    expect((await t.apply(patch(update('a'), add('created')))).isError).toBe(false)
+    await t.finish()
+
+    const result = await t.ctx.workspaceChanges.rewind(t.session.id, 1, new AbortController().signal)
+    expect(result).toEqual({ turn: 1, restored: ['a', 'created'], skipped: [] })
+    expect(await t.bytes('a')).toBe('old\n')
+    await expect(t.bytes('created')).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(t.ctx.workspaceChanges.rewind(t.session.id, 9, new AbortController().signal)).resolves.toBeUndefined()
+  })
+
+  it('skips a file changed after the recorded turn', async () => {
+    const t = await boot(environment)
+    await t.seed('a')
+    startTurn(t.session, 1)
+    await t.read('a')
+    expect((await t.apply(patch(update('a')))).isError).toBe(false)
+    await t.finish()
+    await writeFile(join(t.cwd, 'a'), 'external\n')
+
+    const result = await t.ctx.workspaceChanges.rewind(t.session.id, 1, new AbortController().signal)
+    expect(result).toEqual({ turn: 1, restored: [], skipped: [{ path: 'a', display: 'a', reason: 'changed' }] })
+    expect(await t.bytes('a')).toBe('external\n')
+  })
+
   it('rejects an unread file without capture, observation, or a Review row', async () => {
     const t = await boot(environment)
     await t.seed('a')

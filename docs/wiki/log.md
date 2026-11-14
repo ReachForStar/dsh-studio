@@ -1033,3 +1033,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `user-approval` 新增 `timed-out` 结果与可配置 `timeoutMs`；工具管道与沙箱升权分别新增 `APPROVAL_TIMED_OUT`、`SANDBOX_ESCALATION_TIMED_OUT`，统计面板补 8 语言文案。持久化确认记录 `2026-11-14-approval-timeout-outcome`。
 - `applyLiteralEdit` 在精确匹配失败后依次尝试引号归一、复制的行号、转义、trim、缩进弹性与块锚点（0.8），歧义仍报候选行号；`edit` 与 `str_replace_editor` 共用。
 - 验证：`pnpm exec vitest run` 受影响包、`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run verify-persistence-changes`。
+
+## [2026-11-14] feat | 文件回滚与命令
+
+- `workspace-changes` 新增 `rewind(sessionId, turn, signal)` 与 `/rewind <turn>`：先预检所有列出文件，当前内容偏离轮次结束侧、二进制、超限或缺来源时跳过并报告原因，随后写回轮次开始文本或删除该轮新建文件。
+- 验证：`pnpm exec vitest run packages/deliverables/workspace-changes/tests`（新增 3 组 non-git / 无 git 用例）、`pnpm run typecheck`、`pnpm run test:docs`。

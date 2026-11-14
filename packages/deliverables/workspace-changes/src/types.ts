@@ -94,6 +94,38 @@ export interface WorkspaceChanges {
    * @throws when a snapshot read fails for a live Session.
    */
   diff(sessionId: SessionId, seq: number, index: number, signal: AbortSignal): Promise<WorkspaceFileDiff | undefined>
+  /**
+   * Restore the files one recorded turn changed, skipping unsafe sides.
+   * @param sessionId - the Session that owns the turn.
+   * @param turn - the recorded turn to revert.
+   * @param signal - cancels the preflight and writes.
+   * @returns what was restored and why each remaining file was skipped, or
+   *   undefined when the Host holds no record for that turn.
+   */
+  rewind(sessionId: SessionId, turn: number, signal: AbortSignal): Promise<WorkspaceRewindResult | undefined>
+}
+
+/** Why one changed file was not restored by {@link WorkspaceChanges.rewind}. */
+export type WorkspaceRewindSkipReason = 'binary' | 'oversized' | 'changed' | 'unsupported'
+
+/** One file left in place by a rewind. */
+export interface WorkspaceRewindSkip {
+  /** The file's `path`. */
+  path: string
+  /** The file's `display`. */
+  display: string
+  /** Why the file was skipped. */
+  reason: WorkspaceRewindSkipReason
+}
+
+/** The outcome of one {@link WorkspaceChanges.rewind} call. */
+export interface WorkspaceRewindResult {
+  /** The turn whose changes were reverted. */
+  turn: number
+  /** Displays of files restored to their turn-start state. */
+  restored: string[]
+  /** Files left untouched, with the reason. */
+  skipped: WorkspaceRewindSkip[]
 }
 
 declare module '@deepseek-ai/dsh-session/types' {

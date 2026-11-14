@@ -87,6 +87,7 @@ const maxTokensSchema = z.number().step(1).min(1)
 const compactionRetriesSchema = z.number().step(1).min(0)
 const maxOverflowRetriesSchema = z.number().step(1).min(0)
 const failurePauseThresholdSchema = z.number().step(1).min(0)
+const summarizationFallbackSchema = z.boolean()
 
 const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   provider: z.string().required(),
@@ -126,6 +127,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     modelPolicies: z.array(modelPolicy),
     auto: z.boolean(),
     failurePauseThreshold: failurePauseThresholdSchema,
+    summarizationFallback: summarizationFallbackSchema,
   })
 
   /** Resolved and validated compaction configuration. */
@@ -284,7 +286,17 @@ export class BasicCompactionEngine extends CompactionEngine {
     const config = target === undefined
       ? this.config
       : resolveTargetPolicy(this.config, target)
-    return summarizeWithLlm(this.ctx, config, input, agent, signal)
+    try {
+      return await summarizeWithLlm(this.ctx, config, input, agent, signal)
+    } catch (error: unknown) {
+      signal?.throwIfAborted()
+      if (!this.config.summarizationFallback || config.summarizationProvider.length === 0) throw error
+      this.ctx.logger.warn(
+        `compaction summary model ${config.summarizationProvider}/${config.summarizationModel} failed: `
+        + `${error instanceof Error ? error.message : String(error)}; retrying with the conversation's routed model`,
+      )
+      return summarizeWithLlm(this.ctx, { ...config, summarizationProvider: '', summarizationModel: '' }, input, agent, signal)
+    }
   }
 
   /**

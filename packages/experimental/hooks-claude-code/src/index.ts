@@ -23,6 +23,7 @@ declare module '@deepseek-ai/dsh-llm' {
 
 import type { ContentBlock, MessageSource } from '@deepseek-ai/dsh-llm'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-compaction'
 import type { PostToolDecision, PreToolDecision, ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import {
   appendHookInvoked,
@@ -277,6 +278,27 @@ export function apply(ctx: Context, config: Config): void {
       ...downstream,
       additionalContexts: prependContext(context, downstream.additionalContexts),
     }
+  })
+
+  // PreCompact and PostCompact observe the durable compaction markers. A
+  // blocking PreCompact answer is logged but does not cancel an admitted
+  // compaction; the hook point remains observation-only here.
+  ctx.on('session/event', (session, event) => {
+    if (event.type !== 'compaction/start' && event.type !== 'compaction/end') return
+    const agent = ctx.get('agents')?.get(session.id)
+    const point = event.type === 'compaction/start' ? 'PreCompact' : 'PostCompact'
+    const payload = {
+      ...base(agent, point),
+      trigger: event.data.sourceCommandId === undefined ? 'auto' : 'manual',
+      custom_instructions: '',
+    }
+    detached.track(runPoint(point, '', payload, { ...agent ? { agent, directory: 'committed' } : {}, signal: detached.signal })
+      .then((merged) => {
+        if (merged.decision === 'deny') {
+          ctx.logger.warn(`hooks-claude-code: ${point} hook answered deny; compaction continues because this hook point is observation-only`)
+        }
+      })
+      .catch((error: unknown) => { ctx.logger.warn(`hooks-claude-code: ${point} hook failed: ${String(error)}`) }))
   })
 
   // A blocking Stop hook steers at the stopping boundary, which makes the

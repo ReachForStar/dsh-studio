@@ -203,13 +203,13 @@ status: draft
 5. **结果词汇（A5 部分）**：新增 `timed-out`；`ApprovalService` 配置 `timeoutMs`，超时后结算 `timed-out` 并丢弃迟到回答。工具管道新增 `APPROVAL_TIMED_OUT`，沙箱升权新增 `SANDBOX_ESCALATION_TIMED_OUT`，统计面板补 8 语言文案。`abort` 继续由 `cancelled` 表达；规则修订与网络策略修订尚未落地。
 6. **编辑降级匹配（C1）**：`applyLiteralEdit` 在精确匹配失败后依次尝试引号归一、复制的行号前缀、转义、trim、缩进弹性与块锚点（行相似度 0.8）；多个候选仍报 `FS_AMBIGUOUS_EDIT` 并给出候选行号。`edit` 与 `str_replace_editor` 共用同一条接缝。`apply_patch` 工具（C2）已存在，本轮未重做。
 7. **文件回滚（C3）**：`ctx.workspaceChanges.rewind(sessionId, turn, signal)` 与 `/rewind <turn>` 先预检全部列出文件，当前文本不等于轮次结束侧、二进制、超限或缺少内容来源的文件保持不动并报告原因；预检通过后写回轮次开始文本或删除该轮新建文件。
-8. **压缩熔断（E 部分）**：`compaction-basic` 新增 `failurePauseThreshold`（默认 3，`0` 关闭）。连续 pre-step 压缩失败达到阈值后暂停自动压力，成功压缩或切换模型后恢复；手动 `compactNow` 成功也清除暂停。窗口重置、后台推测、模型回退、低峰调度与 retained context 仍未实现。
-9. **审批前钩子（D 部分）**：新增 `tools/permission-request` waterfall，审批接缝在询问应答者之前分发；监听器只能 deny 或委托，不能授予，因此规则、人工专属请求与失败关闭继续生效。Claude Code 桥接新增 `PermissionRequest` 事件映射。
+8. **压缩熔断与回退（E 部分）**：`compaction-basic` 新增 `failurePauseThreshold`（默认 3，`0` 关闭），连续 pre-step 压缩失败达到阈值后暂停自动压力；新增 `summarizationFallback`（默认开启），配置的摘要模型失败时改用会话路由模型重试。窗口重置、后台推测、低峰调度与 retained context 仍未实现。
+9. **审批前与压缩钩子（D 部分）**：新增 `tools/permission-request` waterfall，审批接缝在询问应答者之前分发；监听器只能 deny 或委托，不能授予，因此规则、人工专属请求与失败关闭继续生效。Claude Code 桥接新增 `PermissionRequest`、`PreCompact`、`PostCompact` 事件映射；后两者只观测 `compaction/start` 与 `compaction/end`。
 10. **记忆写入（G 部分）**：`memory-notes` 新增 `memory_write` 工具，可把一条事实写入项目或用户 `MEMORY.md`。写入按文件串行、拒绝疑似凭据、受 `maxWriteChars` 约束；读侧仍由每步 pre-step 重读。后台轮次提取、合并锁与召回选择器仍未实现。
 11. **上下文缓存稳定（B）**：运行时上下文首份快照提交后，变化集合只发送变化/新增节文本与被移除节名称，未变化的节不重复；恢复、旧格式与压缩后重述完整集合；仅顺序变化不产生消息。系统提示词仍按现有投影只在内容变化时追加，避免改写已缓存前缀。显式缓存断点位置（provider cache_control）沿用各适配器已有能力，未新增统一配置。
 12. **域名允许清单（H 部分）**：`web-fetch-http` 新增 `allowedHosts` / `blockedHosts`，对请求 URL 与每个同源重定向校验；阻止规则优先，允许清单为空表示不限制。代理、延迟网络审批、Provider 三层配置与诊断实验仍未实现。
 
-仍未开始：A3 完全访问凭证、D 的其余部分（`updated_input`、PreModel/PreCompact、工作区信任）、F、H 的其余部分，以及 E、G 的其余部分。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
+仍未开始：A3 完全访问凭证、D 的其余部分（`updated_input`、PreModelRequest/PostModelRequest、工作区信任）、F、H 的其余部分，以及 E 的窗口重置/后台推测/低峰调度/retained context、G 的其余部分。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
 
 ## 参考页面
 

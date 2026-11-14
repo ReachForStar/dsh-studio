@@ -1067,3 +1067,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `web-fetch-http` 新增 `allowedHosts` / `blockedHosts`，请求与每个同源重定向都按精确主机或 `*.example.com` 规则校验；阻止规则优先。
 - 配置目录与中英文 README 同步。
 - 验证：`pnpm exec vitest run packages/web/web-fetch-http/tests`、`pnpm run typecheck`、`pnpm run test:docs`。
+
+## [2026-11-14] feat | 压缩钩子与摘要模型回退
+
+- `hooks-claude-code` 新增 `PreCompact`/`PostCompact` 观测映射；`PermissionRequest` 之后支持事件数降为 20 项未支持。
+- `compaction-basic` 新增 `summarizationFallback`（默认开启）：配置的摘要模型失败时改用会话当前路由模型重试。
+- 验证：`pnpm exec vitest run packages/experimental/hooks-claude-code/tests packages/compaction/compaction-basic/tests`、`pnpm run typecheck`、`pnpm run test:docs`。

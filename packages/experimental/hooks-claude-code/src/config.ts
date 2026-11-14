@@ -14,6 +14,8 @@ const CLAUDE_EVENTS = [
   'PreToolUse',
   'PermissionRequest',
   'PostToolUse',
+  'PreCompact',
+  'PostCompact',
   'Stop',
   'SubagentStart',
   'SubagentStop',

@@ -41,6 +41,7 @@ const BASIC_COMPACT_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'modelPolicies',
   'auto',
   'failurePauseThreshold',
+  'summarizationFallback',
 ])
 
 /** Complete exact-target override key set. */
@@ -71,6 +72,9 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
   validatePolicy(config, 'BasicCompactionConfig')
   if (config.auto !== undefined && typeof config.auto !== 'boolean') {
     throw new Error('BasicCompactionConfig: auto must be a boolean')
+  }
+  if (config.summarizationFallback !== undefined && typeof config.summarizationFallback !== 'boolean') {
+    throw new Error('BasicCompactionConfig: summarizationFallback must be a boolean')
   }
   const failurePauseThreshold = config.failurePauseThreshold ?? 3
   if (!Number.isSafeInteger(failurePauseThreshold) || failurePauseThreshold < 0) {
@@ -112,6 +116,7 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     modelPolicies,
     auto: config.auto ?? true,
     failurePauseThreshold,
+    summarizationFallback: config.summarizationFallback ?? true,
   })
 }
 

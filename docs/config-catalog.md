@@ -872,6 +872,8 @@ export interface BasicCompactionConfig extends CompactionPolicyConfig {
   auto?: boolean
   /** Consecutive pre-step compaction failures that pause automatic pressure attempts. `0` never pauses. Defaults to 3. */
   failurePauseThreshold?: number
+  /** Retry a failed configured summarization model with the conversation's routed model. Defaults to `true`. */
+  summarizationFallback?: boolean
 }
 
 /** Policy fields shared by the default policy and exact model overrides. */
@@ -1867,7 +1869,7 @@ export interface HmrConfig extends ChokidarOptions {
 ## `@deepseek-ai/dsh-hooks-claude-code`
 
 - `inject`: `shell` · `agents` · `workingDirectory`
-- `source`: [`packages/experimental/hooks-claude-code/src/index.ts:50`](../packages/experimental/hooks-claude-code/src/index.ts)
+- `source`: [`packages/experimental/hooks-claude-code/src/index.ts:51`](../packages/experimental/hooks-claude-code/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: where the CC hook config lives + substitution roots. */

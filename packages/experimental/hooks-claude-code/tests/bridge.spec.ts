@@ -228,6 +228,32 @@ describe('hooks-claude-code bridge — PreToolUse', () => {
   })
 })
 
+describe('hooks-claude-code bridge — compaction markers', () => {
+  it('runs PreCompact and PostCompact hooks on durable compaction events', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-hooks-claude-'))
+    dirs.push(dir)
+    const pre = join(dir, 'pre.sh')
+    const post = join(dir, 'post.sh')
+    const preMarker = join(dir, 'pre.ran')
+    const postMarker = join(dir, 'post.ran')
+    writeFileSync(pre, `#!/usr/bin/env bash\ntouch "${preMarker}"\n`)
+    writeFileSync(post, `#!/usr/bin/env bash\ntouch "${postMarker}"\n`)
+    chmodSync(pre, 0o755)
+    chmodSync(post, 0o755)
+    writeFileSync(join(dir, 'hooks.json'), JSON.stringify({ hooks: {
+      PreCompact: [{ hooks: [{ type: 'command', command: pre }] }],
+      PostCompact: [{ hooks: [{ type: 'command', command: post }] }],
+    } }))
+
+    const ctx = await harness(dir, new MockAdapter([textResponse('done')]))
+    const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+    agent.session.append('compaction/start', { compactionId: 'c1', turn: null } as never)
+    agent.session.append('compaction/end', { compactionId: 'c1', turn: null } as never)
+
+    await waitFor(() => existsSync(preMarker) && existsSync(postMarker))
+  })
+})
+
 describe('hooks-claude-code bridge — PostToolUse', () => {
   it('a PostToolUse hook that blocks (exit 2) turns the result into an isError with feedback', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-hooks-claude-'))

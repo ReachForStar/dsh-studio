@@ -75,6 +75,7 @@ All settings are optional. With context window `W`, effective request output cap
 | `compactionRetries` | `1` | Extra condensation attempts after the first when pressure remains above threshold. |
 | `maxOverflowRetries` | `1` | Maximum retries after a confirmed context-window overflow; `0` disables recovery only. |
 | `failurePauseThreshold` | `3` | Consecutive pre-step compaction failures that pause automatic pressure until a success or model switch; `0` never pauses. |
+| `summarizationFallback` | `true` | Retry a failed configured summarization model with the conversation's routed model. |
 | `modelPolicies` | `[]` | Exact `{ provider, model, ...partialPolicy }` overrides for individual model routes. |
 | `auto` | `true` | Enable automatic condensation and overflow recovery; set `false` for manual-only operation. |
 

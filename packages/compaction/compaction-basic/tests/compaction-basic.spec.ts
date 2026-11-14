@@ -325,6 +325,7 @@ describe('compact configuration and defaults', () => {
       modelPolicies: [],
       auto: true,
       failurePauseThreshold: 3,
+      summarizationFallback: true,
     })
     expect(Object.isFrozen(resolved)).toBe(true)
   })

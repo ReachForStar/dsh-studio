@@ -47,6 +47,8 @@ Load the web service and the provider; configurable limits have safe defaults an
 | `timeoutMs` | `30,000` | Fetch timeout — a resource backstop, not the model-facing tool budget |
 | `maxRedirects` | `5` | Maximum same-origin redirect hops (`0` follows none) |
 | `userAgent` | `deepseek-harness/…` | `User-Agent` header sent on every request |
+| `allowedHosts` | `[]` | Exact host or `*.example.com` allow rules for requests and redirects; empty allows every host |
+| `blockedHosts` | `[]` | Exact host or `*.example.com` block rules; a match always wins |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-web-fetch-http) is the exhaustive source for every accepted field and its JSDoc.
 

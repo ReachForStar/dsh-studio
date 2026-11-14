@@ -1061,3 +1061,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `RuntimeContextProjection` 在首份快照提交后只发送变化/新增节与被移除节名称，未变化节不重复；恢复、旧格式与压缩后重述完整集合；仅顺序变化不产生消息。
 - 刷新录制期望输出（39 个快照文件）。
 - 验证：`pnpm exec vitest run packages/core/agent-loop/tests/runtime-context.spec.ts`、`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run test:snapshot`（14 项既有环境/录制缺口）。
+
+## [2026-11-14] feat | 网络请求域名允许清单
+
+- `web-fetch-http` 新增 `allowedHosts` / `blockedHosts`，请求与每个同源重定向都按精确主机或 `*.example.com` 规则校验；阻止规则优先。
+- 配置目录与中英文 README 同步。
+- 验证：`pnpm exec vitest run packages/web/web-fetch-http/tests`、`pnpm run typecheck`、`pnpm run test:docs`。

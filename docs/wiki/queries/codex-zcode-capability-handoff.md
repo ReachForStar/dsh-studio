@@ -207,8 +207,9 @@ status: draft
 9. **审批前钩子（D 部分）**：新增 `tools/permission-request` waterfall，审批接缝在询问应答者之前分发；监听器只能 deny 或委托，不能授予，因此规则、人工专属请求与失败关闭继续生效。Claude Code 桥接新增 `PermissionRequest` 事件映射。
 10. **记忆写入（G 部分）**：`memory-notes` 新增 `memory_write` 工具，可把一条事实写入项目或用户 `MEMORY.md`。写入按文件串行、拒绝疑似凭据、受 `maxWriteChars` 约束；读侧仍由每步 pre-step 重读。后台轮次提取、合并锁与召回选择器仍未实现。
 11. **上下文缓存稳定（B）**：运行时上下文首份快照提交后，变化集合只发送变化/新增节文本与被移除节名称，未变化的节不重复；恢复、旧格式与压缩后重述完整集合；仅顺序变化不产生消息。系统提示词仍按现有投影只在内容变化时追加，避免改写已缓存前缀。显式缓存断点位置（provider cache_control）沿用各适配器已有能力，未新增统一配置。
+12. **域名允许清单（H 部分）**：`web-fetch-http` 新增 `allowedHosts` / `blockedHosts`，对请求 URL 与每个同源重定向校验；阻止规则优先，允许清单为空表示不限制。代理、延迟网络审批、Provider 三层配置与诊断实验仍未实现。
 
-仍未开始：A3 完全访问凭证、D 的其余部分（`updated_input`、PreModel/PreCompact、工作区信任）、F、H，以及 E、G 的其余部分。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
+仍未开始：A3 完全访问凭证、D 的其余部分（`updated_input`、PreModel/PreCompact、工作区信任）、F、H 的其余部分，以及 E、G 的其余部分。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
 
 ## 参考页面
 

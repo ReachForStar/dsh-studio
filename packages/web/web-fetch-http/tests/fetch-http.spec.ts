@@ -12,6 +12,8 @@ import {
   isSameOrigin,
   parseCharset,
   parseFetchUrl,
+  assertHostAllowed,
+  matchesHostRule,
   validateFetchUrl,
   WEB_FETCH_MAX_URL_LENGTH,
 } from '../src/policy.ts'
@@ -22,6 +24,8 @@ const limits: HttpFetchLimits = {
   timeoutMs: 5_000,
   maxRedirects: 5,
   userAgent: 'test-agent/1.0',
+  allowedHosts: [],
+  blockedHosts: [],
 }
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void
@@ -49,6 +53,21 @@ function provider(overrides: Partial<HttpFetchLimits> = {}): HttpFetchProvider {
 }
 
 describe('policy helpers', () => {
+  it('matches exact and wildcard host rules with block precedence', () => {
+    const url = new URL('https://api.example.com/x')
+    expect(matchesHostRule('api.example.com', url.hostname)).toBe(true)
+    expect(matchesHostRule('*.example.com', url.hostname)).toBe(true)
+    expect(matchesHostRule('example.com', url.hostname)).toBe(false)
+    expect(() => { assertHostAllowed(url, [], ['*.example.com']) }).toThrow(expect.objectContaining({ code: 'WEB_BLOCKED_URL' }))
+    expect(() => { assertHostAllowed(url, ['api.example.com'], []) }).not.toThrow()
+    expect(() => { assertHostAllowed(url, ['other.test'], []) }).toThrow(expect.objectContaining({ code: 'WEB_BLOCKED_URL' }))
+  })
+
+  it('refuses a blocked host before any connection', async () => {
+    await expect(provider({ blockedHosts: ['example.invalid'] }).fetch({ url: 'https://example.invalid/x' }))
+      .rejects.toMatchObject({ code: 'WEB_BLOCKED_URL' })
+  })
+
   it('validates scheme, credentials, and length', () => {
     expect(parseFetchUrl('https://example.com/preflight').pathname).toBe('/preflight')
     expect(validateFetchUrl('https://example.com/x').hostname).toBe('example.com')

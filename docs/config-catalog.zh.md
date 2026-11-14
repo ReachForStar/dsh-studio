@@ -5367,6 +5367,10 @@ export interface Config {
   maxRedirects?: number
   /** `User-Agent` header sent on every request. */
   userAgent?: string
+  /** Exact host or `*.example.com` allow rules for request and redirect URLs; empty allows every host. */
+  allowedHosts?: string[]
+  /** Exact host or `*.example.com` block rules; a match always wins. */
+  blockedHosts?: string[]
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-web-fetch-http -->

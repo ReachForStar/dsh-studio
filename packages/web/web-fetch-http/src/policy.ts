@@ -123,3 +123,30 @@ function isUtf8Label(label: string): boolean {
     return false
   }
 }
+
+
+/** Whether one hostname matches an exact rule or a `*.example.com` suffix rule. */
+export function matchesHostRule(rule: string, hostname: string): boolean {
+  const normalized = rule.trim().toLowerCase()
+  const host = hostname.toLowerCase()
+  if (normalized === host) return true
+  return normalized.startsWith('*.') && host.endsWith(normalized.slice(1)) && host.length > normalized.length - 1
+}
+
+/**
+ * Enforce a deployment's host allow and block lists. A blocked rule always wins;
+ * an empty allow list permits every host that no block rule names.
+ * @param url - the validated request or redirect URL.
+ * @param allowedHosts - exact host or `*.example.com` allow rules.
+ * @param blockedHosts - exact host or `*.example.com` block rules.
+ * @throws {@link WebError} `WEB_BLOCKED_URL` when the host is outside the policy.
+ */
+export function assertHostAllowed(url: URL, allowedHosts: readonly string[], blockedHosts: readonly string[]): void {
+  const host = url.hostname.toLowerCase()
+  if (blockedHosts.some(rule => matchesHostRule(rule, host))) {
+    throw new WebError(`host "${host}" is blocked by this deployment's network policy`, 'WEB_BLOCKED_URL')
+  }
+  if (allowedHosts.length > 0 && !allowedHosts.some(rule => matchesHostRule(rule, host))) {
+    throw new WebError(`host "${host}" is not in this deployment's allowlist`, 'WEB_BLOCKED_URL')
+  }
+}

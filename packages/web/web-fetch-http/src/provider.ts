@@ -10,7 +10,7 @@ import { WebError } from '@deepseek-ai/dsh-web'
 import type { WebFetchBody, WebFetchProvider, WebFetchRequest, WebFetchResult } from '@deepseek-ai/dsh-web'
 import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type { Response } from 'undici'
-import { classifyContentType, decoderForCharset, isSameOrigin, parseCharset, validateFetchUrl } from './policy.ts'
+import { assertHostAllowed, classifyContentType, decoderForCharset, isSameOrigin, parseCharset, validateFetchUrl } from './policy.ts'
 
 /** Resolved provider limits (the plugin's schemastery Config supplies defaults). */
 export interface HttpFetchLimits {
@@ -22,6 +22,10 @@ export interface HttpFetchLimits {
   timeoutMs: number
   /** Maximum number of (same-origin) redirect hops to follow. */
   maxRedirects: number
+  /** Exact host or `*.example.com` allow rules; empty means every host is allowed. */
+  allowedHosts: readonly string[]
+  /** Exact host or `*.example.com` block rules; a match always wins. */
+  blockedHosts: readonly string[]
   /** `User-Agent` header sent on every request. */
   userAgent: string
 }
@@ -64,6 +68,7 @@ export class HttpFetchProvider implements WebFetchProvider {
   /** Follow same-origin redirects up to the hop cap, then read the final response. */
   private async followAndRead(initialUrl: string, signal: AbortSignal): Promise<WebFetchResult> {
     let currentUrl = validateFetchUrl(initialUrl)
+    assertHostAllowed(currentUrl, this.limits.allowedHosts, this.limits.blockedHosts)
     let redirectsFollowed = 0
 
     for (;;) {
@@ -88,6 +93,7 @@ export class HttpFetchProvider implements WebFetchProvider {
         let validatedTarget: URL
         try {
           validatedTarget = validateFetchUrl(target.toString())
+          assertHostAllowed(validatedTarget, this.limits.allowedHosts, this.limits.blockedHosts)
           if (!isSameOrigin(validatedTarget, currentUrl)) {
             throw new WebError(
               `cross-origin redirect to ${validatedTarget.origin} is not followed automatically; retry against that URL directly`,

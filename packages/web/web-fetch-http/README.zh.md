@@ -47,6 +47,8 @@ kind: "package-reference"
 | `timeoutMs` | `30,000` | 抓取超时——资源兜底，不是面向模型的工具预算 |
 | `maxRedirects` | `5` | 同源重定向最大跳数（`0` 表示不跟随） |
 | `userAgent` | `deepseek-harness/…` | 每次请求发送的 `User-Agent` 标头 |
+| `allowedHosts` | `[]` | 请求与重定向的精确主机或 `*.example.com` 允许规则；为空表示允许所有主机 |
+| `blockedHosts` | `[]` | 精确主机或 `*.example.com` 阻止规则；命中即拒绝 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-web-fetch-http)是每个受支持字段及其 JSDoc 的穷尽式真源。
 

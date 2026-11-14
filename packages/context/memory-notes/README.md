@@ -29,11 +29,11 @@ Add `/MEMORY.md` to a project (or `<dsh home>/memory/MEMORY.md` for personal not
 
 ### What the agent gets
 
-The memory note lands as a `user/message` with an attribution-only `memory-notes` source, placed after the claimed batch so the direct prompt precedes it. User notes load before project notes under one `maxChars` budget; each file is labeled with its layer and display path. A restated note — same content, same source — is a no-op; a changed note replaces the previous one; a deleted note removes its block from the next decision.
+The memory note lands as a `user/message` with an attribution-only `memory-notes` source, placed after the claimed batch so the direct prompt precedes it. User notes load before project notes under one `maxChars` budget; each file is labeled with its layer and display path. With `recall` on (the default), each bullet is ranked by overlap with the text claimed for this step, and the best-scoring entries fill the budget in their original file order; entries that match nothing still fill the remaining space in order, so a note is never dropped merely because the step shares no wording. A restated note — same content, same source — is a no-op; a changed note replaces the previous one; a deleted note removes its block from the next decision.
 
 ### Writing notes
 
-When `tools` and `fs` are composed, the package also registers `memory_write`. It appends one bullet to the selected `MEMORY.md` — the nearest project root for `project`, `<dsh home>/memory` for `user` — and returns the saved path. Writes serialize per file, so concurrent calls cannot interleave. Text that looks like a credential, exceeds `maxWriteChars`, or is empty is rejected without touching the file. The note does not enter the current session; the next pre-step re-reads the file like any other edit.
+When `tools` and `fs` are composed, the package also registers `memory_write`. It appends one bullet to the selected `MEMORY.md` — the nearest project root for `project`, `<dsh home>/memory` for `user` — and returns the saved path. Writes serialize per file, and each write holds `MEMORY.md.lock` beside the target so a second process cannot interleave; an abandoned local lock older than `lockStaleMs` is reclaimed. Text that looks like a credential, exceeds `maxWriteChars`, or is empty is rejected without touching the file. The note does not enter the current session; the next pre-step re-reads the file like any other edit.
 
 ### Configuration
 
@@ -42,6 +42,8 @@ When `tools` and `fs` are composed, the package also registers `memory_write`. I
 - `maxChars` — total text cap for the complete note; larger notes are truncated with a marker, non-positive disables injection. Defaults to `20000`.
 - `maxWriteChars` — character cap for one `memory_write` note. Defaults to `4000`.
 - `writeTool` — register `memory_write` when `tools` and `fs` are composed. Defaults to `true`.
+- `recall` — rank note entries by the current step before filling the character budget. Defaults to `true`.
+- `lockStaleMs` — local lock age after which `MEMORY.md.lock` is reclaimed. Defaults to ten minutes.
 
 `dsh-base` does not enable this plugin: memory notes are an opt-in context source, mounted by profiles or hosts that want durable recollection without a dedicated memory service.
 

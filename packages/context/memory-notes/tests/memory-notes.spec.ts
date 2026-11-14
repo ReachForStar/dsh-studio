@@ -18,6 +18,7 @@ import {
   discoverMemoryFiles,
   findProjectRoot,
   loadMemoryFiles,
+  selectMemoryContent,
 } from '../src/files.ts'
 import {
   apply as memoryNotesApply,
@@ -151,6 +152,8 @@ describe('config', () => {
       maxChars: 20_000,
       maxWriteChars: 4000,
       writeTool: true,
+      recall: true,
+      lockStaleMs: 600_000,
     })
   })
 
@@ -389,3 +392,46 @@ const MemoryNotesPlugin = {
   inject: ['agents', 'workingDirectory'],
   apply: memoryNotesApply,
 }
+
+
+describe('memory recall selection', () => {
+  const note = [
+    '# Memory',
+    '',
+    '- The release workflow publishes with the desktop deb target.',
+    '- The database migrations live under packages/storage.',
+    '- Prefer short commit subjects.',
+  ].join('\n')
+
+  it('ranks matching bullets ahead of the budget and keeps file order', () => {
+    const selected = selectMemoryContent(note, 'fix the database migration', 90)
+    expect(selected.content).toContain('database migrations')
+    expect(selected.content).not.toContain('release workflow')
+    expect(selected.content).not.toContain('commit subjects')
+  })
+
+  it('falls back to the bounded read when no query token matches', () => {
+    expect(selectMemoryContent(note, 'unrelated wording', 200).content).toBe(note)
+  })
+
+  it('keeps every entry when the budget fits all of them', () => {
+    const selected = selectMemoryContent(note, 'database', 10_000)
+    expect(selected.content).toBe(note)
+    expect(selected.consumed).toBe(note.length)
+  })
+
+  it('ranks through the file loader and plain-truncates when recall is off', async () => {
+    provider.files.set(join(repo, '.git'), '')
+    provider.files.set(join(repo, 'MEMORY.md'), note)
+    const discovered = await discoverMemoryFiles(
+      repo, undefined, resolveConfig({ maxChars: 120 }), repo, provider, new AbortController().signal,
+    )
+
+    const ranked = await loadMemoryFiles(discovered, 120, provider, new AbortController().signal, 'storage migrations')
+    expect(ranked[0]?.content).toContain('database migrations')
+
+    const plain = await loadMemoryFiles(discovered, 60, provider, new AbortController().signal, 'storage migrations', false)
+    expect(plain[0]?.content.startsWith('# Memory')).toBe(true)
+    expect(plain[0]?.content).toContain('release workflow')
+  })
+})

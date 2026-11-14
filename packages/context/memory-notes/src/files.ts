@@ -128,6 +128,8 @@ export async function discoverMemoryFiles(
  * @param maxChars - total text cap; non-positive reads nothing.
  * @param fs - the caller-scoped filesystem.
  * @param signal - aborts the reads.
+ * @param query - current step text used to rank note entries; empty keeps file order.
+ * @param recall - whether relevance ranking applies before the budget truncates.
  * @returns loaded files, later layers truncated when the budget runs out.
  */
 export async function loadMemoryFiles(
@@ -135,6 +137,8 @@ export async function loadMemoryFiles(
   maxChars: number,
   fs: FileSystem,
   signal: AbortSignal,
+  query = '',
+  recall = true,
 ): Promise<LoadedMemoryFile[]> {
   if (maxChars <= 0) return []
   const loaded: LoadedMemoryFile[] = []
@@ -144,12 +148,81 @@ export async function loadMemoryFiles(
     if (file.target === undefined) continue
     const content = await fs.readText(file.target, signal)
     if (content.length === 0) continue
-    const { content: bounded, consumed } = boundMemoryContent(content, remaining)
+    const { content: bounded, consumed } = recall
+      ? selectMemoryContent(content, query, remaining)
+      : boundMemoryContent(content, remaining)
     loaded.push({ layer: file.layer, absolutePath: file.absolutePath, displayPath: file.displayPath, content: bounded })
     remaining -= consumed
     if (remaining <= 0) break
   }
   return loaded
+}
+
+/** Query tokens that participate in recall ranking: at least three characters. */
+function recallTokens(query: string): ReadonlySet<string> {
+  return new Set(query.toLowerCase().split(/[^\p{L}\p{N}_-]+/u).filter(token => token.length >= 3))
+}
+
+/** One bullet and its continuation lines, in file order. */
+interface MemoryEntry {
+  readonly index: number
+  readonly text: string
+}
+
+/** Split note bullets out of the file, keeping everything before the first bullet as the prefix. */
+function splitEntries(content: string): { prefix: string; entries: MemoryEntry[] } {
+  const lines = content.split('\n')
+  const firstBullet = lines.findIndex(line => line.startsWith('- '))
+  if (firstBullet < 0) return { prefix: content, entries: [] }
+  const prefix = lines.slice(0, firstBullet).join('\n')
+  const entries: MemoryEntry[] = []
+  let current: string[] = []
+  for (const line of lines.slice(firstBullet)) {
+    if (line.startsWith('- ') && current.length > 0) {
+      entries.push({ index: entries.length, text: current.join('\n') })
+      current = [line]
+      continue
+    }
+    current.push(line)
+  }
+  if (current.length > 0) entries.push({ index: entries.length, text: current.join('\n') })
+  return { prefix, entries }
+}
+
+/**
+ * Select note content for one model step. Every bullet is scored by how many
+ * distinct query tokens it contains, then the best entries fill the remaining
+ * budget in their original order; the leading header survives when it fits.
+ * Without bullets, or without query tokens, selection degrades to the plain
+ * bounded read so a note never disappears just because nothing matched.
+ * @param content - exact file text.
+ * @param query - current step text, possibly empty.
+ * @param budget - remaining allowed characters.
+ * @returns the selected text and the characters it consumed.
+ */
+export function selectMemoryContent(content: string, query: string, budget: number): { content: string; consumed: number } {
+  const tokens = recallTokens(query)
+  if (tokens.size === 0) return boundMemoryContent(content, budget)
+  const { prefix, entries } = splitEntries(content)
+  if (entries.length === 0) return boundMemoryContent(content, budget)
+  const scored = entries.map(entry => ({
+    entry,
+    score: [...recallTokens(entry.text)].filter(token => tokens.has(token)).length,
+  }))
+  scored.sort((left, right) => right.score - left.score || left.entry.index - right.entry.index)
+  const selected: MemoryEntry[] = []
+  let used = prefix.length === 0 ? 0 : prefix.length + 1
+  for (const { entry } of scored) {
+    const cost = (selected.length === 0 ? 0 : 1) + entry.text.length
+    if (used + cost > budget) continue
+    selected.push(entry)
+    used += cost
+  }
+  if (selected.length === 0) return boundMemoryContent(content, budget)
+  selected.sort((left, right) => left.index - right.index)
+  const body = selected.map(entry => entry.text).join('\n')
+  const text = prefix.length === 0 ? body : `${prefix}\n${body}`
+  return { content: text, consumed: text.length }
 }
 
 /**

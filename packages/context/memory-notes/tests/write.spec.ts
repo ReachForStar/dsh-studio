@@ -1,7 +1,7 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { provideWorkingDirectoryFixture } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { LocalFileSystem } from '@deepseek-ai/dsh-fs-local'
@@ -84,5 +84,47 @@ describe('memory_write', () => {
     const long = await t.write('project', 'too long to store')
     expect(long.isError).toBe(true)
     expect(await t.memory()).toBe('existing\n')
+  })
+})
+
+
+describe('memory_write lock', () => {
+  it('refuses a write while another writer holds the project lock', async () => {
+    const t = await boot()
+    await writeFile(join(t.root, 'MEMORY.md.lock'), 'held')
+
+    const result = await t.write('project', 'blocked fact')
+
+    expect(result.isError).toBe(true)
+    expect(result.content.map(block => block.type === 'text' ? block.text : '').join(''))
+      .toContain('locked by another writer')
+    expect(await t.memory()).toBe('existing\n')
+  })
+
+  it('removes its lock after a committed write', async () => {
+    const t = await boot()
+    expect((await t.write('project', 'kept fact')).isError).toBe(false)
+
+    await expect(readFile(join(t.root, 'MEMORY.md.lock'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('reclaims an abandoned local user lock', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-memory-home-'))
+    cleanups.push(() => rm(home, { recursive: true, force: true }))
+    vi.stubEnv('DSH_HOME', home)
+    try {
+      const t = await boot()
+      const memory = join(home, 'memory')
+      await mkdir(memory, { recursive: true })
+      const lock = join(memory, 'MEMORY.md.lock')
+      await writeFile(lock, 'abandoned')
+      await utimes(lock, new Date(0), new Date(0))
+
+      expect((await t.write('user', 'reclaimed fact')).isError).toBe(false)
+      await expect(readFile(lock, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+      expect(await readFile(join(memory, 'MEMORY.md'), 'utf8')).toContain('reclaimed fact')
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })

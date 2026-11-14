@@ -33,7 +33,7 @@ kind: "package-reference"
 
 ### 写入笔记
 
-同时组合 `tools` 与 `fs` 时，本包还会注册 `memory_write`。它把一条要点追加到选定的 `MEMORY.md`——`project` 用最近的项目根，`user` 用 `<dsh home>/memory`——并返回保存路径。写入按文件串行，因此并发调用不会交错。疑似凭据、超过 `maxWriteChars` 或空文本会被拒绝且不改动文件。该笔记不会进入当前会话；下一个 pre-step 像其他编辑一样重新读取文件。
+同时组合 `tools` 与 `fs` 时，本包还会注册 `memory_write`。它把一条要点追加到选定的 `MEMORY.md`——`project` 用最近的项目根，`user` 用 `<dsh home>/memory`——并返回保存路径。写入按文件串行，并且每次写入都在目标旁持有 `MEMORY.md.lock`，因此第二个进程无法交错；超过 `lockStaleMs` 的本地遗留锁会被回收。疑似凭据、超过 `maxWriteChars` 或空文本会被拒绝且不改动文件。该笔记不会进入当前会话；下一个 pre-step 像其他编辑一样重新读取文件。
 
 ### 配置
 
@@ -42,6 +42,8 @@ kind: "package-reference"
 - `maxChars` — 整条笔记的字符上限；超出部分以标记截断，非正数禁用注入。默认 `20000`。
 - `maxWriteChars` — 单条 `memory_write` 笔记的字符上限。默认 `4000`。
 - `writeTool` — 在组合 `tools` 与 `fs` 时注册 `memory_write`。默认 `true`。
+- `recall` — 按当前步骤对笔记条目排序后再填充字符预算。默认 `true`。
+- `lockStaleMs` — 本地锁超过该时长后回收 `MEMORY.md.lock`。默认十分钟。
 
 `dsh-base` 不启用本插件：记忆笔记是可选注入的上下文来源，由需要持久记忆的 profile 或宿主挂载。
 

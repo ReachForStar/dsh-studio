@@ -5,7 +5,7 @@
  * @module @deepseek-ai/dsh-memory-notes/write
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { FileSystem } from '@deepseek-ai/dsh-fs'
@@ -28,22 +28,84 @@ const SECRET_PATTERNS: readonly RegExp[] = [
 /** One in-flight write per memory file; the next append follows it. */
 const locks = new Map<string, Promise<void>>()
 
+/** A memory file write found a live lock from another writer. */
+export class MemoryLockedError extends Error {
+  /** Stable machine-routable failure class. */
+  readonly code = 'MEMORY_LOCKED'
+
+  /**
+   * @param path - memory file whose lock could not be taken.
+   */
+  constructor(path: string) {
+    super(`memory file "${path}" is locked by another writer; remove its .lock sibling if no writer is active`)
+    this.name = 'MemoryLockedError'
+  }
+}
+
+/** Take a lock file beside `path`, reclaiming an abandoned local lock. */
+async function withLocalLock<T>(path: string, staleMs: number, run: () => Promise<T>): Promise<T> {
+  const lockPath = `${path}.lock`
+  await mkdir(dirname(path), { recursive: true })
+  const token = `${String(process.pid)}:${String(Date.now())}`
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await writeFile(lockPath, token, { flag: 'wx' })
+      break
+    } catch (error: unknown) {
+      if ((error as { code?: unknown }).code !== 'EEXIST' || attempt === 1) throw new MemoryLockedError(path)
+      const age = Date.now() - (await stat(lockPath)).mtimeMs
+      if (age < staleMs) throw new MemoryLockedError(path)
+      await rm(lockPath, { force: true })
+    }
+  }
+  try {
+    return await run()
+  } finally {
+    // The note is already committed when only the release fails; the retained
+    // lock is what the next writer reports as `MEMORY_LOCKED`.
+    await rm(lockPath, { force: true }).catch(() => {})
+  }
+}
+
+/** Take the same lock through the filesystem seam; remote stales are the operator's to clear. */
+async function withFsSeamLock<T>(
+  fs: FileSystem,
+  path: string,
+  cwd: string,
+  signal: AbortSignal,
+  run: () => Promise<T>,
+): Promise<T> {
+  const lockPath = `${path}.lock`
+  try {
+    const target = await fs.resolve(lockPath, { cwd, signal })
+    await fs.writeBytes(target, new TextEncoder().encode(`${String(process.pid)}:${String(Date.now())}`),
+      { kind: 'createIfAbsent' }, signal)
+  } catch (error: unknown) {
+    if (error instanceof MemoryLockedError) throw error
+    throw new MemoryLockedError(path)
+  }
+  try {
+    return await run()
+  } finally {
+    await fs.remove(lockPath, { cwd }, signal).catch(() => {})
+  }
+}
+
 /** Append one bullet under a per-file lock, creating the file on first use. */
-async function appendBullet(path: string, text: string): Promise<void> {
+async function appendBullet(path: string, text: string, lockStaleMs: number): Promise<void> {
   const previous = locks.get(path) ?? Promise.resolve()
-  const run = previous.then(async () => {
+  const run = previous.then(() => withLocalLock(path, lockStaleMs, async () => {
     let existing = ''
     try {
       existing = await readFile(path, 'utf8')
     } catch (error: unknown) {
       if ((error as { code?: unknown }).code !== 'ENOENT') throw error
     }
-    await mkdir(dirname(path), { recursive: true })
     const prefix = existing.length === 0
       ? '# Memory\n\n'
       : existing.endsWith('\n') ? existing : `${existing}\n`
     await writeFile(path, `${prefix}- ${text.trim()}\n`, 'utf8')
-  })
+  }))
   locks.set(path, run.catch(() => {}))
   await run
 }
@@ -57,7 +119,7 @@ async function appendBulletViaFs(
   signal: AbortSignal,
 ): Promise<void> {
   const previous = locks.get(path) ?? Promise.resolve()
-  const run = previous.then(async () => {
+  const run = previous.then(() => withFsSeamLock(fs, path, cwd, signal, async () => {
     const target = await fs.resolve(path, { cwd, signal })
     const info = await fs.stat(target, signal)
     const existing = info === undefined ? '' : await fs.readText(target, signal)
@@ -66,7 +128,7 @@ async function appendBulletViaFs(
       : existing.endsWith('\n') ? existing : `${existing}\n`
     await fs.writeBytes(target, new TextEncoder().encode(`${prefix}- ${text.trim()}\n`),
       info === undefined ? { kind: 'createIfAbsent' } : { kind: 'replaceIfVersion', version: info.version }, signal)
-  })
+  }))
   locks.set(path, run.catch(() => {}))
   await run
 }
@@ -113,7 +175,7 @@ export function registerMemoryWriteTool(ctx: Context, config: ResolvedConfig): v
       }
       if (args.scope === 'user') {
         const path = join(userMemoryDirectory(), config.memoryFileNames[0] ?? 'MEMORY.md')
-        await appendBullet(path, text)
+        await appendBullet(path, text, config.lockStaleMs)
         return `Saved to user memory (${path}).`
       }
       const agent = exec.agent

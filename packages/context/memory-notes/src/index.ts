@@ -14,7 +14,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type { FileSystem } from '@deepseek-ai/dsh-fs'
-import { createUserMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type ContentBlock, type UserMessage } from '@deepseek-ai/dsh-llm'
 import { isDeepStrictEqual } from 'node:util'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import { Config, resolveConfig, userMemoryDirectory, type ResolvedConfig } from './config.ts'
@@ -88,6 +88,7 @@ export function renderMemoryNote(files: readonly LoadedMemoryFile[]): string {
  * @param cwd - session working directory.
  * @param config - normalized settings.
  * @param signal - aborts discovery and reads.
+ * @param query - current step text used to rank entries when recall is on.
  * @returns the note user message, or undefined when no memory exists.
  */
 export async function loadMemoryNote(
@@ -95,12 +96,13 @@ export async function loadMemoryNote(
   cwd: string,
   config: ResolvedConfig,
   signal: AbortSignal,
+  query = '',
 ): Promise<UserMessage | undefined> {
   const root = await findProjectRoot(cwd, config.projectRootMarkers, fs, signal)
   const discovered = await discoverMemoryFiles(
     root, userMemoryDirectory(), config, cwd, fs, signal,
   )
-  const loaded = await loadMemoryFiles(discovered, config.maxChars, fs, signal)
+  const loaded = await loadMemoryFiles(discovered, config.maxChars, fs, signal, query, config.recall)
   if (loaded.length === 0) return undefined
   return createUserMessage({
     content: [{ type: 'text', text: renderMemoryNote(loaded) }],
@@ -133,7 +135,7 @@ export async function applyPreStepMemory(
   if (fileSystem === undefined) return decision
   signal.throwIfAborted()
   const cwd = await ctx.workingDirectory.ensure(agent, signal)
-  const desired = await loadMemoryNote(fileSystem, cwd, config, signal)
+  const desired = await loadMemoryNote(fileSystem, cwd, config, signal, stepQuery(claimed))
   const hasExisting = decision.messages.some(isMemoryNoteMessage)
   if (desired === undefined) {
     if (!hasExisting) return decision
@@ -146,6 +148,15 @@ export async function applyPreStepMemory(
   const lastClaimedIndex = retained.findLastIndex(message => claimed.includes(message))
   const entered = retained.toSpliced(lastClaimedIndex + 1, 0, desired)
   return { ...decision, messages: entered }
+}
+
+/** Join the textual content of the messages claimed for this step as the recall query. */
+function stepQuery(claimed: readonly UserMessage[]): string {
+  return claimed
+    .flatMap(message => message.content)
+    .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
+    .map(block => block.text)
+    .join('\n')
 }
 
 export function apply(ctx: Context, config: Config): void {

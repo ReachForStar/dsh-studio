@@ -27,6 +27,17 @@ export interface Config {
   maxWriteChars?: number
   /** Register the `memory_write` tool. Defaults to `true`; requires `tools` and `fs`. */
   writeTool?: boolean
+  /**
+   * Rank note entries by overlap with the current step and fill the character
+   * budget with the best matches before the rest. Defaults to `true`; `false`
+   * injects entries in file order and truncates the tail.
+   */
+  recall?: boolean
+  /**
+   * Age in milliseconds after which a local `MEMORY.md.lock` is treated as
+   * abandoned and reclaimed. Defaults to ten minutes.
+   */
+  lockStaleMs?: number
 }
 
 /** User-facing memory note configuration. */
@@ -36,6 +47,8 @@ export const Config: z<Config> = z.object({
   maxChars: z.number().min(0).default(DEFAULT_MAX_CHARS),
   maxWriteChars: z.number().min(1).default(4000),
   writeTool: z.boolean().default(true),
+  recall: z.boolean().default(true),
+  lockStaleMs: z.number().min(0).default(10 * 60 * 1000),
 })
 
 /** Normalized settings used by discovery and injection. */
@@ -45,6 +58,8 @@ export interface ResolvedConfig {
   maxChars: number
   maxWriteChars: number
   writeTool: boolean
+  recall: boolean
+  lockStaleMs: number
 }
 
 /**
@@ -59,6 +74,8 @@ export function resolveConfig(config: Config | undefined): ResolvedConfig {
     maxChars: config?.maxChars ?? DEFAULT_MAX_CHARS,
     maxWriteChars: config?.maxWriteChars ?? 4000,
     writeTool: config?.writeTool ?? true,
+    recall: config?.recall ?? true,
+    lockStaleMs: config?.lockStaleMs ?? 10 * 60 * 1000,
   }
 }
 

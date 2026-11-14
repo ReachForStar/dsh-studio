@@ -169,7 +169,7 @@ Prefix reuse requires earlier messages and declarations to stay byte-identical u
 
 #### What the model sees
 
-Runtime context is a `<system-reminder>` user message. Its first snapshot starts with `The following information describes your current session:`; later snapshots start with `The following information describes your current session. It replaces earlier versions of this context, including any retained in conversation summaries.` Unchanged contributions emit nothing; compaction removing the retained snapshot causes a new reminder, including after resume. An empty active set emits `Current runtime context: none. Earlier runtime-context snapshots no longer apply.` inside the same wrapper and records empty sections.
+Runtime context is a `<system-reminder>` user message. Its first snapshot starts with `The following information describes your current session:`; later snapshots start with `The following information describes your current session. It replaces earlier versions of this context, including any retained in conversation summaries.` Unchanged contributions emit nothing. After the first committed snapshot, a changed set emits only a delta: changed or added section texts plus the names of removed sections, while unchanged sections are not repeated. A resume, legacy, or post-compaction snapshot restates the complete set. Compaction removing the retained snapshot causes a new reminder, including after resume. An empty active set emits `Current runtime context: none. Earlier runtime-context snapshots no longer apply.` inside the same wrapper and records empty sections.
 
 #### Token effect
 

@@ -15,6 +15,7 @@ const SOURCE = 'runtime-context'
 const INITIAL = '<system-reminder>\nThe following information describes your current session:\n\nretained\n</system-reminder>'
 const UPDATED = '<system-reminder>\nThe following information describes your current session. It replaces earlier versions of this context, including any retained in conversation summaries.\n\nnext\n</system-reminder>'
 const CLEARED = '<system-reminder>\nCurrent runtime context: none. Earlier runtime-context snapshots no longer apply.\n</system-reminder>'
+const DELTA = '<system-reminder>\nThe following runtime context sections changed and replace earlier versions of the same sections. Sections not named here remain as previously stated.\n\nnext\n</system-reminder>'
 
 function sections(text: string) {
   return [{ name: 'sandbox:policy', text }]
@@ -51,7 +52,7 @@ describe('RuntimeContextProjection', () => {
     expect(session.surface.nodes).toContain(retained.seq)
     expect(projection.project(sections('retained'))).toBeUndefined()
     expect(projection.project(sections('next'))).toMatchObject({
-      content: [{ type: 'text', text: UPDATED }],
+      content: [{ type: 'text', text: DELTA }],
       source: {
         kind: SOURCE,
         form: 'snapshot',
@@ -75,7 +76,7 @@ describe('RuntimeContextProjection', () => {
     expect(projection.project(sections('retained'))).toBeUndefined()
 
     const next = projection.project(sections('next'))!
-    expect(next.content).toEqual([{ type: 'text', text: UPDATED }])
+    expect(next.content).toEqual([{ type: 'text', text: DELTA }])
     session.append('user/message', next, { surfaceOp: 'append' })
     expect(projection.project(sections('next'))).toBeUndefined()
     expect(new RuntimeContextProjection(ctx, session).project(sections('next'))).toBeUndefined()
@@ -135,6 +136,47 @@ describe('RuntimeContextProjection', () => {
     expect(projection.project(sections('retained'))).toBeUndefined()
     expect(projection.project([{ name: 'new-policy', text: 'retained' }])).toBeDefined()
     expect(projection.project([...sections('retained'), { name: 'directory', text: '/repo' }])).toBeDefined()
+  })
+
+  it('sends only changed sections after the first committed snapshot', async () => {
+    const { ctx, session } = await harness()
+    const projection = new RuntimeContextProjection(ctx, session)
+    const first = projection.project([
+      { name: 'sandbox:policy', text: 'workspace-write' },
+      { name: 'directory', text: '/repo' },
+    ])!
+    session.append('user/message', first, { surfaceOp: 'append' })
+
+    const delta = projection.project([
+      { name: 'sandbox:policy', text: 'read-only' },
+      { name: 'directory', text: '/repo' },
+    ])!
+    const deltaText = delta.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
+    expect(deltaText).toContain('read-only')
+    expect(deltaText).not.toContain('/repo')
+    expect(delta.source).toMatchObject({ sections: [
+      { name: 'sandbox:policy', text: 'read-only' },
+      { name: 'directory', text: '/repo' },
+    ] })
+  })
+
+  it('names removed sections and treats order-only changes as no-ops', async () => {
+    const { ctx, session } = await harness()
+    const projection = new RuntimeContextProjection(ctx, session)
+    const first = projection.project([
+      { name: 'sandbox:policy', text: 'workspace-write' },
+      { name: 'directory', text: '/repo' },
+    ])!
+    session.append('user/message', first, { surfaceOp: 'append' })
+
+    expect(projection.project([
+      { name: 'directory', text: '/repo' },
+      { name: 'sandbox:policy', text: 'workspace-write' },
+    ])).toBeUndefined()
+
+    const removed = projection.project([{ name: 'directory', text: '/repo' }])!
+    const removedText = removed.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
+    expect(removedText).toContain('no longer active: sandbox:policy')
   })
 
   it('refreshes a legacy cleared reminder once and restores the empty snapshot', async () => {

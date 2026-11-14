@@ -170,8 +170,6 @@ interface ToolArgsMap {
     /** Optional positive safe-integer limit on automatic continuation rounds. */
     max_goal_rounds?: number;
   } & Record<string, JsonValue>;
-  /** Inspect desktop access, select an application and window, read AX state, capture screenshots or dispatch input. Use appHandle from getApp; verify actions by reading fresh state. */
-  cua: unknown;
   /** Edit an existing UTF-8 text file by replacing literal text. */
   edit: {
     /** Path to edit, resolved by the filesystem backend. Provide `file_path` before `old_string` and `new_string` in the arguments. */
@@ -205,266 +203,37 @@ interface ToolArgsMap {
     /** One glob filter for which files to search (e.g. "*.ts", "*.{js,jsx}"). Not a list; negation is not supported. */
     include?: string;
   } & Record<string, JsonValue>;
-  /** Request cancellation of a running background job. */
-  job_kill: {
-    /** Job id returned by the tool that started the background work. */
-    job_id: string;
-    /** Optional short reason, recorded in the log and forwarded to the job. */
-    reason?: string;
-  } & Record<string, JsonValue>;
-  /** List your background jobs (running and finished) with their ids, kinds, and statuses. */
-  job_list: Record<string, JsonValue>;
-  /** Read a background job: output since the previous read for stream jobs, or the result of a finished final-output job. */
-  job_output: {
-    /** Job id returned by the tool that started the background work. */
-    job_id: string;
-    /** Block until the job finishes or the timeout expires; a timed-out wait leaves the job running. Defaults to false. */
-    wait?: boolean;
-    /** Max wait in milliseconds with wait: true. Defaults to and is capped by configuration. */
-    timeout_ms?: number;
-  } & Record<string, JsonValue>;
-  /** List your entire subagent tree: the root agent and all reachable continuable descendants, including yourself. Rows carry names, descriptions, and status. A descendant's name is its path from the root, such as reviewer/checker. You can message any other agent in the subagent tree. running means it is working; inactive means no turn is executing; it does not indicate task completion, success, or failure. corrupt, unsupported, or unavailable means this row's own descendants could not be read; the row itself is still a member you can message. While you remain active, you will be notified when a direct child finishes; there is no need to keep checking its status. Use send_message to continue the conversation. */
-  list_agents: Record<string, JsonValue>;
-  /** Read a UTF-8 text file and return line-numbered content. */
-  read: {
-    /** Path to read, resolved by the filesystem backend. */
-    file_path: string;
-    /** 1-based first line to return. Defaults to 1. */
-    offset?: number;
-    /** Maximum number of lines to return. Defaults to 2000. */
-    limit?: number;
-  } & Record<string, JsonValue>;
-  /** Read a PNG/JPEG/WebP/GIF file and return the image itself. Large images are downscaled automatically; do not install image libraries or create thumbnails to inspect an image. */
-  read_image: {
-    /** Path to the image file, resolved by the filesystem backend. */
-    file_path: string;
-  } & Record<string, JsonValue>;
-  /** Send a message to an agent. A working agent receives it at its next step; an idle agent starts a new turn with it. Returns delivery confirmation. */
-  send_message: {
-    /** The name of another agent in your subagent tree, as shown by list_agents. */
-    agent: string;
-    /** The message to deliver to the agent. */
-    message: string;
-  } & Record<string, JsonValue>;
-  /** List one remote directory over SFTP (non-recursive). Entries report type, size, mtime, and mode. */
-  sftp_list: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-    /** Remote directory path to list. */
-    path: string;
-  } & Record<string, JsonValue>;
-  /** Create one remote directory over SFTP. With `recursive`, missing parents are created too. */
-  sftp_mkdir: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-    /** Remote directory path to create. */
-    path: string;
-    /** Create missing parents (default false). */
-    recursive?: boolean;
-  } & Record<string, JsonValue>;
-  /** Download one remote file to a local path over SFTP. The local file must not exist unless `overwrite` is set; a failed transfer removes the partial local file. */
-  sftp_read: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-    /** Remote file path to download. */
-    remote_path: string;
-    /** Local destination path; relative paths resolve against the session workspace. */
-    local_path: string;
-    /** Replace an existing local file (default false). */
-    overwrite?: boolean;
-  } & Record<string, JsonValue>;
-  /** Rename or move one remote path over SFTP. */
-  sftp_rename: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-    /** Current remote path. */
-    from: string;
-    /** Destination remote path. */
-    to: string;
-  } & Record<string, JsonValue>;
-  /** Remove one remote file or directory over SFTP. Directories require `recursive: true` and are deleted depth-first; symlinks are unlinked, never followed. */
-  sftp_rm: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-    /** Remote path to remove. */
-    path: string;
-    /** Remove a directory tree (default false). */
-    recursive?: boolean;
-  } & Record<string, JsonValue>;
-  /** Stat one remote path over SFTP without following symlinks. */
-  sftp_stat: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-    /** Remote path to stat. */
-    path: string;
-  } & Record<string, JsonValue>;
-  /** Upload one local file to a remote path over SFTP. The remote directory must already exist (use sftp_mkdir first). */
-  sftp_write: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-    /** Local source path; relative paths resolve against the session workspace. */
-    local_path: string;
-    /** Remote destination path. */
-    remote_path: string;
-  } & Record<string, JsonValue>;
-  /** Load the full instructions for a skill. Call it before acting on a task that names or clearly matches a skill in the session skill catalog. */
-  skill: {
-    /** The exact skill name from the available skills list. */
-    name: string;
-  } & Record<string, JsonValue>;
-  /** Save a new SSH connection definition (or update one by passing its id). The definition persists in user settings and is usable by ssh_exec and the sftp_* tools; secrets never come back in results. List saved connections with ssh_connections. */
-  ssh_connect: {
-    /** Unique display name for the connection (also accepted wherever a connection id is). */
-    name: string;
-    /** Remote host name or IP address. */
-    host: string;
-    /** Remote login user. */
-    username: string;
-    /** Remote SSH port (default 22). */
-    port?: number;
-    /** Authentication kind: "password" or "privateKey". */
-    auth: "password" | "privateKey";
-    /** Password (required when auth is "password"). */
-    password?: string;
-    /** Absolute local path of the private key (required when auth is "privateKey"). */
-    private_key_path?: string;
-    /** Private-key passphrase, when the key is encrypted. */
-    passphrase?: string;
-    /** Connection-establishment timeout in milliseconds (default 10000, range 1000-300000). */
-    connect_timeout_ms?: number;
-    /** Id of an existing connection to update; omit to create a new one. */
-    id?: string;
-  } & Record<string, JsonValue>;
-  /** List every saved SSH connection definition (secret-free view). Use the returned id or name as the `connection` argument of ssh_exec and the sftp_* tools. */
-  ssh_connections: Record<string, JsonValue>;
-  /** Close the shared connection for one saved connection. Later ssh_exec/sftp_* calls reconnect automatically. */
-  ssh_disconnect: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-  } & Record<string, JsonValue>;
-  /** Execute a command on a saved SSH connection and return its stdout/stderr. Each call runs in a fresh remote shell: no state (cwd, variables) persists between calls — pass `cwd` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`; commands that exceed the timeout are killed and reported as `[timed out ...]`. Long output is truncated to its tail with a truncation marker. */
-  ssh_exec: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-    /** The command to execute on the remote host. */
-    command: string;
-    /** Timeout in milliseconds. The provider applies its configured default and cap, and kills the command on expiry. */
-    timeout_ms?: number;
-    /** Remote working directory for this command; a `cd` prefix is applied on the remote side. */
-    cwd?: string;
-  } & Record<string, JsonValue>;
-  /** Probe one saved connection: connect, run a probe command, and close again. Reports the round-trip latency or the failure reason. */
-  ssh_test: {
-    /** Connection id or name from ssh_connections. */
-    connection: string;
-  } & Record<string, JsonValue>;
-  /** Delegate a self-contained task to a subagent (a separate agent that works in its own context) to offload focused, independent work — research, a scoped implementation, an analysis — so it does not consume this conversation's context. The subagent returns its result, not its intermediate steps. This tool starts an independently managed subagent and immediately returns its name. If you are still online when it finishes, the runtime automatically delivers its completion notice. The notice includes the final answer unless the child sent you a message just before finishing. Use `send_message` to steer it while running or continue its conversation after it finishes. */
-  subagent: {
-    /** Initial child working directory. Relative paths use your current directory; omitted inherits it. Later directory changes in either agent are independent. */
-    cwd?: string;
-    /** A short (3-5 word) description of the delegated task, for display. Use the language of the user's current request. */
-    description: string;
-    /** Optional short name for the subagent, unique among the subagents you create: lower-case letters, digits, and hyphens, starting with a letter, at most 32 characters; lead is reserved for the root agent. Omitted names default to agent-1, agent-2, and so on. */
-    name?: string;
-    /** The complete, self-contained task for the subagent. It does not share this conversation's context, so include everything it needs. */
-    prompt: string;
-  } & Record<string, JsonValue>;
-  /** Delegate a task to a subagent that inherits this conversation: a child agent seeded with all completed turns so far (it does not see the current in-flight turn). Use this when the subtask builds on this conversation's context — a follow-up analysis, a review, a continuation — without consuming this conversation's context for the work itself. You receive its result, not its intermediate steps. This tool starts an independently managed subagent and immediately returns its name. If you are still online when it finishes, the runtime automatically delivers its completion notice. The notice includes the final answer unless the child sent you a message just before finishing. Use `send_message` to steer it while running or continue its conversation after it finishes. */
-  subagent_fork: {
-    /** Initial child working directory. Relative paths use your current directory; omitted inherits it. Later directory changes in either agent are independent. */
-    cwd?: string;
-    /** A short (3-5 word) description of the delegated task, for display. Use the language of the user's current request. */
-    description: string;
-    /** Optional short name for the subagent, unique among the subagents you create: lower-case letters, digits, and hyphens, starting with a letter, at most 32 characters; lead is reserved for the root agent. Omitted names default to agent-1, agent-2, and so on. */
-    name?: string;
-    /** The task for the subagent. It already sees this conversation's completed turns, so build on them freely and state only what is new. */
-    prompt: string;
-  } & Record<string, JsonValue>;
-  /** Record and update a task list to plan multi-step work and show progress; skip it for trivial single-step tasks. Add one todo per concrete step before you start. While work remains, keep the todos being worked on `in_progress`, several only when work runs in parallel. Mark each todo `completed` as soon as it is done. Before your turn ends, call todo_write once with the current statuses so the visible list reflects the work actually finished. */
-  todo_write: {
-    /** The COMPLETE task list, replacing any previous list. */
-    todos: ({
-      /** What the task is — a short imperative line. */
-      content: string;
-      /** pending (not started) | in_progress (now) | completed (done). */
-      status: "pending" | "in_progress" | "completed";
-    })[];
-  } & Record<string, JsonValue>;
-  /** Update the current goal. */
-  update_goal: {
-    /** Exact id returned by get_goal. */
-    goal_id: string;
-    /** Exact positive revision returned by get_goal. */
-    revision: number;
-    /** edit, pause, and resume require a direct top-level human request. complete and blocked are also allowed during an automatic continuation of this goal; blocked is rejected before the configured minimum round count. */
-    action: "edit" | "pause" | "resume" | "complete" | "blocked";
-    /** Replacement objective; valid only with action edit. */
-    objective?: string;
-    /** Replacement cap; valid only with action edit. */
-    max_goal_rounds?: number;
-    /** Required only with action blocked: the concrete condition that persisted across rounds and blocks progress. */
-    blocked_reason?: string;
-  } & Record<string, JsonValue>;
-  /** Wait for input at your next step, including agent messages, completion notifications, and user steering. Returns immediately if new input is pending. `timedOut: false` means new input is pending. Pending input is delivered to the model after code execution finishes. */
-  wait_agent: {
-    /** Wait duration in milliseconds, from 10000 through 3600000. Defaults to 30000. */
-    timeout_ms?: number;
-  } & Record<string, JsonValue>;
-  /** Fetch the content of a specific HTTP(S) URL and return it decoded to text. */
-  web_fetch: {
-    /** The HTTP(S) URL to fetch. */
-    url: string;
-  } & Record<string, JsonValue>;
-  /** Search the web for current information. Returns an optional summary answer and a list of source URLs. */
-  web_search: {
-    /** 1–10 search queries; their results are merged. */
-    queries: string[];
-  } & Record<string, JsonValue>;
-  /** Run a JavaScript workflow script that orchestrates subagents at scale. Use this for work that fans out across many independent pieces — an audit over many files, a migration, multi-angle research, adversarial verification of findings — where you write the orchestration as a script instead of delegating turn by turn. Script-body hooks: - `agent(prompt, opts?): Promise<any>` — run one subagent to completion. Without `opts.schema` it resolves to the child's final text; with `opts.schema` (an object-rooted JSON Schema using ONLY type/properties/required/additionalProperties/items/enum/const/oneOf) it resolves to the validated object. Resolves `null` when the child fails (filter with `.filter(Boolean)`). Other opts: `label` (display), `phase` (progress group), and independent `provider`/`model` LLM target overrides. - `pipeline(items, ...stages): Promise<any[]>` — run each item through the stages independently with NO barrier between stages (prefer this for multi-stage work). Each stage receives `(prev, item, index)`. A stage throw drops that ITEM to `null` and skips its remaining stages. - `parallel(thunks): Promise<any[]>` — run zero-argument functions concurrently and await ALL of them (a barrier; use only when a stage genuinely needs every prior result together). A throwing thunk resolves to `null`. - `phase(title)` — start a progress phase; `log(message)` — narrate progress; `args` — the tool call's `args` input, verbatim. Misused hooks (bad arguments, unknown options, unsupported schemas, tripped caps) end the whole script instead of producing `null`. The script has no filesystem, network, timer, or Node.js APIs; the agents do the work. */
-  workflow: {
-    /** The plain JavaScript body, not TypeScript and without an `export const meta` statement; top-level await is allowed. End with `return <value>`; the JSON-serializable value is this tool's result. */
-    script: string;
-    /** The workflow identity as plain JSON, not code. */
-    meta: {
-      /** Short kebab-case workflow name. */
-      name: string;
-      /** One-line description of what the workflow does. */
-      description: string;
-      /** Optional guidance on when this workflow applies. */
-      whenToUse?: string;
-      /** Optional phase declarations matched by phase() calls. */
-      phases?: ({
-        /** The phase title phase() calls match by exact string. */
-        title: string;
-        /** Optional one-line description of the phase. */
-        detail?: string;
-        /** Optional provider override this phase is expected to use. */
-        provider?: string;
-        /** Optional model override this phase is expected to use. */
-        model?: string;
-      } & Record<string, JsonValue>)[];
-    } & Record<string, JsonValue>;
-    /** Optional JSON input exposed to the script as the `args` global (wrap a bare list as a field, e.g. {"files": [...]}). */
-    args?: Record<string, JsonValue>;
-    /** Run as a background job: return a job id immediately instead of waiting; the return value arrives with the completion notice. */
-    run_in_background?: boolean;
-  } & Record<string, JsonValue>;
-  /** Read the current working directory, or change it with cd. Relative paths use the current directory. Existing shells and running processes keep their own directories. */
-  working_directory: {
-    /** Existing directory to enter. Omit to read the current directory. */
-    cd?: string;
-  } & Record<string, JsonValue>;
-  /** Create or fully replace a UTF-8 text file. */
-  write: {
-    /** Path to write, resolved by the filesystem backend. Provide `file_path` before `content` in the arguments. */
-    file_path: string;
-    /** Full UTF-8 text content to write. */
-    content: string;
-    /** The narrowest wider sandbox mode for a one-shot retry of the exact operation the sandbox just denied; the retry asks the user for approval. */
-    sandbox_permissions?: "workspace-write" | "danger-full-access";
-    /** Required with sandbox_permissions: one sentence for the user explaining why this exact file operation needs the wider access. Use the language of the user’s current request. */
-    justification?: string;
-  } & Record<string, JsonValue>;
+  cua: JsonValue;
+  job_kill: JsonValue;
+  job_list: JsonValue;
+  job_output: JsonValue;
+  list_agents: JsonValue;
+  read: JsonValue;
+  read_image: JsonValue;
+  send_message: JsonValue;
+  sftp_list: JsonValue;
+  sftp_mkdir: JsonValue;
+  sftp_read: JsonValue;
+  sftp_rename: JsonValue;
+  sftp_rm: JsonValue;
+  sftp_stat: JsonValue;
+  sftp_write: JsonValue;
+  skill: JsonValue;
+  ssh_connect: JsonValue;
+  ssh_connections: JsonValue;
+  ssh_disconnect: JsonValue;
+  ssh_exec: JsonValue;
+  ssh_test: JsonValue;
+  subagent: JsonValue;
+  subagent_fork: JsonValue;
+  todo_write: JsonValue;
+  update_goal: JsonValue;
+  wait_agent: JsonValue;
+  web_fetch: JsonValue;
+  web_search: JsonValue;
+  workflow: JsonValue;
+  working_directory: JsonValue;
+  write: JsonValue;
 }
 
 interface ToolOutputMap {
@@ -573,7 +342,6 @@ interface ToolOutputMap {
     };
     activation: "armed" | "disarmed";
   };
-  cua: Image | JsonValue;
   edit: {
     /** Canonical absolute path in the filesystem execution world. */
     path: string;
@@ -608,246 +376,37 @@ interface ToolOutputMap {
       line: string;
     }[];
   };
-  job_kill: {
-    outcome: "cancellation-requested" | "already-finished";
-    job: {
-      id: string;
-      kind: string;
-      label: string;
-      status: "running" | "stopping" | "completed" | "killed" | "failed";
-      detail?: string;
-      startedAt: number;
-      finishedAt?: number;
-    };
-  };
-  job_list: ({
-    id: string;
-    kind: string;
-    label: string;
-    status: "running" | "stopping" | "completed" | "killed" | "failed";
-    detail?: string;
-    startedAt: number;
-    finishedAt?: number;
-  })[];
-  job_output: {
-    text: string;
-    job: {
-      id: string;
-      kind: string;
-      label: string;
-      status: "running" | "stopping" | "completed" | "killed" | "failed";
-      detail?: string;
-      startedAt: number;
-      finishedAt?: number;
-    };
-  };
-  list_agents: ({
-    name: string;
-    status: "running" | "inactive" | "corrupt" | "unsupported" | "unavailable";
-    description?: string;
-  })[];
-  read: {
-    /** Canonical absolute path in the filesystem execution world. */
-    path: string;
-    offset: number;
-    lines: {
-      number: number;
-      text: string;
-    }[];
-    totalLines: number;
-  };
+  cua: Image | JsonValue;
+  job_kill: JsonValue;
+  job_list: JsonValue;
+  job_output: JsonValue;
+  list_agents: JsonValue;
+  read: JsonValue;
   read_image: Image;
-  send_message: {
-    messageId: string;
-  };
-  sftp_list: {
-    path: string;
-    entries: {
-      name: string;
-      type: string;
-      size: number;
-      mtimeMs: number;
-      mode: number;
-      owner?: string;
-      group?: string;
-    }[];
-  };
-  sftp_mkdir: {
-    path: string;
-  };
-  sftp_read: {
-    bytes: number;
-  };
-  sftp_rename: {
-    renamed: boolean;
-  };
-  sftp_rm: {
-    removed: boolean;
-  };
-  sftp_stat: {
-    name: string;
-    type: string;
-    size: number;
-    mtimeMs: number;
-    mode: number;
-    owner?: string;
-    group?: string;
-  };
-  sftp_write: {
-    bytes: number;
-  };
-  skill: {
-    name: string;
-    provider: string;
-    resourceBase?: {
-      kind: "directory";
-      path: string;
-    } | {
-      kind: "url";
-      url: string;
-    } | {
-      kind: "opaque";
-      description: string;
-    };
-    content: string;
-  };
-  ssh_connect: {
-    id: string;
-    name: string;
-    host: string;
-    port: number;
-    username: string;
-    auth: {
-      kind: string;
-      passwordSet?: boolean;
-      privateKeyPath?: string;
-      passphraseSet?: boolean;
-    };
-    connectTimeoutMs: number;
-  };
-  ssh_connections: {
-    connections: {
-      id: string;
-      name: string;
-      host: string;
-      port: number;
-      username: string;
-      auth?: {
-        kind?: string;
-        passwordSet?: boolean;
-        privateKeyPath?: string;
-        passphraseSet?: boolean;
-      };
-      connectTimeoutMs: number;
-    }[];
-  };
-  ssh_disconnect: {
-    closed: boolean;
-  };
-  ssh_exec: {
-    exitCode: number | null;
-    signal: string | null;
-    timedOut: boolean;
-    aborted: boolean;
-    timeoutMs: number;
-    durationMs: number;
-    stdout: {
-      text: string;
-      truncated: boolean;
-    };
-    stderr: {
-      text: string;
-      truncated: boolean;
-    };
-  };
-  ssh_test: {
-    ok: boolean;
-    latencyMs?: number;
-    error?: string;
-  };
-  subagent: {
-    kind: "activation";
-    name: string;
-  };
-  subagent_fork: {
-    kind: "activation";
-    name: string;
-  };
-  todo_write: {
-    todos: ({
-      content: string;
-      status: "pending" | "in_progress" | "completed";
-    })[];
-    counts: {
-      pending: number;
-      inProgress: number;
-      completed: number;
-    };
-  };
-  update_goal: {
-    goal: null;
-  } | {
-    goal: {
-      id: string;
-      revision: number;
-      objective: string;
-      phase: "active" | "paused" | "blocked" | "complete";
-      roundsStarted: number;
-      maxGoalRounds: number;
-      blockedReason?: {
-        code: string;
-        message: string;
-      };
-    };
-    activation: "armed" | "disarmed";
-  };
-  wait_agent: {
-    timedOut: boolean;
-  };
-  web_fetch: {
-    url: string;
-    statusCode: number;
-    body: {
-      kind: "html";
-      content: string;
-    } | {
-      kind: "text";
-      content: string;
-    };
-    truncated: boolean;
-  };
-  web_search: {
-    content?: string;
-    sources: {
-      url: string;
-      title?: string;
-      snippet?: string;
-      summary?: string;
-      publishedAt?: string;
-    }[];
-    truncated: boolean;
-  };
-  workflow: {
-    kind: "background";
-    jobId: string;
-    runId: string;
-  } | {
-    kind: "foreground";
-    runId: string;
-    agentsStarted: number;
-    result: JsonValue;
-  };
-  working_directory: {
-    /** Current absolute working directory. */
-    cwd: string;
-  };
-  write: {
-    /** Canonical absolute path in the filesystem execution world. */
-    path: string;
-    operation: "create" | "update";
-    before: string | null;
-    after: string;
-  };
+  send_message: JsonValue;
+  sftp_list: JsonValue;
+  sftp_mkdir: JsonValue;
+  sftp_read: JsonValue;
+  sftp_rename: JsonValue;
+  sftp_rm: JsonValue;
+  sftp_stat: JsonValue;
+  sftp_write: JsonValue;
+  skill: JsonValue;
+  ssh_connect: JsonValue;
+  ssh_connections: JsonValue;
+  ssh_disconnect: JsonValue;
+  ssh_exec: JsonValue;
+  ssh_test: JsonValue;
+  subagent: JsonValue;
+  subagent_fork: JsonValue;
+  todo_write: JsonValue;
+  update_goal: JsonValue;
+  wait_agent: JsonValue;
+  web_fetch: JsonValue;
+  web_search: JsonValue;
+  workflow: JsonValue;
+  working_directory: JsonValue;
+  write: JsonValue;
 }
 
 type ToolName = keyof ToolOutputMap
@@ -861,3 +420,37 @@ declare const tools: {
   [K in ToolName]: (args: ToolArgsMap[K]) => Promise<ToolOutputMap[K]>;
 }
 ```
+
+The declarations above expand the tools that fit the SDK budget. These tools are bound the same way but shown compactly. Their argument schemas are not shown; use the project documentation or a declared search binding when you need exact fields.
+
+- `cua()` — Inspect desktop access, select an application and window, read AX state, capture screenshots or dispatch input. Use a...
+- `job_kill(job_id, reason?)` — Request cancellation of a running background job.
+- `job_list()` — List your background jobs (running and finished) with their ids, kinds, and statuses.
+- `job_output(job_id, wait?, timeout_ms?)` — Read a background job: output since the previous read for stream jobs, or the result of a finished final-output job.
+- `list_agents()` — List your entire subagent tree: the root agent and all reachable continuable descendants, including yourself. Rows ca...
+- `read(file_path, offset?, limit?)` — Read a UTF-8 text file and return line-numbered content.
+- `read_image(file_path)` — Read a PNG/JPEG/WebP/GIF file and return the image itself. Large images are downscaled automatically; do not install ...
+- `send_message(agent, message)` — Send a message to an agent. A working agent receives it at its next step; an idle agent starts a new turn with it. Re...
+- `sftp_list(connection, path)` — List one remote directory over SFTP (non-recursive). Entries report type, size, mtime, and mode.
+- `sftp_mkdir(connection, path, recursive?)` — Create one remote directory over SFTP. With `recursive`, missing parents are created too.
+- `sftp_read(connection, remote_path, local_path, overwrite?)` — Download one remote file to a local path over SFTP. The local file must not exist unless `overwrite` is set; a failed...
+- `sftp_rename(connection, from, to)` — Rename or move one remote path over SFTP.
+- `sftp_rm(connection, path, recursive?)` — Remove one remote file or directory over SFTP. Directories require `recursive: true` and are deleted depth-first; sym...
+- `sftp_stat(connection, path)` — Stat one remote path over SFTP without following symlinks.
+- `sftp_write(connection, local_path, remote_path)` — Upload one local file to a remote path over SFTP. The remote directory must already exist (use sftp_mkdir first).
+- `skill(name)` — Load the full instructions for a skill. Call it before acting on a task that names or clearly matches a skill in the ...
+- `ssh_connect(name, host, username, port?, auth, password?, private_key_path?, passphrase?, connect_timeout_ms?, id?)` — Save a new SSH connection definition (or update one by passing its id). The definition persists in user settings and ...
+- `ssh_connections()` — List every saved SSH connection definition (secret-free view). Use the returned id or name as the `connection` argume...
+- `ssh_disconnect(connection)` — Close the shared connection for one saved connection. Later ssh_exec/sftp_* calls reconnect automatically.
+- `ssh_exec(connection, command, timeout_ms?, cwd?)` — Execute a command on a saved SSH connection and return its stdout/stderr. Each call runs in a fresh remote shell: no ...
+- `ssh_test(connection)` — Probe one saved connection: connect, run a probe command, and close again. Reports the round-trip latency or the fail...
+- `subagent(cwd?, description, name?, prompt)` — Delegate a self-contained task to a subagent (a separate agent that works in its own context) to offload focused, ind...
+- `subagent_fork(cwd?, description, name?, prompt)` — Delegate a task to a subagent that inherits this conversation: a child agent seeded with all completed turns so far (...
+- `todo_write(todos)` — Record and update a task list to plan multi-step work and show progress; skip it for trivial single-step tasks. Add o...
+- `update_goal(goal_id, revision, action, objective?, max_goal_rounds?, blocked_reason?)` — Update the current goal.
+- `wait_agent(timeout_ms?)` — Wait for input at your next step, including agent messages, completion notifications, and user steering. Returns imme...
+- `web_fetch(url)` — Fetch the content of a specific HTTP(S) URL and return it decoded to text.
+- `web_search(queries)` — Search the web for current information. Returns an optional summary answer and a list of source URLs.
+- `workflow(script, meta, args?, run_in_background?)` — Run a JavaScript workflow script that orchestrates subagents at scale. Use this for work that fans out across many in...
+- `working_directory(cd?)` — Read the current working directory, or change it with cd. Relative paths use the current directory. Existing shells a...
+- `write(file_path, content, sandbox_permissions?, justification?)` — Create or fully replace a UTF-8 text file.

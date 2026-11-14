@@ -169,7 +169,7 @@ loop 在发布工厂前等待必需的注册完成。它对模型选择和 inbox
 
 #### 模型看到什么
 
-运行时上下文以 `<system-reminder>` 包装的 user 消息呈现。首份快照以 `The following information describes your current session:` 开头；后续快照以 `The following information describes your current session. It replaces earlier versions of this context, including any retained in conversation summaries.` 开头。贡献未变化时不再注入；压缩移除保留的快照后会重新注入提醒，恢复会话后也如此。有效集合变空时，在同一包装内发送 `Current runtime context: none. Earlier runtime-context snapshots no longer apply.`，并记录空的 sections。
+运行时上下文以 `<system-reminder>` 包装的 user 消息呈现。首份快照以 `The following information describes your current session:` 开头；后续快照以 `The following information describes your current session. It replaces earlier versions of this context, including any retained in conversation summaries.` 开头。贡献未变化时不再注入。首份快照提交后，变化集合只发送增量：变化或新增的节文本，加上被移除节的名称，未变化的节不重复。恢复、旧格式或压缩后的快照会重述完整集合。压缩移除保留的快照后会重新注入提醒，恢复会话后也如此。有效集合变空时，在同一包装内发送 `Current runtime context: none. Earlier runtime-context snapshots no longer apply.`，并记录空的 sections。
 
 #### Token 影响
 

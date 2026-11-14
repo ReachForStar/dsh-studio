@@ -19,6 +19,7 @@ declare module '@deepseek-ai/dsh-llm' {
 
 const SOURCE = 'runtime-context'
 const CLEARED = '<system-reminder>\nCurrent runtime context: none. Earlier runtime-context snapshots no longer apply.\n</system-reminder>'
+const DELTA_INTRO = 'The following runtime context sections changed and replace earlier versions of the same sections. Sections not named here remain as previously stated.'
 
 function isOwned(message: UserMessage): boolean {
   return message.source.kind === SOURCE
@@ -165,17 +166,34 @@ export class RuntimeContextProjection {
     const previous = this.retained?.sections
     if (this.retained === undefined && sections.length === 0) return
     if (previous !== undefined && deepEqualJson(previous, sections)) return
-    const intro = this.retained === undefined
-      ? 'The following information describes your current session:'
-      : 'The following information describes your current session. It replaces earlier versions of this context, including any retained in conversation summaries.'
-    const body = sections.map(section => section.text).join('\n\n')
-      .replace(/<\/system-reminder\s*>/gi, tag => `<\\${tag.slice(1)}`)
-    const snapshot = sections.length === 0
-      ? CLEARED
-      : `<system-reminder>\n${intro}\n\n${body}\n</system-reminder>`
-    return createUserMessage({
-      content: [{ type: 'text', text: snapshot }],
+    const escape = (text: string): string => text.replace(/<\/system-reminder\s*>/gi, tag => `<\\${tag.slice(1)}`)
+    const message = (text: string): UserMessage => createUserMessage({
+      content: [{ type: 'text', text }],
       source: { kind: SOURCE, form: 'snapshot', sections },
     })
+    if (sections.length === 0) return message(CLEARED)
+    // A first, resuming, legacy, or post-clear snapshot has no complete
+    // retained set to diff against, so it restates everything.
+    if (previous === undefined || this.retained === null) {
+      const intro = this.retained === undefined
+        ? 'The following information describes your current session:'
+        : 'The following information describes your current session. It replaces earlier versions of this context, including any retained in conversation summaries.'
+      const body = sections.map(section => escape(section.text)).join('\n\n')
+      return message(`<system-reminder>\n${intro}\n\n${body}\n</system-reminder>`)
+    }
+    const before = new Map(previous.map(section => [section.name, section.text]))
+    const after = new Map(sections.map(section => [section.name, section.text]))
+    const changed = sections.filter(section => before.get(section.name) !== section.text)
+    const removed = previous.filter(section => !after.has(section.name)).map(section => section.name)
+    // An order-only change does not alter any fact the model was told.
+    if (changed.length === 0 && removed.length === 0) return
+    const parts: string[] = []
+    if (changed.length > 0) parts.push(DELTA_INTRO, changed.map(section => escape(section.text)).join('\n\n'))
+    if (removed.length > 0) {
+      parts.push(changed.length === 0
+        ? `The following runtime context sections are no longer active: ${removed.join(', ')}. All other sections remain as previously stated.`
+        : `No longer active: ${removed.join(', ')}.`)
+    }
+    return message(`<system-reminder>\n${parts.join('\n\n')}\n</system-reminder>`)
   }
 }

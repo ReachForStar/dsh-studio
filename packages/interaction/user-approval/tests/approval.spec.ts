@@ -532,7 +532,7 @@ describe('ApprovalService configured rules', () => {
     expect(new ApprovalService(ctx, {})).toBeDefined()
   })
 
-  async function mountedWith(config: { policy?: 'ask' | 'never'; rules?: ApprovalRule[] }): Promise<Context> {
+  async function mountedWith(config: { policy?: 'ask' | 'never'; rules?: ApprovalRule[]; timeoutMs?: number }): Promise<Context> {
     const ctx = await context()
     await ctx.plugin(ApprovalService, config)
     return ctx
@@ -604,5 +604,14 @@ describe('ApprovalService configured rules', () => {
 
     await expect(ctx.approval.request(requestOf(agent))).resolves.toBe('unavailable')
     await expect(ctx.approval.request(requestOf(agent, { resources: ['notes.txt'] }))).resolves.toBe('allowed-once')
+  })
+
+  it('settles timed-out when the configured answer window elapses', async () => {
+    const ctx = await mountedWith({ timeoutMs: 5 })
+    const { agent, appended } = fakeAgent(ctx)
+    ctx.on('approval/request', () => new Promise<ApprovalOutcome>(() => {}))
+
+    await expect(ctx.approval.request(requestOf(agent))).resolves.toBe('timed-out')
+    expect(appended.at(-1)?.data).toMatchObject({ outcome: 'timed-out' })
   })
 })

@@ -18,14 +18,15 @@
 type ApprovalRequestId = Branded<'ApprovalRequestId'>
 ```
 
-`ApprovalOutcome` 是闭合的，且失败时拒绝。`allowed-once` 仅授权所询问的那一个操作；调用方对 `rejected`、`cancelled` 和 `unavailable` 均执行拒绝。缺失、不负责该请求、抛异常或不合规的应答者会产生 `unavailable`，而非放行。
+`ApprovalOutcome` 是闭合的，且失败时拒绝。`allowed-once` 仅授权所询问的那一个操作；调用方对 `rejected`、`cancelled`、`unavailable` 和 `timed-out` 均执行拒绝。缺失、不负责该请求、抛异常或不合规的应答者会产生 `unavailable`，而非放行；等待应答超时会产生 `timed-out`。
 
 ```ts type-equiv
 /**
  * Closed approval outcomes: a one-shot grant, explicit rejection, withdrawn
- * request, or unavailable answerer. Callers fail closed on `unavailable`.
+ * request, unavailable answerer, or an elapsed answer window. Callers fail
+ * closed on everything except `allowed-once`.
  */
-type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'
+type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable' | 'timed-out'
 ```
 
 ## 按会话策略

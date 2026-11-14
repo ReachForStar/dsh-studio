@@ -962,6 +962,43 @@ describe('applyLiteralEdit', () => {
   it('matches across normalized line endings', () => {
     expect(applyLiteralEdit('one\ntwo', 'one\ntwo', 'x', false, 'f').replacements).toBe(1)
   })
+
+  it('retries with normalized quotes', () => {
+    expect(applyLiteralEdit('say “hi” now', 'say "hi" now', 'ok', false, 'f'))
+      .toEqual({ content: 'ok', replacements: 1 })
+  })
+
+  it('retries after stripping copied line numbers', () => {
+    expect(applyLiteralEdit('alpha\nbeta\ngamma', '  1: alpha\n  2: beta', 'X', false, 'f'))
+      .toEqual({ content: 'X\ngamma', replacements: 1 })
+  })
+
+  it('retries with interpreted escapes', () => {
+    expect(applyLiteralEdit('one\ntwo', 'one\\ntwo', 'X', false, 'f'))
+      .toEqual({ content: 'X', replacements: 1 })
+  })
+
+  it('retries with a trimmed search', () => {
+    expect(applyLiteralEdit('  hello  ', 'hello', 'X', false, 'f'))
+      .toEqual({ content: '  X  ', replacements: 1 })
+  })
+
+  it('retries ignoring leading indentation', () => {
+    expect(applyLiteralEdit('    one\n    two', 'one\ntwo', 'X', false, 'f'))
+      .toEqual({ content: 'X', replacements: 1 })
+  })
+
+  it('retries with a block anchor at 0.8 line similarity', () => {
+    const content = 'start\nA\nB\nC\nend'
+    const search = 'start\nA\nB\nchanged\nend'
+    expect(applyLiteralEdit(content, search, 'X', false, 'f'))
+      .toEqual({ content: 'X', replacements: 1 })
+  })
+
+  it('reports tolerant ambiguity instead of choosing a candidate', () => {
+    expect(() => applyLiteralEdit('  one\n  one', 'one', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+  })
 })
 
 describe('readForEdit + restoreLineEndings', () => {

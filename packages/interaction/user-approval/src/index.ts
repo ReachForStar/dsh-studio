@@ -67,7 +67,7 @@ export {
 export type { ApprovalRule, ApprovalRuleEffect, ApprovalRuleMatch, ApprovalRuleRequest } from './rules.ts'
 
 /** Every {@link ApprovalOutcome}, for runtime normalization of answerer returns. */
-const OUTCOMES: readonly ApprovalOutcome[] = ['allowed-once', 'rejected', 'cancelled', 'unavailable']
+const OUTCOMES: readonly ApprovalOutcome[] = ['allowed-once', 'rejected', 'cancelled', 'unavailable', 'timed-out']
 
 /**
  * A session's approval policy — what happens to an {@link ApprovalService}
@@ -180,6 +180,12 @@ export interface Config {
    * matched against whole command words.
    */
   readonly rules?: ApprovalRule[]
+  /**
+   * Maximum time one request may wait for an answerer, in milliseconds.
+   * `0` (the default) waits until an answer or cancellation. On expiry the
+   * request settles `'timed-out'`; a late answer is discarded.
+   */
+  readonly timeoutMs?: number
 }
 
 /**
@@ -198,6 +204,7 @@ export class ApprovalService extends Service {
       effect: z.union(['allow', 'deny', 'ask'] as const),
       match: z.union(['glob', 'prefix'] as const).default('glob'),
     })).default([]),
+    timeoutMs: z.number().min(0).default(0),
   })
 
   private approvalProjectionHandle!: ProjectionHandle<ApprovalState>
@@ -592,18 +599,23 @@ export class ApprovalService extends Service {
       // tool call open — the seam contains its callbacks.
       () => 'unavailable',
     )
-    if (signal === undefined) return answer
+    if (signal === undefined && (this.config.timeoutMs ?? 0) <= 0) return answer
     return await new Promise<ApprovalOutcome>((resolve) => {
-      const onAbort = () => {
-        signal.removeEventListener('abort', onAbort)
-        resolve('cancelled')
-      }
-      signal.addEventListener('abort', onAbort, { once: true })
-      void answer.then((outcome) => {
-        signal.removeEventListener('abort', onAbort)
-        // After an abort won the race this resolve is a settled-promise no-op:
-        // the late answer is discarded by construction.
+      const timeoutMs = this.config.timeoutMs ?? 0
+      const timer = timeoutMs > 0
+        ? setTimeout(() => { finish('timed-out') }, timeoutMs)
+        : undefined
+      const finish = (outcome: ApprovalOutcome): void => {
+        if (timer !== undefined) clearTimeout(timer)
+        signal?.removeEventListener('abort', onAbort)
         resolve(outcome)
+      }
+      const onAbort = () => { finish('cancelled') }
+      signal?.addEventListener('abort', onAbort, { once: true })
+      void answer.then((outcome) => {
+        // After an abort or timeout won the race these settles are no-ops:
+        // the late answer is discarded by construction.
+        finish(outcome)
       })
     })
   }

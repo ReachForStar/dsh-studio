@@ -18,14 +18,15 @@ Every request receives a fresh `ApprovalRequestId`. The brand pairs the `approva
 type ApprovalRequestId = Branded<'ApprovalRequestId'>
 ```
 
-`ApprovalOutcome` is closed and fail-closed. `allowed-once` grants only the asked-about action; callers deny on `rejected`, `cancelled`, and `unavailable`. A missing, non-owning, throwing, or non-conforming answerer becomes `unavailable` rather than opening the gate.
+`ApprovalOutcome` is closed and fail-closed. `allowed-once` grants only the asked-about action; callers deny on `rejected`, `cancelled`, `unavailable`, and `timed-out`. A missing, non-owning, throwing, or non-conforming answerer becomes `unavailable` rather than opening the gate; an elapsed answer window becomes `timed-out`.
 
 ```ts type-equiv
 /**
  * Closed approval outcomes: a one-shot grant, explicit rejection, withdrawn
- * request, or unavailable answerer. Callers fail closed on `unavailable`.
+ * request, unavailable answerer, or an elapsed answer window. Callers fail
+ * closed on everything except `allowed-once`.
  */
-type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'
+type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable' | 'timed-out'
 ```
 
 ## Per-session policy

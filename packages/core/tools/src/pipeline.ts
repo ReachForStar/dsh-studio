@@ -8,7 +8,7 @@ import type { UserMessage } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { assertNever, deepFreeze, snapshotJsonValue, type JsonValue } from '@deepseek-ai/dsh-util-values'
 import { TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH, ToolNotFoundError, ToolOutputError } from './contracts.ts'
-import { APPROVAL_CANCELLED, APPROVAL_ERROR_NAME, APPROVAL_REJECTED, APPROVAL_UNAVAILABLE, type ApprovalErrorCode } from './error-codes.ts'
+import { APPROVAL_CANCELLED, APPROVAL_ERROR_NAME, APPROVAL_REJECTED, APPROVAL_TIMED_OUT, APPROVAL_UNAVAILABLE, type ApprovalErrorCode } from './error-codes.ts'
 import { validateJsonSchemaValue } from './json-schema.ts'
 import type { ToolsService } from './index.ts'
 import type { ResolvedToolSet, ToolDefinition, ToolExecutionInput, ToolExecutionMode, ToolExecution, ToolRunContext, ToolExecutionResult, ToolExecutionSuccess, ToolErrorInfo, ToolExecutionToken, PreToolDecision, PostToolDecision } from './contracts.ts'
@@ -507,6 +507,10 @@ export class ToolExecutionPipeline {
       }
       case 'unavailable': return {
         decision: approvalDenial(`tool "${exec.name}" requires approval, but no approval channel is available`, APPROVAL_UNAVAILABLE),
+        approvalCancelled: false,
+      }
+      case 'timed-out': return {
+        decision: approvalDenial(`approval for tool "${exec.name}" timed out without a decision`, APPROVAL_TIMED_OUT),
         approvalCancelled: false,
       }
       default: return assertNever(outcome, 'ApprovalOutcome')

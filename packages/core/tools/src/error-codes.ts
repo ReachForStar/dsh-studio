@@ -17,8 +17,12 @@ export const APPROVAL_CANCELLED = 'APPROVAL_CANCELLED'
 /** Approval code for a call that needs approval when no approval service, Agent, or channel can answer it. */
 export const APPROVAL_UNAVAILABLE = 'APPROVAL_UNAVAILABLE'
 
+/** Approval code for a request whose answer window elapsed without a decision. */
+export const APPROVAL_TIMED_OUT = 'APPROVAL_TIMED_OUT'
+
 /** One code an approval denial records under {@link APPROVAL_ERROR_NAME}. */
 export type ApprovalErrorCode = typeof APPROVAL_REJECTED | typeof APPROVAL_CANCELLED | typeof APPROVAL_UNAVAILABLE
+  | typeof APPROVAL_TIMED_OUT
 
 /** Code of `ToolContextUnavailableError`. */
 export const TOOL_CONTEXT_UNAVAILABLE = 'TOOL_CONTEXT_UNAVAILABLE'

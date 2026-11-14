@@ -53,6 +53,7 @@ The effective policy is the one set for the session, falling back to the configu
 |---|---|---|
 | `policy` | `ask` | Default for sessions without an `approval/policy` override |
 | `rules` | `[]` | Ordered `{action, resource, effect, match}` rules evaluated before the policy and the answerers |
+| `timeoutMs` | `0` | Milliseconds one request may wait for an answerer; `0` waits until an answer or cancellation |
 
 ### Rules
 
@@ -83,7 +84,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 ### Requesting a decision
 
-`request(req)` names the agent, tool, optional call id and reason, and an abort signal. Optional `displayReason` supplies localized presentation text without changing the logged reason. Set `needsHuman` when the decision must come from a person: rules cannot auto-allow such a request (a rule's `deny` still applies), and automated answerers must delegate with `next()` instead of deciding; sandbox escalation sets it. It requires an open turn: an idle or between-turn caller throws before auditing anything. Aborting withdraws the question — the request settles `cancelled` and a late answer is discarded. A failure that prevents either audit append from committing rejects instead of returning an unlogged decision.
+`request(req)` names the agent, tool, optional call id and reason, and an abort signal. Optional `displayReason` supplies localized presentation text without changing the logged reason. Set `needsHuman` when the decision must come from a person: rules cannot auto-allow such a request (a rule's `deny` still applies), and automated answerers must delegate with `next()` instead of deciding; sandbox escalation sets it. The configured `timeoutMs` may settle a request `timed-out` without a decision; a late answer is discarded. It requires an open turn: an idle or between-turn caller throws before auditing anything. Aborting withdraws the question — the request settles `cancelled` and a late answer is discarded. A failure that prevents either audit append from committing rejects instead of returning an unlogged decision.
 
 ### What the model and user see
 

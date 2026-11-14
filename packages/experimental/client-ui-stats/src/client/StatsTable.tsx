@@ -1530,6 +1530,7 @@ function eventApproval(status: string | null, t: StatsTranslate): string {
     case 'rejected': return t('event.approval.rejected')
     case 'cancelled': return t('event.approval.cancelled')
     case 'unavailable': return t('event.approval.unavailable')
+    case 'timed-out': return t('event.approval.timed-out')
     default: return status ?? ''
   }
 }

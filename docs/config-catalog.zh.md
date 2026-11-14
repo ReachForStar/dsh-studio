@@ -5158,6 +5158,12 @@ export interface Config {
    * matched against whole command words.
    */
   readonly rules?: ApprovalRule[]
+  /**
+   * Maximum time one request may wait for an answerer, in milliseconds.
+   * `0` (the default) waits until an answer or cancellation. On expiry the
+   * request settles `'timed-out'`; a late answer is discarded.
+   */
+  readonly timeoutMs?: number
 }
 
 /**

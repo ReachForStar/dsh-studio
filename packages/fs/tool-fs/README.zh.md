@@ -48,7 +48,7 @@ kind: "package-reference"
 | `read` | `file_path`、`offset?`、`limit?` | 带行号的 UTF-8 内容与分页 footer；`offset` 从 1 开始，`limit` 默认为配置的 `readLimit`，上限也为该值 |
 | `read_image` | `file_path` | 读取并持久保存 PNG/JPEG/WebP/GIF 源图；无扩展名路径（包括规范化附件对象路径）按文件签名识别格式；规范化可在下一次模型请求前缩小图片，因此模型无需先创建缩略图 |
 | `write` | `file_path`、`content` | 创建或完整替换文件；有策略插件时，覆盖要求先在未变版本上执行 `read`，创建不需要 |
-| `edit` | `file_path`、`old_string`、`new_string`、`replace_all?` | 字面量替换，除非 `replace_all` 为 true 否则要求唯一匹配；有策略插件时，要求先执行 `read` 且文件未变 |
+| `edit` | `file_path`、`old_string`、`new_string`、`replace_all?` | 字面量替换，除非 `replace_all` 为 true 否则要求唯一匹配；精确文本缺失时会依次尝试引号归一、复制的行号前缀、转义、trim、缩进弹性与块锚点，并带候选行号报告歧义；有策略插件时，要求先执行 `read` 且文件未变 |
 | `apply_patch` | `input`，以及可用时的沙箱提权字段 | 新增/更新/删除/移动，整份预检后顺序执行并保留已知部分效果 |
 
 字段名使用 snake_case，与 Claude Code 和现有 harness 工具 schema 一致。`write` 和 `edit` 的路径描述要求模型先输出 `file_path`，再输出内容或替换字符串；这用于引导流式展示，不强制 JSON 成员顺序。成功返回紧凑信封——读取窗口、图像引用或 `Created file`/`Updated file` 确认——`write`/`edit` 还会派生可回放的 diff 卡片元数据供 UI 展示。

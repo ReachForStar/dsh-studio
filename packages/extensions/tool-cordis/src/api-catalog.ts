@@ -6360,7 +6360,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ApprovalOutcome',
-    declaration: 'export type ApprovalOutcome = \'allowed-once\' | \'rejected\' | \'cancelled\' | \'unavailable\';',
+    declaration: 'export type ApprovalOutcome = \'allowed-once\' | \'rejected\' | \'cancelled\' | \'unavailable\' | \'timed-out\';',
   },
   {
     name: 'ApprovalPolicy',

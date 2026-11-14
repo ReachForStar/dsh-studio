@@ -1027,3 +1027,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 审批：命令前缀规则（`match: prefix` + 保守词法匹配）、`needsHuman` 请求标志（规则不可自动放行，沙箱升权已标记）、会话级内存规则（`/allow --session`）。交接页进度见 [codex 与 ZCode 能力落地交接](queries/codex-zcode-capability-handoff.md#2026-11-13-落地进展)。
 - 门禁：`verify-no-unknown-casts`、`verify-plugin-entry-exports`、`verify-runtime-closure`、`verify-default-product-isolation` / `verify-product-use` 全部清偿；8 个默认开启的实验包提升为稳定包，`constraints` 与 `vendor rescope` 复绿。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-11-13-hygiene-四项-fork-债务清偿)。
 - 验证：`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run constraints`、四项门禁；受影响包测试全过。
+
+## [2026-11-14] feat | 审批超时词汇与编辑降级匹配
+
+- `user-approval` 新增 `timed-out` 结果与可配置 `timeoutMs`；工具管道与沙箱升权分别新增 `APPROVAL_TIMED_OUT`、`SANDBOX_ESCALATION_TIMED_OUT`，统计面板补 8 语言文案。持久化确认记录 `2026-11-14-approval-timeout-outcome`。
+- `applyLiteralEdit` 在精确匹配失败后依次尝试引号归一、复制的行号、转义、trim、缩进弹性与块锚点（0.8），歧义仍报候选行号；`edit` 与 `str_replace_editor` 共用。
+- 验证：`pnpm exec vitest run` 受影响包、`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run verify-persistence-changes`。

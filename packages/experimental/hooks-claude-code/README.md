@@ -50,6 +50,7 @@ Use it when you own a Claude Code `hooks.json` (or a settings file whose `hooks`
 | `projectDir` | session workspace | Replaces `${CLAUDE_PROJECT_DIR}` and sets the `CLAUDE_PROJECT_DIR` env var |
 | `defaultTimeoutMs` | `600,000` | Per-hook timeout when a hook sets none (the Claude Code default) |
 | `stderrSummaryMaxChars` | `500` | Character cap on the persisted `hook/result` stderr summary |
+| `projectHooksPath` | `.claude/settings.json` | Project-relative hook config checked for each Session working directory; its hooks run only while the exact content is trusted |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-hooks-claude-code) is the exhaustive source for every accepted field.
 
@@ -67,11 +68,15 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 | `SubagentStart` | when a subagent starts | attach context to a still-running subagent (in-process only) |
 | `SubagentStop` | when a subagent ends | observe only — cannot block or add context |
 
+### Project hook configuration and trust
+
+Each Session also checks `<cwd>/.claude/settings.json` (change the relative path with `projectHooksPath`). Project hooks are untrusted content: they run only while the file's exact bytes match a digest approved for that project, and any edit suspends them until the new content is approved. `/hooks status` reports the current digest, `/hooks trust` approves it, and `/hooks revoke` withdraws the grant. Trust records live in the mounted storage domain; without one, project hooks never run. An unapproved project logs one warning and continues without its hooks.
+
 ### How hooks run and fail
 
 - Hooks run in the agent's current Session directory; `pwd`, payload `cwd`, and relative paths agree.
 - `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` in command strings are replaced from your config, and `CLAUDE_PROJECT_DIR` is set for every hook process.
-- One config applies to the whole process: it is read once at startup, and a relative `configPath` resolves from the directory that launched the process.
+- The process config applies to the whole process: it is read once at startup, and a relative `configPath` resolves from the directory that launched the process. Project configs are re-read when their file stamp changes.
 - Hooks on the same event run one after another, in config order.
 - If the config cannot be read or parsed, the bridge logs a warning and runs no hooks — the agent still starts.
 - A hook that fails to run (a bad command or a crash) is logged, and the agent continues.
@@ -183,7 +188,7 @@ These limits describe what your Claude Code hooks cannot do through this bridge 
 - **`SubagentStart` and `SubagentStop` are partial** — both report a constant `agent_type` of `general-purpose` and use the child session id where Claude Code reports the parent session. Start context is best-effort and can only reach a live in-process child; stop is observe-only and cannot block the subagent or feed it context. Stop omits `agent_transcript_path`, `last_assistant_message`, `background_tasks`, and `session_crons` and always reports `stop_hook_active: false`.
 - **`Stop` is partial** — blocking forces another model turn, but `stop_hook_active` is always `false`, `last_assistant_message`, `background_tasks`, and `session_crons` are omitted, and the consecutive-block cap is not implemented. An unconditionally blocking hook therefore force-continues every step unless it self-limits.
 - **Common payload and output fields are partial** — mapped event payloads omit `prompt_id`, `permission_mode`, and `effort` where Claude Code would provide them, and `transcript_path` is never populated: it is always the empty string, because the persistence seam exposes no artifact paths and the default Zstandard-compressed session log is not readable by hook scripts. `systemMessage` is logged + warned but not surfaced; `{"continue": false}` is recorded but does not halt the run; `suppressOutput`, `stopReason`, and `terminalSequence` are not applied.
-- **Handler and config support is partial** — only shell-form command handlers run. `http`, `mcp_tool`, `prompt`, and `agent` handlers are skipped; command-handler options such as `args`, `async`, `asyncRewake`, `shell`, `if`, `once`, and `statusMessage` are not honored. Matching handlers run serially and are not deduplicated, whereas Claude Code runs them in parallel and deduplicates identical handlers. One process-level `configPath` is parsed once at load; Claude Code's layered project, user, plugin, and policy discovery and live reload are not implemented.
+- **Handler and config support is partial** — only shell-form command handlers run. `http`, `mcp_tool`, `prompt`, and `agent` handlers are skipped; command-handler options such as `args`, `async`, `asyncRewake`, `shell`, `if`, `once`, and `statusMessage` are not honored. Matching handlers run serially and are not deduplicated, whereas Claude Code runs them in parallel and deduplicates identical handlers. One process-level `configPath` is parsed once at load, plus the per-Session `projectHooksPath` file under the digest-trust gate; Claude Code's layered user, plugin, and policy discovery and live reload are not implemented.
 
 <a id="dev-note"></a>
 ### Dev Note

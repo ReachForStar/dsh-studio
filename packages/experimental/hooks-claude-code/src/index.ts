@@ -4,13 +4,17 @@
  * start/stop. It owns Claude payloads, environment, substitution, and decision
  * mapping; shared execution and parsing live in `dsh-hook-protocol`.
  * `updatedInput` is logged and warned but not honored. Bespoke behavior should
- * use typed native plugins on the same extension points.
+ * use typed native plugins on the same extension points. A per-Session project
+ * config runs only under a digest trust approved through `/hooks`.
  * @module @deepseek-ai/dsh-hooks-claude-code
  */
 
 import type {} from '@deepseek-ai/dsh-working-directory'
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
+import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
+import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -35,12 +39,14 @@ import {
   runHook,
   selectHookGroups,
   type HookOutput,
+  type MatcherGroup,
   type MergedHookOutcome,
 } from '@deepseek-ai/dsh-hook-protocol'
 // Pulls in the declaration-merged subagent events and the identity pairing their
 // start/end edges.
 import type { SubagentRunId } from '@deepseek-ai/dsh-subagent'
 import { parseClaudeCodeConfig, type ClaudeCodeHookConfig } from './config.ts'
+import { digestHookConfig, projectHookTrustSpec, type ProjectHookTrust } from './trust.ts'
 
 export const name = 'hooks-claude-code'
 // `shell` runs hooks and `agents` supplies turn numbers; the rest
@@ -52,9 +58,8 @@ export interface Config {
   /**
    * Path to a `hooks.json` or a settings file whose `hooks` key holds the config.
    * Process-level: read once at load, a relative path resolves against the process
-   * launch cwd, so one config applies to the whole process.
-   * TODO(per-session-hook-config): per-session discovery of a project-local
-   * `hooks.json` from each `session/new.cwd`.
+   * launch cwd, so one config applies to the whole process. Project-local hooks
+   * come from `projectHooksPath` under each Session working directory.
    */
   configPath: string
   /**
@@ -73,6 +78,13 @@ export interface Config {
   defaultTimeoutMs?: number
   /** Character cap for the `hook/result` event's persisted stderr summary. */
   stderrSummaryMaxChars?: number
+  /**
+   * Project-relative path checked for each Session working directory. Its
+   * hooks run only while the file's exact content is trusted for that project;
+   * editing the file suspends them until `/hooks trust` approves the new
+   * content. Defaults to `.claude/settings.json`.
+   */
+  projectHooksPath?: string
 }
 
 export const Config: z<Config> = z.object({
@@ -81,6 +93,7 @@ export const Config: z<Config> = z.object({
   projectDir: z.string(),
   defaultTimeoutMs: z.number().default(DEFAULT_HOOK_TIMEOUT_MS),
   stderrSummaryMaxChars: z.number().default(DEFAULT_STDERR_SUMMARY_MAX_CHARS),
+  projectHooksPath: z.string().default('.claude/settings.json'),
 })
 
 /** A stable per-handler id so an invoked/result pair correlates in the log. */
@@ -131,6 +144,136 @@ export function apply(ctx: Context, config: Config): void {
   const subagentChildren = new Map<SubagentRunId, Agent>()
   ctx.effect(() => () => detached.drain(), 'hooks-claude-code: drain detached hook runs')
 
+  const projectHooksPath = config.projectHooksPath ?? '.claude/settings.json'
+  interface DiscoveredHooks {
+    readonly digest: string
+    readonly config: ClaudeCodeHookConfig
+  }
+  // Cache by absolute path and file stamp: a content edit changes the stamp and
+  // forces a re-read, so a revoked or edited file cannot keep running stale groups.
+  const discovered = new Map<string, { readonly stamp: string; readonly hooks: DiscoveredHooks | undefined }>()
+  const warnedTrust = new Set<string>()
+  let trustTable: KvTable<string, ProjectHookTrust> | undefined
+  let trustOpening: Promise<KvTable<string, ProjectHookTrust> | undefined> | undefined
+
+  /** Open the trust table on first use; absent storage leaves project hooks untrusted. */
+  function trustTableOf(): Promise<KvTable<string, ProjectHookTrust> | undefined> {
+    if (trustTable !== undefined) return Promise.resolve(trustTable)
+    trustOpening ??= (async () => {
+      const storageDomain = ctx.get('storageDomain')
+      if (storageDomain === undefined) return undefined
+      const domain = await storageDomain.open(projectHookTrustSpec)
+      if (ctx.fiber.uid === null) {
+        await domain.close()
+        return undefined
+      }
+      ctx.effect(() => () => domain.close(), 'hooks-claude-code: project hook trust domain')
+      trustTable = domain.table('projects')
+      return trustTable
+    })().finally(() => { trustOpening = undefined })
+    return trustOpening
+  }
+
+  /** Read one project's hook configuration, re-reading only when the file changed. */
+  function projectHooksOf(cwd: string): DiscoveredHooks | undefined {
+    const path = join(cwd, projectHooksPath)
+    let stamp: string
+    try {
+      const stat = statSync(path)
+      stamp = `${String(stat.mtimeMs)}:${String(stat.size)}`
+    } catch {
+      discovered.delete(path)
+      return undefined
+    }
+    const cached = discovered.get(path)
+    if (cached?.stamp === stamp) return cached.hooks
+    let hooks: DiscoveredHooks | undefined
+    try {
+      const raw = readFileSync(path, 'utf8')
+      const parsedProject = parseClaudeCodeConfig(JSON.parse(raw), {
+        ...config.pluginRoot !== undefined ? { pluginRoot: config.pluginRoot } : {},
+        projectDir: cwd,
+      })
+      for (const skipped of parsedProject.skipped) {
+        ctx.logger.warn(`hooks-claude-code: skipping unsupported "${skipped.type}" hook on ${skipped.event} in ${projectHooksPath} (only command hooks run)`)
+      }
+      hooks = { digest: digestHookConfig(raw), config: parsedProject.config }
+    } catch (error: unknown) {
+      ctx.logger.warn(`hooks-claude-code: could not parse project hooks "${path}": ${String(error)} — project hooks disabled`)
+    }
+    discovered.set(path, { stamp, hooks })
+    return hooks
+  }
+
+  /**
+   * The project groups that may run for this call. Only an exact trusted digest
+   * enables them: an edited configuration suspends every project hook until the
+   * new content is approved, and a project without a trust record runs none.
+   */
+  async function projectGroupsOf(point: string, agent: Agent | undefined): Promise<readonly MatcherGroup[]> {
+    const cwd = agent?.session.header.cwd
+    if (cwd === undefined) return []
+    const hooks = projectHooksOf(cwd)
+    if (hooks === undefined) return []
+    const table = await trustTableOf()
+    if (table?.get(cwd)?.digest === hooks.digest) return hooks.config[point] ?? []
+    const key = `${cwd}\0${hooks.digest}`
+    if (!warnedTrust.has(key)) {
+      warnedTrust.add(key)
+      ctx.logger.warn(`hooks-claude-code: project hooks in "${join(cwd, projectHooksPath)}" are not trusted for this content (digest ${hooks.digest.slice(0, 12)}); run /hooks trust to enable them`)
+    }
+    return []
+  }
+
+  ctx.inject(['commands'], (scope) => {
+    scope.commands.register({
+      name: 'hooks',
+      description: "Inspect, trust, or revoke this project's Claude Code hook configuration",
+      handler: (invocation): Promise<CommandResult> => hooksCommand(invocation),
+    })
+  })
+
+  /** `/hooks [status|trust|revoke]` over the calling Session's project directory. */
+  async function hooksCommand(invocation: CommandInvocation): Promise<CommandResult> {
+    const cwd = invocation.agent.session.header.cwd
+    if (cwd === undefined) {
+      return { kind: 'error', text: 'Hook trust needs a project directory; this Session records none.' }
+    }
+    const action = invocation.rawInput.trim()
+    const hooks = projectHooksOf(cwd)
+    const digest = hooks?.digest.slice(0, 12) ?? 'none'
+    const table = await trustTableOf()
+    if (action === '' || action === 'status') {
+      if (hooks === undefined) return { kind: 'success', text: `No hook configuration at "${projectHooksPath}".` }
+      return {
+        kind: 'success',
+        text: table?.get(cwd)?.digest === hooks.digest
+          ? `Project hooks at "${projectHooksPath}" are trusted (digest ${digest}).`
+          : `Project hooks at "${projectHooksPath}" are not trusted (digest ${digest}); run /hooks trust to enable them.`,
+      }
+    }
+    if (action !== 'trust' && action !== 'revoke') {
+      return { kind: 'error', text: 'Usage: /hooks [status|trust|revoke]' }
+    }
+    if (table === undefined) return { kind: 'error', text: 'Hook trust requires a mounted storage domain.' }
+    if (action === 'trust') {
+      if (hooks === undefined) {
+        return { kind: 'error', text: `No hook configuration at "${join(cwd, projectHooksPath)}" to trust.` }
+      }
+      await table.put(cwd, { digest: hooks.digest, trustedAt: Date.now() })
+      return { kind: 'success', text: `Trusted project hooks at "${projectHooksPath}" (digest ${digest}).` }
+    }
+    // The earlier guard leaves `revoke` as the only remaining action.
+    const recorded = table.get(cwd) !== undefined
+    if (recorded) await table.delete(cwd)
+    return {
+      kind: 'success',
+      text: recorded
+        ? `Revoked project hook trust for "${cwd}".`
+        : `No project hook trust is recorded for "${cwd}".`,
+    }
+  }
+
   /**
    * Run every command hook configured for `point` whose matcher selects
    * `matchQuery`, with the per-event `payload` on stdin, and fold the results.
@@ -146,7 +289,10 @@ export function apply(ctx: Context, config: Config): void {
     payload: Record<string, unknown>,
     opts: { agent?: Agent; turn?: number; directory?: 'committed'; readonly signal: AbortSignal },
   ): Promise<MergedHookOutcome> {
-    const groups = selectHookGroups(parsed[point], matchQuery, 'claude-code')
+    const groups = selectHookGroups([
+      ...parsed[point] ?? [],
+      ...await projectGroupsOf(point, opts.agent),
+    ], matchQuery, 'claude-code')
     if (groups.length === 0) return mergeHookOutputs([])
     const outputs: HookOutput[] = []
     const workdir = opts.agent === undefined ? undefined

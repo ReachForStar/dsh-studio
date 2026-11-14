@@ -1081,3 +1081,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `ui-approval` 在提示声明能力时提供「完全访问」，风险确认后提交；8 种语言补齐文案。
 - 持久化补 `docs/persistence-changes/2026-11-14-approval-full-access.md`，生成目录与已知事件清单刷新；决策见 [完全访问提交 Agent Note](../../.agents/notes/implemented/architecture/2026-11-14-approval-full-access-commit.md)。
 - 验证：`pnpm exec vitest run packages/interaction/user-approval/tests packages/interaction/permission-presets/tests packages/client/ui-approval/tests`（174 项）、`pnpm run typecheck`、`pnpm run test:docs`、持久化与目录门禁。
+
+## [2026-11-14] feat | 项目级钩子信任
+
+- `hooks-claude-code` 在每个钩子点发现会话目录下的 `projectHooksPath`（默认 `.claude/settings.json`），只有文件字节摘要与存储域中该项目记录一致时才运行；修改使信任失效。
+- 新增 `/hooks status|trust|revoke`；未受信任时记录一条警告并跳过，没有存储域时项目级钩子从不运行。
+- 验证：`pnpm exec vitest run packages/experimental/hooks-claude-code/tests packages/experimental/hooks-codex/tests`（134 项）、`pnpm run typecheck`、`pnpm run lint`（受影响文件）、`pnpm run test:docs`。

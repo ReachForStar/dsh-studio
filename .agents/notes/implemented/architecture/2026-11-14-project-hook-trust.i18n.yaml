@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-14-project-hook-trust.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-11-14-project-hook-trust.md
+/agent-note-project-hook-trust-is-a-content-digest-grant:
+  en: d7acac9a2d02a270
+  zh: fff9c66bd19f31b1
+/agent-note-project-hook-trust-is-a-content-digest-grant/problem:
+  en: ffb50bb2bc0f8ebc
+  zh: 9b0aa66d32ab4650
+/agent-note-project-hook-trust-is-a-content-digest-grant/decision:
+  en: 66f0a447c7a103ae
+  zh: 3c358af9c7eee8ee
+/agent-note-project-hook-trust-is-a-content-digest-grant/alternatives-considered:
+  en: cc91291a884f1b4c
+  zh: 6edd2b0a4aff2ba8
+/agent-note-project-hook-trust-is-a-content-digest-grant/consequences:
+  en: 90958491fee6da89
+  zh: 8900d2a152d4e98e

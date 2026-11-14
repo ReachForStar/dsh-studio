@@ -1871,7 +1871,7 @@ export interface HmrConfig extends ChokidarOptions {
 ## `@deepseek-ai/dsh-hooks-claude-code`
 
 - `inject`: `shell` · `agents` · `workingDirectory`
-- `source`: [`packages/experimental/hooks-claude-code/src/index.ts:51`](../packages/experimental/hooks-claude-code/src/index.ts)
+- `source`: [`packages/experimental/hooks-claude-code/src/index.ts:57`](../packages/experimental/hooks-claude-code/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: where the CC hook config lives + substitution roots. */
@@ -1879,9 +1879,8 @@ export interface Config {
   /**
    * Path to a `hooks.json` or a settings file whose `hooks` key holds the config.
    * Process-level: read once at load, a relative path resolves against the process
-   * launch cwd, so one config applies to the whole process.
-   * TODO(per-session-hook-config): per-session discovery of a project-local
-   * `hooks.json` from each `session/new.cwd`.
+   * launch cwd, so one config applies to the whole process. Project-local hooks
+   * come from `projectHooksPath` under each Session working directory.
    */
   configPath: string
   /**
@@ -1900,6 +1899,13 @@ export interface Config {
   defaultTimeoutMs?: number
   /** Character cap for the `hook/result` event's persisted stderr summary. */
   stderrSummaryMaxChars?: number
+  /**
+   * Project-relative path checked for each Session working directory. Its
+   * hooks run only while the file's exact content is trusted for that project;
+   * editing the file suspends them until `/hooks trust` approves the new
+   * content. Defaults to `.claude/settings.json`.
+   */
+  projectHooksPath?: string
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-hooks-claude-code -->

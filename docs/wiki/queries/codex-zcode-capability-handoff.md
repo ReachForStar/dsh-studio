@@ -221,7 +221,16 @@ status: draft
 
 验证：`pnpm exec vitest run packages/interaction/user-approval/tests packages/interaction/permission-presets/tests packages/client/ui-approval/tests`（174 项）、`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run verify-persistence-catalog`、`pnpm run verify-persistence-changes`、`pnpm run verify-type-equiv`、`pnpm run verify-cordis-catalog`、`pnpm run verify-config-catalog`、`pnpm run verify-doc-graphs`。
 
-仍未开始：D 的其余部分（`updated_input`、PreModelRequest/PostModelRequest、工作区信任）、F、H 的其余部分（代理与延迟审批、Provider 三层配置、诊断实验），以及 E 的窗口重置/后台推测/低峰调度/retained context、G 的后台提取/合并锁/召回选择器。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
+## 2026-11-14 D 项目级钩子信任
+
+1. **发现与准入**：`hooks-claude-code` 在每个钩子点检查会话工作目录下的 `projectHooksPath`（默认 `.claude/settings.json`）；文件原始字节的 SHA-256 摘要只有在存储域为该目录保存同一摘要时才启用项目级分组。未受信任时每个内容版本记录一条警告并跳过，进程级 `configPath` 不受影响。
+2. **确认与撤回**：新增 `/hooks status|trust|revoke`。`trust` 记录当前摘要，`revoke` 删除记录；没有存储域时项目级钩子从不运行（缺失即拒绝）。
+3. **变更失效**：解析结果按路径与 `mtime`/`size` 戳缓存，文件任一字节变化都会在下一个钩子点暂停执行，直到重新批准。
+4. **决策记录**：[项目级钩子信任 Agent Note](../../../.agents/notes/implemented/architecture/2026-11-14-project-hook-trust.md)。
+
+验证：`pnpm exec vitest run packages/experimental/hooks-claude-code/tests packages/experimental/hooks-codex/tests`（134 项）、`pnpm run typecheck`、`pnpm run lint`（受影响文件）、`pnpm run test:docs`。
+
+仍未开始：D 的其余部分（`updated_input`、PreModelRequest/PostModelRequest）、F、H 的其余部分（代理与延迟审批、Provider 三层配置、诊断实验），以及 E 的窗口重置/后台推测/低峰调度/retained context、G 的后台提取/合并锁/召回选择器。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
 
 ## 参考页面
 

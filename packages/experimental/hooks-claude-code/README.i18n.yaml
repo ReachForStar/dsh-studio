@@ -21,13 +21,16 @@
   en: 5fdf4ff17e6d9a2e
   zh: 82979c137758005d
 /deepseek-ai-dsh-hooks-claude-code/use-this-package/smallest-working-setup:
-  en: b2724490aee1f8e0
-  zh: abbcb0eebb3207a4
+  en: 297e6ec67363126f
+  zh: d3735cb05e7c0c85
 /deepseek-ai-dsh-hooks-claude-code/use-this-package/what-your-hooks-can-do:
   en: 4264671835799c2a
   zh: 0a643c533a344faa
+/deepseek-ai-dsh-hooks-claude-code/use-this-package/project-hook-configuration-and-trust:
+  en: a560c4bc432fe577
+  zh: fc7fad9b7dcad4a7
 /deepseek-ai-dsh-hooks-claude-code/use-this-package/how-hooks-run-and-fail:
-  en: d2da19a016554a19
+  en: 264dc2812f70e678
   zh: 5c579bc80b04e7a4
 /deepseek-ai-dsh-hooks-claude-code/understand-the-implementation:
   en: d33ddd080880b3f5
@@ -81,7 +84,7 @@
   en: f84fa6c0511cd113
   zh: f6ce9cdd47a72684
 /deepseek-ai-dsh-hooks-claude-code/known-limitations-and-deferred-work:
-  en: 6b684a87a264fe08
+  en: 399099cf6b694d6f
   zh: db2d3764d1d4abc0
 /deepseek-ai-dsh-hooks-claude-code/known-limitations-and-deferred-work/dev-note:
   en: b1e9a373ae8b7bb0

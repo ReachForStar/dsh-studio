@@ -50,6 +50,7 @@ kind: "package-reference"
 | `projectDir` | 会话工作区 | 替换 `${CLAUDE_PROJECT_DIR}` 并设置 `CLAUDE_PROJECT_DIR` 环境变量 |
 | `defaultTimeoutMs` | `600,000` | hook 未设置时的每 hook 超时（即 Claude Code 默认值） |
 | `stderrSummaryMaxChars` | `500` | 持久化 `hook/result` stderr 摘要的字符上限 |
+| `projectHooksPath` | `.claude/settings.json` | 每个会话工作目录下检查的项目级 hook 配置；只有内容精确受信任时其钩子才运行 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-hooks-claude-code)是每个受支持字段的穷尽式真源。
 
@@ -66,6 +67,10 @@ kind: "package-reference"
 | `Stop` | 运行即将停止时 | 带原因强制再执行一步 |
 | `SubagentStart` | subagent 启动时 | 向仍在运行的 subagent 附加上下文（仅限同进程） |
 | `SubagentStop` | subagent 结束时 | 只观测——不能阻塞或添加上下文 |
+
+### 项目级钩子配置与信任
+
+每个会话还会检查 `<cwd>/.claude/settings.json`（可用 `projectHooksPath` 改相对路径）。项目级钩子属于不受信任内容：只有文件字节与该项目的已批准摘要完全一致时才运行，任何修改都会暂停它们，直到新内容被批准。`/hooks status` 报告当前摘要，`/hooks trust` 批准它，`/hooks revoke` 撤回授权。信任记录保存在已挂载的存储域中；没有存储域时项目级钩子从不运行。未获批准的项目只记录一条警告，并在没有这些钩子的情况下继续。
 
 ### 钩子如何运行与失败
 

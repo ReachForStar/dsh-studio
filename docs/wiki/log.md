@@ -1087,3 +1087,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `hooks-claude-code` 在每个钩子点发现会话目录下的 `projectHooksPath`（默认 `.claude/settings.json`），只有文件字节摘要与存储域中该项目记录一致时才运行；修改使信任失效。
 - 新增 `/hooks status|trust|revoke`；未受信任时记录一条警告并跳过，没有存储域时项目级钩子从不运行。
 - 验证：`pnpm exec vitest run packages/experimental/hooks-claude-code/tests packages/experimental/hooks-codex/tests`（134 项）、`pnpm run typecheck`、`pnpm run lint`（受影响文件）、`pnpm run test:docs`。
+
+## [2026-11-14] feat | 模型请求观测钩子
+
+- `hooks-claude-code` 新增 `PreModelRequest`/`PostModelRequest`，挂在 `request/header` 与 `assistant/message` 旁，载荷给出 provider/model，仅观测。
+- 验证：`pnpm exec vitest run packages/experimental/hooks-claude-code/tests`（72 项）、`pnpm run typecheck`、`pnpm run lint`（受影响文件）。

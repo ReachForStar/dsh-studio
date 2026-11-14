@@ -430,22 +430,43 @@ export function apply(ctx: Context, config: Config): void {
   // blocking PreCompact answer is logged but does not cancel an admitted
   // compaction; the hook point remains observation-only here.
   ctx.on('session/event', (session, event) => {
-    if (event.type !== 'compaction/start' && event.type !== 'compaction/end') return
-    const agent = ctx.get('agents')?.get(session.id)
-    const point = event.type === 'compaction/start' ? 'PreCompact' : 'PostCompact'
-    const payload = {
-      ...base(agent, point),
-      trigger: event.data.sourceCommandId === undefined ? 'auto' : 'manual',
-      custom_instructions: '',
+    if (event.type === 'compaction/start' || event.type === 'compaction/end') {
+      const agent = ctx.get('agents')?.get(session.id)
+      const point = event.type === 'compaction/start' ? 'PreCompact' : 'PostCompact'
+      const payload = {
+        ...base(agent, point),
+        trigger: event.data.sourceCommandId === undefined ? 'auto' : 'manual',
+        custom_instructions: '',
+      }
+      observe(point, agent, payload)
+      return
     }
+    if (event.type === 'request/header') {
+      const agent = ctx.get('agents')?.get(session.id)
+      const config = event.data.header.config
+      observe('PreModelRequest', agent, modelPayload(agent, 'PreModelRequest', config.provider, config.model))
+      return
+    }
+    if (event.type === 'assistant/message') {
+      const agent = ctx.get('agents')?.get(session.id)
+      const source = event.data.message.source
+      observe('PostModelRequest', agent, modelPayload(agent, 'PostModelRequest', source.provider, source.model))
+    }
+  })
+
+  /**
+   * Run an observation-only point beside a durable lifecycle marker. A `deny`
+   * is logged and never cancels the marker's owner.
+   */
+  function observe(point: string, agent: Agent | undefined, payload: Record<string, unknown>): void {
     detached.track(runPoint(point, '', payload, { ...agent ? { agent, directory: 'committed' } : {}, signal: detached.signal })
       .then((merged) => {
         if (merged.decision === 'deny') {
-          ctx.logger.warn(`hooks-claude-code: ${point} hook answered deny; compaction continues because this hook point is observation-only`)
+          ctx.logger.warn(`hooks-claude-code: ${point} hook answered deny; this hook point is observation-only`)
         }
       })
       .catch((error: unknown) => { ctx.logger.warn(`hooks-claude-code: ${point} hook failed: ${String(error)}`) }))
-  })
+  }
 
   // A blocking Stop hook steers at the stopping boundary, which makes the
   // machine observe pending input and run another step.
@@ -523,6 +544,9 @@ function preToolPayload(exec: ToolExecution): Record<string, unknown> {
 }
 function postToolPayload(exec: ToolExecution, result: ToolExecutionResult): Record<string, unknown> {
   return { ...base(exec.agent, 'PostToolUse'), tool_name: exec.name, tool_input: exec.arguments, tool_use_id: exec.callId, tool_response: blocksToText(result.content) }
+}
+function modelPayload(agent: Agent | undefined, event: string, provider: string, model: string): Record<string, unknown> {
+  return { ...base(agent, event), provider, model }
 }
 function stopPayload(agent: Agent): Record<string, unknown> {
   return { ...base(agent, 'Stop'), stop_hook_active: false }

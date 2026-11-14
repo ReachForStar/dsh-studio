@@ -63,6 +63,7 @@ kind: "package-reference"
 | `PreToolUse` | 工具运行前 | 阻塞工具，或在运行前请求批准 |
 | `PermissionRequest` | 审批提示发出前 | 不弹提示直接拒绝；不能授予 |
 | `PreCompact` / `PostCompact` | 持久压缩标记前后 | 只观测；拒绝只记录 |
+| `PreModelRequest` / `PostModelRequest` | 请求头提交前 / 模型响应结算后 | 只观测；载荷给出 provider 与 model |
 | `PostToolUse` | 工具运行后 | 带反馈阻塞结果，或附加上下文 |
 | `Stop` | 运行即将停止时 | 带原因强制再执行一步 |
 | `SubagentStart` | subagent 启动时 | 向仍在运行的 subagent 附加上下文（仅限同进程） |
@@ -179,6 +180,7 @@ hook 不返回上下文时没有成本。Hook 文本取决于数据，会被记�
 
 这些限制描述你的 Claude Code 钩子目前还无法通过本桥接做到的事情，以及行为与参考工具的差异。它们是当前包约束，而非任务积压。
 
+- **两个扩展事件不属于 Claude Code 事件**——`PreModelRequest` 与 `PostModelRequest` 观测 harness 的模型请求边界；Claude Code 没有对应事件，因此共享配置点名它们时，在此只作为观测点。
 - **不支持的 hook 事件（Claude Code 当前 30 项中的 20 项）**——`Setup`、`InstructionsLoaded`、`UserPromptExpansion`、`MessageDisplay`、`PostToolUseFailure`、`PostToolBatch`、`PermissionDenied`、`Notification`、`TaskCreated`、`TaskCompleted`、`StopFailure`、`TeammateIdle`、`ConfigChange`、`CwdChanged`、`FileChanged`、`WorktreeCreate`、`WorktreeRemove`、`SessionEnd`、`Elicitation` 与 `ElicitationResult`。这些事件的配置会在配置组解析前被忽略，因此不支持的事件既不会使配置失效，也不会注册 hook。比较基线是 Claude Code [官方 hook 事件参考](https://code.claude.com/docs/en/hooks#hook-events)。
 - **`SessionStart` 只支持部分功能**——会消费 JSON `additionalContext`，但不支持纯 stdout 上下文、`initialUserMessage`、`sessionTitle`、`watchPaths`、`reloadSkills` 与 `CLAUDE_ENV_FILE`。hook 脱离运行，因此上下文可能错过第一个请求，payload 会省略 `model`、`agent_type` 与 `session_title` 等可选字段。
 - **`UserPromptSubmit` 只支持部分功能**——支持阻塞与 JSON `additionalContext`，但不支持纯 stdout 上下文、`sessionTitle` 与 `suppressOriginalPrompt`。除非被覆盖，否则桥接还会使用自身 600 秒默认值，而非 Claude Code 的事件特定 30 秒 command 超时。

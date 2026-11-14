@@ -63,6 +63,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 | `PreToolUse` | before a tool runs | block the tool, or ask for approval before it runs |
 | `PermissionRequest` | before an approval prompt is issued | deny without prompting; it cannot grant |
 | `PreCompact` / `PostCompact` | around a durable compaction marker | observe only; a denial is logged |
+| `PreModelRequest` / `PostModelRequest` | before a request header commits / after a model response settles | observe only; the payload names the provider and model |
 | `PostToolUse` | after a tool runs | block the result with feedback, or attach extra context |
 | `Stop` | when the run is about to stop | force another step with a reason |
 | `SubagentStart` | when a subagent starts | attach context to a still-running subagent (in-process only) |
@@ -179,6 +180,7 @@ A blocked prompt sends no request and invalidates nothing. Denial, feedback, and
 
 These limits describe what your Claude Code hooks cannot do through this bridge yet, and where behavior differs from the reference tool. They are current package constraints, not a task backlog.
 
+- **Two extension events are not Claude Code events** — `PreModelRequest` and `PostModelRequest` observe the harness model-request boundaries; Claude Code has no equivalent, so a shared config that names them behaves as observe-only extension points here.
 - **Unsupported hook events (20 of Claude Code's current 30)** — `Setup`, `InstructionsLoaded`, `UserPromptExpansion`, `MessageDisplay`, `PostToolUseFailure`, `PostToolBatch`, `PermissionDenied`, `Notification`, `TaskCreated`, `TaskCompleted`, `StopFailure`, `TeammateIdle`, `ConfigChange`, `CwdChanged`, `FileChanged`, `WorktreeCreate`, `WorktreeRemove`, `SessionEnd`, `Elicitation`, and `ElicitationResult`. Config for these events is ignored before group parsing, so an unsupported event cannot invalidate or register hooks. The comparison baseline is Claude Code's [official hook-event reference](https://code.claude.com/docs/en/hooks#hook-events).
 - **`SessionStart` is partial** — JSON `additionalContext` is consumed, but plain stdout context, `initialUserMessage`, `sessionTitle`, `watchPaths`, `reloadSkills`, and `CLAUDE_ENV_FILE` are unsupported. The hook runs detached, so context can miss the first request, and the payload omits optional fields such as `model`, `agent_type`, and `session_title`.
 - **`UserPromptSubmit` is partial** — blocking and JSON `additionalContext` work, but plain stdout context, `sessionTitle`, and `suppressOriginalPrompt` are unsupported. Unless overridden, the bridge also uses its 600-second default instead of Claude Code's event-specific 30-second command timeout.

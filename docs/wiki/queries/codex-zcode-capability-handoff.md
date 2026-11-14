@@ -230,7 +230,13 @@ status: draft
 
 验证：`pnpm exec vitest run packages/experimental/hooks-claude-code/tests packages/experimental/hooks-codex/tests`（134 项）、`pnpm run typecheck`、`pnpm run lint`（受影响文件）、`pnpm run test:docs`。
 
-仍未开始：D 的其余部分（`updated_input`、PreModelRequest/PostModelRequest）、F、H 的其余部分（代理与延迟审批、Provider 三层配置、诊断实验），以及 E 的窗口重置/后台推测/低峰调度/retained context、G 的后台提取/合并锁/召回选择器。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
+## 2026-11-14 D 模型请求观测点
+
+1. **新增事件**：`hooks-claude-code` 支持 `PreModelRequest` 与 `PostModelRequest`，分别挂在 `request/header` 与 `assistant/message` 的 durable 标记旁；载荷给出 `provider` 与 `model`，只观测，拒绝只记录。这两个事件属于 harness 扩展点，Claude Code 没有对应事件。
+2. **配置面**：解析器接受这两个事件名；无匹配器语义（`''` 查询）。
+3. **验证**：`packages/experimental/hooks-claude-code/tests/model-hooks.spec.ts` 与包内 72 项测试。
+
+仍未开始：D 的 `updated_input`、F、H 的其余部分（代理与延迟审批、Provider 三层配置、诊断实验），以及 E 的后台推测/低峰调度/retained context、G 的后台提取。A2 的自动应答者拦截依赖批次 D 的钩子面；当前以请求标志、规则不可放行与文档约定落地。
 
 ## 参考页面
 

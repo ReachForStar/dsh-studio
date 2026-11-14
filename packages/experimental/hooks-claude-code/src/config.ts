@@ -16,6 +16,8 @@ const CLAUDE_EVENTS = [
   'PostToolUse',
   'PreCompact',
   'PostCompact',
+  'PreModelRequest',
+  'PostModelRequest',
   'Stop',
   'SubagentStart',
   'SubagentStop',

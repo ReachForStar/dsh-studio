@@ -1,6 +1,6 @@
 /** Tool contribution changes and shared execution policy events. @module */
 import type { Scoped } from '@deepseek-ai/dsh-scope'
-import type { ToolExecution, ToolDispatchExecution, ToolExecutionResult, PreToolDecision, PostToolDecision } from './contracts.ts'
+import type { ToolExecution, ToolDispatchExecution, ToolExecutionResult, PreToolDecision, PostToolDecision, PermissionRequestDecision } from './contracts.ts'
 import type { ToolsService } from './index.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -16,6 +16,21 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'tools/pre-execute'(this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision>
+    /**
+     * Decide an `ask` call before the approval seam prompts anyone. A listener
+     * may deny; returning nothing or calling `next()` delegates. This point
+     * cannot grant: only the approval service's `allowed-once` runs the call,
+     * so a human-only request stays human-only.
+     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
+     * @param exec - the pending call whose approval would otherwise be requested.
+     * @param next - delegates to the next listener; the default result is no decision.
+     * @mode waterfall
+     */
+    'tools/permission-request'(
+      this: Scoped<ToolsService>,
+      exec: ToolExecution,
+      next: () => Promise<PermissionRequestDecision | undefined>,
+    ): Promise<PermissionRequestDecision | undefined>
     /**
      * Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns
      * a normalized result; wrappers may change only `exec.signal`, while call

@@ -189,6 +189,22 @@ describe('hooks-claude-code bridge — PreToolUse', () => {
     expect(result?.type === 'tool/result' && result.data.message.content.some(b => b.type === 'text' && b.text.includes('danger tool blocked'))).toBe(true)
   })
 
+  it('a PermissionRequest hook denies before any approval answerer', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-hooks-claude-'))
+    dirs.push(dir)
+    const deny = join(dir, 'deny.sh')
+    writeFileSync(deny, '#!/usr/bin/env bash\necho "permission denied" >&2\nexit 2\n')
+    chmodSync(deny, 0o755)
+    writeFileSync(join(dir, 'hooks.json'), JSON.stringify({ hooks: { PermissionRequest: [{ hooks: [{ type: 'command', command: deny }] }] } }))
+
+    const ctx = await harness(dir, new MockAdapter([textResponse('done')]))
+    const decision = await ctx.waterfall('tools/permission-request', {
+      name: 'danger', arguments: {}, callId: ToolCallId('c1'),
+    } as never, () => Promise.resolve(undefined))
+
+    expect(decision).toMatchObject({ kind: 'deny', reason: 'permission denied' })
+  })
+
   it('a PreToolUse hook whose matcher does NOT match leaves the tool alone', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-hooks-claude-'))
     dirs.push(dir)

@@ -875,6 +875,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   PtcDispatchLog: 'tools.md',
   PostToolDecision: 'tools.md',
   PreToolDecision: 'tools.md',
+  PermissionRequestDecision: 'tools.md',
   ToolDefinition: 'tools.md',
   ToolExecution: 'tools.md',
   ToolDispatchExecution: 'tools.md',

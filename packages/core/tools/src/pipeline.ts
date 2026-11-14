@@ -476,6 +476,18 @@ export class ToolExecutionPipeline {
         approvalCancelled: false,
       }
     }
+    // A pre-approval listener may deny without prompting; it cannot grant, so
+    // a human-only request still reaches the answerers.
+    const preDecision = await this.ctx.waterfall(
+      scopeTarget(this.tools, exec.agent), 'tools/permission-request', exec,
+      () => Promise.resolve(undefined),
+    )
+    if (preDecision?.kind === 'deny') {
+      return {
+        decision: approvalDenial(preDecision.reason ?? `tool "${exec.name}" was denied before approval`, APPROVAL_REJECTED),
+        approvalCancelled: false,
+      }
+    }
     const classified = this.classifyApprovalResources(exec)
     const outcome = await approval.request({
       agent: exec.agent,

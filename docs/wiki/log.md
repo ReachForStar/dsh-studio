@@ -1043,3 +1043,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - `compaction-basic` 新增 `failurePauseThreshold`（默认 3，0 关闭）：连续 pre-step 压缩失败达到阈值后暂停自动压力，成功压缩或切换模型恢复；手动 `compactNow` 成功清除暂停。
 - 验证：`pnpm exec vitest run packages/compaction/compaction-basic/tests` 173 项、`pnpm run typecheck`、`pnpm run test:docs`。
+
+## [2026-11-14] feat | 审批前 PermissionRequest 钩子
+
+- 新增 `tools/permission-request` waterfall：审批接缝在询问应答者前分发，监听器只能 deny 或委托，不能授予。
+- `hooks-claude-code` 支持 `PermissionRequest` 事件；子系统中英页面、事件图与 Cordis 目录同步。
+- 验证：`pnpm exec vitest run packages/core/tools/tests/tools.spec.ts packages/experimental/hooks-claude-code/tests/bridge.spec.ts`、`pnpm run typecheck`、`pnpm run test:docs`。

@@ -389,6 +389,14 @@ export type PreToolDecision =
   | { kind: 'ask'; reason?: string; displayReason?: { readonly en: string; readonly [locale: string]: string } }
 
 /**
+ * Pre-approval decision for an `ask` call. A listener may deny before any
+ * answerer sees the request; returning nothing (or calling `next()`) delegates
+ * to the approval seam. This waterfall cannot grant: only `allowed-once` from
+ * the approval service runs the call.
+ */
+export type PermissionRequestDecision = { kind: 'deny'; reason?: string }
+
+/**
  * Post-dispatch decision: accept, replace one projection, attach context for the
  * next request, or block by turning corrective feedback into an error result
  * whose optional `info` is its structured error identity.

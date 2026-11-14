@@ -24,8 +24,8 @@
   en: b2724490aee1f8e0
   zh: abbcb0eebb3207a4
 /deepseek-ai-dsh-hooks-claude-code/use-this-package/what-your-hooks-can-do:
-  en: 6c3b126e6607c311
-  zh: 33199f443edb2824
+  en: ee6a857614700cb8
+  zh: 9816a0abd1ea99d7
 /deepseek-ai-dsh-hooks-claude-code/use-this-package/how-hooks-run-and-fail:
   en: d2da19a016554a19
   zh: 5c579bc80b04e7a4
@@ -33,14 +33,14 @@
   en: d33ddd080880b3f5
   zh: 64328f5239c26752
 /deepseek-ai-dsh-hooks-claude-code/understand-the-implementation/hook-point-mapping:
-  en: d315f54ec60f8860
-  zh: 53b7a6531d9f4bbb
+  en: 89d33e4e9e554b5e
+  zh: 438559a61f890060
 /deepseek-ai-dsh-hooks-claude-code/understand-the-implementation/payloads-and-environment:
   en: 0389b516653c7f45
   zh: 15ec2182113a9aa4
 /deepseek-ai-dsh-hooks-claude-code/understand-the-implementation/matcher-subjects-and-serial-execution:
-  en: 0f30690502687688
-  zh: 19d4ec653c19f00e
+  en: 00e20d64d9e5bde5
+  zh: 41d201d32fb2d819
 /deepseek-ai-dsh-hooks-claude-code/understand-the-implementation/detached-runs-and-disposal:
   en: b04f07b845653345
   zh: 9159c4a908e292cb
@@ -81,8 +81,8 @@
   en: f84fa6c0511cd113
   zh: f6ce9cdd47a72684
 /deepseek-ai-dsh-hooks-claude-code/known-limitations-and-deferred-work:
-  en: 23ab8cf19542ea03
-  zh: e56f896b4393c1c5
+  en: add6c8b5eb2a8034
+  zh: 4c703313d6d5eff3
 /deepseek-ai-dsh-hooks-claude-code/known-limitations-and-deferred-work/dev-note:
   en: b1e9a373ae8b7bb0
   zh: 30446fe59d5ec8be

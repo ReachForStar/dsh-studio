@@ -248,6 +248,16 @@ export function apply(ctx: Context, config: Config): void {
     return next()
   })
 
+  // --- PermissionRequest → pre-approval deny only. Matcher subject is the tool name. ---
+  ctx.on('tools/permission-request', async (exec, next) => {
+    const turn = lastTurn(ctx, exec.agent)
+    const merged = await runPoint('PermissionRequest', exec.name, preToolPayload(exec), { ...exec.agent ? { agent: exec.agent } : {}, turn, signal: exec.signal })
+    // This point cannot grant: allow/ask fall through to the approval seam so a
+    // human-only request still reaches a person, and rules still apply.
+    if (merged.decision === 'deny') return { kind: 'deny', reason: merged.reason ?? 'blocked by PermissionRequest hook' }
+    return next()
+  })
+
   // --- PostToolUse → PostToolDecision. Matcher subject is the tool name. ---
   ctx.on('tools/post-execute', async (exec, result, next): Promise<PostToolDecision> => {
     const turn = lastTurn(ctx, exec.agent)

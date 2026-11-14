@@ -5933,6 +5933,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'exec', description: 'the allowed call about to dispatch (name, parsed arguments, caller agent, signal).' }],
   },
   {
+    name: 'tools/permission-request',
+    mode: 'waterfall',
+    signature: '\'tools/permission-request\'( this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PermissionRequestDecision | undefined>, ): Promise<PermissionRequestDecision | undefined>',
+    summary: 'Decide an `ask` call before the approval seam prompts anyone.',
+    description: 'Decide an `ask` call before the approval seam prompts anyone. A listener may deny; returning nothing or calling `next()` delegates. This point cannot grant: only the approval service\'s `allowed-once` runs the call, so a human-only request stays human-only. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent\'s calls.',
+    parameters: [{ name: 'exec', description: 'the pending call whose approval would otherwise be requested.' }, { name: 'next', description: 'delegates to the next listener; the default result is no decision.' }],
+  },
+  {
     name: 'tools/post-execute',
     mode: 'waterfall',
     signature: '\'tools/post-execute\'(this: Scoped<ToolsService>, exec: ToolExecution, result: Readonly<ToolExecutionResult>, next: () => Promise<PostToolDecision>): Promise<PostToolDecision>',
@@ -8503,6 +8511,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PermissionCatalog',
     declaration: 'export interface PermissionCatalog {\n    options: PresetOption[];\n    defaultOptions: PresetOption[];\n    defaultPreset: string;\n}',
+  },
+  {
+    name: 'PermissionRequestDecision',
+    declaration: 'export type PermissionRequestDecision = {\n    kind: \'deny\';\n    reason?: string;\n};',
   },
   {
     name: 'PiAiRequestHeaderContext',

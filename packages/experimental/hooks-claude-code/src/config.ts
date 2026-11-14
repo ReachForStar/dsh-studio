@@ -12,6 +12,7 @@ const CLAUDE_EVENTS = [
   'SessionStart',
   'UserPromptSubmit',
   'PreToolUse',
+  'PermissionRequest',
   'PostToolUse',
   'Stop',
   'SubagentStart',

@@ -874,6 +874,12 @@ export interface BasicCompactionConfig extends CompactionPolicyConfig {
   failurePauseThreshold?: number
   /** Retry a failed configured summarization model with the conversation's routed model. Defaults to `true`. */
   summarizationFallback?: boolean
+  /**
+   * Replace the compacted span with a locally authored window card instead of
+   * a model summary: the current goal and the most recent request, with the
+   * earlier detail dropped by policy. Defaults to `false`.
+   */
+  windowReset?: boolean
 }
 
 /** Policy fields shared by the default policy and exact model overrides. */
@@ -2778,6 +2784,17 @@ export interface Config {
   maxWriteChars?: number
   /** Register the `memory_write` tool. Defaults to `true`; requires `tools` and `fs`. */
   writeTool?: boolean
+  /**
+   * Rank note entries by overlap with the current step and fill the character
+   * budget with the best matches before the rest. Defaults to `true`; `false`
+   * injects entries in file order and truncates the tail.
+   */
+  recall?: boolean
+  /**
+   * Age in milliseconds after which a local `MEMORY.md.lock` is treated as
+   * abandoned and reclaimed. Defaults to ten minutes.
+   */
+  lockStaleMs?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-memory-notes -->

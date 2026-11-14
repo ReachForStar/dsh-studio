@@ -10,7 +10,9 @@ import { CompactionEngine, ManualCompactionError } from '@deepseek-ai/dsh-compac
 import type { CompactionResult, CompactionTrigger, PressureTriggerOptions } from '@deepseek-ai/dsh-compaction'
 import type { EpochHeader, Session, SessionSeq } from '@deepseek-ai/dsh-session'
 import { CONTEXT_WINDOW_EXCEEDED_CODE, LlmError } from '@deepseek-ai/dsh-llm'
-import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, LlmCallConfig, Message } from '@deepseek-ai/dsh-llm'
+// Type-only: makes the optional goal service available to `ctx.get()`.
+import type {} from '@deepseek-ai/dsh-goal'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
@@ -77,6 +79,40 @@ function conversationTarget(
   return { provider: agent.options.provider, model: agent.options.model }
 }
 
+/**
+ * Build the locally authored window card: the current goal and the most recent
+ * user request, framed as the replacement for a span dropped at the token
+ * budget. No provider or model was consulted, and the card records that through
+ * its route fields.
+ * @param ctx - context that may compose the optional goal service.
+ * @param agent - owner of the compacted session.
+ * @param messages - the replayed conversation prefix being replaced.
+ * @returns summary blocks plus the local route identity.
+ */
+function windowResetSummary(ctx: Context, agent: Agent, messages: readonly Message[]): SummaryResult {
+  const objective = ctx.get('goals')?.get(agent)?.objective.trim()
+  const lastRequest = messages
+    .filter(message => message.role === 'user')
+    .flatMap(message => message.content)
+    .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
+    .at(-1)?.text.trim()
+  // The card must stay cheaper than the span it replaces: keep the most recent
+  // request to a short intent preview instead of copying the whole prompt.
+  const preview = lastRequest?.replace(/\s+/gu, ' ')
+  const lastLine = preview === undefined ? undefined
+    : preview.length > 160 ? `${preview.slice(0, 157)}…` : preview
+  const lines = [
+    'This session reached its token budget and restarted its context window; earlier detail was dropped by the configured window-reset policy.',
+    ...objective === undefined || objective.length === 0 ? [] : [`Current goal: ${objective}`],
+    ...lastLine === undefined || lastLine.length === 0 ? [] : [`Most recent request: ${lastLine}`],
+  ]
+  return {
+    summary: [{ type: 'text', text: lines.join('\n\n') }],
+    provider: 'local',
+    model: 'window-reset',
+  }
+}
+
 const thresholdRatioSchema = z.number()
 const headroomTokensSchema = z.number().step(1).min(0)
 const retainRatioSchema = z.number()
@@ -88,6 +124,7 @@ const compactionRetriesSchema = z.number().step(1).min(0)
 const maxOverflowRetriesSchema = z.number().step(1).min(0)
 const failurePauseThresholdSchema = z.number().step(1).min(0)
 const summarizationFallbackSchema = z.boolean()
+const windowResetSchema = z.boolean()
 
 const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   provider: z.string().required(),
@@ -128,6 +165,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     auto: z.boolean(),
     failurePauseThreshold: failurePauseThresholdSchema,
     summarizationFallback: summarizationFallbackSchema,
+    windowReset: windowResetSchema,
   })
 
   /** Resolved and validated compaction configuration. */
@@ -282,6 +320,9 @@ export class BasicCompactionEngine extends CompactionEngine {
     agent: Agent,
     signal?: AbortSignal,
   ): Promise<SummaryResult> {
+    // The window-reset policy authors its card locally and makes no model call,
+    // so the configured or routed summarization target never applies.
+    if (this.config.windowReset) return windowResetSummary(this.ctx, agent, input.messages)
     const target = conversationTarget(agent)
     const config = target === undefined
       ? this.config

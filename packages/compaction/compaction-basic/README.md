@@ -76,10 +76,15 @@ All settings are optional. With context window `W`, effective request output cap
 | `maxOverflowRetries` | `1` | Maximum retries after a confirmed context-window overflow; `0` disables recovery only. |
 | `failurePauseThreshold` | `3` | Consecutive pre-step compaction failures that pause automatic pressure until a success or model switch; `0` never pauses. |
 | `summarizationFallback` | `true` | Retry a failed configured summarization model with the conversation's routed model. |
+| `windowReset` | `false` | Replace the compacted span with a locally authored card (current goal and recent request) instead of a model summary. |
 | `modelPolicies` | `[]` | Exact `{ provider, model, ...partialPolicy }` overrides for individual model routes. |
 | `auto` | `true` | Enable automatic condensation and overflow recovery; set `false` for manual-only operation. |
 
 Misconfiguration fails fast: unknown settings, duplicate per-model overrides, invalid token counts, both retention forms together, or a retention ratio at least as large as the threshold ratio reject the plugin at load. When the model is first used, `W − O − B` must be positive and the resolved retained budget must be below the trigger. Zero headroom requires an explicit positive `maxTokens`, globally or in that model policy. Small-window deployments must configure headroom that fits their capacity; lower `thresholdRatio` to compact earlier.
+
+### Window reset without a summary call
+
+With `windowReset: true`, a qualifying condensation makes no model call: the compacted span becomes one locally authored card holding the session's current goal, when the goal service is composed, and a short preview of the most recent request. The earlier detail is dropped by policy rather than re-described, which keeps the cost independent of the history size; the retained tail still stays verbatim. The `compaction/summary` event records the route as `local` / `window-reset` so a reader can tell the card apart from a provider summary. The card must still be smaller than the span it replaces, exactly as a model summary must.
 
 ### What happens when condensation runs
 

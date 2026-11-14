@@ -326,6 +326,7 @@ describe('compact configuration and defaults', () => {
       auto: true,
       failurePauseThreshold: 3,
       summarizationFallback: true,
+      windowReset: false,
     })
     expect(Object.isFrozen(resolved)).toBe(true)
   })

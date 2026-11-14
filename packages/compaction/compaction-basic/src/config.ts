@@ -42,6 +42,7 @@ const BASIC_COMPACT_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'auto',
   'failurePauseThreshold',
   'summarizationFallback',
+  'windowReset',
 ])
 
 /** Complete exact-target override key set. */
@@ -75,6 +76,9 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
   }
   if (config.summarizationFallback !== undefined && typeof config.summarizationFallback !== 'boolean') {
     throw new Error('BasicCompactionConfig: summarizationFallback must be a boolean')
+  }
+  if (config.windowReset !== undefined && typeof config.windowReset !== 'boolean') {
+    throw new Error('BasicCompactionConfig: windowReset must be a boolean')
   }
   const failurePauseThreshold = config.failurePauseThreshold ?? 3
   if (!Number.isSafeInteger(failurePauseThreshold) || failurePauseThreshold < 0) {
@@ -117,6 +121,7 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     auto: config.auto ?? true,
     failurePauseThreshold,
     summarizationFallback: config.summarizationFallback ?? true,
+    windowReset: config.windowReset ?? false,
   })
 }
 

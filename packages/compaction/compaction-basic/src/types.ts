@@ -52,6 +52,12 @@ export interface BasicCompactionConfig extends CompactionPolicyConfig {
   failurePauseThreshold?: number
   /** Retry a failed configured summarization model with the conversation's routed model. Defaults to `true`. */
   summarizationFallback?: boolean
+  /**
+   * Replace the compacted span with a locally authored window card instead of
+   * a model summary: the current goal and the most recent request, with the
+   * earlier detail dropped by policy. Defaults to `false`.
+   */
+  windowReset?: boolean
 }
 
 /** Exactly one validated retention form. */
@@ -76,6 +82,7 @@ export type ResolvedConfig = ResolvedPolicyFields & ResolvedRetention & {
   readonly auto: boolean
   readonly failurePauseThreshold: number
   readonly summarizationFallback: boolean
+  readonly windowReset: boolean
 }
 
 /** Fully merged policy for one routed conversation target, before capacity scaling. */

@@ -40,6 +40,7 @@ const BASIC_COMPACT_CONFIG_KEYS: ReadonlySet<string> = new Set([
   ...POLICY_CONFIG_KEYS,
   'modelPolicies',
   'auto',
+  'failurePauseThreshold',
 ])
 
 /** Complete exact-target override key set. */
@@ -70,6 +71,10 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
   validatePolicy(config, 'BasicCompactionConfig')
   if (config.auto !== undefined && typeof config.auto !== 'boolean') {
     throw new Error('BasicCompactionConfig: auto must be a boolean')
+  }
+  const failurePauseThreshold = config.failurePauseThreshold ?? 3
+  if (!Number.isSafeInteger(failurePauseThreshold) || failurePauseThreshold < 0) {
+    throw new Error('BasicCompactionConfig: failurePauseThreshold must be a non-negative integer')
   }
 
   const headroomTokens = config.headroomTokens ?? 65_536
@@ -106,6 +111,7 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     maxOverflowRetries: config.maxOverflowRetries ?? 1,
     modelPolicies,
     auto: config.auto ?? true,
+    failurePauseThreshold,
   })
 }
 

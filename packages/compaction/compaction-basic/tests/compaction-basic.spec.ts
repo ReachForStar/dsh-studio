@@ -324,6 +324,7 @@ describe('compact configuration and defaults', () => {
       maxOverflowRetries: 1,
       modelPolicies: [],
       auto: true,
+      failurePauseThreshold: 3,
     })
     expect(Object.isFrozen(resolved)).toBe(true)
   })
@@ -2043,6 +2044,30 @@ describe('automatic listener and loader composition', () => {
     await expect(preStep(ctx, agent(session, MODEL))).resolves.toEqual({ kind: 'enter', messages: [] })
     expect(warnings).toContainEqual(expect.stringContaining('temporary failure'))
     expect(session.snapshotEvents().some(event => event.type === 'compaction/summary')).toBe(false)
+  })
+
+  it('pauses automatic pressure after the configured consecutive failures', async () => {
+    const ctx = createContext()
+    const warnings: string[] = []
+    ctx.logger.warn = ((message: string) => void warnings.push(message)) as typeof ctx.logger.warn
+    const compact = new TestCompactionEngine(ctx, {
+      headroomTokens: 0,
+      maxTokens: 8192,
+      thresholdRatio: 0.5,
+      retainTokens: 180,
+      failurePauseThreshold: 2,
+    })
+    compact.error = 'temporary failure'
+    const session = conversation(4)
+    const owner = agent(session, MODEL)
+
+    await preStep(ctx, owner)
+    await preStep(ctx, owner)
+    const attempts = compact.calls.length
+    await preStep(ctx, owner)
+
+    expect(compact.calls).toHaveLength(attempts)
+    expect(warnings).toContainEqual(expect.stringContaining('pausing automatic pressure'))
   })
 
   it('warns once per routed target when proactive pressure has no context metadata', async () => {

@@ -1038,3 +1038,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - `workspace-changes` 新增 `rewind(sessionId, turn, signal)` 与 `/rewind <turn>`：先预检所有列出文件，当前内容偏离轮次结束侧、二进制、超限或缺来源时跳过并报告原因，随后写回轮次开始文本或删除该轮新建文件。
 - 验证：`pnpm exec vitest run packages/deliverables/workspace-changes/tests`（新增 3 组 non-git / 无 git 用例）、`pnpm run typecheck`、`pnpm run test:docs`。
+
+## [2026-11-14] feat | 压缩失败熔断
+
+- `compaction-basic` 新增 `failurePauseThreshold`（默认 3，0 关闭）：连续 pre-step 压缩失败达到阈值后暂停自动压力，成功压缩或切换模型恢复；手动 `compactNow` 成功清除暂停。
+- 验证：`pnpm exec vitest run packages/compaction/compaction-basic/tests` 173 项、`pnpm run typecheck`、`pnpm run test:docs`。

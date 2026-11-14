@@ -86,6 +86,7 @@ const summarizationModelSchema = z.string()
 const maxTokensSchema = z.number().step(1).min(1)
 const compactionRetriesSchema = z.number().step(1).min(0)
 const maxOverflowRetriesSchema = z.number().step(1).min(0)
+const failurePauseThresholdSchema = z.number().step(1).min(0)
 
 const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   provider: z.string().required(),
@@ -124,6 +125,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     maxOverflowRetries: maxOverflowRetriesSchema,
     modelPolicies: z.array(modelPolicy),
     auto: z.boolean(),
+    failurePauseThreshold: failurePauseThresholdSchema,
   })
 
   /** Resolved and validated compaction configuration. */
@@ -132,6 +134,9 @@ export class BasicCompactionEngine extends CompactionEngine {
   private readonly warnedPressureConfigTargets = new Set<string>()
   private readonly overflowRetries = new WeakMap<Agent, number>()
   private readonly overflowAgents = new WeakMap<Session, Agent>()
+  /** Consecutive pre-step compaction failures, and agents paused until a success or model switch. */
+  private readonly pressureFailures = new WeakMap<Agent, number>()
+  private readonly pausedAgents = new WeakSet<Agent>()
 
   constructor(ctx: Context, config: BasicCompactionConfig = {}) {
     super(ctx)
@@ -158,9 +163,10 @@ export class BasicCompactionEngine extends CompactionEngine {
       { agent, signal },
       next,
     ): Promise<PreStepDecision> => {
-      if (!signal.aborted) {
+      if (!signal.aborted && !this.pausedAgents.has(agent)) {
         try {
           const result = await this.compactIfNeeded(agent, 'pressure', signal)
+          this.clearPressurePause(agent)
           if (result !== null) logResult(result, 'step pressure')
         } catch (error: unknown) {
           if (error instanceof TargetPressureConfigError) {
@@ -169,6 +175,7 @@ export class BasicCompactionEngine extends CompactionEngine {
           }
           const message = error instanceof Error ? error.message : String(error)
           ctx.logger.warn(`step compaction failed: ${message}; continuing the turn`)
+          this.notePressureFailure(agent, message)
         }
       }
       return next()
@@ -185,6 +192,7 @@ export class BasicCompactionEngine extends CompactionEngine {
       const previous = agent.session.requestHeader()
       if (signal.aborted || previous === undefined || config.provider === '' || config.model === ''
         || (previous.config.provider === config.provider && previous.config.model === config.model)) return config
+      this.clearPressurePause(agent)
       try {
         const header = { ...previous, config }
         const result = await this.compactPressure(agent, header, signal, true)
@@ -415,8 +423,9 @@ export class BasicCompactionEngine extends CompactionEngine {
     sourceCommandId?: CommandId,
   ): Promise<CompactionResult | null> {
     signal.throwIfAborted()
+    let running: Promise<CompactionResult | null>
     try {
-      return agent.runMaintenance(async (agentSignal) => {
+      running = agent.runMaintenance(async (agentSignal) => {
         const operationSignal = AbortSignal.any([agentSignal, signal])
         try {
           operationSignal.throwIfAborted()
@@ -461,6 +470,29 @@ export class BasicCompactionEngine extends CompactionEngine {
         { cause: error },
       )
     }
+    return running.then((result) => {
+      this.clearPressurePause(agent)
+      return result
+    })
+  }
+
+  /** Reset the automatic pressure failure count after a success or model switch. */
+  private clearPressurePause(agent: Agent): void {
+    this.pressureFailures.delete(agent)
+    this.pausedAgents.delete(agent)
+  }
+
+  /** Count one pre-step failure and pause automatic pressure at the configured threshold. */
+  private notePressureFailure(agent: Agent, message: string): void {
+    const failures = (this.pressureFailures.get(agent) ?? 0) + 1
+    this.pressureFailures.set(agent, failures)
+    const threshold = this.config.failurePauseThreshold
+    if (threshold === 0 || failures < threshold || this.pausedAgents.has(agent)) return
+    this.pausedAgents.add(agent)
+    this.ctx.logger.warn(
+      `step compaction failed ${String(failures)} consecutive times; pausing automatic pressure `
+      + `until a successful compaction or a model switch: ${message}`,
+    )
   }
 
   /** Bind the effective token meter and dynamically dispatched summarizer hook. */

@@ -30,11 +30,11 @@ status: active
 已发布 `dsh-v0.2.2-rc.4`（非 prerelease，仓库 Latest），资产：
 
 - `dsh-0.2.2-rc.4-npm.tar.gz.zip`（416 个 tarball + `publish-order.txt`）
-- macOS arm64 dmg 与 Windows x64 exe，各带 `SHA256SUMS-<target>` 与 `nightly*.yml`
+- macOS arm64/x64 dmg 与 Windows x64 exe，各带 `SHA256SUMS-<target>` 与 `nightly*.yml`
 
 **Linux x64 桌面包未能产出（阻塞）**：运行时冒烟转换 docx 时报 `Installed LibreOfficeKit package is incomplete: @deepseek-ai/libreoffice-kit-linux-x64-glibc`。证据链：`@deepseek-ai/libreoffice-kit@0.2.3` 的 `index.js` 内置引擎表要求 Linux 使用 `linux-<arch>-glibc` 引擎包、版本固定 `0.1.1`；该包在 npm 上不存在（`npm view` 404），`pnpm-workspace.yaml` 的 `onlyPlatformBuilds` 也只列了 darwin/win32/wasm；上游的 `desktop-publish.yml` 在自托管 Linux runner 上构建，引擎由该机器提供。fork 的 `release-desktop.yml` 跑在 `ubuntu-latest`，拿不到该引擎。
 
-**macOS x64 首次失败**：运行期 docx/xlsx 冒烟转换报 `LibreOffice conversion timed out`（arm64 与 Windows 同一提交通过），按 `workflow_dispatch` 带 `release_tag` 重跑补齐。
+**macOS x64 首次失败后重跑通过**：首次运行期冒烟转换报 `LibreOffice conversion timed out`（arm64 与 Windows 同一提交通过），按 `workflow_dispatch` 带 `release_tag` 重跑后该目标成功并附上 dmg 与校验和；同一重跑里 Linux 仍失败，与上述引擎缺失一致。
 
 ## 复发预防
 

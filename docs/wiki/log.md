@@ -1113,3 +1113,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 测试预算改为全局 30 秒（`vitest.config.ts` 两个 inline 项目，覆盖层预算仍可上调）+ `client-ui-forge`/`experimental/worktree` 夹具套件 60 秒文件级上限；CLI 传参对 inline 项目无效的旧做法作废。
 - 顺带修 `ui-polish` 四处组件未清理的通知定时器（jsdom 拆除后 `window is not defined` 未处理异常）。
 - 验证：`pnpm run lint`、`pnpm run typecheck`、`pnpm run build:artifacts` + `build:check`、`pnpm run test:docs`（21 门），以及默认配置下的全量 `pnpm exec vitest run`（60692 通过 / 1 既定期望失败 / 274 跳过 / 0 未处理错误）。
+
+## [2026-11-15] 发布 | dsh 0.2.2-rc.4
+
+- 上游 `dsh-v0.2.2-rc.3` 已在 npm 占用同号，发布改用 `0.2.2-rc.4`：`release:dsh` 对齐 416 个成员、`release/verify` 通过、`build:official` 绑定发布提交、`pack` 出 416 个 tarball 并打包为 `dsh-0.2.2-rc.4-npm.tar.gz.zip`。
+- 已发布 `dsh-v0.2.2-rc.4`（仓库 Latest）：npm zip、macOS arm64 dmg、Windows x64 exe、校验和与 nightly 通道文件。
+- 阻塞：Linux x64 桌面包缺少 `@deepseek-ai/libreoffice-kit-linux-x64-glibc@0.1.1` 引擎（npm 404、workspace 允许清单不含、上游在自托管 runner 上构建）；macOS x64 首次冒烟超时已按 `workflow_dispatch` 重跑。
+- 记录见 [发布 dsh 0.2.2-rc.4](queries/release-dsh-0.2.2-rc.4.md)。

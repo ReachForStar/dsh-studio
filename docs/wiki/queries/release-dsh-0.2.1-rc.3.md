@@ -117,6 +117,7 @@ gh attestation verify <安装包> -R <owner>/<repo>   # 出处证明（需较新
 
 - [fork 发布 rc.2 的流程与门禁踩坑](fork-release-dsh-0.2.1-rc.2.md)：本流程的前一次记录（家族版本、`workspace:*` 协议、构建记录绑定 HEAD）。
 - [合并上游 upstream/master（2026-11-15）](upstream-merge-2026-11-15.md)：本页「合并后先对齐 fork 自研包版本」的最新实例（`0.2.2-rc.3`，33 个清单）。
+- [发布 dsh 0.2.2-rc.4](release-dsh-0.2.2-rc.4.md)：本流程的下一次记录（版本改用上游之后的新号、Linux 桌面引擎缺失的阻塞证据）。
 - [Linux 桌面 deb 安装包与 Release 工作流](desktop-deb-release.md)：桌面工作流的四目标与三触发设计。
 - [持久化历史分叉与来源种类补记](persistence-history-fork-repair.md)：本批先修掉的持久化门禁缺口。
 

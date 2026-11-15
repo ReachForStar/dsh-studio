@@ -90,3 +90,4 @@ pnpm exec tsx scripts/release/verify.ts --family dsh  # 416 个成员统一 0.2.
 - 工具面：[工具目录与参数修复](../../../docs/subsystems/tools.md)、`ToolApprovalResources`
 - 目录生成、双语配对、持久化格式引用：本页「验证」与「复发预防」
 - 合并暴露的 lint 红项与本机超时：[lint 红项清零与本机测试预算](lint-debt-clearance-and-local-test-budget.md)
+- 合并之后的发版：[发布 dsh 0.2.2-rc.4](release-dsh-0.2.2-rc.4.md)

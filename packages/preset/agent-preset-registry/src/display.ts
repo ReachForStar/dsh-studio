@@ -19,6 +19,8 @@ const BUILT_IN_PRESET_KEYS: Readonly<Partial<Record<string, PresetLocaleKeys>>> 
   ptc: { name: 'presetPtcName', description: 'presetPtcDescription' },
   minimal: { name: 'presetMinimalName', description: 'presetMinimalDescription' },
   cordis: { name: 'presetCordisName', description: 'presetCordisDescription' },
+  'xingchen-qiming': { name: 'presetXingchenQimingName', description: 'presetXingchenQimingDescription' },
+  pi: { name: 'presetPiName', description: 'presetPiDescription' },
 }
 
 /**

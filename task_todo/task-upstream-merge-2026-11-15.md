@@ -21,6 +21,12 @@
 - [x] 里程碑：本轮 `tmp/` 新增条目已清理
   - 只保留既有条目，未删除会话开始前存在的文件。
 
+## 追加（用户要求）
+
+- [x] `tmp/` 内容清空：删除 4.3 GB 既有缓存（`codex`、`opencode`、`qwen-code`、`zcode`、`ZCode`、旧任务清单与笔记），保留 `tmp/` 目录本身。
+- [x] `task_todo/` 纳入版本跟踪：`chore(todo): 跟踪上游合并任务清单`。
+- [x] 家族版本对齐上游最新 `0.2.2-rc.3`：`pnpm run release:dsh -- 0.2.2-rc.3` 重写 33 个 fork 清单并提交；`release/verify --family dsh` 报 416 个成员统一版本、发布顺序可解析。
+
 ## 遗留（非本次范围）
 
 - `pnpm run lint` 仍有 75 条既有红项（`fork-gate-debt` 已登记），本次改动的文件未新增任何一条。

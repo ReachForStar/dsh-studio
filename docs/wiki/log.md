@@ -1099,3 +1099,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 重生成 `persistence-catalog`、`persistence-schema`、`event-producer-consumer`、`subsystems/tools` 与全部 `gen-*` 目录；重记 9 组双语配对与 3 个持久化格式引用文件；wiki 页去掉提交哈希（仓库引用门禁只接受发布标签与固定链接）。
 - 验证：`pnpm run typecheck`、`pnpm run build:artifacts`、`pnpm run build:check`、`pnpm run test:docs`、全量 `pnpm exec vitest run`（60691 通过 / 1 既定期望失败 / 274 跳过；唯一红项是单跑需 12 秒的 `client-ui-forge` 用例，本机默认 5 秒超时所致）。
 - 状态：`develop` 已合入 `master` 并推送 `me`；交接页改写为完成态，记录冲突口径、判定表、验证与本机约束。
+
+## [2026-11-15] chore | 家族版本对齐 0.2.2-rc.3
+
+- 合并把工作区根与上游包带到 `0.2.2-rc.3`，fork 自研的 33 个清单停在 `0.2.2-alpha.2`/`0.2.2-rc.2`；用 `pnpm run release:dsh -- 0.2.2-rc.3` 一次对齐，脚本同步清单、跑 `pnpm install` 并自行提交。
+- 验证：`pnpm exec tsx scripts/release/verify.ts --family dsh`（416 个成员统一版本、发布顺序可解析，3 条 peer 声明属不可排序的既有例外）、`pnpm run test:docs`（21 门）、`pnpm exec vitest run scripts/release`（345 项）、`pnpm run typecheck`。
+- 交接页补「版本对齐」口径与验证命令；发布页把本次记为「合并后先对齐版本」的最新实例。

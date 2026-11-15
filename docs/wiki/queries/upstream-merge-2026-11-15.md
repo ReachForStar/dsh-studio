@@ -19,7 +19,8 @@ status: active
 - 起点：`me/develop` 与 `me/master` 同在上一个功能提交「新增模型请求观测点」之上。
 - 上游目标：`upstream/master` 的 `dsh-v0.2.2-rc.3` 线，94 个冲突文件。
 - 本地合并期间的 8 个提交（按主题）：合并上游、恢复删除与二进制写入与镜像回退、会话格式 v5 写者适配、桌面 flock 探测、完全访问审批桩、参数修复语义、星域与 Pi 预设文案、目录与客户端清单重生成。
-- 本轮新增：摘要回退修复、工具目录签名统一、双语配对与持久化格式引用重记、本页与 `log.md`。
+- 本轮新增：摘要回退修复、工具目录签名统一、双语配对与持久化格式引用重记、版本对齐到 `0.2.2-rc.3`、本页与 `log.md`。
+- 版本对齐：合并把家族版本带到上游最新 `0.2.2-rc.3`，fork 自研的 33 个清单仍停在 `0.2.2-alpha.2`/`0.2.2-rc.2`；用 `pnpm run release:dsh -- 0.2.2-rc.3` 一次性对齐（416 个成员，含私有清单与工作区根）。
 
 ## 冲突处理口径（沿用既有策略）
 
@@ -61,6 +62,7 @@ pnpm run build:artifacts    # 8 个周末门禁全过
 pnpm run build:check        # 产物面与源码面一致性
 pnpm run test:docs          # 文档门禁（含 type-equiv、双语配对、持久化格式引用）
 pnpm exec vitest run        # 全量：60691 通过、1 既定期望失败、274 跳过
+pnpm exec tsx scripts/release/verify.ts --family dsh  # 416 个成员统一 0.2.2-rc.3，发布顺序可解析
 ```
 
 全量测试的 1 项失败固定是 `client-ui-forge/tests/lens-panel.host.spec.ts` 的「reads the old side at HEAD…」：该用例单跑需 12 秒，默认 5 秒超时必然超时，与其他 git 重载用例一样属本机性能（`worktree`、`client-ui-forge` 在 `--testTimeout=30000` 下全绿，单跑该用例用 `--testTimeout=120000` 也通过）。本机不建议为它放宽仓库默认超时。
@@ -79,6 +81,7 @@ pnpm exec vitest run        # 全量：60691 通过、1 既定期望失败、274
 - **合并后补桩与目录清单**：新增服务的桩要跟着补（`approval.registerFullAccess` 一类）；fork 的包移动要同步 `families`、生成目录与客户端清单。
 - **文档配对与引用**：重生成后跑 `verify-translation-pairing --write <配对文件>`，逐个确认中文侧与英文侧一致后再记录；持久化格式引用用 `verify-persistence-formats --write` 刷新；wiki 页面不写提交哈希（`verify-repository-references` 直接拒绝）。
 - **测试夹具别写绝对时间与绝对路径**：凭据地平线这类用例改用相对当前时刻，路径用 `fileURLToPath`。
+- **版本对齐是合并收尾的一部分**：合并只把上游包与工作区根带到新版本，fork 自研包必然落后；发布前必须用 `release:dsh` 显式版本对齐整族（显式版本会修复混合版本，相对版本会拒绝运行）。
 
 ## 涉及模块
 

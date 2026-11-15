@@ -67,8 +67,18 @@ function hostAddonBuilt(): boolean {
     if ((error as NodeJS.ErrnoException).code !== 'MODULE_NOT_FOUND') throw error
     return false
   }
-  const manifest = JSON.parse(readFileSync(prebuilds, 'utf8')) as { readonly binaries: readonly { readonly path: string }[] }
-  return manifest.binaries.every(binary => existsSync(join(dirname(prebuilds), binary.path)))
+  const manifest = JSON.parse(readFileSync(prebuilds, 'utf8')) as {
+    readonly binaries: readonly { readonly tool: string; readonly path: string; readonly libc?: string }[]
+  }
+  // `build:native-system` compiles the host addon only; static landlock and the
+  // other libc's binaries belong to full packaging builds and are not required
+  // for the entry to load here.
+  const libc = platform === 'linux'
+    ? ((process.report.getReport() as { header: { glibcVersionRuntime?: string } }).header.glibcVersionRuntime ? 'glibc' : 'musl')
+    : undefined
+  const shipped = manifest.binaries.filter(binary => binary.tool === 'flock'
+    && (libc === undefined || binary.libc === libc))
+  return shipped.length > 0 && shipped.every(binary => existsSync(join(dirname(prebuilds), binary.path)))
 }
 
 async function buildNativeSystem(): Promise<void> {

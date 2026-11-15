@@ -401,7 +401,11 @@ describe('new-session default', () => {
       run() { throw new Error('permission tests do not execute bash') },
       start() { throw new Error('permission tests do not execute bash') },
     })
-    ctx.provide('approval', { config: { policy: 'ask' } })
+    ctx.provide('approval', {
+      config: { policy: 'ask' },
+      registerFullAccess: () => () => {},
+      requestFullAccess() { throw new Error('permission preset tests do not grant full access') },
+    })
     const existing = (await ctx.agents.create({ sessionId: brandString<SessionId>('existing-before-permission') })).agent.session
     expect(existing.snapshotEvents()).toEqual([])
 
@@ -423,7 +427,11 @@ describe('new-session default', () => {
       run() { throw new Error('permission tests do not execute bash') },
       start() { throw new Error('permission tests do not execute bash') },
     })
-    ctx.provide('approval', { config: { policy: 'ask' } })
+    ctx.provide('approval', {
+      config: { policy: 'ask' },
+      registerFullAccess: () => () => {},
+      requestFullAccess() { throw new Error('permission preset tests do not grant full access') },
+    })
     const existing = (await ctx.agents.create({ sessionId: brandString<SessionId>('existing-knobs') })).agent.session
     existing.append('sandbox/mode', { mode: 'read-only' })
     existing.append('approval/policy', { policy: 'never' })

@@ -1092,3 +1092,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - `hooks-claude-code` 新增 `PreModelRequest`/`PostModelRequest`，挂在 `request/header` 与 `assistant/message` 旁，载荷给出 provider/model，仅观测。
 - 验证：`pnpm exec vitest run packages/experimental/hooks-claude-code/tests`（72 项）、`pnpm run typecheck`、`pnpm run lint`（受影响文件）。
+
+## [2026-11-15] 查询 | 上游合并交接（0.2.2-rc.3）
+
+- 新增 [合并上游 upstream/master（2026-11-15）](queries/upstream-merge-2026-11-15.md)，记录 94 个冲突的取舍口径、8 个本地提交、已转绿集群、剩余失败与收尾命令。
+- 状态：`develop` 领先 `me/develop` 8 个提交，未推送；`master` 仍为 `97a17a5023`。

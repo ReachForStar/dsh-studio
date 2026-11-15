@@ -25,7 +25,7 @@ const request = () => row('request/header', { reason: 'initial', header: { confi
 
 /** Exercise physical JSON, catalog relationship admission, Session adoption, and derivation together. */
 function reopen(rows: readonly Row[], inherited = 0, seeded = false) {
-  const restore = sessionFormatCatalog.createRestore({ type: 'session', version: 4, id: 'native-relations', createdAt: 1, delegationDepth: 0, isSeeded: seeded, ...(seeded ? { parentSession: 'parent' } : {}) }, { recovery: 'strict', validation: 'current' })
+  const restore = sessionFormatCatalog.createRestore({ type: 'session', version: 5, id: 'native-relations', createdAt: 1, delegationDepth: 0, isSeeded: seeded, ...(seeded ? { parentSession: 'parent' } : {}) }, { recovery: 'strict', validation: 'current' })
   for (const [seq, candidate] of rows.entries()) {
     const event = { ...candidate, seq, time: seq + 1 } as unknown as SessionFormatEvent
     restore.decodeRow(JSON.parse(JSON.stringify(sessionFormatCatalog.encodeCurrentEvent(event))))

@@ -7,7 +7,7 @@ import type { SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
 import { releasedV4SessionFormatCodec as codec, restoreReleasedV4Artifact } from '../src/index.ts'
 import { brandString } from '@deepseek-ai/dsh-brand'
 
-const header = { version: 4, id: 'unknown-attribution', createdAt: 1, isSeeded: false, delegationDepth: 0 }
+const header = { version: 5, id: 'unknown-attribution', createdAt: 1, isSeeded: false, delegationDepth: 0 }
 
 describe('uninstalled producer attribution', () => {
   it.each(['user', 'developer'] as const)('preserves %s source metadata through decoding, adoption and derivation', (role) => {
@@ -23,17 +23,19 @@ describe('uninstalled producer attribution', () => {
       { type: 'step/end', seq: 3, time: 4, data: { turn: 1, step: 1 } },
       { type: 'turn/end', seq: 4, time: 5, data: { turn: 1, reason: { kind: 'completed' } } },
     ]
+    const codecHeader = { ...header, version: 4 }
     const physical = input.map(event => JSON.stringify(codec.encodeEvent(event)))
     const output = new SessionFormatEventCollector()
-    const decoder = codec.createDecoder(codec.encodeHeader(header, 0), 'strict')
+    const decoder = codec.createDecoder(codec.encodeHeader(codecHeader, 0), 'strict')
     for (const row of physical) decoder.decodeRow(JSON.parse(row), output)
     const inheritedEventCount = decoder.finish(output)
-    const artifact = { header, events: output.values, inheritedEventCount }
+    const artifact = { header: codecHeader, events: output.values, inheritedEventCount }
     const restored = restoreReleasedV4Artifact(artifact, new Set(input.map(event => event.type)))
     expect(restored.events).toEqual(input)
     // The format reader validates stored JSON; adoption validates the current Session fields.
     const session = Session.fromRestore(
-      brandString<SessionId>(header.id), restored.events as readonly SessionEvent[], restored.header as unknown as SessionHeader,
+      brandString<SessionId>(header.id), restored.events as readonly SessionEvent[],
+      { ...restored.header, version: 5 } as unknown as SessionHeader,
       SessionLogOffset(restored.inheritedEventCount), 'detached',
     )
     expect(session.deriveMessages()).toEqual([message])

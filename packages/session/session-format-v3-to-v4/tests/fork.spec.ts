@@ -36,7 +36,7 @@ function fork() {
 
 function artifact(session = fork()): SessionFormatArtifact {
   return JSON.parse(JSON.stringify({
-    header: session.header, events: session.snapshotEvents(), inheritedEventCount: session.inheritedEventCount,
+    header: { ...session.header, version: 4 }, events: session.snapshotEvents(), inheritedEventCount: session.inheritedEventCount,
   })) as SessionFormatArtifact
 }
 

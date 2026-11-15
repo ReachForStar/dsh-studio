@@ -1120,3 +1120,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 已发布 `dsh-v0.2.2-rc.4`（仓库 Latest）：npm zip、macOS arm64 dmg、Windows x64 exe、校验和与 nightly 通道文件。
 - 阻塞：Linux x64 桌面包缺少 `@deepseek-ai/libreoffice-kit-linux-x64-glibc@0.1.1` 引擎（npm 404、workspace 允许清单不含、上游在自托管 runner 上构建）；macOS x64 首次冒烟超时已按 `workflow_dispatch` 重跑。
 - 记录见 [发布 dsh 0.2.2-rc.4](queries/release-dsh-0.2.2-rc.4.md)。
+
+## [2026-11-15] 发布 | 补齐 Linux 桌面安装包（本机打包）
+
+- CI 的 `ubuntu-latest` 缺 `libreoffice-kit-linux-x64-glibc@0.1.1` 引擎（npm 404、workspace 允许清单不含、上游在自托管 runner 构建）；本机打包时 kit 回退 WASM，冒烟通过。
+- 本机打包三处前置：pnpm 是独立二进制需 `.cjs` 垫片转发（`npm_execpath`）、Electron 下载需 `NODE_USE_ENV_PROXY=1`、Electron asar 读不了非 ASCII 路径（末段 packaged 冒烟改用 ASCII 临时副本重跑）。
+- 产出并上传 `deepseek-harness-0.2.2-rc.4-linux-amd64-unsigned.deb`、`…-linux-x86_64-unsigned.AppImage`、`SHA256SUMS-linux-x64`；本地无 Sigstore 证明能力，其余 mac/win 资产仍有。
+- 详见 [发布 dsh 0.2.2-rc.4](queries/release-dsh-0.2.2-rc.4.md)。

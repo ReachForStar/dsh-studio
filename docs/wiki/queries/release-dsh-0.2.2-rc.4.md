@@ -32,16 +32,27 @@ status: active
 - `dsh-0.2.2-rc.4-npm.tar.gz.zip`（416 个 tarball + `publish-order.txt`）
 - macOS arm64/x64 dmg 与 Windows x64 exe，各带 `SHA256SUMS-<target>` 与 `nightly*.yml`
 
-**Linux x64 桌面包未能产出（阻塞）**：运行时冒烟转换 docx 时报 `Installed LibreOfficeKit package is incomplete: @deepseek-ai/libreoffice-kit-linux-x64-glibc`。证据链：`@deepseek-ai/libreoffice-kit@0.2.3` 的 `index.js` 内置引擎表要求 Linux 使用 `linux-<arch>-glibc` 引擎包、版本固定 `0.1.1`；该包在 npm 上不存在（`npm view` 404），`pnpm-workspace.yaml` 的 `onlyPlatformBuilds` 也只列了 darwin/win32/wasm；上游的 `desktop-publish.yml` 在自托管 Linux runner 上构建，引擎由该机器提供。fork 的 `release-desktop.yml` 跑在 `ubuntu-latest`，拿不到该引擎。
+**Linux x64 桌面包改为本地打包上传**：CI 的 `ubuntu-latest` 上运行时冒烟报 `Installed LibreOfficeKit package is incomplete: @deepseek-ai/libreoffice-kit-linux-x64-glibc`。`@deepseek-ai/libreoffice-kit@0.2.3` 的引擎表要求 Linux 使用 `linux-<arch>-glibc` 引擎包（版本固定 `0.1.1`），该包在 npm 上不存在（`npm view` 404），`pnpm-workspace.yaml` 的 `onlyPlatformBuilds` 也只列 darwin/win32/wasm；上游在自托管 Linux runner 上构建。本地构建没有该引擎包，kit 按设计回退到 WASM，冒烟通过——因此改为在本机打包后手工上传（详见下节）。
 
 **macOS x64 首次失败后重跑通过**：首次运行期冒烟转换报 `LibreOffice conversion timed out`（arm64 与 Windows 同一提交通过），按 `workflow_dispatch` 带 `release_tag` 重跑后该目标成功并附上 dmg 与校验和；同一重跑里 Linux 仍失败，与上述引擎缺失一致。
+
+## 本地打包 Linux 桌面包的过程
+
+本机（Linux x64）跑 `apps/desktop/scripts/package-target.ts linux-x64 --unsigned` 需要三处本机适配，缺一失败：
+
+1. **pnpm 入口**：脚本用 `node $npm_execpath` 调 pnpm，而本机 pnpm 是独立二进制（`@pnpm/exe`），node 会把 ELF 当 JS 解析并报 `SyntaxError: Invalid or unexpected token`。用一个 `.cjs` 垫片转发到真实二进制，并把 `npm_execpath` 指向它。
+2. **代理**：`prepare:runtime` 用 `@electron/get` 下载 Electron，Node 24 的内置 `fetch` 不看 `http_proxy`/`https_proxy`，需 `NODE_USE_ENV_PROXY=1`（否则 `TypeError: fetch failed`）。
+3. **非 ASCII 路径**：Electron 的 asar 支持读不了含非 ASCII 的路径，打包末段的 `smoke-packaged-runtime` 会报 `ENOTDIR: … app.asar/dsh/desktop-runtime.json`。整条流程的 ESM 模块路径会被 realpath 回真实路径，符号链接绕不过去；做法是把 `linux-unpacked` 与测试夹具复制到 ASCII 临时目录后，用同一命令重跑冒烟校验（本机实测该冒烟退出码 0，包含 docx/xlsx/pptx 的 Office 转换）。
+
+产物落点 `apps/desktop/.desktop-build/targets/linux-x64/unsigned-artifacts/`：`deepseek-harness-0.2.2-rc.4-linux-amd64-unsigned.deb`、`deepseek-harness-0.2.2-rc.4-linux-x86_64-unsigned.AppImage`。校验和按工作流同款格式（`<sha256>  <文件名>`）写到 `SHA256SUMS-linux-x64`，随后 `gh release upload --clobber` 三个文件。本地无 Sigstore 证明能力，Linux 这两件没有 `actions/attest` 覆盖，其余 mac/win 资产仍有。
 
 ## 复发预防
 
 - 发布前先确认目标版本号在 npm 上未被上游占用；同号会让桌面运行时混装上游包，症状是引擎/依赖版本对不上，而不是安装失败。
 - `build:official` 绑定当前 HEAD：先完成所有提交再构建、打包、打标签，中途任何提交都要重跑。
 - `gh release create` 会同时触发 tag 推送与 release 发布两批桌面构建，属既有设计（两批用 `--clobber` 覆盖同名资产）。
-- Linux 桌面包需要 `libreoffice-kit-linux-<arch>-glibc@0.1.1` 引擎；在获取该引擎（自托管 runner 预装或补发布）之前，Linux 安装包无法在公共 runner 上产出。
+- Linux 桌面包需要 `libreoffice-kit-linux-<arch>-glibc@0.1.1` 引擎；公共 runner 拿不到时在本机打包上传，并保留「asar 读不了非 ASCII 路径」「Node fetch 不看代理」「本机 pnpm 是二进制」三条本机前置。
+- 本机手工上传的资产没有 Sigstore 证明；需要证明时改用自托管 Linux runner 或在 CI 里补 `actions/attest` 覆盖手工资产。
 
 ## 涉及模块
 

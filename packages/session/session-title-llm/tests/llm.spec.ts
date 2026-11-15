@@ -259,6 +259,9 @@ describe('executeSessionTitleLlm', () => {
     const recorded = events.filter(event => event.type === 'session/title-llm-usage')
     expect(recorded).toHaveLength(1)
     expect(recorded[0]?.data).toEqual({ requestSeq, usage })
+    // Both auxiliary records stay skippable: a build without this package keeps a readable session.
+    expect(events.find(event => event.type === 'session/title-llm-request')).toMatchObject({ ignorable: true })
+    expect(recorded[0]).toMatchObject({ ignorable: true })
   })
 
   it('records usage even when the terminal finish is an operational failure', async () => {

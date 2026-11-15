@@ -72,7 +72,7 @@ kind: "package-library"
 
 ### 请求流程
 
-调用方构建准备好的输入并进行封装；函数依据 `maxInputBytes` 检查完整输入。提供方的推理选择器在 `ctx.llm.prepareCall()` 期间最多选择一个强度。函数把确切输入、输出上限与解析后的强度记录到 `session/title-llm-request`，然后在共享截止时间内通过同一捕获的适配器代次分发。提供方用量在流上报时写入 `session/title-llm-usage`，包括随后终止结束原因失败的调用。`purpose: 'session-title'` 仅提供归属标注。请求不带 agent loop 身份，也不进入对话历史。生成失败仍保留请求记录。 本包在 `LlmRequestPurposeMap` 中声明 `session-title`；导入其公开入口即可加载该声明。
+调用方构建准备好的输入并进行封装；函数依据 `maxInputBytes` 检查完整输入。提供方的推理选择器在 `ctx.llm.prepareCall()` 期间最多选择一个强度。函数把确切输入、输出上限与解析后的强度记录到 `session/title-llm-request`，然后在共享截止时间内通过同一捕获的适配器代次分发。提供方用量在流上报时写入 `session/title-llm-usage`，包括随后终止结束原因失败的调用。`purpose: 'session-title'` 仅提供归属标注。两条辅助记录都以 `{ ignorable: true }` 写入：缺少本包的构建会保留并跳过它们，因此标题用量记账不会让会话在那里变得不可读。请求不带 agent loop 身份，也不进入对话历史。生成失败仍保留请求记录。 本包在 `LlmRequestPurposeMap` 中声明 `session-title`；导入其公开入口即可加载该声明。
 
 </details>
 

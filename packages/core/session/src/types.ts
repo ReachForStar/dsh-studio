@@ -512,9 +512,25 @@ export type SurfaceIntent<T extends SurfaceEventType = SurfaceEventType> = {
   sourceEventSeqs?: SessionSeq[]
 })
 
+/**
+ * Append options for a declared log-only event. `ignorable` marks the record as
+ * safely skippable by a reader that does not know its type, which keeps a session
+ * readable across builds that ship different event vocabularies. Only purely
+ * informational events may set it: their loss cannot change how the rest of the
+ * log is interpreted, and the model-visible surface never contains them.
+ */
+export interface LogOnlyEventOptions {
+  /** Writers set this only when dropping the record cannot affect reconstruction. */
+  readonly ignorable?: true
+}
+
 /** One positional event call proposed for append, without assigned sequence or time. */
 export type SessionEventInput = {
-  [K in SessionEventType]: readonly [type: K, data: SessionEventMap[K], ...opts: K extends SurfaceEventType ? [opts: SurfaceIntent<K>] : []]
+  [K in SessionEventType]: readonly [
+    type: K,
+    data: SessionEventMap[K],
+    ...opts: K extends SurfaceEventType ? [opts: SurfaceIntent<K>] : [opts?: LogOnlyEventOptions],
+  ]
 }[SessionEventType]
 
 /**

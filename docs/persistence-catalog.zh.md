@@ -172,7 +172,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }[T]
 ```
 
-来源：[`packages/core/session/src/types.ts:465`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:473`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:497`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:533`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:465`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:473`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:497`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:549`](../packages/core/session/src/types.ts)
 
 ## 事件
 
@@ -943,13 +943,17 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 #### `session/title-llm-request` — log-only
 
 ```ts persistence-catalog
-/** Log-only pre-dispatch record of one session-title model request. */
+/**
+ * Log-only pre-dispatch record of one session-title model request. Writers
+ * mark it `ignorable`: a build without this package keeps the record but
+ * skips it, so a title request never makes a session unreadable there.
+ */
 'session/title-llm-request': SessionTitleLlmRequestEventData
 ```
 
 类型：[SessionTitleLlmRequestEventData](subsystems/session-title.zh.md)
 
-来源：[`packages/session/session-title-llm/src/index.ts:72`](../packages/session/session-title-llm/src/index.ts)
+来源：[`packages/session/session-title-llm/src/index.ts:76`](../packages/session/session-title-llm/src/index.ts)
 
 <a id="sessiontitle-llm-usage--log-only"></a>
 
@@ -960,11 +964,12 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
  * Log-only provider usage of one auxiliary title request. It is independent
  * of the accepted title: a superseded or failed call still consumed tokens,
  * and token accounting must not depend on whether a title replaced another.
+ * Writers mark it `ignorable` for the same cross-build reason as the request.
  */
 'session/title-llm-usage': SessionTitleLlmUsageEventData
 ```
 
-来源：[`packages/session/session-title-llm/src/index.ts:78`](../packages/session/session-title-llm/src/index.ts)
+来源：[`packages/session/session-title-llm/src/index.ts:83`](../packages/session/session-title-llm/src/index.ts)
 
 ### `session-log-deepseek/*`
 

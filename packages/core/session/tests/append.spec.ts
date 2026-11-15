@@ -19,6 +19,17 @@ describe('multiple Session appends', () => {
     expect(session.surface.nodes).toEqual([])
   })
 
+  it('writes the ignorable marker only on log-only events', () => {
+    const session = Session.create(brandString<SessionId>('ignorable-append'))
+    const usage = session.append('session/title', { title: 'Title', messageSeqs: [], source: { kind: 'user' } }, { ignorable: true })
+    expect(usage).toMatchObject({ type: 'session/title', ignorable: true })
+    expect('ignorable' in session.append('turn/start', { turn: 1 })).toBe(false)
+    expect(() => session.append('user/message', message('visible'), { surfaceOp: 'append' } as never))
+      .not.toThrow()
+    expect(() => session.append('user/message', message('visible'), { surfaceOp: 'append', ignorable: true } as never))
+      .toThrow(/model-visible and cannot be marked ignorable/)
+  })
+
   it('reads only surface metadata from event options', () => {
     const session = Session.create(brandString<SessionId>('options-append'))
     const old = session.append('user/message', message('old'), { surfaceOp: 'append' })

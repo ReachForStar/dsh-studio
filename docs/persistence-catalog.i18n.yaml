@@ -12,8 +12,8 @@
   en: 50a5a20f1259eae4
   zh: 462d46ec732ab24d
 /session-persistence-event-catalog/event-envelope:
-  en: 650e06b1aca65643
-  zh: 949061c069a706a2
+  en: d701c281e37dcc73
+  zh: e6a69b9d30acd561
 /session-persistence-event-catalog/events:
   en: f4776ba3d0fd53ce
   zh: e86769f50a69055a
@@ -198,11 +198,11 @@
   en: 6c6a27578dff5828
   zh: 9a5add2bc0df2d0a
 /session-persistence-event-catalog/events/session/session-title-llm-request-log-only:
-  en: 9295941fadc0ef19
-  zh: a619a4db66d03b39
+  en: 9b99799ec172ebc3
+  zh: d83b5e5fbfaac89b
 /session-persistence-event-catalog/events/session/session-title-llm-usage-log-only:
-  en: 8adc5c9aef12b606
-  zh: accc7f71b166c499
+  en: 5b9191912938680a
+  zh: 393a66fb5f9710d9
 /session-persistence-event-catalog/events/session-log-deepseek:
   en: 7b827672c80aecdd
   zh: 7b827672c80aecdd

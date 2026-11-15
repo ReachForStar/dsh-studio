@@ -15,8 +15,8 @@ import type { Scoped } from '@deepseek-ai/dsh-scope'
 import type { Message } from '@deepseek-ai/dsh-llm'
 import { SESSION_FORMAT_VERSION, SessionLogOffset, SessionSeq } from './types.ts'
 import type { TypertLookup } from '@deepseek-ai/dsh-typert-protocol'
-import type { CreateSessionOptions, EpochHeader, PluginRecord, PluginRecordMap, PluginRecordType, PrepareSessionOptions, RequestContext, SessionEvent, SessionEventInput, SessionEventMap, SessionEventType, SessionHeader, SessionId, SessionSeedEventState, SurfaceIntent, SurfaceEventType } from './types.ts'
-import { SurfaceManager, validateSessionEventData, validateSurfaceMetadata } from './surface.ts'
+import type { CreateSessionOptions, EpochHeader, LogOnlyEventOptions, PluginRecord, PluginRecordMap, PluginRecordType, PrepareSessionOptions, RequestContext, SessionEvent, SessionEventInput, SessionEventMap, SessionEventType, SessionHeader, SessionId, SessionSeedEventState, SurfaceIntent, SurfaceEventType } from './types.ts'
+import { SurfaceManager, isSurfaceEligibleType, validateSessionEventData, validateSurfaceMetadata } from './surface.ts'
 import type { SessionSurface, SessionMessageProjection } from './surface.ts'
 import { foldRequestHeader } from './request-header.ts'
 import { ToolHistoryProjection } from './tool-history.ts'
@@ -539,11 +539,15 @@ export function pluginRecordOf(event: SessionEvent): PluginRecord | undefined {
 function snapshotAppend(
   type: SessionEventType,
   data: SessionEventMap[SessionEventType] | undefined,
-  opts: SurfaceIntent | undefined,
+  opts: SurfaceIntent | LogOnlyEventOptions | undefined,
   subject: string,
 ) {
-  const surfaceOp = opts?.surfaceOp
-  const sourceEventSeqs = opts?.sourceEventSeqs
+  const surfaceOp = 'surfaceOp' in (opts ?? {}) ? (opts as SurfaceIntent).surfaceOp : undefined
+  const sourceEventSeqs = 'sourceEventSeqs' in (opts ?? {}) ? (opts as SurfaceIntent).sourceEventSeqs : undefined
+  const ignorable = 'ignorable' in (opts ?? {}) && (opts as LogOnlyEventOptions).ignorable === true
+  // The surface never sees an ignorable event, so a message-shaped type may not claim the
+  // marker: a reader without that vocabulary would silently drop model-visible history.
+  if (ignorable && isSurfaceEligibleType(type)) throw new Error(`${subject} is model-visible and cannot be marked ignorable`)
   const dataSnapshot = snapshotJsonValue(data)
   if (dataSnapshot === undefined) throw new Error(`${subject} carries non-JSON-serializable data`)
   const surface = snapshotJsonValue({
@@ -551,13 +555,15 @@ function snapshotAppend(
     ...surfaceOp === undefined ? {} : { surfaceOp },
   })
   if (surface === undefined) throw new Error(`${subject} carries non-JSON-serializable surface metadata`)
-  return { type, data: dataSnapshot, surface }
+  return { type, data: dataSnapshot, surface, ignorable }
 }
 
 /** Construct and validate one live event from detached inputs. */
 function createAppendEvent(snapshot: ReturnType<typeof snapshotAppend>, seq: SessionSeq): SessionEvent {
-  const { type, data, surface } = snapshot
-  const event = deepFreeze({ type, seq, time: Date.now(), data, ...surface } as SessionEvent)
+  const { type, data, surface, ignorable } = snapshot
+  const event = deepFreeze({
+    type, seq, time: Date.now(), data, ...surface, ...ignorable ? { ignorable: true as const } : {},
+  } as SessionEvent)
   validateSessionEventData(event, `session event "${type}" at seq ${seq}`)
   return event
 }
@@ -871,12 +877,12 @@ export class Session {
   append<T extends SessionEventType>(
     type: T,
     data: SessionEventMap[T],
-    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : []
+    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : [opts?: LogOnlyEventOptions]
   ): SessionEvent<T>
   append(
     type: SessionEventType | readonly SessionEventInput[],
     data?: SessionEventMap[SessionEventType],
-    ...opts: [opts?: SurfaceIntent]
+    ...opts: [opts?: SurfaceIntent | LogOnlyEventOptions]
   ): SessionEvent | readonly SessionEvent[] {
     if (typeof type !== 'string') return this.#appendEvents(type)
     this.publicationEntry()

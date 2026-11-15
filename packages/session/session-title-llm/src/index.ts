@@ -68,12 +68,17 @@ export interface SessionTitleLlmUsageEventData {
 
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
-    /** Log-only pre-dispatch record of one session-title model request. */
+    /**
+     * Log-only pre-dispatch record of one session-title model request. Writers
+     * mark it `ignorable`: a build without this package keeps the record but
+     * skips it, so a title request never makes a session unreadable there.
+     */
     'session/title-llm-request': SessionTitleLlmRequestEventData
     /**
      * Log-only provider usage of one auxiliary title request. It is independent
      * of the accepted title: a superseded or failed call still consumed tokens,
      * and token accounting must not depend on whether a title replaced another.
+     * Writers mark it `ignorable` for the same cross-build reason as the request.
      */
     'session/title-llm-usage': SessionTitleLlmUsageEventData
   }
@@ -293,13 +298,13 @@ export async function executeSessionTitleLlm(
     messages,
     maxTokens,
     ...call.config.reasoningEffort === undefined ? {} : { reasoningEffort: call.config.reasoningEffort },
-  }).seq
+  }, { ignorable: true }).seq
   callDeadline.signal.throwIfAborted()
   const assembler = new BlockAssembler()
   const recordUsage = (): void => {
     const usage = assembler.usage
     if (usage === undefined) return
-    request.session.append('session/title-llm-usage', { requestSeq, usage })
+    request.session.append('session/title-llm-usage', { requestSeq, usage }, { ignorable: true })
   }
   try {
     for await (const chunk of call.stream(options)) {

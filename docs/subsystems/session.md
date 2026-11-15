@@ -462,7 +462,11 @@ interface SurfaceFoldResult {
 ```ts type-equiv
 /** One positional event call proposed for append, without assigned sequence or time. */
 type SessionEventInput = {
-  [K in SessionEventType]: readonly [type: K, data: SessionEventMap[K], ...opts: K extends SurfaceEventType ? [opts: SurfaceIntent<K>] : []]
+  [K in SessionEventType]: readonly [
+    type: K,
+    data: SessionEventMap[K],
+    ...opts: K extends SurfaceEventType ? [opts: SurfaceIntent<K>] : [opts?: LogOnlyEventOptions],
+  ]
 }[SessionEventType]
 ```
 
@@ -651,7 +655,7 @@ declare class Session {
   append<T extends SessionEventType>(
     type: T,
     data: SessionEventMap[T],
-    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : []
+    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : [opts?: LogOnlyEventOptions]
     ): SessionEvent<T>;
   /**
    * The {@link EpochHeader} in force after the log's last header event — the

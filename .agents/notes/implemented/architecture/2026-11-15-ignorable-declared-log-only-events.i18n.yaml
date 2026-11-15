@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-15-ignorable-declared-log-only-events.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-11-15-ignorable-declared-log-only-events.md
+/agent-note-write-ignorable-markers-for-shipped-log-only-events:
+  en: c3f0cc424746fbc9
+  zh: 5e74d17047c3ab93
+/agent-note-write-ignorable-markers-for-shipped-log-only-events/problem:
+  en: 0287435d53da876d
+  zh: e3d25f84bfdaa88d
+/agent-note-write-ignorable-markers-for-shipped-log-only-events/decision:
+  en: 3babf30921abf464
+  zh: 05845d603643c566
+/agent-note-write-ignorable-markers-for-shipped-log-only-events/alternatives-considered:
+  en: a9987061565de3b9
+  zh: f672832a8dcaa7fc
+/agent-note-write-ignorable-markers-for-shipped-log-only-events/consequences:
+  en: 46d07ec420ba17e6
+  zh: ea52fa4b09bbc026

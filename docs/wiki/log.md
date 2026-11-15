@@ -1135,3 +1135,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 修法：`ui-cua` 与提供方同口径按平台门控（`platform.spec.ts` 同步）；`PermissionController` 新增 `serviceUnavailable`，面板只渲染一条说明（8 语言新增 `serviceUnavailable` 文案）。
 - 验证：`packages/experimental/cua` + `cua-bundle` 855 通过 / 3 跳过，`typecheck`、`lint`、`build:check`、`test:docs`（21 门）全过。
 - 详见 [CUA 权限页在无提供方宿主上报服务缺失](queries/cua-permission-ui-without-provider.md)。
+
+## [2026-11-15] fix | 旧版 harness 拒读新版 fork 会话
+
+- 现象：打开 fork 会话报 `contains event type "session/title-llm-usage" (seq 18) unknown to this harness and not marked ignorable`；同一文件用当前源码可正常读到 30 个事件、v5 头。
+- 根因：`session/title-llm-*` 是构建级必读的声明成员，写入方未加 `ignorable`，任何缺少该词汇的旧构建都拒绝整份日志。
+- 修法：`Session.append()` 新增 `LogOnlyEventOptions`（仅非 surface 类型可带 `ignorable`，消息事件运行时拒绝），`session-title-llm` 两条辅助记录改用该标记；新增 Agent Note 并修正 2026-08-30 决策的写入者表述，README、子系统文档 type-equiv 与持久化目录同步。
+- 验证：受影响 1842 通过 / 1 跳过，全量 60695 通过 / 1 既定期望失败 / 274 跳过，`lint`、`build:check`、`test:docs`（21 门）全过。
+- 详见 [旧版 harness 拒读新版 fork 会话](queries/session-unknown-event-across-builds.md)。

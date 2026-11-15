@@ -1,6 +1,6 @@
 /** Browser state for one open side-question dialog. */
 
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 /** Which Session's side-question dialog is open. */
@@ -10,7 +10,7 @@ export interface BtwState {
 
 /** Owns the single open dialog; opening another Session replaces it. */
 export class BtwController {
-  readonly store = createSnapshotStore<BtwState>({ sessionId: null })
+  readonly store: SnapshotStore<BtwState> = createSnapshotStore<BtwState>({ sessionId: null })
 
   /**
    * Open the dialog for one Session.

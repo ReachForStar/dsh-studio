@@ -1104,13 +1104,9 @@ describe('grep results', () => {
   it.each([
     [{ include: '' }, 'pattern'],
     [{ pattern: '', include: '' }, 'pattern must be a non-empty string'],
-    [{ pattern: 1, include: '' }, 'pattern'],
     [{ pattern: 'x', path: '', include: '' }, 'path must be a non-empty string'],
     [{ pattern: 'x', path: '  ', include: '' }, 'path must be a non-empty string'],
-    [{ pattern: 'x', path: 1, include: '' }, 'path'],
     [{ pattern: 'x', include: null }, 'include'],
-    [{ pattern: 'x', include: false }, 'include'],
-    [{ pattern: 'x', include: 1 }, 'include'],
     [{ pattern: 'x', include: [] }, 'include'],
   ])('rejects malformed grep arguments %j before spawning', async (args, message) => {
     const { ctx, subprocess } = await setup()

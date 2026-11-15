@@ -1095,7 +1095,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-11-15] fix | 上游合并收尾（0.2.2-rc.3）
 
-- 16 项剩余失败全部清偿：会话目录与投递标记按 v5 写入器适配；摘要模型回退不再拦截 `IMAGE_OFFLOAD_REQUIRED` 且目标相同不重试；多行事件声明与内联对象类型改为单行/提名，修复 `api-catalog` 与 typert 双路签名不一致；btw 对话框滚动条补回载；`repairArgs` 相关非法类型用例换值；菜单/实验包清单/默认配置补 fork 项；`gen-tool-catalog` 补 `memory_write`；`approval` 桩补完全访问；路径用 `fileURLToPath`；liveshare 夹具日期改相对当前时刻。
+- 剩余失败全部清偿：会话目录与投递标记按 v5 写入器适配；摘要模型回退不再拦截 `IMAGE_OFFLOAD_REQUIRED` 且目标相同不重试；多行事件声明与内联对象类型改为单行/提名，修复 `api-catalog` 与 typert 双路签名不一致；btw 对话框滚动条补回载；`repairArgs` 相关非法类型用例换值；菜单/实验包清单/默认配置补 fork 项；`gen-tool-catalog` 补 `memory_write`；`approval` 桩补完全访问；路径用 `fileURLToPath`；liveshare 夹具日期改相对当前时刻。
 - 重生成 `persistence-catalog`、`persistence-schema`、`event-producer-consumer`、`subsystems/tools` 与全部 `gen-*` 目录；重记 9 组双语配对与 3 个持久化格式引用文件；wiki 页去掉提交哈希（仓库引用门禁只接受发布标签与固定链接）。
 - 验证：`pnpm run typecheck`、`pnpm run build:artifacts`、`pnpm run build:check`、`pnpm run test:docs`、全量 `pnpm exec vitest run`（60691 通过 / 1 既定期望失败 / 274 跳过；唯一红项是单跑需 12 秒的 `client-ui-forge` 用例，本机默认 5 秒超时所致）。
 - 状态：`develop` 已合入 `master` 并推送 `me`；交接页改写为完成态，记录冲突口径、判定表、验证与本机约束。

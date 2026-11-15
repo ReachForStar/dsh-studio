@@ -34,7 +34,7 @@ status: active
 
 | 失败集群 | 判定 | 修法 |
 | --- | --- | --- |
-| `session-persistence-jsonl` 的 `catalog-migration` 与 `fork-delivery`（26 项） | 测试按 v5 写入器适配 | 上游把「当前代」写成 4、「未来代」写成 5；fork 写入器是 v5，故当前代改 5、未来代改 6。`fork-delivery` 的投递标记版本同理由 4 改 5，否则校验按「非当前代」跳过 |
+| `session-persistence-jsonl` 的 `catalog-migration` 与 `fork-delivery`（28 项） | 测试按 v5 写入器适配 | 上游把「当前代」写成 4、「未来代」写成 5；fork 写入器是 v5，故当前代改 5、未来代改 6。`fork-delivery` 的投递标记版本同理由 4 改 5，否则校验按「非当前代」跳过 |
 | `compaction-image-offload`（4 项） | 合并暴露的真实缺陷 | 摘要模型回退拦截了 `IMAGE_OFFLOAD_REQUIRED`，使图像卸载修复（`compaction/summary-error` 监听器拥有）被跳过、同一失败被重复一次。回退改为不拦截该错误，并在目标与路由相同时不重试 |
 | `compaction-basic` 默认值断言 | 合并丢失 fork 断言 | 补回 `failurePauseThreshold`、`summarizationFallback`、`windowReset` 三个默认值 |
 | `compaction-image-offload` 的「后续摘要失败是终态」 | 测试按 fork 语义适配 | 回退会再发起一次路由模型调用，脚本与调用次数断言随之更新；同时补一条回退成功的正向用例 |

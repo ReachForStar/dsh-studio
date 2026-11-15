@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-warming",
   "description": "Prompt-cache keep-alive requests that replay an idle Session's request prefix",
-  "version": "0.2.2-rc.2",
+  "version": "0.2.2-rc.3",
   "publishConfig": {
     "access": "public"
   },

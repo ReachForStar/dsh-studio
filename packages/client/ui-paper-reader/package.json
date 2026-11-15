@@ -1,7 +1,7 @@
 {
   "name": "@reachforstar/dsh-client-ui-paper-reader",
   "description": "Right-Sidebar paper reader: PDF upload with original layout, text highlights, notes, and in-conversation questions",
-  "version": "0.2.2-alpha.2",
+  "version": "0.2.2-rc.3",
   "publishConfig": {
     "access": "public"
   },

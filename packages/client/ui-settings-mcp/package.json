@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-settings-mcp",
   "description": "MCP servers settings tab for the dsh web client: the managed server list with live connection status, authorization, grant removal, and restart",
-  "version": "0.2.2-rc.2",
+  "version": "0.2.2-rc.3",
   "publishConfig": {
     "access": "public"
   },

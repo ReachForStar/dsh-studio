@@ -117,6 +117,7 @@ export class ResourceWatchRegistry {
     if (this.options.client.getServerCapabilities()?.resources?.subscribe === true) return
     throw new McpLocalError(
       `${this.options.label}: the server does not advertise resource subscriptions (resources.subscribe)`,
+      'MCP_RESOURCE_UNSUPPORTED',
     )
   }
 
@@ -156,7 +157,7 @@ export class ResourceWatchRegistry {
     } catch {
       // The generation's transport close ends a listen stream that refused this filter.
     }
-    throw new McpLocalError(`${label}: the server did not accept a subscription for resource "${uri}"`)
+    throw new McpLocalError(`${label}: the server did not accept a subscription for resource "${uri}"`, 'MCP_RESOURCE_SUBSCRIPTION_FAILED')
   }
 
   /** Leave the shared subscription, closing it when the last watcher exits. */
@@ -174,6 +175,7 @@ export class ResourceWatchRegistry {
         if (generation.aborted || caller.aborted) return
         throw new McpLocalError(
           `${this.options.label}: failed to release the resource subscription for "${uri}": ${describeError(error)}`,
+          'MCP_RESOURCE_SUBSCRIPTION_FAILED',
         )
       }
     })

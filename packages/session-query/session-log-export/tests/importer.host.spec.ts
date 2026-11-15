@@ -1,6 +1,5 @@
 import { Context } from '@deepseek-ai/cordis'
 import { HostConnectionService } from '@deepseek-ai/dsh-client-connection'
-import type { BrowserAuth } from '@deepseek-ai/dsh-client-connection/src/browser-auth.ts'
 import { SESSION_FORMAT_VERSION, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -475,7 +474,7 @@ describe('Session log import route', () => {
       create: async () => { throw new Error('disk unavailable') },
     } as never)
     ctx.provide('attachments', {} as never)
-    const connection = new HostConnectionService(ctx, [], {} as BrowserAuth)
+    const connection = new HostConnectionService(ctx, [])
     const fiber = await ctx.plugin({ inject: [...inject], apply })
     cleanups.push(() => fiber.dispose())
     const shared = connection.createSharedFetchHandler('/api')
@@ -492,7 +491,7 @@ describe('Session log import route', () => {
   it('answers 500 when persistence or attachments are absent', async () => {
     const ctx = new Context()
     ctx.provide('commands', { register: () => () => {} } as never)
-    const connection = new HostConnectionService(ctx, [], {} as BrowserAuth)
+    const connection = new HostConnectionService(ctx, [])
     const fiber = await ctx.plugin({ inject: [...inject], apply })
     cleanups.push(() => fiber.dispose())
     const shared = connection.createSharedFetchHandler('/api')
@@ -526,7 +525,7 @@ async function mountRoute(config: { maxImportBytes?: number } = {}): Promise<{
   ctx.provide('commands', { register: () => () => {} } as never)
   ctx.provide('sessionPersistence', persistence.persistence)
   ctx.provide('attachments', attachments)
-  const connection = new HostConnectionService(ctx, [], {} as BrowserAuth)
+  const connection = new HostConnectionService(ctx, [])
   const shared = connection.createSharedFetchHandler('/api')
   const fiber = await ctx.plugin({ inject: [...inject], apply }, config)
   cleanups.push(() => fiber.dispose())

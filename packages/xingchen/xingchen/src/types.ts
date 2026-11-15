@@ -7,8 +7,8 @@
  * @module @reachforstar/dsh-xingchen/types
  */
 
-import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
-import type { ToolCallId } from '@deepseek-ai/dsh-llm/brand'
+import type { CommandId } from '@deepseek-ai/dsh-commands'
+import type { ToolCallId } from '@deepseek-ai/dsh-llm'
 
 /**
  * A star-domain role. `qiming` is the native router agent (this harness's own

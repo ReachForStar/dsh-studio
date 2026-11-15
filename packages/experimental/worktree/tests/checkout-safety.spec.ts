@@ -136,7 +136,9 @@ describe('worktree checkout Git configuration', () => {
     // Git translates its own diagnostics, and the assertion reads Git's English text.
     vi.stubEnv('LC_ALL', 'C')
 
-    await expect(ctx.worktrees.create(agent, { name: 'invalid' })).rejects.toThrow(/Any created checkout and branch are retained.*bad config line/s)
+    await expect(ctx.worktrees.create(agent, { name: 'invalid' })).rejects.toMatchObject({
+      name: 'WorktreeError', code: 'WORKTREE_COMMAND_FAILED', message: expect.stringMatching(/Any created checkout and branch are retained.*bad config line/s) as string,
+    })
 
     expect(ctx.workingDirectory.get(agent.session)).toBe(root)
     await access(join(root, '.agents/worktrees/invalid/.git'))
@@ -150,7 +152,9 @@ describe('worktree checkout Git configuration', () => {
     ctx = await harness(root, { maxOutputBytes: 256 })
     const agent = testAgent(ctx, root)
 
-    await expect(ctx.worktrees.create(agent, { name: 'bounded' })).rejects.toThrow('output exceeds maxOutputBytes')
+    await expect(ctx.worktrees.create(agent, { name: 'bounded' })).rejects.toMatchObject({
+      code: 'WORKTREE_OUTPUT_TOO_LARGE', message: expect.stringContaining('output exceeds maxOutputBytes') as string,
+    })
 
     expect(ctx.workingDirectory.get(agent.session)).toBe(root)
     await access(join(root, '.agents/worktrees/bounded/.git'))

@@ -155,7 +155,7 @@ class GrantStore {
       if (parsed === null || parsed?.success === false) throw this.unreadable()
       return Promise.resolve({ kind: 'grant', payload: mutate(parsed?.data ?? { version: 1 }) })
     })
-    if (next?.kind !== 'grant') throw new McpLocalError('mcp-client: the credentials provider did not store the MCP authorization grant')
+    if (next?.kind !== 'grant') throw new McpLocalError('mcp-client: the credentials provider did not store the MCP authorization grant', 'MCP_AUTHORIZATION_FAILED')
     const parsed = grantSchema.safeParse(next.payload)
     if (!parsed.success) throw this.unreadable()
     return parsed.data
@@ -163,12 +163,12 @@ class GrantStore {
 
   private provider(): CredentialProvider {
     const provider = this.ctx.get('credentials')
-    if (provider === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider')
+    if (provider === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider', 'MCP_CREDENTIALS_UNAVAILABLE')
     return provider
   }
 
   private unreadable(): McpLocalError {
-    return new McpLocalError(`mcp-client: stored authorization for this server is unreadable; clear the "${String(this.key)}" credential record`)
+    return new McpLocalError(`mcp-client: stored authorization for this server is unreadable; clear the "${String(this.key)}" credential record`, 'MCP_AUTHORIZATION_FAILED')
   }
 }
 
@@ -211,8 +211,8 @@ export function createOAuthProvider(
   options: OAuthProviderOptions = {},
 ): OAuthClientProvider {
   const oauth = oauthSettings(config)
-  if (oauth === undefined) throw new McpLocalError('mcp-client: OAuth is not configured for this server')
-  if (ctx.get('credentials') === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider')
+  if (oauth === undefined) throw new McpLocalError('mcp-client: OAuth is not configured for this server', 'MCP_AUTHORIZATION_REQUIRED')
+  if (ctx.get('credentials') === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider', 'MCP_CREDENTIALS_UNAVAILABLE')
   const store = new GrantStore(ctx, authorizationKey(config.url))
   const staticClient: StoredOAuthClientInformation | undefined = oauth.clientId === undefined
     ? undefined
@@ -237,7 +237,7 @@ export function createOAuthProvider(
     saveCodeVerifier: async (verifier) => { await store.update(grant => ({ ...grant, codeVerifier: verifier })) },
     codeVerifier: async () => {
       const verifier = (await store.read()).codeVerifier
-      if (verifier === undefined) throw new McpLocalError('mcp-client: the authorization callback arrived without a stored PKCE verifier')
+      if (verifier === undefined) throw new McpLocalError('mcp-client: the authorization callback arrived without a stored PKCE verifier', 'MCP_AUTHORIZATION_FAILED')
       return verifier
     },
     state: async () => {
@@ -248,7 +248,7 @@ export function createOAuthProvider(
     },
     redirectToAuthorization: (url) => {
       if (options.onAuthorizationUrl === undefined) {
-        throw new McpLocalError('mcp-client: this server needs user authorization; run the authorize command for it')
+        throw new McpLocalError('mcp-client: this server needs user authorization; run the authorize command for it', 'MCP_AUTHORIZATION_REQUIRED')
       }
       options.onAuthorizationUrl(url)
     },
@@ -274,13 +274,13 @@ export async function beginAuthorization(
   signal: AbortSignal,
 ): Promise<McpAuthorization> {
   const oauth = oauthSettings(config)
-  if (oauth === undefined) throw new McpLocalError(`mcp-client(${config.serverName}): OAuth is not configured for this server`)
+  if (oauth === undefined) throw new McpLocalError(`mcp-client(${config.serverName}): OAuth is not configured for this server`, 'MCP_AUTHORIZATION_REQUIRED')
   const store = new GrantStore(ctx, authorizationKey(config.url))
   const server = createServer()
   const cancelled = Promise.withResolvers<never>()
   // The rejection is observed by whichever leg is waiting; guard the case where none is.
   void cancelled.promise.catch(() => undefined)
-  const onAbort = (): void => { cancelled.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization cancelled`)) }
+  const onAbort = (): void => { cancelled.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization cancelled`, 'MCP_AUTHORIZATION_CANCELLED')) }
   signal.addEventListener('abort', onAbort, { once: true })
   if (signal.aborted) onAbort()
   const state = randomBytes(32).toString('base64url')
@@ -299,7 +299,7 @@ export async function beginAuthorization(
     if (failure !== null) {
       response.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'text/html; charset=utf-8' })
         .end(page('Authorization failed', failure))
-      received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization failed: ${failure}`))
+      received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization failed: ${failure}`, 'MCP_AUTHORIZATION_FAILED'))
       return
     }
     const states = url.searchParams.getAll('state')
@@ -307,7 +307,7 @@ export async function beginAuthorization(
     if (states.length !== 1 || codes.length !== 1 || !sameSecret(states[0] ?? '', state)) {
       response.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'text/html; charset=utf-8' })
         .end(page('Authorization failed', 'The callback did not match this request.'))
-      received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization state mismatch`))
+      received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization state mismatch`, 'MCP_AUTHORIZATION_FAILED'))
       return
     }
     if (pending !== undefined) {
@@ -320,7 +320,7 @@ export async function beginAuthorization(
   })
   const timeoutMs = oauth.authorizationTimeoutMs ?? DEFAULT_AUTHORIZATION_TIMEOUT_MS
   const timer = setTimeout(() => {
-    received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization timed out after ${String(timeoutMs)}ms`))
+    received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization timed out after ${String(timeoutMs)}ms`, 'MCP_TIMEOUT'))
   }, timeoutMs)
   timer.unref()
   // The listener and timer live for the whole flow, including the wait for the
@@ -349,13 +349,13 @@ export async function beginAuthorization(
     }
     /* v8 ignore next 2 -- the SDK returns REDIRECT only after calling redirectToAuthorization */
     if (authorizationUrl === undefined) {
-      throw new McpLocalError(`mcp-client(${config.serverName}): the authorization server returned no authorization URL`)
+      throw new McpLocalError(`mcp-client(${config.serverName}): the authorization server returned no authorization URL`, 'MCP_AUTHORIZATION_FAILED')
     }
     const completed = (async () => {
       const code = await Promise.race([received.promise, cancelled.promise])
       const result = await auth(provider, { serverUrl: config.url, authorizationCode: code })
       /* v8 ignore next -- an authorization-code exchange either stores tokens or throws */
-      if (result !== 'AUTHORIZED') throw new McpLocalError(`mcp-client(${config.serverName}): the authorization server did not grant access`)
+      if (result !== 'AUTHORIZED') throw new McpLocalError(`mcp-client(${config.serverName}): the authorization server did not grant access`, 'MCP_AUTHORIZATION_FAILED')
       pending?.writeHead(200, { 'cache-control': 'no-store', 'content-type': 'text/html; charset=utf-8' })
         .end(page('Authorization complete', 'You can close this window.'))
     })().catch((error: unknown) => {
@@ -385,7 +385,7 @@ export async function beginAuthorization(
  */
 export async function clearAuthorization(ctx: Context, url: string): Promise<void> {
   const provider = ctx.get('credentials')
-  if (provider === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider')
+  if (provider === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider', 'MCP_CREDENTIALS_UNAVAILABLE')
   await provider.deleteRecord(authorizationKey(url))
 }
 
@@ -407,7 +407,7 @@ async function listen(server: Server, port: number | undefined): Promise<number>
   })
   const address = server.address()
   /* v8 ignore next -- a bound TCP listener always reports an AddressInfo */
-  if (address === null || typeof address === 'string') throw new McpLocalError('mcp-client: the authorization listener has no TCP address')
+  if (address === null || typeof address === 'string') throw new McpLocalError('mcp-client: the authorization listener has no TCP address', 'MCP_AUTHORIZATION_FAILED')
   return address.port
 }
 

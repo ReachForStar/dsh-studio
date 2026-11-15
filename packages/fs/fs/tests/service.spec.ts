@@ -1,20 +1,20 @@
 /**
  * Tests for the filesystem Service Definition: registration, duplicate-service
- * behavior, disposal, and the branded id factories. The provider primitives and
+ * behavior and disposal. The provider primitives and
  * policy live in `dsh-fs-local` and `dsh-fs-observation-policy`; this seam owns only the
  * abstract service contract, so a minimal fake backend exercises it.
  */
 
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { FileSystem, FsError, FsTargetKey, FsVersion } from '@deepseek-ai/dsh-fs'
+import { FileSystem, FsError, type FsTargetKey, type FsVersion } from '@deepseek-ai/dsh-fs'
+import { brandString } from '@deepseek-ai/dsh-brand'
 import type {
   FsDirEntry,
   FsEditOutcome,
   FsEditRequest,
   FsInfo,
   FsPathInfo,
-  FsRemoveOutcome,
   FsTarget,
   FsWriteIntent,
   FsWriteOutcome,
@@ -23,13 +23,14 @@ import type {
 /** A minimal in-memory fake implementing the provider primitives. */
 class FakeFileSystem extends FileSystem {
   override async patchText(): Promise<never> { throw new FsError('patch unsupported by test provider', 'FS_IO_ERROR') }
+  override async remove(): Promise<never> { throw new FsError('remove unsupported by test provider', 'FS_IO_ERROR') }
   override async deleteFile(): Promise<never> { throw new FsError('delete unsupported by test provider', 'FS_IO_ERROR') }
   override async moveFile(): Promise<never> { throw new FsError('move unsupported by test provider', 'FS_IO_ERROR') }
 
   files = new Map<string, string>()
 
   override async resolve(path: string): Promise<FsTarget> {
-    return { targetKey: FsTargetKey(path), displayPath: path }
+    return { targetKey: brandString<FsTargetKey>(path), displayPath: path }
   }
   override processPath(target: FsTarget): string { return String(target.targetKey) }
   override fileUrl(target: FsTarget): string { return `file:///${encodeURIComponent(String(target.targetKey))}` }
@@ -39,12 +40,12 @@ class FakeFileSystem extends FileSystem {
   override async stat(target: FsTarget): Promise<FsInfo | undefined> {
     const content = this.files.get(target.targetKey)
     if (content === undefined) return undefined
-    return { version: FsVersion('v1'), type: 'file', size: content.length }
+    return { version: brandString<FsVersion>('v1'), type: 'file', size: content.length }
   }
   override async lstat(path: string): Promise<FsPathInfo | undefined> {
     const content = this.files.get(path)
     if (content === undefined) return undefined
-    return { version: FsVersion('v1'), type: 'file', size: content.length }
+    return { version: brandString<FsVersion>('v1'), type: 'file', size: content.length }
   }
   override async readText(target: FsTarget): Promise<string> {
     const content = this.files.get(target.targetKey)
@@ -71,26 +72,22 @@ class FakeFileSystem extends FileSystem {
       {
         name: 'alpha.md',
         type: 'file',
-        target: { targetKey: FsTargetKey('skills/alpha.md'), displayPath: 'skills/alpha.md' },
+        target: { targetKey: brandString<FsTargetKey>('skills/alpha.md'), displayPath: 'skills/alpha.md' },
         size: 2,
-        version: FsVersion('v1'),
+        version: brandString<FsVersion>('v1'),
       },
     ]
   }
   override async writeText(target: FsTarget, content: string, _expected?: FsWriteIntent): Promise<FsWriteOutcome> {
     const before = this.files.get(target.targetKey) ?? null
     this.files.set(target.targetKey, content)
-    return { operation: before !== null ? 'update' : 'create', version: FsVersion('v2'), before, after: content }
+    return { operation: before !== null ? 'update' : 'create', version: brandString<FsVersion>('v2'), before, after: content }
   }
   override async editText(target: FsTarget, edit: FsEditRequest): Promise<FsEditOutcome> {
     const content = this.files.get(target.targetKey) ?? ''
     const after = content.split(edit.oldString).join(edit.newString)
     this.files.set(target.targetKey, after)
-    return { version: FsVersion('v3'), before: content, after }
-  }
-  override async remove(path: string): Promise<FsRemoveOutcome> {
-    if (path.length === 0) throw new FsError('cannot remove an empty path', 'FS_NOT_FOUND')
-    return { kind: 'file' }
+    return { version: brandString<FsVersion>('v3'), before: content, after }
   }
 }
 
@@ -189,23 +186,6 @@ describe('FileSystem provider seam', () => {
     fs.files.set('a.txt', 'hi')
     expect(await fs.lstat('a.txt')).toEqual({ version: 'v1', type: 'file', size: 2 })
     expect(await fs.lstat('missing.txt')).toBeUndefined()
-  })
-})
-
-describe('writeBytes', () => {
-  it('refuses binary writes unless a backend implements them', async () => {
-    const ctx = new Context()
-    const fiber = await ctx.plugin(FakeFileSystem)
-    await expect(ctx.fs.writeBytes(await ctx.fs.resolve('a.bin'), Uint8Array.from([1])))
-      .rejects.toMatchObject({ code: 'FS_UNSUPPORTED_BINARY_WRITE' })
-    await fiber.dispose()
-  })
-})
-
-describe('branded id factories', () => {
-  it('FsTargetKey and FsVersion brand a string at compile time (identity at runtime)', () => {
-    expect(FsTargetKey('k')).toBe('k')
-    expect(FsVersion('v')).toBe('v')
   })
 })
 

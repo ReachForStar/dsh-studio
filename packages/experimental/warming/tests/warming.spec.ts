@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore from '@deepseek-ai/dsh-session'
-import { ReasoningEffortId } from '@deepseek-ai/dsh-llm/brand'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, LlmCallConfig, ToolSchema } from '@deepseek-ai/dsh-llm'
 import { createAssistantMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as Warming from '../src/index.ts'

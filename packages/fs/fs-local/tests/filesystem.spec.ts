@@ -15,6 +15,7 @@ import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LocalFileSystem } from '@deepseek-ai/dsh-fs-local'
 import { FsVersion } from '@deepseek-ai/dsh-fs'
+import { brandString } from '@deepseek-ai/dsh-brand'
 import type { FsTarget } from '@deepseek-ai/dsh-fs'
 
 let dir: string
@@ -806,7 +807,7 @@ describe('editText', () => {
 
   it('rejects a non-regular target', async () => {
     const target = await fs.resolve('.')
-    await expect(fs.editText(target, { oldString: 'a', newString: 'b', replaceAll: false }, { version: FsVersion('v') }))
+    await expect(fs.editText(target, { oldString: 'a', newString: 'b', replaceAll: false }, { version: brandString<FsVersion>('v') }))
       .rejects.toMatchObject({ code: 'FS_NOT_REGULAR_FILE' })
   })
 

@@ -4,6 +4,8 @@
  * @module @deepseek-ai/dsh-fs-local
  */
 
+import { applyHunks } from '@deepseek-ai/dsh-fs-patch'
+import type { PatchHunk } from '@deepseek-ai/dsh-fs-patch'
 import { Context } from '@deepseek-ai/cordis'
 import { constants as bufferConstants } from 'node:buffer'
 import { once } from 'node:events'
@@ -11,8 +13,8 @@ import { watch } from 'chokidar'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import z from '@deepseek-ai/schemastery'
-import type { PatchHunk } from '@deepseek-ai/dsh-fs-patch'
-import { FileSystem, FsError, FsVersion, applyPatchOrThrow } from '@deepseek-ai/dsh-fs'
+import { FileSystem, FsError, type FsRemoveOptions, type FsRemoveOutcome, type FsVersion } from '@deepseek-ai/dsh-fs'
+import { brandString } from '@deepseek-ai/dsh-brand'
 import type {
   FsDeleteOutcome,
   FsMoveOutcome,
@@ -21,10 +23,7 @@ import type {
   FsEditRequest,
   FsInfo,
   FsPathInfo,
-  FsRemoveOptions,
-  FsRemoveOutcome,
   FsTarget,
-  FsWriteBytesOutcome,
   FsWriteIntent,
   FsWriteOutcome,
 } from '@deepseek-ai/dsh-fs'
@@ -41,10 +40,10 @@ import {
   readTextForDiff,
   readWholeBytes,
   readWholeText,
-  removePath,
   resolveLocalTarget,
   restoreLineEndings,
   removeFile,
+  removePath,
   streamWholeText,
   writeFileAtomic,
 } from './fsio.ts'
@@ -258,37 +257,6 @@ export class LocalFileSystem extends FileSystem {
     })
   }
 
-  override async writeBytes(
-    target: FsTarget,
-    content: Uint8Array,
-    expected?: FsWriteIntent,
-    signal?: AbortSignal,
-  ): Promise<FsWriteBytesOutcome> {
-    return this.withLock(target.targetKey, async () => {
-      const existing = await probe(target.targetKey)
-      if (existing && existing.type !== 'file') {
-        throw new FsError(`cannot write "${target.displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
-      }
-      if (expected?.kind === 'replaceIfVersion') {
-        if (!existing) throw new FsError(`cannot write "${target.displayPath}": file no longer exists`, 'FS_STALE_VERSION')
-        if (existing.version !== expected.version) {
-          throw new FsError(`cannot write "${target.displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
-        }
-      } else if (expected?.kind === 'createIfAbsent' && existing) {
-        throw new FsError(`cannot overwrite existing "${target.displayPath}" without reading it first`, 'FS_NOT_OBSERVED')
-      }
-      await writeFileAtomic(
-        target.targetKey,
-        content,
-        existing?.mode,
-        signal,
-        this.internals,
-        expected?.kind === 'createIfAbsent' ? { displayPath: target.displayPath } : undefined,
-      )
-      return { operation: existing ? 'update' : 'create', version: this.versionAfterWrite(await probe(target.targetKey), target) }
-    })
-  }
-
   override async editText(
     target: FsTarget,
     edit: FsEditRequest,
@@ -331,7 +299,7 @@ export class LocalFileSystem extends FileSystem {
     return this.withLock(target.targetKey, async () => {
       const existing = await this.requireFile(target, expected, 'patch')
       const original = await readForEdit(target.targetKey, target.displayPath, signal)
-      const after = applyPatchOrThrow(target.displayPath, original.content, hunks)
+      const after = this.patchContent(target, original.content, hunks)
       await writeFileAtomic(target.targetKey, restoreLineEndings(after, original.lineEndings), existing.mode, signal, this.internals,
         { displayPath: target.displayPath })
       return { version: this.versionAfterWrite(await probe(target.targetKey), target), before: original.content, after }
@@ -359,7 +327,7 @@ export class LocalFileSystem extends FileSystem {
       const sourceInfo = await this.requireFile(source, options.expectedSource, 'move')
       const existing = await this.writeTarget(destination, options.expectedDestination)
       const original = await readForEdit(source.targetKey, source.displayPath, signal)
-      const after = options.hunks === undefined ? original.content : applyPatchOrThrow(source.displayPath, original.content, options.hunks)
+      const after = options.hunks === undefined ? original.content : this.patchContent(source, original.content, options.hunks)
       const content = restoreLineEndings(after, original.lineEndings)
       const before = existing && Buffer.byteLength(content, 'utf8') < this.config.diffBasisMaxBytes
         ? await readTextForDiff(destination.targetKey, this.config.diffBasisMaxBytes, signal) : null
@@ -418,12 +386,19 @@ export class LocalFileSystem extends FileSystem {
     return existing
   }
 
+  private patchContent(target: FsTarget, before: string, hunks: readonly PatchHunk[]): string {
+    const result = applyHunks(before, hunks)
+    if (!result.ok) {
+      throw new FsError(`cannot patch "${target.displayPath}": hunk at patch line ${result.failure.hunkLineNumber} (${result.failure.stage}) does not match`, 'FS_PATCH_MISMATCH')
+    }
+    return result.after
+  }
 
   /* v8 ignore next 5 -- the post-write probe finding the file absent requires a
    * concurrent unlink between rename and stat; fall back to a sentinel version. */
   private versionAfterWrite(after: { version: FsVersion } | null, target: FsTarget): FsVersion {
     if (after) return after.version
-    return FsVersion(`missing:${target.targetKey}`)
+    return brandString<FsVersion>(`missing:${target.targetKey}`)
   }
 }
 

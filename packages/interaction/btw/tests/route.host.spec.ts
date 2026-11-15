@@ -1,6 +1,5 @@
 import { Context } from '@deepseek-ai/cordis'
 import { HostConnectionService } from '@deepseek-ai/dsh-client-connection'
-import type { BrowserAuth } from '@deepseek-ai/dsh-client-connection/src/browser-auth.ts'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { describe, expect, it, vi } from 'vitest'
@@ -31,7 +30,7 @@ async function mounted(options: {
   }
   const startActivation = vi.fn(async () => options.activation ?? activation())
   ctx.provide('subagents', { startActivation } as never)
-  const connection = new HostConnectionService(ctx, [], {} as BrowserAuth)
+  const connection = new HostConnectionService(ctx, [])
   const fiber = await ctx.plugin({ inject: [...inject], apply })
   return {
     connection,
@@ -106,7 +105,7 @@ describe('btw route', () => {
         spec.signal.addEventListener('abort', () => { reject(new Error('aborted')) }, { once: true })
       }),
     } as never)
-    const connection = new HostConnectionService(ctx, [], {} as BrowserAuth)
+    const connection = new HostConnectionService(ctx, [])
     const fiber = await ctx.plugin({ inject: [...inject], apply }, { timeoutMs: 5 })
     expect((await ask(connection, { sessionId: 's1', question: 'q' })).status).toBe(504)
     expect(await (await ask(connection, { sessionId: 's1', question: '   ' })).text()).toBe('missing or oversized question')
@@ -129,7 +128,7 @@ describe('btw route', () => {
     const ctx = new Context()
     ctx.provide('agents', { get: () => agent } as never)
     ctx.provide('subagents', { startActivation: async () => { throw 'boom' } } as never)
-    const connection = new HostConnectionService(ctx, [], {} as BrowserAuth)
+    const connection = new HostConnectionService(ctx, [])
     const fiber = await ctx.plugin({ inject: [...inject], apply })
     expect(await (await ask(connection, { sessionId: 's1', question: 'q' })).text()).toBe('the side question failed')
     await fiber.dispose()
@@ -139,7 +138,7 @@ describe('btw route', () => {
     const ctx = new Context()
     ctx.provide('agents', { get: () => agent } as never)
     ctx.provide('subagents', { startActivation: async () => { throw new Error('secret host path') } } as never)
-    const connection = new HostConnectionService(ctx, [], {} as BrowserAuth)
+    const connection = new HostConnectionService(ctx, [])
     const fiber = await ctx.plugin({ inject: [...inject], apply })
     const response = await ask(connection, { sessionId: 's1', question: 'q' })
     expect(response.status).toBe(500)

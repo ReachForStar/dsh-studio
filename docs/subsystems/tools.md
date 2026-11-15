@@ -91,7 +91,7 @@ interface ToolDefinition extends ToolSchema {
    * @param args - parsed arguments after the schema boundary.
    * @returns the action and zero or more resource names.
    */
-  approvalResources?(args: unknown): { readonly action: string; readonly resources: readonly string[] }
+  approvalResources?(args: unknown): ToolApprovalResources
   /**
    * Optional: how to present the PENDING state of one call in a UI, derived from
    * the call's `args` (parsed arguments, `unknown` — the tool validates/narrows
@@ -839,7 +839,7 @@ Decide an `ask` call before the approval seam prompts anyone. A listener may den
  * @param next - delegates to the next listener; the default result is no decision.
  * @mode waterfall
  */
-'tools/permission-request'( this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PermissionRequestDecision | undefined>, ): Promise<PermissionRequestDecision | undefined>
+'tools/permission-request'(this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PermissionRequestDecision | undefined>): Promise<PermissionRequestDecision | undefined>
 ```
 
 Types: [Scoped](scope.md)

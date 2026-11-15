@@ -174,15 +174,28 @@ describe('summary image offload', () => {
     expect(end?.type === 'compaction/end' && typeof end.data.error).toBe('string')
   })
 
-  it('preserves omission when a subsequent summary failure is terminal', async () => {
+  it('preserves omission through a terminal summary failure and its routed-model fallback', async () => {
+    const outage = () => { throw new LlmError('provider outage', 'SERVER') }
     const { compact, agent, adapter } = await summaryHarness([
-      textResponse('answer'), offloadRequired(1), () => { throw new LlmError('provider outage', 'SERVER') },
+      textResponse('answer'), offloadRequired(1), outage, outage,
     ])
     await seedImages(agent, ['first'])
     await expect(compact.compactNow(agent, new AbortController().signal)).rejects.toMatchObject({ code: 'summary', cause: { code: 'SERVER' } })
-    expect(adapter.requests).toHaveLength(3)
+    expect(adapter.requests).toHaveLength(4)
+    expect(adapter.requests.map(request => request.model)).toEqual(['mock', 'summary', 'summary', 'mock'])
     expect(decisions(agent.session)).toHaveLength(1)
     expect(agent.session.surface.replaceGeneration).toBe(0)
+  })
+
+  it('retries a failed configured summary model through the conversation route', async () => {
+    const { compact, agent, adapter } = await summaryHarness([
+      textResponse('answer'), () => { throw new LlmError('model not configured', 'UNKNOWN_MODEL') }, textResponse('checkpoint'),
+    ])
+    await seedImages(agent, ['first'])
+    const result = await compact.compactNow(agent, new AbortController().signal)
+    expect(result).not.toBeNull()
+    expect(adapter.requests.map(request => request.model)).toEqual(['mock', 'summary', 'mock'])
+    expect(decisions(agent.session)).toEqual([])
   })
 
   it('does not record a decision after cancellation during a failed summary', async () => {

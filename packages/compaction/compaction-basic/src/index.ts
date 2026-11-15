@@ -10,7 +10,7 @@ import { CompactionEngine, ManualCompactionError } from '@deepseek-ai/dsh-compac
 import type { CompactionResult, CompactionTrigger, PressureTriggerOptions } from '@deepseek-ai/dsh-compaction'
 import type { EpochHeader, Session, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
-import { CONTEXT_WINDOW_EXCEEDED_CODE, LlmError } from '@deepseek-ai/dsh-llm'
+import { CONTEXT_WINDOW_EXCEEDED_CODE, IMAGE_OFFLOAD_REQUIRED_CODE, LlmError } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, Message } from '@deepseek-ai/dsh-llm'
 // Type-only: makes the optional goal service available to `ctx.get()`.
 import type {} from '@deepseek-ai/dsh-goal'
@@ -350,7 +350,12 @@ export class BasicCompactionEngine extends CompactionEngine {
       return await summarizeWithLlm(this.ctx, config, input, agent, target, signal)
     } catch (error: unknown) {
       signal?.throwIfAborted()
+      // Image offload is a durable surface repair owned by `compaction/summary-error`
+      // listeners; another route repeats the same failure and skips that repair.
+      if (error instanceof LlmError && error.code === IMAGE_OFFLOAD_REQUIRED_CODE) throw error
       if (!this.config.summarizationFallback || config.summarizationProvider.length === 0) throw error
+      if (target === undefined
+        || (target.provider === config.summarizationProvider && target.model === config.summarizationModel)) throw error
       this.ctx.logger.warn(
         `compaction summary model ${config.summarizationProvider}/${config.summarizationModel} failed: `
         + `${error instanceof Error ? error.message : String(error)}; retrying with the conversation's routed model`,

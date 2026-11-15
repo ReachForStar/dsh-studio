@@ -30,7 +30,7 @@ function delivered(session: Session): void {
   const start = session.append('turn/start', { turn: 1 })
   session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
   session.append('session-log-deepseek/delivery-accepted', {
-    sessionId: session.id, sessionFormatVersion: 4, throughSeq: start.seq,
+    sessionId: session.id, sessionFormatVersion: 5, throughSeq: start.seq,
   })
 }
 
@@ -71,7 +71,7 @@ describe.each(['none', 'zstd'] as const)('fork delivery persistence (%s)', (comp
     const invalidTarget = damage === 'inherited-through' ? source : ctx.sessions.fork(source, undefined, brandString<SessionId>('child'))
     invalidTarget.append('session-log-deepseek/delivery-accepted', {
       sessionId: damage === 'foreign-own' ? source.id : invalidTarget.id,
-      sessionFormatVersion: 4,
+      sessionFormatVersion: 5,
       throughSeq: damage === 'foreign-own' ? SessionSeq(0) : SessionSeq(invalidTarget.seq),
     })
     const child = damage === 'inherited-through' ? ctx.sessions.fork(source) : invalidTarget

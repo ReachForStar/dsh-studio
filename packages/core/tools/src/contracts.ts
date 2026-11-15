@@ -23,6 +23,14 @@ export interface ToolOutputDefinition {
   presentationMeta?(args: unknown, value: JsonValue): JsonValue
 }
 
+/** Action and resource names one accepted call gates on, as approval rules receive them. */
+export interface ToolApprovalResources {
+  /** Action a `{ action, resource, effect }` rule matches, defaulting to the tool name. */
+  readonly action: string
+  /** Resource names the same rule may match; empty means the action alone decides. */
+  readonly resources: readonly string[]
+}
+
 /** A registered tool: its schema plus the execution function. */
 export interface ToolDefinition extends ToolSchema {
   /** Mandatory canonical output declaration. */
@@ -91,7 +99,7 @@ export interface ToolDefinition extends ToolSchema {
    * @param args - parsed arguments after the schema boundary.
    * @returns the action and zero or more resource names.
    */
-  approvalResources?(args: unknown): { readonly action: string; readonly resources: readonly string[] }
+  approvalResources?(args: unknown): ToolApprovalResources
   /**
    * Optional: how to present the PENDING state of one call in a UI, derived from
    * the call's `args` (parsed arguments, `unknown` — the tool validates/narrows

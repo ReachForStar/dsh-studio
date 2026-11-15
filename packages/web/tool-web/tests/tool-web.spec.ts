@@ -772,7 +772,7 @@ describe('tool-web execution through the real registry', () => {
     await fiber.dispose()
   })
 
-  it.each([{}, { queries: [123] }])('rejects absent or wrongly typed queries with a structured INVALID_ARGS error', async (args) => {
+  it.each([{}, { queries: [{ nested: true }] }])('rejects absent or wrongly typed queries with a structured INVALID_ARGS error', async (args) => {
     const { fiber, call } = await mountTools({ webConfig: { searchProvider: 'stub-search' }, search: searchProvider({ sources: [], truncated: false }) })
     const out = await call('web_search', args)
     expect(out.isError).toBe(true)

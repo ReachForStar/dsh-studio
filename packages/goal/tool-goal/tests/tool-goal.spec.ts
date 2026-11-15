@@ -545,7 +545,7 @@ describe('goal tool state transitions', () => {
     }, root.agent)
     expect(stale.error?.info?.code).toBe('GOAL_STALE_REVISION')
     const wrongType = await execute(ctx, 'update_goal', {
-      goal_id: created.id, revision: created.revision, action: 'complete', max_goal_rounds: '12',
+      goal_id: created.id, revision: created.revision, action: 'complete', max_goal_rounds: 'unbounded',
     }, root.agent)
     expect(wrongType.isError).toBe(true)
     expect(ctx.goals.get(root.agent)).toMatchObject({ objective: 'valid', revision: created.revision, phase: 'active' })

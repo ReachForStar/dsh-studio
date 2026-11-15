@@ -6056,7 +6056,7 @@ export const EVENT_API: readonly EventApiEntry[] = [
   {
     name: 'tools/permission-request',
     mode: 'waterfall',
-    signature: '\'tools/permission-request\'( this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PermissionRequestDecision | undefined>, ): Promise<PermissionRequestDecision | undefined>',
+    signature: '\'tools/permission-request\'(this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PermissionRequestDecision | undefined>): Promise<PermissionRequestDecision | undefined>',
     summary: 'Decide an `ask` call before the approval seam prompts anyone.',
     description: 'Decide an `ask` call before the approval seam prompts anyone. A listener may deny; returning nothing or calling `next()` delegates. This point cannot grant: only the approval service\'s `allowed-once` runs the call, so a human-only request stays human-only. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent\'s calls.',
     parameters: [{ name: 'exec', description: 'the pending call whose approval would otherwise be requested.' }, { name: 'next', description: 'delegates to the next listener; the default result is no decision.' }],
@@ -10898,6 +10898,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ToolAdditionBlock {\n    type: \'tool-addition\';\n    toolName: string;\n    tool?: never;\n}',
   },
   {
+    name: 'ToolApprovalResources',
+    declaration: 'export interface ToolApprovalResources {\n    readonly action: string;\n    readonly resources: readonly string[];\n}',
+  },
+  {
     name: 'ToolBatchInput',
     declaration: 'export interface ToolBatchInput {\n    readonly calls: readonly ToolCallBlock[];\n    readonly signal: AbortSignal;\n    readonly maxParallelToolCalls?: number;\n    readonly agent?: Agent;\n    readonly toolSet?: ResolvedToolSet;\n    readonly log?: {\n        readonly turn: number;\n        readonly step: number;\n    };\n}',
   },
@@ -10927,7 +10931,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolDefinition',
-    declaration: 'export interface ToolDefinition extends ToolSchema {\n    readonly output: ToolOutputDefinition;\n    execute(args: unknown, exec: ToolRunContext): Promise<unknown>;\n    projectContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    finalizeContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    timeoutMs?: number;\n    isConcurrencySafe?(args: unknown): boolean;\n    approvalResources?(args: unknown): {\n        readonly action: string;\n        readonly resources: readonly string[];\n    };\n    presentCall?(args: unknown): ToolCallView | undefined;\n    presentResult?(args: unknown, result: ToolResult): ToolResultView | undefined;\n}',
+    declaration: 'export interface ToolDefinition extends ToolSchema {\n    readonly output: ToolOutputDefinition;\n    execute(args: unknown, exec: ToolRunContext): Promise<unknown>;\n    projectContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    finalizeContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    timeoutMs?: number;\n    isConcurrencySafe?(args: unknown): boolean;\n    approvalResources?(args: unknown): ToolApprovalResources;\n    presentCall?(args: unknown): ToolCallView | undefined;\n    presentResult?(args: unknown, result: ToolResult): ToolResultView | undefined;\n}',
   },
   {
     name: 'ToolDispatchExecution',

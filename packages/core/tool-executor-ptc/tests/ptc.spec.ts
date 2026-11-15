@@ -2832,7 +2832,7 @@ describe('per-program execution controls', () => {
     } finally { await unsupportedControls.ctx.fiber.dispose() }
   })
 
-  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, '1000', null])('rejects invalid timeout %s before runtime execution', async (timeoutMs) => {
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, 'pending', null])('rejects invalid timeout %s before runtime execution', async (timeoutMs) => {
     const { ctx, runtime, execute } = await controlledSetup()
     try {
       const result = await execute({ timeoutMs })

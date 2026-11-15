@@ -26,11 +26,7 @@ declare module '@deepseek-ai/cordis' {
      * @param next - delegates to the next listener; the default result is no decision.
      * @mode waterfall
      */
-    'tools/permission-request'(
-      this: Scoped<ToolsService>,
-      exec: ToolExecution,
-      next: () => Promise<PermissionRequestDecision | undefined>,
-    ): Promise<PermissionRequestDecision | undefined>
+    'tools/permission-request'(this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PermissionRequestDecision | undefined>): Promise<PermissionRequestDecision | undefined>
     /**
      * Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns
      * a normalized result; wrappers may change only `exec.signal`, while call

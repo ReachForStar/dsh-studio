@@ -35,6 +35,9 @@
   gap: 6px;
   max-height: 40vh;
   overflow-y: auto;
+  /* The dialog body sits on the input surface rung, so the bar cannot use the base-surface pair. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
 .answerTitle {

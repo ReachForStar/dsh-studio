@@ -73,6 +73,7 @@ describe('ACP machine permission policy', () => {
     const foreign = {
       session: {
         id: request.agent.session.id,
+        header: request.agent.session.header,
         seq: events.length,
         eventAt: (seq: number) => events[seq],
         snapshotEvents: () => events,

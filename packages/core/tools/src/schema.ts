@@ -4,7 +4,7 @@ import { HarnessError } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, ToolSchema } from '@deepseek-ai/dsh-llm'
 import { snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
-import type { ToolDefinition, ToolExecution, ToolExecutionResult, ToolRunContext, ToolResult } from './contracts.ts'
+import type { ToolApprovalResources, ToolDefinition, ToolExecution, ToolExecutionResult, ToolRunContext, ToolResult } from './contracts.ts'
 import { assertSupportedJsonSchema, isJsonSchemaRecord, isPlainJsonArray, JsonSchemaError, validateJsonSchemaValue } from './json-schema.ts'
 import type { JsonSchemaNode, JsonSchemaScalar, ObjectJsonSchema } from './json-schema.ts'
 import type { ToolCallView, ToolResultView } from './presentation.ts'
@@ -584,7 +584,7 @@ export interface DefineToolOptions<S extends ParameterSchemaSpec, O extends Valu
    * @param args - typed validated arguments.
    * @returns the action and resource names a rule may match.
    */
-  approvalResources?(args: InferArgs<S>): { readonly action: string; readonly resources: readonly string[] }
+  approvalResources?(args: InferArgs<S>): ToolApprovalResources
   /**
    * Execute the tool after argument validation.
    * @param args - typed validated arguments.

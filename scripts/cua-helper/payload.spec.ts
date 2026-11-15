@@ -123,10 +123,10 @@ it('keeps company signing outside pull-request release rehearsals', () => {
   expect(workflow).toContain('workflow_call:')
   expect(workflow).not.toContain('pull_request:')
   expect(workflow).toContain('dsh-mac-package-trial')
-  const release = readFileSync(resolve('.github/workflows/release-publish.yml'), 'utf8')
-  expect(release).toContain('needs: cua-helper-macos')
-  expect(release).toContain('scripts/cua-helper/stage.ts')
-  expect(readFileSync(resolve('.github/workflows/release.yml'), 'utf8')).not.toContain('cua-helper-package-macos.yml')
+  // This fork packages desktop installers from its own workflows and keeps the upstream
+  // release workflows deleted, so the macOS package workflow stages the helper.
+  const packaging = readFileSync(resolve('.github/workflows/macos-package.yml'), 'utf8')
+  expect(packaging).toContain('scripts/cua-helper/stage.ts')
 })
 
 it.skipIf(process.platform === 'win32')('retains the original build commit and version when consuming identical helper sources', () => {

@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 4e5bb11e4664bb1c
-  zh: 4855556d38701373
+  en: 10818b1ee074f080
+  zh: 3524e9bd914ea405
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -33,8 +33,11 @@
   en: bf4236607199d61e
   zh: 82f4f749dcabc89f
 /tool-schema-catalog/deepseek-ai-dsh-mcp-resources/read-mcp-resource:
-  en: 5d92c07fa062734f
-  zh: 2d6f0cb8116cf567
+  en: fba8577910bfd3c0
+  zh: fa0c4e66363a8477
+/tool-schema-catalog/deepseek-ai-dsh-mcp-resources/watch-mcp-resource:
+  en: 7db80b68ba2ad6c0
+  zh: 002ee641f25c174f
 /tool-schema-catalog/deepseek-ai-dsh-experimental-browser-use-stagehand-native:
   en: 19e7df8d692b4375
   zh: 19e7df8d692b4375
@@ -117,8 +120,47 @@
   en: 594e5b42047969cc
   zh: 72189ca21345c210
 /tool-schema-catalog/deepseek-ai-dsh-tool-cordis/cordis-inspect-query:
-  en: 42a647ba98527f9e
-  zh: c53ade6a47ea523f
+  en: 02d2b47db3a7d150
+  zh: 605f1b90a60ea5a3
+/tool-schema-catalog/reachforstar-dsh-tool-ssh:
+  en: 337b0058c2a92239
+  zh: 337b0058c2a92239
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-list:
+  en: 657b667432b173fc
+  zh: 68e5a0a0917270fa
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-mkdir:
+  en: 5832e7a25161c138
+  zh: 5010f12818b48624
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-read:
+  en: 375978f6c905b429
+  zh: 138b5ce78db6026b
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-rename:
+  en: 5e7b9cd62ecc76b1
+  zh: f30236599be15c9e
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-rm:
+  en: 300d99cd32340052
+  zh: e8c583cfd0a9a4a9
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-stat:
+  en: 452e126074149a54
+  zh: 0b1249b24729a8b9
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/sftp-write:
+  en: d8abaf0e89e52892
+  zh: 93fb717b60ca8f00
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-connect:
+  en: 874f08bad8059979
+  zh: 9ca794155e60b300
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-connections:
+  en: cb3e5706d05d559b
+  zh: 5c5ab094278dbaff
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-disconnect:
+  en: fc83c860af4b4f20
+  zh: 017a983c01feebdf
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-exec:
+  en: b447fa1ce9e143c3
+  zh: aaf97866e15bdbba
+/tool-schema-catalog/reachforstar-dsh-tool-ssh/ssh-test:
+  en: 22be175096446d1b
+  zh: ac23dd40954b6610
 /tool-schema-catalog/deepseek-ai-dsh-tool-bash-persistent:
   en: bdd9e88c49029e05
   zh: bdd9e88c49029e05
@@ -135,8 +177,32 @@
   en: 591f6e54dbbc38fe
   zh: 591f6e54dbbc38fe
 /tool-schema-catalog/deepseek-ai-dsh-tool-str-replace-editor/str-replace-editor:
-  en: 3d11196a13e69228
-  zh: 56019c74cf0633cd
+  en: 0183f53034771892
+  zh: 1d9c519818e9c935
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw:
+  en: 37cc604a46a408a1
+  zh: 37cc604a46a408a1
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-draw:
+  en: a2f88f99e830562e
+  zh: b50c716a57258276
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-export:
+  en: 67605ac51cb8559b
+  zh: 2cef1d17bace4a4c
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-read:
+  en: 19f3e1c323b5371b
+  zh: a1dda26805b969c5
+/tool-schema-catalog/reachforstar-dsh-tool-excalidraw/excalidraw-write:
+  en: 8e35eadfbfce0a3b
+  zh: b297896781da8994
+/tool-schema-catalog/reachforstar-dsh-tool-a2a:
+  en: 934cd98fc1da38cc
+  zh: 934cd98fc1da38cc
+/tool-schema-catalog/reachforstar-dsh-tool-a2a/a2a-peers:
+  en: f6102c9fce7264b1
+  zh: 9345461aec29f5f2
+/tool-schema-catalog/reachforstar-dsh-tool-a2a/a2a-send:
+  en: 8e6abedeafa55039
+  zh: 5b0ee38be2e4f90a
 /tool-schema-catalog/deepseek-ai-dsh-tool-fs:
   en: 07d595ce1f1a5184
   zh: 07d595ce1f1a5184
@@ -237,8 +303,14 @@
   en: 927a5ac0974b7642
   zh: 927a5ac0974b7642
 /tool-schema-catalog/deepseek-ai-dsh-tool-skill/skill:
-  en: 9b159d5831855afb
-  zh: 275ee82af0e0f59a
+  en: 9c0624cc4bf789c1
+  zh: aff4019c9e0e4885
+/tool-schema-catalog/deepseek-ai-dsh-tool-search:
+  en: b114723a8100e935
+  zh: b114723a8100e935
+/tool-schema-catalog/deepseek-ai-dsh-tool-search/tool-search:
+  en: b93b9f7e9e324351
+  zh: 41aec6e62aa16196
 /tool-schema-catalog/deepseek-ai-dsh-tool-session-query:
   en: eac1dff4b6d9e195
   zh: eac1dff4b6d9e195
@@ -318,8 +390,14 @@
   en: dea62d26fb18ff68
   zh: dea62d26fb18ff68
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo/todo-write:
-  en: f252137b940b38d1
-  zh: 25bd9c6b1ce783d8
+  en: 0837c4b5d521ffdc
+  zh: c2fd6fb4cf26469e
+/tool-schema-catalog/deepseek-ai-dsh-memory-notes:
+  en: 2afcb8731d9b0485
+  zh: 2afcb8731d9b0485
+/tool-schema-catalog/deepseek-ai-dsh-memory-notes/memory-write:
+  en: a48519b260285428
+  zh: 320871b95e112f73
 /tool-schema-catalog/deepseek-ai-dsh-tool-working-directory:
   en: 1bdc4627ca4fff29
   zh: 1bdc4627ca4fff29
@@ -330,7 +408,7 @@
   en: d5f5679abe86e316
   zh: d5f5679abe86e316
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-worktree/create-worktree:
-  en: 41950f76db71e7f7
+  en: e7a61666aa3f84aa
   zh: 654d2e5505ff3d3c
 /tool-schema-catalog/deepseek-ai-dsh-tool-workflow:
   en: bb38a9d29f46563c

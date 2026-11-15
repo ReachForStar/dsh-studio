@@ -125,6 +125,14 @@ function latestRuntimeContext(session: Session): string | undefined {
   return block?.type === 'text' ? block.text : undefined
 }
 
+/** Every runtime-context statement this session carries, in event order. */
+function runtimeContexts(session: Session): string[] {
+  return session.snapshotEvents()
+    .flatMap(event => event.type === 'user/message' && event.data.source.kind === 'runtime-context'
+      ? event.data.content.flatMap(block => block.type === 'text' ? [block.text] : [])
+      : [])
+}
+
 function requestSystemPrompts(request: GenerateOptions | undefined): string[] {
   return (request?.messages ?? []).filter(message => message.role === 'system')
     .flatMap(message => message.content.map(block => block.type === 'text' ? block.text : ''))
@@ -173,7 +181,10 @@ describe('harness-dev-context', () => {
       expect(requestSystemPrompts(h.adapter.requests.at(-1))).toEqual(logged)
       expect(latestRuntimeContext(resumed.session))
         .toContain(`Current DeepSeek Harness Web GUI URL: "http://127.0.0.1:${String(port)}".`)
-      expect(latestRuntimeContext(resumed.session)).toContain('Current DeepSeek Harness implementation checkout: "')
+      // Only changed sections are restated after the first snapshot, so the unchanged
+      // checkout statement reaches this session with the first restated snapshot.
+      expect(runtimeContexts(resumed.session).join('\n'))
+        .toContain('Current DeepSeek Harness implementation checkout: "')
       session = resumed.session
     }
   })

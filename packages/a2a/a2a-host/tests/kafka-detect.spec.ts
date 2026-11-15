@@ -1,6 +1,7 @@
 import { createServer, type Server } from 'node:net'
 import { ChildProcess } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { PassThrough } from 'node:stream'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -103,7 +104,7 @@ describe('startKafkaViaDocker', () => {
 
   it('stdin 内容与包内 compose 文件逐字一致', async () => {
     const { runner, calls } = recorder()
-    const composePath = new URL('../infra/kafka/docker-compose.yml', import.meta.url).pathname
+    const composePath = fileURLToPath(new URL('../infra/kafka/docker-compose.yml', import.meta.url))
     await startKafkaViaDocker(composePath, runner)
     expect(calls[0]?.input).toBe(readFileSync(composePath, 'utf8'))
   })

@@ -1783,7 +1783,11 @@ describe('cancellation and integration teardown', () => {
       run() { throw new Error('unused') },
       start() { throw new Error('unused') },
     })
-    invalid.provide('approval', { config: { policy: 'ask' } })
+    invalid.provide('approval', {
+      config: { policy: 'ask' },
+      registerFullAccess: () => () => {},
+      requestFullAccess() { throw new Error('auto-review tests do not grant full access') },
+    })
     await invalid.plugin(PermissionPresetService, {})
     const auto = await invalid.plugin(AutoReview)
     expect(invalid.permissionPresets.names).toContain(AUTO_PRESET)

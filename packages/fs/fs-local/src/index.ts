@@ -13,7 +13,9 @@ import { watch } from 'chokidar'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import z from '@deepseek-ai/schemastery'
-import { FileSystem, FsError, type FsRemoveOptions, type FsRemoveOutcome, type FsVersion } from '@deepseek-ai/dsh-fs'
+import {
+  FileSystem, FsError, type FsRemoveOptions, type FsRemoveOutcome, type FsVersion, type FsWriteBytesOutcome,
+} from '@deepseek-ai/dsh-fs'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type {
   FsDeleteOutcome,
@@ -221,6 +223,24 @@ export class LocalFileSystem extends FileSystem {
     signal?: AbortSignal,
   ): Promise<FsRemoveOutcome> {
     return removePath(localDisplayPath(opts?.cwd ?? this.config.cwd, path), opts?.recursive === true, signal)
+  }
+
+  override async writeBytes(
+    target: FsTarget,
+    content: Uint8Array,
+    expected?: FsWriteIntent,
+    signal?: AbortSignal,
+  ): Promise<FsWriteBytesOutcome> {
+    return this.withLock(target.targetKey, async () => {
+      const existing = await this.writeTarget(target, expected)
+      await writeFileAtomic(target.targetKey, content, existing?.mode, signal, this.internals,
+        { displayPath: target.displayPath, createIfAbsent: expected?.kind === 'createIfAbsent' })
+      const after = await probe(target.targetKey)
+      return {
+        operation: existing ? 'update' : 'create',
+        version: this.versionAfterWrite(after, target),
+      }
+    })
   }
 
   override async writeText(

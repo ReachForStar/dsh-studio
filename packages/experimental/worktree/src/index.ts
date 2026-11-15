@@ -3,6 +3,7 @@
 import { Context, Service, type Volatile } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { FsError } from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-fs'
 import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
@@ -328,6 +329,19 @@ export class WorktreeService extends Service {
       const source = await this.ctx.fs.resolve(relative, { cwd: repositoryRoot, signal })
       const destination = await this.ctx.fs.resolve(relative, { cwd: checkoutPath, signal })
       const bytes = await this.ctx.fs.readBytes(source, signal, this.config.mirrorMaxFileBytes)
+      // A text-only backend cannot take raw bytes; copy UTF-8 content through
+      // its text seam and leave genuinely binary files to the byte path.
+      const text = decodeUtf8Bytes(bytes)
+      if (text !== undefined) {
+        try {
+          await this.ctx.fs.writeBytes(destination, bytes, undefined, signal, policy)
+          continue
+        } catch (error: unknown) {
+          if (!(error instanceof FsError) || error.code !== 'FS_UNSUPPORTED_BINARY_WRITE') throw error
+        }
+        await this.ctx.fs.writeText(destination, text, undefined, signal, policy)
+        continue
+      }
       await this.ctx.fs.writeBytes(destination, bytes, undefined, signal, policy)
     }
   }
@@ -469,3 +483,13 @@ async function filterOverrides(run: GitRun, path: string): Promise<NodeJS.Proces
 }
 
 export default WorktreeService
+
+
+/** Decode bytes as UTF-8 text, or `undefined` when the content is not text. */
+function decodeUtf8Bytes(bytes: Uint8Array): string | undefined {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    return undefined
+  }
+}

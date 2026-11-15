@@ -649,7 +649,7 @@ function writeIoError(path: string, error: unknown): unknown {
  */
 export async function writeFileAtomic(
   absolutePath: string,
-  content: string,
+  content: string | Uint8Array,
   mode: number | undefined,
   signal: AbortSignal | undefined,
   internals: FsIoInternals = {},
@@ -686,7 +686,7 @@ export async function writeFileAtomic(
     if (platform === 'win32' && existingDestination) {
       await copyFileDacl(absolutePath, tempPath)
     }
-    await handle.writeFile(content, { encoding: 'utf8', ...signal ? { signal } : {} })
+    await handle.writeFile(content, { ...signal ? { signal } : {} })
     await handle.sync()
     await internals.inspectTemp?.({ stagingDir, tempPath })
     if (mode !== undefined) await handle.chmod(mode)
@@ -904,13 +904,157 @@ export function applyLiteralEdit(
   }
   const newNorm = normalizeLineEndings(newString)
   const replacements = countOccurrences(content, oldNorm)
-  if (replacements === 0) {
-    throw new FsError(`old_string was not found in "${displayPath}"`, 'FS_EDIT_NOT_FOUND')
+  if (replacements > 0) {
+    if (!replaceAll && replacements > 1) throw ambiguousEdit(displayPath, replacements)
+    return { content: content.split(oldNorm).join(newNorm), replacements }
   }
-  if (!replaceAll && replacements > 1) {
-    throw new FsError(`old_string matched ${replacements} times in "${displayPath}"; provide a more specific old_string or set replace_all to true`, 'FS_AMBIGUOUS_EDIT')
+  return tolerantLiteralEdit(content, oldNorm, newNorm, replaceAll, displayPath)
+}
+
+/** Line-similarity floor for the block-anchor fallback. */
+const BLOCK_ANCHOR_SIMILARITY = 0.8
+
+function ambiguousEdit(displayPath: string, replacements: number): FsError {
+  return new FsError(`old_string matched ${replacements} times in "${displayPath}"; provide a more specific old_string or set replace_all to true`, 'FS_AMBIGUOUS_EDIT')
+}
+
+/** Normalize curly quotes and dashes that copied text commonly distorts. */
+function normalizeQuotes(value: string): string {
+  return value
+    .replace(/[\u2018\u2019\u201A\u201B]/gu, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/gu, '"')
+    .replace(/[\u2013\u2014]/gu, '-')
+}
+
+/** Strip a copied line-number gutter (`  12: text` / `12 | text`). */
+function stripLineNumbers(value: string): string {
+  return value.split('\n').map(line => line.replace(/^\s*\d+\s*[|:]\s?/u, '')).join('\n')
+}
+
+/** Interpret the common backslash escapes a model writes into a literal search. */
+function interpretEscapes(value: string): string {
+  return value.replace(/(\\+)([ntr])/gu, (match, slashes: string, escaped: string) => {
+    if (slashes.length !== 1) return match
+    return escaped === 'n' ? '\n' : escaped === 't' ? '\t' : '\r'
+  })
+}
+
+interface SpanMatch { readonly start: number; readonly end: number }
+
+/** Find one exact span, reporting ambiguity rather than choosing. */
+function spanOf(content: string, search: string, replaceAll: boolean): SpanMatch | { ambiguous: number } | undefined {
+  const first = content.indexOf(search)
+  if (first < 0) return undefined
+  const second = content.indexOf(search, first + search.length)
+  if (second >= 0 && !replaceAll) {
+    let count = 0
+    let index = first
+    while (index >= 0) { count += 1; index = content.indexOf(search, index + search.length) }
+    return { ambiguous: count }
   }
-  return { content: content.split(oldNorm).join(newNorm), replacements }
+  return { start: first, end: first + search.length }
+}
+
+/** Match a search against content ignoring line indentation and surrounding blank space. */
+function indentationMatch(content: string, search: string): SpanMatch[] {
+  const contentLines = content.split('\n')
+  const searchLines = search.split('\n').map(line => line.trim())
+  const matches: SpanMatch[] = []
+  for (let start = 0; start <= contentLines.length - searchLines.length; start += 1) {
+    if (!searchLines.every((line, offset) => contentLines[start + offset]?.trim() === line)) continue
+    const startOffset = contentLines.slice(0, start).reduce((sum, line) => sum + line.length + 1, 0)
+    const span = contentLines.slice(start, start + searchLines.length).join('\n')
+    matches.push({ start: startOffset, end: startOffset + span.length })
+  }
+  return matches
+}
+
+/** Match a search block against content when enough corresponding lines are similar. */
+function anchorMatch(content: string, search: string): SpanMatch[] {
+  const contentLines = content.split('\n')
+  const searchLines = search.split('\n')
+  if (searchLines.length < 2) return []
+  const matches: SpanMatch[] = []
+  for (let start = 0; start <= contentLines.length - searchLines.length; start += 1) {
+    let similar = 0
+    for (let offset = 0; offset < searchLines.length; offset += 1) {
+      if (contentLines[start + offset]?.trim() === searchLines[offset]?.trim()) similar += 1
+    }
+    if (similar / searchLines.length < BLOCK_ANCHOR_SIMILARITY) continue
+    const startOffset = contentLines.slice(0, start).reduce((sum, line) => sum + line.length + 1, 0)
+    const span = contentLines.slice(start, start + searchLines.length).join('\n')
+    matches.push({ start: startOffset, end: startOffset + span.length })
+  }
+  return matches
+}
+
+/** Add one span replacement for a tolerant variant, rejecting ambiguity. */
+function applySpan(content: string, match: SpanMatch, replacement: string): { content: string; replacements: number } {
+  return { content: content.slice(0, match.start) + replacement + content.slice(match.end), replacements: 1 }
+}
+
+/**
+ * Fallback matching for common copy distortions: quotes, line-number gutters,
+ * literal escapes, trimmed text, indentation, and a block anchor. Ambiguity is
+ * always reported instead of selecting a candidate.
+ */
+function tolerantLiteralEdit(
+  content: string,
+  search: string,
+  replacement: string,
+  replaceAll: boolean,
+  displayPath: string,
+): { content: string; replacements: number } {
+  // 1. Quote normalization: single-character substitutions keep indices valid.
+  const quoted = spanOf(normalizeQuotes(content), normalizeQuotes(search), replaceAll)
+  if (quoted !== undefined) {
+    if ('ambiguous' in quoted) throw ambiguousEdit(displayPath, quoted.ambiguous)
+    return applySpan(content, quoted, replacement)
+  }
+  // 2. Copied line-number gutters.
+  const stripped = stripLineNumbers(search)
+  if (stripped !== search) {
+    const match = spanOf(content, stripped, replaceAll)
+    if (match !== undefined) {
+      if ('ambiguous' in match) throw ambiguousEdit(displayPath, match.ambiguous)
+      return applySpan(content, match, replacement)
+    }
+  }
+  // 3. Literal escape sequences in the search.
+  const unescaped = interpretEscapes(search)
+  if (unescaped !== search) {
+    const match = spanOf(content, unescaped, replaceAll)
+    if (match !== undefined) {
+      if ('ambiguous' in match) throw ambiguousEdit(displayPath, match.ambiguous)
+      return applySpan(content, match, replacement)
+    }
+  }
+  // 4. Trimmed search text.
+  const trimmed = search.trim()
+  if (trimmed.length > 0 && trimmed !== search) {
+    const match = spanOf(content, trimmed, replaceAll)
+    if (match !== undefined) {
+      if ('ambiguous' in match) throw ambiguousEdit(displayPath, match.ambiguous)
+      return applySpan(content, match, replacement)
+    }
+  }
+  // 5. Indentation-insensitive block match.
+  const indented = indentationMatch(content, search)
+  if (indented.length > 0) {
+    if (indented.length > 1 && !replaceAll) throw ambiguousEdit(displayPath, indented.length)
+    const match = indented[0]
+    if (match === undefined) throw ambiguousEdit(displayPath, indented.length)
+    return applySpan(content, match, replacement)
+  }
+  // 6. Block anchor over similar lines.
+  const anchored = anchorMatch(content, search)
+  if (anchored.length > 0) {
+    if (anchored.length > 1 && !replaceAll) throw ambiguousEdit(displayPath, anchored.length)
+    const match = anchored[0]
+    if (match === undefined) throw ambiguousEdit(displayPath, anchored.length)
+    return applySpan(content, match, replacement)
+  }
+  throw new FsError(`old_string was not found in "${displayPath}"`, 'FS_EDIT_NOT_FOUND')
 }
 
 export { normalizeLineEndings, restoreLineEndings }

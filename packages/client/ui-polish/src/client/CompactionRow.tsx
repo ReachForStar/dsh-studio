@@ -4,7 +4,7 @@
 // value persists in the ui-polish settings document; the node half reads it
 // per step.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { COMPACTION_RATIO_FIELD, type PolishSettings } from '../background-settings.ts'
 import type { createCompactionRowStore } from './settings-store.ts'
@@ -31,11 +31,16 @@ export type CompactionRowProps =
 export function CompactionRow({ t, setRatio, useStore }: CompactionRowProps) {
   const currentRatio = useStore(s => s.ratio)
   const [saved, setSaved] = useState(false)
+  const savedTimer = useRef<number | undefined>(undefined)
   const value = currentRatio === null ? '' : String(Math.round(currentRatio * 100))
+  // The saved badge timer would update state after the host tore the row down.
+  useEffect(() => () => { window.clearTimeout(savedTimer.current) }, [])
+
   const onChange = (next: string): void => {
     setRatio(next === '' ? null : Number(next) / 100)
     setSaved(true)
-    window.setTimeout(() => { setSaved(false) }, 1500)
+    window.clearTimeout(savedTimer.current)
+    savedTimer.current = window.setTimeout(() => { setSaved(false) }, 1500)
   }
   return (
     <div className={css.group}>

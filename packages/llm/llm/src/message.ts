@@ -291,10 +291,7 @@ export function createAssistantMessage(
 export function createPeerAssistantMessage(
   input: Omit<PeerAssistantMessage, 'id'> & { readonly id?: never },
 ): PeerAssistantMessage {
-  return deepFreeze(structuredClone({
-    ...input,
-    id: brandString<MessageId>(randomUUID()),
-  }))
+  return createMessage(input)
 }
 
 /**

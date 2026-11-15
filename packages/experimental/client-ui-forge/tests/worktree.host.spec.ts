@@ -15,6 +15,12 @@ import { CreationFailure, forgeWorktreeProjection, WORKTREE_RECORD, WorktreeCrea
 import {
   branches, commitAt, git, hold, notice, plainSession, prompt, proposeStep, rejectionOf, repository, runtime, scratch, startStep, startTurn,
 } from './harness.ts'
+
+
+// The fixtures drive real Git through the local subprocess runtime, whose native Linux scope
+// launch costs about 150ms per command on hosts that provide it. Raise the per-test budget for
+// that launch cost, not for slow assertions.
+vi.setConfig({ testTimeout: 60_000 })
 import type { Runtime } from './harness.ts'
 import { brandString } from '@deepseek-ai/dsh-brand'
 

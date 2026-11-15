@@ -69,7 +69,7 @@ describe('PiEventTranslator', () => {
     // The browser-prompt source variant (kind 'user' + rpcId) is declared by
     // the api-session-controller layer; assert the type here to model it.
     const source = { kind: 'user' as const, rpcId: 'req-42' }
-    translator.setPendingUserSource(source as unknown as Parameters<PiEventTranslator['setPendingUserSource']>[0])
+    translator.setPendingUserSource(source)
     emit({ type: 'turn_start' })
     emit({ type: 'message_end', message: { role: 'user', content: [{ type: 'text', text: 'hi' }] } })
 

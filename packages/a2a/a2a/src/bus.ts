@@ -188,7 +188,7 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
       const deadline = Date.now() + GROUP_READY_TIMEOUT_MS
       for (;;) {
         const described = await admin.describeGroups([groupId])
-        const owned = (described.groups ?? []).some(group =>
+        const owned = described.groups.some(group =>
           group.groupId === groupId && group.state === 'Stable' && group.members.length > 0)
         // A group that never reaches Stable is a slow broker, not a failed
         // start: the consumer keeps joining in the background.
@@ -207,11 +207,11 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
    * it: a crash with `restart` set is rebuilt by kafkajs itself, and one
    * without it leaves the consumer dead, which is what this rebuilds.
    */
-  async function runWithRecovery(
+  function runWithRecovery(
     groupId: string,
     topic: string,
     start: (consumer: Consumer) => Promise<void>,
-  ): Promise<A2ABusHandle> {
+  ): A2ABusHandle {
     let stopped = false
     let consumer = newConsumer(groupId)
 
@@ -270,7 +270,7 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
   async function withDeadline(work: Promise<void>, ms: number): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined
     const expired = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => reject(new TaskTimeoutError(`task exceeded ${ms}ms`)), ms)
+      timer = setTimeout(() => { reject(new TaskTimeoutError(`task exceeded ${ms}ms`)) }, ms)
     })
     try {
       await Promise.race([work, expired])
@@ -312,7 +312,7 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
       options: A2AConsumeOptions = {},
     ): Promise<A2ABusHandle> {
       const deadline = options.taskTimeoutMs
-      const handle = await runWithRecovery(groupId, config.taskTopic, consumer =>
+      const handle = runWithRecovery(groupId, config.taskTopic, consumer =>
         consumer.run({
           eachMessage: async ({ message }): Promise<void> => {
             const raw = message.value?.toString() ?? ''
@@ -353,7 +353,7 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
                 markDone(task.taskId)
                 return
               }
-              const attempt = (task.attempt ?? 1) + 1
+              const attempt = task.attempt + 1
               if (attempt > config.maxAttempts) {
                 await publish(config.dlqTopic, task.taskId, { task, error: detailOf(error), ts: Date.now() })
               } else {
@@ -370,15 +370,16 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
     },
 
     async consumeEvents(groupId: string, handler: (event: BusEvent) => void): Promise<A2ABusHandle> {
-      const handle = await runWithRecovery(groupId, config.eventTopic, consumer =>
+      const handle = runWithRecovery(groupId, config.eventTopic, consumer =>
         consumer.run({
-          eachMessage: async ({ message }): Promise<void> => {
+          eachMessage: ({ message }) => {
             try {
               handler(JSON.parse(message.value?.toString() ?? '') as BusEvent)
             } catch {
               // Events are a progress channel, not the task record: a reader
               // that fails on one event must not stop reading the rest.
             }
+            return Promise.resolve()
           },
         }),
       )

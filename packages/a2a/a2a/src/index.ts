@@ -6,7 +6,7 @@ import { createA2ABus } from './bus.ts'
 import { loadA2ABridgeConfig } from './bridge-config.ts'
 import { isTerminal, textOf } from './schema.ts'
 import type { A2ABus, A2ABusHandle } from './bus.ts'
-import type { A2ABridgeConfig } from './bridge-config.ts'
+import type { A2ABridgeAgent, A2ABridgeConfig } from './bridge-config.ts'
 import type { AgentCard, A2ATask, BusEvent, BusTask } from './schema.ts'
 import type { A2APeerCall, A2APeerConfig, A2APeerInfo, A2APeerRef, A2APeerReply } from './types.ts'
 
@@ -342,13 +342,13 @@ export class A2AService extends Service {
         return { agent: request.agent, skill, mode: 'bus', text, taskId, contextId, state: 'TASK_STATE_SUBMITTED' }
       }
       const deadline = Date.now() + timeoutMs
-      const settled = async (): Promise<BusEvent | undefined> => terminal
+      const readTerminal = (): BusEvent | undefined => terminal
       while (Date.now() < deadline) {
-        const event = await settled()
+        const event = readTerminal()
         if (event !== undefined) break
         await new Promise(resolve => setTimeout(resolve, 200))
       }
-      const finished = await settled()
+      const finished = readTerminal()
       return {
         agent: request.agent,
         skill,
@@ -475,7 +475,9 @@ export class A2AService extends Service {
  */
 function peersOf(bridge: A2ABridgeConfig | undefined): Record<string, A2APeerConfig> {
   if (bridge === undefined) return {}
-  return Object.fromEntries(Object.entries(bridge.agents).map(([name, agent]) => [name, {
+  // Widen to an index signature so `Object.entries` yields the agent's fields rather than `any`.
+  const agents: Record<string, A2ABridgeAgent> = { ...bridge.agents }
+  return Object.fromEntries(Object.entries(agents).map(([name, agent]) => [name, {
     url: `http://127.0.0.1:${String(agent.port)}/`,
     ...bridge.apiKey.length === 0 ? {} : { apiKey: bridge.apiKey },
     timeoutMs: bridge.taskTimeoutMs,

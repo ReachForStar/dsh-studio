@@ -71,14 +71,16 @@ function fenceMembership(text: string): boolean[] {
     let indent = 0
     while (indent < 3 && line[indent] === ' ') indent += 1
     const marker = line[indent]
+    /** The line's fence character, when the line starts with one. */
+    const fenceChar: '`' | '~' | undefined = marker === '`' || marker === '~' ? marker : undefined
     let run = 0
-    while (marker !== undefined && line[indent + run] === marker && (marker === '`' || marker === '~')) run += 1
-    const closes = fence !== null && marker === fence.marker && run >= fence.length
+    while (fenceChar !== undefined && line[indent + run] === fenceChar) run += 1
+    const closes = fence !== null && fenceChar === fence.marker && run >= fence.length
       && /^[ \t]*$/.test(line.slice(indent + run))
-    const opens = fence === null && (marker === '`' || marker === '~') && run >= 3
+    const opens: '`' | '~' | undefined = fence === null && fenceChar !== undefined && run >= 3 ? fenceChar : undefined
     if (closes) fence = null
-    else if (opens) fence = { marker: marker as '`' | '~', length: run }
-    if (closes || opens || fence !== null) mark(index, lineEnd)
+    else if (opens !== undefined) fence = { marker: opens, length: run }
+    if (closes || opens !== undefined || fence !== null) mark(index, lineEnd)
     index = lineEnd
     while (index < text.length && (text[index] === '\n' || text[index] === '\r')) index += 1
   }

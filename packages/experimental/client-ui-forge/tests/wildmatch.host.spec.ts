@@ -1,7 +1,13 @@
 /** `.gitattributes` patterns: each pattern applies to the same paths as `git check-attr` applies it to. */
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+
+
+// The fixtures drive real Git through the local subprocess runtime, whose native Linux scope
+// launch costs about 150ms per command on hosts that provide it. Raise the per-test budget for
+// that launch cost, not for slow assertions.
+vi.setConfig({ testTimeout: 60_000 })
 import { attributesOf } from '../src/layers.ts'
 import { git, scratch } from './harness.ts'
 

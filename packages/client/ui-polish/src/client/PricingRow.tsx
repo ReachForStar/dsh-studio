@@ -6,7 +6,7 @@
 // shape; validation errors show inline and nothing is persisted until the
 // JSON parses and every price is finite.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { SEED_RATE_CARD } from './cost.ts'
 import type { createPricingRowStore } from './settings-store.ts'
@@ -39,12 +39,17 @@ export function PricingRow({ t, save, reset, useStore }: PricingRowProps) {
   const [text, setText] = useState(currentJson)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const savedTimer = useRef<number | undefined>(undefined)
+  // The saved badge timer would update state after the host tore the row down.
+  useEffect(() => () => { window.clearTimeout(savedTimer.current) }, [])
+
   const onSave = (): void => {
     try {
       save(text)
       setError(null)
       setSaved(true)
-      window.setTimeout(() => { setSaved(false) }, 1500)
+      window.clearTimeout(savedTimer.current)
+      savedTimer.current = window.setTimeout(() => { setSaved(false) }, 1500)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
     }

@@ -86,9 +86,9 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
         path: '/api/computer-use/cua-driver/install',
         methods: ['POST'],
         requestBody: 'buffered',
-        fetch: async () => new Response(runInstall(), {
+        fetch: () => Promise.resolve(new Response(runInstall(), {
           headers: { 'content-type': 'application/x-ndjson' },
-        }),
+        })),
       })
       return async () => {
         await disposeInstall()

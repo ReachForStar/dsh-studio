@@ -264,8 +264,8 @@ export class A2AHostService extends Service {
 async function isPortInUse(host: string, port: number): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     const probe = createServer()
-    probe.once('error', () => resolve(true))
-    probe.listen(port, host, () => probe.close(() => resolve(false)))
+    probe.once('error', () => { resolve(true) })
+    probe.listen(port, host, () => { probe.close(() => { resolve(false) }) })
   })
 }
 

@@ -53,7 +53,7 @@ export function apply(ctx: Context): void {
 
   ctx.effect(() => {
     const disposeProvide = ctx.provide('a2aStatus', controller)
-    return async () => {
+    return () => {
       disposeProvide()
       controller.dispose()
     }

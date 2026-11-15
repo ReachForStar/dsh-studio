@@ -10,6 +10,12 @@ import {
   aheadOf, BaseMissing, baseBranches, chosenForkPoint, CommitsMissing, CommitsNotLinear, DiffTooLarge, forkPoint, localChanges,
   localCommits, localDiff, localOldText, localText, NoForkPoint,
 } from '../src/local-diff.ts'
+
+
+// The fixtures drive real Git through the local subprocess runtime, whose native Linux scope
+// launch costs about 150ms per command on hosts that provide it. Raise the per-test budget for
+// that launch cost, not for slow assertions.
+vi.setConfig({ testTimeout: 60_000 })
 import type { DiffConfig, ForkPoint } from '../src/local-diff.ts'
 import { FileLayers } from '../src/layers.ts'
 import type { ForgeLocalScope, ForgeSessionWorktree } from '../src/types.ts'

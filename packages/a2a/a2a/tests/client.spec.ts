@@ -325,11 +325,10 @@ describe('A2AClient 推送配置与参数', () => {
     const created = await client.createTaskPushNotificationConfig({ taskId: 't', url: 'http://hook/' })
     const fetched = await client.getTaskPushNotificationConfig({ taskId: 't', id: 'cfg1' })
     const page = await client.listTaskPushNotificationConfigs({ taskId: 't', pageSize: 5 })
-    const removed = await client.deleteTaskPushNotificationConfig({ taskId: 't', id: 'cfg1' })
+    await client.deleteTaskPushNotificationConfig({ taskId: 't', id: 'cfg1' })
     expect(created).toEqual({ url: 'http://hook/', id: 'cfg1' })
     expect(fetched).toEqual({ url: 'http://hook/', id: 'cfg1' })
     expect(page).toEqual({ configs: [], nextPageToken: '' })
-    expect(removed).toBeUndefined()
     expect(calls.map(call => call.method)).toEqual([
       'CreateTaskPushNotificationConfig',
       'GetTaskPushNotificationConfig',

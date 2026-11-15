@@ -51,7 +51,7 @@ describe('excalidraw model tools', () => {
   it('registers all four tools and unwinds on dispose', () => {
     const b = bench()
     expect(b.registered.map(entry => entry.name).sort()).toEqual(['excalidraw_draw', 'excalidraw_export', 'excalidraw_read', 'excalidraw_write'])
-    b.disposers.forEach(dispose => dispose())
+    b.disposers.forEach((dispose) => { dispose() })
     expect(b.registered).toHaveLength(0)
   })
 
@@ -160,9 +160,9 @@ describe('excalidraw model tools', () => {
       }, execFor(workspace))
       expect(drawn).toMatchObject({ ok: true, added: 3, totalElements: 3, skipped: 0 })
 
-      const onDisk = JSON.parse(await readFile(join(workspace, SCENE_RELATIVE), 'utf8'))
+      const onDisk = JSON.parse(await readFile(join(workspace, SCENE_RELATIVE), 'utf8')) as { elements: Record<string, unknown>[] }
       expect(onDisk.elements).toHaveLength(3)
-      expect(onDisk.elements.map((e: { type: string }) => e.type)).toEqual(['rectangle', 'text', 'arrow'])
+      expect(onDisk.elements.map(e => e.type)).toEqual(['rectangle', 'text', 'arrow'])
       // Complete rendering fields: seed (roughjs needs it to draw the shape),
       // index (reconciliation), opacity 0-100 (1 would be near-invisible) and
       // roundness are all emitted by the tool.
@@ -191,9 +191,9 @@ describe('excalidraw model tools', () => {
         elements: [{ type: 'ellipse', x: 5, y: 5, width: 20, height: 20 }],
         action: 'replace',
       }, execFor(workspace))
-      const onDisk = JSON.parse(await readFile(join(workspace, SCENE_RELATIVE), 'utf8'))
+      const onDisk = JSON.parse(await readFile(join(workspace, SCENE_RELATIVE), 'utf8')) as { elements: Record<string, unknown>[] }
       expect(onDisk.elements).toHaveLength(1)
-      expect(onDisk.elements[0].type).toBe('ellipse')
+      expect(onDisk.elements[0]!.type).toBe('ellipse')
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }

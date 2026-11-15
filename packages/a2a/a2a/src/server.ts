@@ -398,7 +398,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
   /** 投递一帧：至少一次（网络错误/5xx 再试一次），10s 超时；失败只记日志，不影响任务。 */
   async function deliverPush(config: TaskPushNotificationConfig, payload: string, attempt = 1): Promise<void> {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), PUSH_TIMEOUT_MS)
+    const timer = setTimeout(() => { controller.abort() }, PUSH_TIMEOUT_MS)
     let retryable = false
     let detail = ''
     try {
@@ -516,9 +516,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
     context: Omit<A2AExecutorContext, 'sink'> & { sink?: A2AStreamSink },
     suppliedSession?: TaskSession,
   ): Promise<A2ATask> {
-    const task = context.taskId !== undefined
-      ? store.ensureTask(context.taskId, context.contextId, context.metadata)
-      : store.create(context.contextId, context.metadata)
+    const task = store.ensureTask(context.taskId, context.contextId, context.metadata)
     if (isTerminal(task.status.state)) return Promise.resolve(structuredClone(task))
     const existing = executions.get(task.id)
     if (existing !== undefined) return existing.promise
@@ -532,7 +530,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
       rejectStopped(error)
       controller.abort(error)
       void Promise.resolve().then(() => options.executor.onCancel?.({ taskId: task.id, contextId: task.contextId }))
-        .catch(cancelError => onError('A2A onCancel failed', cancelError))
+        .catch((cancelError: unknown) => { onError('A2A onCancel failed', cancelError) })
     }
     const sink: A2AStreamSink = {
       sendStatus(state, text) {
@@ -546,13 +544,13 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
         context.sink?.appendArtifact(artifactId, name, text, lastChunk)
       },
     }
-    const timer = setTimeout(() => cancel(new Error(`task timed out after ${String(taskTimeoutMs)}ms`)), taskTimeoutMs)
+    const timer = setTimeout(() => { cancel(new Error(`task timed out after ${String(taskTimeoutMs)}ms`)) }, taskTimeoutMs)
     const work = Promise.resolve().then(() => {
       controller.signal.throwIfAborted()
       return options.executor.onMessage({ ...context, sink, signal: controller.signal })
     })
     const promise = Promise.race([work, stopped])
-      .then(() => session.finish(), error => session.fail(error))
+      .then(() => session.finish(), (error: unknown) => session.fail(error))
       .finally(() => {
         settled = true
         clearTimeout(timer)
@@ -616,7 +614,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
     if (configuration.returnImmediately === true) {
       // 调用方要求不等：后台继续执行，终态通过 GetTask/SubscribeToTask/push 到达
       const snapshot = structuredClone(task)
-      void executeTask(exec, session).catch(error => onError('A2A background execution failed', error))
+      void executeTask(exec, session).catch((error: unknown) => { onError('A2A background execution failed', error) })
       return snapshot
     }
     return executeTask(exec, session)
@@ -1050,8 +1048,8 @@ export function createA2AServer(options: A2AServerOptions): A2AServer {
   return {
     server,
     store,
-    attachTask: core.attachTask,
-    executeTask: core.executeTask,
+    attachTask: (...args: Parameters<typeof core.attachTask>) => core.attachTask(...args),
+    executeTask: (...args: Parameters<typeof core.executeTask>) => core.executeTask(...args),
     ready,
     close: () => new Promise<void>((resolve, reject) => {
       server.close((error) => {

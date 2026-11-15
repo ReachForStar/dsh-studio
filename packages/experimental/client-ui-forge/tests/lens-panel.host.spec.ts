@@ -9,6 +9,11 @@ import type {
 } from '../src/index.ts'
 import { lensVersion } from '../src/lens-version.ts'
 import { bench, follow, git, hold, pullUrl, repository, scratch, shellTurn } from './harness.ts'
+
+// The fixtures drive real Git through the local subprocess runtime, whose native Linux scope
+// launch costs about 150ms per command on hosts that provide it; the heaviest case issues
+// roughly 180 commands. Raise the per-test budget for that launch cost, not for slow assertions.
+vi.setConfig({ testTimeout: 60_000 })
 import type { Bench } from './harness.ts'
 
 const cleanups: (() => Promise<void>)[] = []

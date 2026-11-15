@@ -123,6 +123,8 @@ interface Harness {
   readonly a2a: A2AStub
   readonly subagents: SubagentStub
   readonly plugin: Awaited<ReturnType<Context['plugin']>>
+  /** This test's own handle for the plugin's projection; reads share one unit. */
+  readonly projection: { stateOf(session: Session): XingchenUnitState }
 }
 
 /**
@@ -148,9 +150,10 @@ async function harness(stub: A2AStub = a2aStub(), mode: 'auto' | 'a2a' = 'a2a', 
     : extra
   const plugin = await ctx.plugin(xingchen, config)
   disposers.push(async () => { await plugin.dispose() })
+  const projection = await ctx.sessionProjections.register(xingchen.xingchenProjectionDefinition)
   const { agent, session } = stubAgent(ctx, `xingchen-${Math.random()}`)
   await ctx.agents.register(agent)
-  return { ctx, agent, session, a2a: stub, subagents, plugin }
+  return { ctx, agent, session, a2a: stub, subagents, plugin, projection }
 }
 
 let toolCounter = 0
@@ -244,7 +247,7 @@ describe('@reachforstar/dsh-xingchen 注册', () => {
     )
     expect(test.ctx.commands.find(test.agent, 'review')?.description).toContain('天权')
     expect(test.ctx.tools.get('xingchen_route')).toBeDefined()
-    expect(test.ctx.sessionProjections.stateOf(test.session, 'xingchen')).toEqual({
+    expect(test.projection.stateOf(test.session)).toEqual({
       lastRole: null,
       dispatchCount: 0,
       lastTurnReason: null,
@@ -358,7 +361,7 @@ describe('本机专家席（默认）', () => {
 
   it('工具委派返回本机席位的回答', async () => {
     const test = await harness(a2aStub(), 'auto')
-    const result = await runTool(test.ctx, test.agent, { role: 'yaoguang', task: '复现崩溃' }) as ToolOutcome
+    const result = await runTool(test.ctx, test.agent, { role: 'yaoguang', task: '复现崩溃' })
     expect(result.isError).toBe(false)
     expect(textOf(result)).toBe('[瑶光] 本机专家回答')
     expect(test.a2a.send).not.toHaveBeenCalled()
@@ -440,17 +443,17 @@ describe('本机专家席（默认）', () => {
 describe('xingchen_route 委派工具', () => {
   it('把自包含任务委派给专家角色并带角色前缀返回', async () => {
     const test = await harness()
-    const result = await runTool(test.ctx, test.agent, { role: 'tianquan', task: '称量这段架构' }) as ToolOutcome
+    const result = await runTool(test.ctx, test.agent, { role: 'tianquan', task: '称量这段架构' })
     expect(test.a2a.send).toHaveBeenCalledTimes(1)
     expect(textOf(result)).toBe('[天权] 专家回答')
   })
 
   it('角色与任务在工具层校验，失败以错误结果落定', async () => {
     const test = await harness()
-    const wrongRole = await runTool(test.ctx, test.agent, { role: 'qiming', task: '写个函数' }) as ToolOutcome
+    const wrongRole = await runTool(test.ctx, test.agent, { role: 'qiming', task: '写个函数' })
     expect(wrongRole.isError).toBe(true)
     expect(textOf(wrongRole)).toContain('"role" must be one of')
-    const emptyTask = await runTool(test.ctx, test.agent, { role: 'yaoguang', task: '  ' }) as ToolOutcome
+    const emptyTask = await runTool(test.ctx, test.agent, { role: 'yaoguang', task: '  ' })
     expect(emptyTask.isError).toBe(true)
     expect(textOf(emptyTask)).toContain('requires a non-empty self-contained task')
     expect(test.a2a.send).not.toHaveBeenCalled()
@@ -491,7 +494,7 @@ describe('xingchen 会话投影', () => {
       arguments: JSON.stringify({ role: 'yaoguang', task: '复现' }),
     })
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
-    expect(test.ctx.sessionProjections.stateOf(session, 'xingchen')).toEqual({
+    expect(test.projection.stateOf(session)).toEqual({
       lastRole: 'yaoguang',
       dispatchCount: 2,
       lastTurnReason: { kind: 'completed' },
@@ -513,7 +516,7 @@ describe('xingchen 会话投影', () => {
       name: 'xingchen_route',
       arguments: '{broken',
     })
-    expect(test.ctx.sessionProjections.stateOf(session, 'xingchen')).toEqual({
+    expect(test.projection.stateOf(session)).toEqual({
       lastRole: null,
       dispatchCount: 0,
       lastTurnReason: null,
@@ -523,7 +526,7 @@ describe('xingchen 会话投影', () => {
   it('手动停止的轮次终止回投影为 user 原因的 aborted', async () => {
     const test = await harness()
     test.session.append('turn/end', { turn: 1, reason: { kind: 'aborted', reason: { kind: 'user' } } })
-    const state: XingchenUnitState = test.ctx.sessionProjections.stateOf(test.session, 'xingchen') as XingchenUnitState
+    const state = test.projection.stateOf(test.session)
     expect(state.lastTurnReason).toEqual({ kind: 'aborted', cause: 'user' })
   })
 })

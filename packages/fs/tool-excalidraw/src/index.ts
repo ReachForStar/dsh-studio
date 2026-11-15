@@ -386,7 +386,7 @@ export function sceneToSvg(elements: readonly unknown[], background: string | nu
   }
   visible.forEach((raw, index) => {
     const element = raw as Record<string, unknown>
-    const type = String(element['type'] ?? '')
+    const type = strOf(element['type'])
     const x = numOf(element['x'])
     const y = numOf(element['y'])
     const w = Math.max(0, numOf(element['width']))
@@ -417,7 +417,7 @@ export function sceneToSvg(elements: readonly unknown[], background: string | nu
         break
       case 'text': {
         const fontSize = numOf(element['fontSize']) || 20
-        const text = String(element['text'] ?? '')
+        const text = strOf(element['text'])
         parts.push(
           `<text x="${x}" y="${y + fontSize}" font-size="${fontSize}" fill="${xmlAttr(fill)}" font-family="sans-serif"${transform}>${xmlText(text)}</text>`,
         )
@@ -612,7 +612,7 @@ export function apply(ctx: Context): void {
         const record = (typeof scene === 'object' && scene !== null) ? scene as Record<string, unknown> : {}
         const rawElements = Array.isArray(record['elements']) ? record['elements'] : []
         const compact = rawElements.map((element) => {
-          if (typeof element !== 'object' || element === null) return {} as Record<string, JsonValue>
+          if (typeof element !== 'object' || element === null) return {}
           const entry = element as Record<string, unknown>
           const out: Record<string, JsonValue> = {
             id: entry['id'] as JsonValue,

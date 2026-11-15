@@ -3,7 +3,7 @@ title: fork 自研包的门禁红项清单
 type: query
 tags: [gates, doc-sync, lint, coverage, constraints, fork, 待办]
 created: 2026-09-18
-updated: 2026-11-12
+updated: 2026-11-15
 sources: []
 status: active
 ---
@@ -25,8 +25,8 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `verify-client-catalog` | ~~`slot-catalog.ts` 过期~~ **已清偿（2026-09-18 文件面板去重批）** | office 批 | — |
 | ~~`verify-persistence-catalog`~~ **已清偿（2026-09-19 星域批）**；~~`verify-persistence-changes`~~ **已清偿（2026-10-27 持久化历史批）** | 布局（v5 记录旧布局缺顶层 `nodes`）、记录分叉（v5 与 action-card-status 共享 4 个根）、`assistant/peer-message` 的来源联合新增 `action-cards` 未确认 | 持久化历史批 | 已修：重编码 v5 快照、重排 action-card-status 的分支为 v5→action-card-status、新增 `2026-10-27-fork-peer-source-kind` 记录。详见[持久化历史分叉与来源种类补记](persistence-history-fork-repair.md) |
 | `verify-config-source-ownership` | `packages/bundle/web-app/cordis.patch.yml:289` 内联 `apiKey: !!js process.env.DSH_A2A_API_KEY` | A2A 批 | 让 `dsh-a2a-host` 接受 `apiKeyEnv` 并经 `ctx.credentials`/环境快照解析，patch 只写变量名（与 `llm-*` 的 `apiKeyEnv` 同型） |
-| `pnpm run lint` | `tool-excalidraw`：src 的 `no-base-to-string`/`no-unnecessary-type-assertion`，tests 的 `no-unsafe-*`（excalidraw 场景 API 是 `any`） | excalidraw 批 | 给场景元素补类型（或 `unknown` + 收窄），测试用类型化 fixture |
-| `pnpm run lint` | `pi-agent-loop/src/agent.ts` 调已弃用的 `snapshotEvents`；`tests/translator.spec.ts` 多余类型断言 | pi 后端批 | 迁到同步读取的替代 API；删掉多余断言 |
+| ~~`pnpm run lint`~~ **已清偿（2026-11-15 lint 批）** | `tool-excalidraw`：src 的 `no-base-to-string`/`no-unnecessary-type-assertion`，tests 的 `no-unsafe-*`（excalidraw 场景 API 是 `any`） | excalidraw 批 | 已修：场景元素统一用 `strOf`、`JSON.parse` 结果收窄成 `Record<string, unknown>`；见[lint 红项清零](lint-debt-clearance-and-local-test-budget.md) |
+| ~~`pnpm run lint`~~ **已清偿（2026-11-15 lint 批）** | `pi-agent-loop/src/agent.ts` 调已弃用的 `snapshotEvents`；`tests/translator.spec.ts` 多余类型断言 | pi 后端批 | 已修：生产侧保留行级豁免并注明迁移推迟，测试侧删掉断言 |
 | ~~`pnpm run constraints`~~ **已清偿（2026-09-19 第二批）** | `dsh-a2a{,-host}`、`dsh-tool-a2a` 的 `repository` 为 fork 仓库；`dsh-pi-agent-loop` 版本与根版本不一致 | A2A / pi 批 | 三个包改为 deepseek-ai 仓库 + 各自 directory（与 tool-ssh/ui-polish 等同型）；pi-agent-loop 版本对齐根版本 |
 | ~~`verify-package-dependencies`~~ **已清偿（2026-09-19）** | `workspace-files` 引 `FsVersion`、`ui-polish` 引 `tool-excalidraw#sanitizeScene`/`SCENE_RELATIVE`、`home-paths#dshHomePath`、`dsh-llm#BlockAssembler`/`createUserMessage` 未分类；另有四个客户端包的非 cordis `peerDependencies` 分区不符 | office / excalidraw / ui-polish 批 | — |
 | `verify-package-dependencies`（新红项，2026-09-19 复检）~~已清偿（2026-09-19 第二批）~~ | `ui-polish/src/latex-service.ts` 引 `@deepseek-ai/dsh-llm#createAssistantMessage` 未分类 | LaTeX 写作批 | 与已登记的 `createUserMessage` 同类（纯构造器，无跨实例身份），已登记进 `SAFE_HOST_DEPENDENCY_EXPORTS`；分类表要求人工评审，提交正文已标注待所有者确认 |

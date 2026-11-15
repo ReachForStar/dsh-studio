@@ -408,6 +408,10 @@ function RepoCard({ repo, refreshTick, models, isRoot, t }: RepoCardProps) {
     void refresh()
   }, [refresh, refreshTick])
 
+  // A pending flash notice outlives an unmounted panel otherwise, and its timer would
+  // update state after the host tore the component down.
+  useEffect(() => () => { window.clearTimeout(noticeTimer.current) }, [])
+
   // Generation elapsed-seconds ticker (500 ms while running).
   useEffect(() => {
     if (genState !== 'running') return

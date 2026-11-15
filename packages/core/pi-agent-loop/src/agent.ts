@@ -275,6 +275,7 @@ export class PiLoopAgent implements Agent {
       try {
         while (this.dirty) {
           this.dirty = false
+          // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
           const batch = this.session.snapshotEvents(SessionLogOffset(this.stored))
           if (batch.length > 0) {
             await this.durable?.append(batch)

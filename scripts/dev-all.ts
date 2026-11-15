@@ -1,9 +1,12 @@
 ﻿/**
- * Unified local entry point: starts the full A2A stack (Kafka + three A2A gateways + the Web app) in the background, then launches the Desktop shell in the foreground.
+ * Unified local entry point: starts the full A2A stack (Kafka + three A2A gateways + the Web
+ * app) in the background, then launches the Desktop shell in the foreground.
  *
- * The A2A stack is idempotent (see deploy/a2a/stack.mjs), so unrelated components that are already up get skipped. Desktop gets its build via `pnpm run dev:desktop`.
+ * The A2A stack is idempotent (see deploy/a2a/stack.mjs), so unrelated components that are
+ * already up get skipped. Desktop gets its build via `pnpm run dev:desktop`.
  *
- * Required env (source first): AMAX_API_KEY / AMAX_MODEL / AMAX_BASE_URL (and DEEPSEEK_API_KEY for model calls). The script forwards the whole environment unchanged.
+ * Required env (source first): AMAX_API_KEY / AMAX_MODEL / AMAX_BASE_URL (and
+ * DEEPSEEK_API_KEY for model calls). The script forwards the whole environment unchanged.
  */
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
@@ -18,10 +21,10 @@ function run(command: string, args: readonly string[], cwd: string, label: strin
     stdio: 'inherit',
     detached: false,
   })
-  child.on('error', err => console.error(`[${label}] failed to start: ${err.message}`))
-  child.on('exit', (code, signal) =>
-    console.log(`[${label}] exited (code=${String(code ?? '(none)')} signal=${String(signal ?? '(none)')})`),
-  )
+  child.on('error', (error) => { console.error(`[${label}] failed to start: ${error.message}`) })
+  child.on('exit', (code, signal) => {
+    console.log(`[${label}] exited (code=${code ?? 'none'} signal=${signal ?? 'none'})`)
+  })
   return child
 }
 

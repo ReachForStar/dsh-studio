@@ -358,6 +358,7 @@ describe('A2A 任务生命周期', () => {
 
   it('执行失败传入非 Error 值时写入字符串消息', async () => {
     // 协议把非 Error 的失败原因序列化成字符串，这里刻意抛一个非 Error 值。
+    // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- the protocol must serialize a non-Error rejection reason.
     const rejectWithString = (): Promise<never> => Promise.reject('plain')
     const harness = await start({ onMessage: rejectWithString })
     const reply = await call(harness.url, rpc('SendMessage', message('a')))

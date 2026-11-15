@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, expect, it } from 'vitest'
 import yaml from 'js-yaml'
+
 import { pnpmCommand } from '../../../scripts/release/process.ts'
 import { prepareRuntimePatches, verifyRuntimePatches } from '../scripts/prepare-runtime-patches.ts'
 import type { DesktopRuntimePatch } from '../scripts/runtime-patch-policy.ts'

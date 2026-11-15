@@ -481,6 +481,16 @@ export function validateArgs(spec: ParameterSchemaSpec, args: unknown): string[]
 }
 
 /**
+ * Narrow an untrusted argument to an array of unknown entries without exposing
+ * `Array.isArray`'s `any[]`.
+ * @param value - candidate model argument.
+ * @returns true when the value is an array.
+ */
+function isUnknownArray(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value)
+}
+
+/**
  * Coerce argument values the model plausibly meant to the declared scalar or
  * container type before validation. A wrong type is otherwise a hard
  * `INVALID_ARGS` failure the model has to spend a turn recovering from; every
@@ -506,7 +516,7 @@ export function repairArgs(schema: JsonSchemaNode, args: unknown): unknown {
     }
     return repaired ?? args
   }
-  if (schema.type === 'array' && Array.isArray(args) && schema.items !== undefined) {
+  if (schema.type === 'array' && isUnknownArray(args) && schema.items !== undefined) {
     let repaired: unknown[] | undefined
     for (const [index, entry] of args.entries()) {
       const value = repairArgs(schema.items, entry)

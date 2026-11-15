@@ -68,6 +68,7 @@ function announced(session: Session): boolean {
   const start: number = session.firstLiveSeq
   const end: number = session.seq
   for (let seq = start; seq < end; seq += 1) {
+    // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
     const event = session.eventAt(SessionSeq(seq))
     if (event?.type === 'user/message' && event.data.source.kind === 'fork-notice') return true
   }

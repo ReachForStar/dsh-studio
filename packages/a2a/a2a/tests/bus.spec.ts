@@ -243,7 +243,7 @@ describe('A2ABus 任务消费', () => {
     const kafka = new FakeKafka()
     const bus = busOf(kafka)
     const timedOut: string[] = []
-    await bus.consumeTasks('claude-code', 'g1', async () => await new Promise(() => undefined), {
+    await bus.consumeTasks('claude-code', 'g1', async () => { await new Promise<void>(() => {}) }, {
       taskTimeoutMs: 50,
       onTimeout: (task) => {
         timedOut.push(task.taskId)
@@ -261,7 +261,7 @@ describe('A2ABus 任务消费', () => {
     vi.useFakeTimers()
     const kafka = new FakeKafka()
     const bus = busOf(kafka)
-    await bus.consumeTasks('claude-code', 'g1', async () => await new Promise(() => undefined), {
+    await bus.consumeTasks('claude-code', 'g1', async () => { await new Promise<void>(() => {}) }, {
       taskTimeoutMs: 50,
       onTimeout: () => {
         throw new Error('hook failed')

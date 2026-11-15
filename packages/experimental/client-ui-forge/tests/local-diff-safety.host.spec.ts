@@ -3,6 +3,12 @@ import { createHash } from 'node:crypto'
 import { access, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+
+// The fixtures drive real Git through the local subprocess runtime, whose native Linux scope
+// launch costs about 150ms per command on hosts that provide it. Raise the per-test budget for
+// that launch cost, not for slow assertions.
+vi.setConfig({ testTimeout: 60_000 })
 import { SandboxUnavailableError, type SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import { setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
 import { inspectCheckout } from '../src/git.ts'

@@ -1105,3 +1105,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 合并把工作区根与上游包带到 `0.2.2-rc.3`，fork 自研的 33 个清单停在 `0.2.2-alpha.2`/`0.2.2-rc.2`；用 `pnpm run release:dsh -- 0.2.2-rc.3` 一次对齐，脚本同步清单、跑 `pnpm install` 并自行提交。
 - 验证：`pnpm exec tsx scripts/release/verify.ts --family dsh`（416 个成员统一版本、发布顺序可解析，3 条 peer 声明属不可排序的既有例外）、`pnpm run test:docs`（21 门）、`pnpm exec vitest run scripts/release`（345 项）、`pnpm run typecheck`。
 - 交接页补「版本对齐」口径与验证命令；发布页把本次记为「合并后先对齐版本」的最新实例。
+
+## [2026-11-15] fix | lint 红项清零与本机测试预算
+
+- `pnpm run lint` 由 75 条降到 0：按断言/可选链、`any` 泄漏、void 箭头、`require-await`、同构函数、废弃会话读取与纯格式七类逐项修正；生产侧两处会话历史读按废弃决策保留行级豁免并注明迁移推迟。
+- 超时根因确认为本机宿主能力：Linux 原生作用域把每条命令交给私有 Node runner，实测约 150ms/条，`client-ui-forge` 的 lens 用例要跑约 180 条 git 命令。
+- 测试预算改为全局 30 秒（`vitest.config.ts` 两个 inline 项目，覆盖层预算仍可上调）+ `client-ui-forge`/`experimental/worktree` 夹具套件 60 秒文件级上限；CLI 传参对 inline 项目无效的旧做法作废。
+- 顺带修 `ui-polish` 四处组件未清理的通知定时器（jsdom 拆除后 `window is not defined` 未处理异常）。
+- 验证：`pnpm run lint`、`pnpm run typecheck`、`pnpm run build:artifacts` + `build:check`、`pnpm run test:docs`（21 门），以及默认配置下的全量 `pnpm exec vitest run`（60692 通过 / 1 既定期望失败 / 274 跳过 / 0 未处理错误）。

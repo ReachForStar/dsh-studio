@@ -175,6 +175,13 @@ if (coveragePartitionRaw !== undefined && coveragePartitionRaw !== '' && coverag
 }
 const coveragePartitionMode = coveragePartitionRaw === '1'
 
+// Local default budget for one test. Plain unit tests finish in milliseconds, but the
+// suites that drive real Git, pnpm, or MCP children spend the default five seconds in
+// process launches alone: on a Linux host with native containment every command pays a
+// private runner launch, and the heaviest fixture issues a few hundred of them. Suites
+// that exceed even this budget raise their own ceiling in the spec file.
+const localTestTimeout = { testTimeout: 30_000 }
+
 // Lanes on shared hosts raise the per-test, hook, and expect.poll defaults
 // together through DSH_COVERAGE_TEST_TIMEOUT_MS; it lands in each inline
 // project below because CLI flags do not reach them (coverageTestTimeoutOptions
@@ -244,6 +251,7 @@ export default defineConfig({
           // MaybeLocal in cjs_lexer::Parse) from worker threads on macOS,
           // Linux, and Windows. Forked workers avoid that shared thread path.
           pool: 'forks',
+          ...localTestTimeout,
           ...laneTestBudget,
           setupFiles: [
             './scripts/test-proxy-environment.ts', './scripts/test-dom-environment.ts', './scripts/test-official-listing-guard.ts',
@@ -264,6 +272,7 @@ export default defineConfig({
           // Runner import tests require VM modules; the missing-flag test stays in thread-safe.
           execArgv: [...vitestExecArgv, '--experimental-vm-modules'],
           pool: 'forks',
+          ...localTestTimeout,
           ...laneTestBudget,
           setupFiles: [
             './scripts/test-proxy-environment.ts', './scripts/test-dom-environment.ts', './scripts/test-official-listing-guard.ts',

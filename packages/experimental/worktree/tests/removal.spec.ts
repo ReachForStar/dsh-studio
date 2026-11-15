@@ -1,6 +1,12 @@
 import { access, mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+
+// The fixtures drive real Git through the local subprocess runtime, whose native Linux scope
+// launch costs about 150ms per command on hosts that provide it. Raise the per-test budget for
+// that launch cost, not for slow assertions.
+vi.setConfig({ testTimeout: 60_000 })
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { inspectRemoval, removeCheckout } from '../src/removal.ts'

@@ -67,6 +67,10 @@ export function LatexPanel({ useSession, useWorkspaces, t }: LatexPanelProps) {
     noticeTimer.current = window.setTimeout(() => { setNotice(null) }, 2500)
   }, [])
 
+  // A pending flash notice outlives an unmounted panel otherwise, and its timer would
+  // update state after the host tore the component down.
+  useEffect(() => () => { window.clearTimeout(noticeTimer.current) }, [])
+
   const openFile = useCallback(async (path: string, projectDir: string) => {
     try {
       const { content: text } = await latexApi.read(cwd as string, projectDir, path)

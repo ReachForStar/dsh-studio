@@ -2,6 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type {
   ChangeRequestRef, ForgeCommentId, ForgeFailure, ForgeReviewData, ForgeReviewId, ForgeReviewWrite, ForgeReviewWriteResult, ForgeThreadId,
 } from '@deepseek-ai/dsh-experimental-forge'
+
+
+// The fixtures drive real Git through the local subprocess runtime, whose native Linux scope
+// launch costs about 150ms per command on hosts that provide it. Raise the per-test budget for
+// that launch cost, not for slow assertions.
+vi.setConfig({ testTimeout: 60_000 })
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import ForgePanelController from '../src/index.ts'
 import type { ForgePanelState } from '../src/index.ts'

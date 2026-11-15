@@ -104,7 +104,7 @@ export class TaskStore {
     filter: { contextId?: string; status?: TaskState } = {},
     pageSize: number = 50,
     includeArtifacts: boolean = false,
-    after: TaskCursor | undefined = undefined,
+    after?: TaskCursor,
   ): A2ATaskRow[] {
     const rows = this.selected(filter)
     let start = 0
@@ -117,7 +117,7 @@ export class TaskStore {
       .map((task) => {
         if (includeArtifacts) return task
         const { artifacts: _artifacts, ...rest } = task
-        return rest as A2ATaskRow
+        return rest
       })
   }
 

@@ -267,7 +267,7 @@ class BusBackedService extends A2AService {
   }
 
   protected override busOf(): A2ABus {
-    return this.injected as unknown as A2ABus
+    return this.injected
   }
 }
 

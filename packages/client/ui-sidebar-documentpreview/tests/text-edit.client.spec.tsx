@@ -161,13 +161,13 @@ describe('TextPreview — binary saves', () => {
     const view = render(<TextPreview {...{
       ...props,
       renderSlot: (key: string, owner: { saveBytes: (data: Uint8Array) => void; saveFailure: string | undefined }) => (
-      key === 'sidebar.right.tab.document' && (
-        <div>
-          <button type="button" data-test-save onClick={() => { owner.saveBytes(Uint8Array.from([9])) }} />
-          {owner.saveFailure !== undefined && <span data-test-failure>{owner.saveFailure}</span>}
-        </div>
-      )
-    ),
+        key === 'sidebar.right.tab.document' && (
+          <div>
+            <button type="button" data-test-save onClick={() => { owner.saveBytes(Uint8Array.from([9])) }} />
+            {owner.saveFailure !== undefined && <span data-test-failure>{owner.saveFailure}</span>}
+          </div>
+        )
+      ),
     } as unknown as typeof props} />)
     await settle()
 

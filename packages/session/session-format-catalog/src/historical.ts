@@ -10,7 +10,13 @@ import { assertReleasedV4Header, createSessionFormatV3ToV4, releasedV4SessionFor
 /** V0–V4 decoding for historical child identity; never publishes or completes parent catalogs. */
 export const historicalSessionFormatCatalog = createSessionFormatCatalog({
   currentVersion: 4,
-  codecs: [releasedV0SessionFormatCodec, releasedV1SessionFormatCodec, releasedV2SessionFormatCodec, releasedV3SessionFormatCodec, releasedV4SessionFormatCodec],
+  codecs: [
+    releasedV0SessionFormatCodec,
+    releasedV1SessionFormatCodec,
+    releasedV2SessionFormatCodec,
+    releasedV3SessionFormatCodec,
+    releasedV4SessionFormatCodec,
+  ],
   currentEncoder: releasedV4SessionFormatCodec,
   migrations: [sessionFormatV0ToV1, sessionFormatV1ToV2, sessionFormatV2ToV3, createSessionFormatV3ToV4([])],
   restoreCurrent: artifact => restoreReleasedV4Artifact(artifact, RELEASED_V4_EVENT_TYPES),

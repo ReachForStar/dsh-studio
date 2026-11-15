@@ -1127,3 +1127,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 本机打包三处前置：pnpm 是独立二进制需 `.cjs` 垫片转发（`npm_execpath`）、Electron 下载需 `NODE_USE_ENV_PROXY=1`、Electron asar 读不了非 ASCII 路径（末段 packaged 冒烟改用 ASCII 临时副本重跑）。
 - 产出并上传 `deepseek-harness-0.2.2-rc.4-linux-amd64-unsigned.deb`、`…-linux-x86_64-unsigned.AppImage`、`SHA256SUMS-linux-x64`；本地无 Sigstore 证明能力，其余 mac/win 资产仍有。
 - 详见 [发布 dsh 0.2.2-rc.4](queries/release-dsh-0.2.2-rc.4.md)。
+
+## [2026-11-15] fix | CUA 权限页服务缺失提示
+
+- 现象：启用 Computer Use 组合包的宿主上，权限页四个分区各自显示 `typert gateway: cuaAccess/applicationIcons: active Service "cuaAccess" is unavailable`。
+- 根因：`ui-cua` 在所有平台挂载，而 `CuaAccess` 服务由 darwin/win32 提供方构造；网关按端点解析服务后返回 `gateway/service-unavailable`，控制器把每次同类失败写进各分区错误。
+- 修法：`ui-cua` 与提供方同口径按平台门控（`platform.spec.ts` 同步）；`PermissionController` 新增 `serviceUnavailable`，面板只渲染一条说明（8 语言新增 `serviceUnavailable` 文案）。
+- 验证：`packages/experimental/cua` + `cua-bundle` 855 通过 / 3 跳过，`typecheck`、`lint`、`build:check`、`test:docs`（21 门）全过。
+- 详见 [CUA 权限页在无提供方宿主上报服务缺失](queries/cua-permission-ui-without-provider.md)。

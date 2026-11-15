@@ -25,7 +25,8 @@ it.each(['darwin', 'win32', 'linux'])('loads the exported patch directly on %s a
     }
     await ctx.loader.await()
     const imports = imported.mock.calls.map(call => call[0])
-    expect(imports).toContain('@deepseek-ai/dsh-cua')
+    const supported = platform === 'darwin' || platform === 'win32'
+    expect(imports.includes('@deepseek-ai/dsh-cua')).toBe(supported)
     expect(imports).toContain('@deepseek-ai/dsh-computer-use')
     expect(imports.includes('@deepseek-ai/dsh-cua-macos')).toBe(platform === 'darwin')
     expect(imports.includes('@deepseek-ai/dsh-cua-windows')).toBe(platform === 'win32')

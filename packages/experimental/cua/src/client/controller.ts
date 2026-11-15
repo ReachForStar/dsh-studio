@@ -22,6 +22,8 @@ interface Query<T> {
 export type PermissionView = { [K in keyof PermissionData]: Query<PermissionData[K]> } & {
   busy: boolean
   changing: boolean
+  /** The Host exposes no active `cuaAccess` Service, so no observation or action can run here. */
+  serviceUnavailable: boolean
   toast: { id: number; kind: 'requested' | 'opened' | 'revoked' | 'retryAllowed' } | { id: number; kind: 'failed'; message: string } | null
 }
 /** Slot actions and the renderer-bound permission projection. */
@@ -35,6 +37,14 @@ export interface PermissionFace {
   dismissToast: () => void
 }
 
+/** Gateway failure raised when the Host has no active Service behind a Remote endpoint. */
+const SERVICE_UNAVAILABLE_CODE = 'gateway/service-unavailable'
+
+/** @param error - failure a Remote call resolved with. @returns Whether the Host lacks the Service. */
+function serviceUnavailable(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { readonly code?: unknown }).code === SERVICE_UNAVAILABLE_CODE
+}
+
 /** Serializes actions, pauses reads during management operations, and drops superseded or disposed results. */
 export class PermissionController {
   /** Last observed permissions and the lifetime of the current refresh/action. */
@@ -43,7 +53,7 @@ export class PermissionController {
     system: { value: null, busy: false, error: null },
     applications: { value: null, busy: false, error: null },
     icons: { value: null, busy: false, error: null },
-    busy: false, changing: false, toast: null,
+    busy: false, changing: false, serviceUnavailable: false, toast: null,
   })
   private tail: Promise<void> = Promise.resolve()
   private reads: Promise<void> = Promise.resolve()
@@ -111,8 +121,12 @@ export class PermissionController {
         if (kind) this.state.update((state) => { state.toast = { id: sequence, kind } })
       } catch (error) {
         if (!current()) return
-        const message = error instanceof Error ? error.message : String(error)
-        this.state.update((state) => { state.toast = { id: sequence, kind: 'failed', message } })
+        if (serviceUnavailable(error)) {
+          this.state.update((state) => { state.serviceUnavailable = true })
+        } else {
+          const message = error instanceof Error ? error.message : String(error)
+          this.state.update((state) => { state.toast = { id: sequence, kind: 'failed', message } })
+        }
       }
       const latest = () => current() && this.sequence === sequence
       const refresh = Promise.all([
@@ -138,6 +152,16 @@ export class PermissionController {
       this.state.update((state) => { state[key].value = result.value; state[key].error = null; state[key].busy = false })
     } catch (error) {
       if (!current()) return
+      if (serviceUnavailable(error)) {
+        // An absent Service is a composition fact, not a section failure: name it once instead of
+        // repeating the gateway diagnostic in every section.
+        this.state.update((state) => {
+          state.serviceUnavailable = true
+          state[key].error = null
+          state[key].busy = false
+        })
+        return
+      }
       this.state.update((state) => {
         state[key].error = error instanceof Error ? error.message : String(error); state[key].busy = false
       })

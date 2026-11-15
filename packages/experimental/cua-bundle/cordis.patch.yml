@@ -13,3 +13,6 @@
         agentPreset: ptc
     - id: ui-cua
       name: '@deepseek-ai/dsh-cua'
+      # No Linux provider exists, so the permission page would render against an absent
+      # cuaAccess Service; load the client UI only where a provider can serve it.
+      disabled: !!js process.platform !== 'darwin' && process.platform !== 'win32'

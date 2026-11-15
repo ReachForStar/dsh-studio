@@ -24,7 +24,7 @@ function fixture() {
   const state = createSnapshotStore<PermissionView>({
     runtime: { value: { persistent: false, writable: true }, busy: false, error: null },
     system: { value: null, busy: true, error: null }, applications: { value: null, busy: true, error: null },
-    icons: { value: null, busy: true, error: null }, busy: true, changing: false, toast: null,
+    icons: { value: null, busy: true, error: null }, busy: true, changing: false, serviceUnavailable: false, toast: null,
   })
   const preset = createSnapshotStore<ConfigFormSnapshot<{ default: string; selectedDefault?: string }>>({
     status: 'ready', value: { default: 'standard', selectedDefault: 'ptc' },
@@ -476,4 +476,12 @@ it.each([[true, true], [false, true], [false, false], [null, true]] as const)('o
       : sessionLocked ? en.windowsSetupBody : en.windowsCaptureUnavailable
     expect(screen.getByText(explanation)).toBeTruthy()
   } else expect(onDismiss).toHaveBeenCalledOnce()
+})
+
+it('reports an absent cuaAccess Service once instead of per-section failures', () => {
+  const f = fixture()
+  render(<PermissionPanel {...f.props} />)
+  f.publish({ serviceUnavailable: true, busy: false })
+  expect(screen.getByRole('alert').textContent).toBe(en.serviceUnavailable)
+  expect(screen.queryByRole('group', { name: en.windowsDesktop })).toBeNull()
 })

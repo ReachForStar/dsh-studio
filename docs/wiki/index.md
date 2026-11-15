@@ -67,6 +67,7 @@ updated: 2026-11-13
 - [实验能力试验 profile（web-lab）与上游实验插件启用情况](queries/web-lab-profile-and-experimental-plugins.md) — Browser Use / Computer Use / Auto review / 远端工作区各自的前置、验证结果与边界，含 patch 替换语义与 Web 工作区路径校验两个踩坑。
 - [pi 后端实现历程与去重/持久化修复（2026-09-05）](queries/pi-backend-implementation.md) — 四个实现阶段与两个用户可见缺陷的根因。
 - [A2A v1.0.1 符合性缺口清单（已修）](queries/a2a-v1.0.1-conformance-gaps.md) — 按规范原文逐条核对出的 7 处 MUST 级偏离（推送错误码、扩展卡能力、终态任务三处行为、`A2A-Version` 头、contextId/taskId 校验）与 4 处细节（列表排序、artifacts 省略、游标分页、historyLength），2026-09-18 已全部修复，含修法、错误码映射与复现命令。
+- [CUA 权限页在无提供方宿主上报服务缺失（2026-11-15）](queries/cua-permission-ui-without-provider.md) — 组合包在所有平台挂载客户端页、提供方却只有 darwin/win32，网关按端点解析服务后逐区重复 `gateway/service-unavailable`；修法为按平台门控客户端页 + 控制器把服务缺失收敛成一条组合事实。
 - [lint 红项清零与本机测试预算（2026-11-15）](queries/lint-debt-clearance-and-local-test-budget.md) — 75 条 lint 红项按规则修正（断言/`any` 泄漏/void 箭头/废弃 API/格式）与 5 秒超时的根因：Linux 原生作用域每条命令约 150ms 的私有 runner 启动；给出全局 30 秒预算、git 夹具 60 秒上限与组件定时器清理。
 - [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率红项的现象、归属与修复方向；2026-10-30 复检补齐 `hygiene` 的 12 门清单，其中包元数据、客户端文案与文档相对路由三门已同日清偿；2026-11-15 复检把 `lint` 与本地测试超时两项一并清零。
 - [客户端文案、包元数据与文档相对路由三门禁的清偿](queries/client-copy-and-locale-metadata.md) — 三门的判定规则、16 包 × 8 语言的元数据约定与 manifest 导出、5 处文案与 4 条路由的改法，以及 `-/X` 被当成斜杠命令 token 的踩坑。

@@ -184,6 +184,16 @@ export function PermissionPanel(props: PermissionPanelProps) {
     window.addEventListener('focus', refresh)
     return () => { window.removeEventListener('focus', refresh) }
   }, [refresh])
+  // No active Service means this Host cannot run computer use at all: report the composition fact
+  // once rather than listing four section failures with the same gateway diagnostic.
+  if (state.serviceUnavailable) {
+    return <div className={css.panels} data-cua-settings>
+      <section className={css.panel} aria-label={t('title')}>
+        <h3>{t('title')}</h3>
+        <p className={css.error} role="alert">{t('serviceUnavailable')}</p>
+      </section>
+    </div>
+  }
   return <div className={css.panels} data-cua-settings aria-busy={transitioning || state.busy || loading}>
     <section className={css.panel} aria-label={t('title')}>
       <h3>{t('title')}</h3>

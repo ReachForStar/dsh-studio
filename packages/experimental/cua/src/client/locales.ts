@@ -46,6 +46,7 @@ export const en = {
   noApps: 'No always-allowed or blocked applications.',
   revoke: 'Revoke', revoked: 'Application access revoked', requested: 'Follow the guide at the bottom of System Settings', opened: 'System Settings opened',
   applicationsFailed: 'Could not load application access: {message}', iconsFailed: 'Could not load application icons: {message}',
+  serviceUnavailable: 'Computer use is unavailable in this Host. Enable the Computer Use bundle on a macOS or Windows Host.',
   failed: 'Could not update permissions: {message}', queryFailed: 'Could not check permissions: {message}',
 }
 /** Keys shared by all supported locale dictionaries. */
@@ -94,6 +95,7 @@ export const zh: Record<CuaPermissionLocaleKey, string> = {
   noApps: '暂无始终允许或不允许访问的应用。',
   revoke: '撤销', revoked: '已撤销应用访问权限', requested: '请按系统设置底部的引导完成授权', opened: '已打开系统设置',
   applicationsFailed: '无法读取应用授权：{message}', iconsFailed: '无法读取应用图标：{message}',
+  serviceUnavailable: '当前宿主不具备计算机使用能力。请在 macOS 或 Windows 宿主上启用 Computer Use 组合包。',
   failed: '无法更新权限：{message}', queryFailed: '无法检测权限：{message}',
 }
 
@@ -161,6 +163,7 @@ export const ja = {
   'opened': 'システム設定を開きました',
   'applicationsFailed': 'アプリケーションのアクセスを読み込めませんでした: {message}',
   'iconsFailed': 'アプリケーションのアイコンを読み込めませんでした: {message}',
+  'serviceUnavailable': 'このホストでは Computer Use を利用できません。macOS または Windows ホストで Computer Use バンドルを有効にしてください。',
   'failed': '権限を更新できませんでした: {message}',
   'queryFailed': '権限を確認できませんでした: {message}',
 } satisfies Record<keyof typeof en, string>
@@ -216,6 +219,7 @@ export const es = {
   noApps: 'No hay aplicaciones siempre permitidas o bloqueadas.',
   revoke: 'Revocar', revoked: 'Acceso a la aplicación revocado', requested: 'Siga la guía en la parte inferior de Configuración del sistema', opened: 'Configuración del sistema abierta',
   applicationsFailed: 'No se pudo cargar el acceso a la aplicación: {message}', iconsFailed: 'No se pudieron cargar los íconos de la aplicación: {message}',
+  serviceUnavailable: 'Computer Use no está disponible en este Host. Activa el paquete Computer Use en un Host macOS o Windows.',
   failed: 'No se pudieron actualizar los permisos: {message}', queryFailed: 'No se pudieron verificar los permisos: {message}',
 } satisfies Record<keyof typeof en, string>
 
@@ -270,6 +274,7 @@ export const fr = {
   noApps: 'Aucune application toujours autorisée ou bloquée.',
   revoke: 'Révoquer', revoked: "Accès à l'application révoqué", requested: 'Suivez le guide en bas des réglages système.', opened: 'Paramètres système ouverts',
   applicationsFailed: "Impossible de charger l'accès à l'application : {message}", iconsFailed: "Impossible de charger les icônes d'application : {message}",
+  serviceUnavailable: 'Computer Use n’est pas disponible sur cet hôte. Activez le bundle Computer Use sur un hôte macOS ou Windows.',
   failed: 'Impossible de mettre à jour les autorisations : {message}', queryFailed: 'Impossible de vérifier les autorisations : {message}',
 } satisfies Record<keyof typeof en, string>
 
@@ -324,6 +329,7 @@ export const de = {
   noApps: 'Keine immer erlaubten oder blockierten Anwendungen.',
   revoke: 'Widerrufen', revoked: 'Anwendungszugriff widerrufen', requested: 'Folgen Sie der Anleitung unten in den Systemeinstellungen', opened: 'Systemeinstellungen geöffnet',
   applicationsFailed: 'Anwendungszugriff konnte nicht geladen werden: {message}', iconsFailed: 'Anwendungssymbole konnten nicht geladen werden: {message}',
+  serviceUnavailable: 'Computer Use ist auf diesem Host nicht verfügbar. Aktivieren Sie das Computer-Use-Bundle auf einem macOS- oder Windows-Host.',
   failed: 'Berechtigungen konnten nicht aktualisiert werden: {message}', queryFailed: 'Berechtigungen konnten nicht überprüft werden: {message}',
 } satisfies Record<keyof typeof en, string>
 
@@ -378,6 +384,7 @@ export const ru = {
   noApps: 'Никаких всегда разрешенных или заблокированных приложений.',
   revoke: 'Отозвать', revoked: 'Доступ к приложению отозван', requested: 'Следуйте инструкциям внизу окна «Системные настройки».', opened: 'Системные настройки открыты',
   applicationsFailed: 'Не удалось загрузить доступ к приложению: {message}.', iconsFailed: 'Не удалось загрузить значки приложений: {message}.',
+  serviceUnavailable: 'Computer Use недоступен на этом хосте. Включите пакет Computer Use на хосте macOS или Windows.',
   failed: 'Не удалось обновить разрешения: {message}.', queryFailed: 'Не удалось проверить разрешения: {message}',
 } satisfies Record<keyof typeof en, string>
 
@@ -432,5 +439,6 @@ export const pt = {
   noApps: 'Nenhum aplicativo sempre permitido ou bloqueado.',
   revoke: 'Revogar', revoked: 'Acesso ao aplicativo revogado', requested: 'Siga o guia na parte inferior das Configurações do sistema', opened: 'Configurações do sistema abertas',
   applicationsFailed: 'Não foi possível carregar o acesso ao aplicativo: {message}', iconsFailed: 'Não foi possível carregar os ícones do aplicativo: {message}',
+  serviceUnavailable: 'O Computer Use não está disponível neste Host. Ative o pacote Computer Use em um Host macOS ou Windows.',
   failed: 'Não foi possível atualizar as permissões: {message}', queryFailed: 'Não foi possível verificar as permissões: {message}',
 } satisfies Record<keyof typeof en, string>

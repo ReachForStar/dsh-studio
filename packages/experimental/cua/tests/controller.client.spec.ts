@@ -29,6 +29,20 @@ function fixture() {
   return { actions, controller, face: controller.face(), setLocale: (value: string) => { locale = value } }
 }
 
+it('reports an absent cuaAccess Service as one composition fact', async () => {
+  const f = fixture()
+  const unavailable = new RemoteError('gateway/service-unavailable',
+    'typert gateway: cuaAccess/applicationIcons: active Service "cuaAccess" is unavailable',
+    { endpoint: 'cuaAccess/applicationIcons' })
+  f.actions.applicationIcons.mockResolvedValue({ ok: false, error: unavailable })
+  f.actions.ptcConfiguration.mockResolvedValue({ ok: false, error: unavailable })
+  f.face.refresh()
+  await vi.waitFor(() => { expect(f.controller.state.getSnapshot().busy).toBe(false) })
+  expect(f.controller.state.getSnapshot().serviceUnavailable).toBe(true)
+  expect(f.controller.state.getSnapshot().icons.error).toBeNull()
+  expect(f.controller.state.getSnapshot().runtime.error).toBeNull()
+})
+
 it('refreshes after a request and then waits for an explicit refresh', async () => {
   vi.useFakeTimers()
   const f = fixture()

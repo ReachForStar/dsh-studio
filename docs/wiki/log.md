@@ -1162,3 +1162,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 ## [2026-11-17] 查询 | 记录 Linux deb 安装的 polkit 授权
 
 - [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) 新增「本机安装 deb：polkit 桌面弹窗授权」：`pkexec dpkg -i` 由桌面认证代理弹窗，本机 `sudo -n` 无缓存凭据不可用；记录前提（活动图形会话）、装后自检（版本/二进制路径/alternatives）与同版本覆盖重装的行为。
+
+## [2026-11-17] feat | 论文阅读器翻译模型可在阅读页选择
+
+- 新增 `GET /paper-reader/models`（`listLlmModels` 扁平清单）与客户端 `listTranslateModels`；阅读页头部加「翻译模型」选择器，默认跟随会话 `modelSelection`，可固定 provider/model，选择存浏览器 `dsh-paper-translate-model`；目录不再提供该组合或读取失败时回退会话路由。
+- 文案新增 `translateModel`/`translateModelSession` 两键、8 语言齐全；中英 README 与实体页、查询页同步。
+- 验证：`ui-paper-reader` 209 项通过（新增宿主目录路由、客户端 api、页面选择器与持久化、陈旧值回退用例），`typecheck`、`lint`、`build:check`、`test:docs`（21 门）通过；全量测试中 `client-ui-forge`/`worktree` 两个 git 夹具用例在满负载下超时，单独复跑 34 项全绿。

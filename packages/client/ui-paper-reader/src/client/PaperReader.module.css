@@ -31,6 +31,31 @@
   text-overflow: ellipsis;
 }
 
+.modelLabel {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+  color: var(--dsh-content-font-size-secondary, 13px);
+}
+
+.modelLabelText {
+  color: var(--dsh-alias-label-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.modelSelect {
+  max-width: 180px;
+  padding: 3px 6px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsh-alias-label-primary);
+  font-size: 12px;
+}
+
 .action {
   display: inline-flex;
   flex: none;

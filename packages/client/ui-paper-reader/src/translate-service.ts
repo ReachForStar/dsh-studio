@@ -13,14 +13,14 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm'
-import { llmRouteCandidates, llmRouteKey, type LlmRoute } from '@deepseek-ai/dsh-llm/route'
+import { listLlmModels, llmRouteCandidates, llmRouteKey, type LlmRoute } from '@deepseek-ai/dsh-llm/route'
 // Type-only: pulls the default model Context merge (ctx.agentDefaultModel).
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PaperRequestError, readBody, sendJson } from './http.ts'
 import { PAPER_TRANSLATE_ROUTE } from './route.ts'
 import type {
-  PaperTranslateEvent, PaperTranslateRequest, PaperTranslateRoute, PaperTranslateTarget,
+  PaperTranslateEvent, PaperTranslateModel, PaperTranslateRequest, PaperTranslateRoute, PaperTranslateTarget,
 } from './types.ts'
 
 declare module '@deepseek-ai/dsh-llm' {
@@ -224,6 +224,33 @@ function parseTranslateRoute(value: Record<string, unknown>): { route?: PaperTra
     throw new PaperRequestError(400, `paper: translate route names exceed ${String(MAX_ROUTE_NAME)} characters`)
   }
   return { route: { provider, model } }
+}
+
+/**
+ * Handle one `/paper-reader/models` request: the catalog the reader's selector
+ * offers. A host composed without a model answers 404, so the selector keeps
+ * offering only the session route.
+ * @param ctx - Host context providing the LLM service.
+ * @param req - incoming request.
+ * @param res - server response.
+ */
+export async function handleModelsRequest(
+  ctx: Context,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    if (req.method !== 'GET') throw new PaperRequestError(405, `paper: models route rejects ${req.method ?? 'GET'}`)
+    const models: readonly PaperTranslateModel[] = (await listLlmModels(ctx))
+      .map(option => ({ provider: option.provider, model: option.model, name: option.name }))
+    sendJson(res, 200, { models })
+  } catch (error) {
+    if (error instanceof PaperRequestError) {
+      sendJson(res, error.status, { error: error.message })
+      return
+    }
+    sendJson(res, 500, { error: 'paper: model catalog could not be read' })
+  }
 }
 
 /**

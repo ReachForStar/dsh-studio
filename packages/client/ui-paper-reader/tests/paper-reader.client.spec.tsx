@@ -13,8 +13,14 @@ const api = vi.hoisted(() => ({
   readPaperBytes: vi.fn(),
   deletePaper: vi.fn(),
   writeAnnotations: vi.fn(),
+  listTranslateModels: vi.fn(),
 }))
 vi.mock('../src/client/paper-api.ts', () => api)
+
+beforeEach(() => {
+  api.listTranslateModels.mockResolvedValue([])
+  window.localStorage.clear()
+})
 
 interface ViewerProps {
   readonly annotations: readonly PaperAnnotation[]
@@ -111,6 +117,49 @@ describe('paper library', () => {
     api.listPapers.mockResolvedValue([SUMMARY])
     api.readPaper.mockResolvedValue(RECORD)
     api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(screen.getByTestId('viewer')).toBeDefined() })
+    expect(screen.getByTestId('translate-route').textContent).toBe('session-provider/session-model')
+  })
+
+  it('lets the reader fix a translation model and keeps the choice', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    api.listTranslateModels.mockResolvedValue([
+      { provider: 'gateway', model: 'flash', name: 'Flash' },
+      { provider: 'other', model: 'max', name: 'Max' },
+    ])
+    renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(screen.getByTestId('viewer')).toBeDefined() })
+
+    const select = document.querySelector('select')
+    expect(select?.options && [...select.options].map(option => option.value)).toEqual(['', 'gateway/flash', 'other/max'])
+    expect(select?.value).toBe('')
+    if (select === null) throw new Error('translation model selector is missing')
+    fireEvent.change(select, { target: { value: 'gateway/flash' } })
+    expect(window.localStorage.getItem('dsh-paper-translate-model')).toBe('gateway/flash')
+    expect(screen.getByTestId('translate-route').textContent).toBe('gateway/flash')
+
+    // Reopening the reader keeps the fixed choice instead of the session route.
+    cleanup()
+    renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(document.querySelector('select')?.value).toBe('gateway/flash') })
+    expect(screen.getByTestId('translate-route').textContent).toBe('gateway/flash')
+  })
+
+  it('ignores a stored model the catalog no longer offers', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    api.listTranslateModels.mockResolvedValue([])
+    window.localStorage.setItem('dsh-paper-translate-model', 'gone/model')
     renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
     await libraryReady()
     fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))

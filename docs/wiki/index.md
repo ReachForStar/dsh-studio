@@ -58,7 +58,7 @@ updated: 2026-11-17
 - [会话统计 Token 用量并入子会话与标题调用](queries/session-token-usage-subagents.md) — 胶囊、统计浮层与标题调用的用量口径：两路展开子会话，`session/title-llm-usage` 记录独立模型调用并进入 `tokenUsage`；含持久化确认与未覆盖边界。
 - [QwenLM/qwen-code 能力面与可融入清单](queries/qwen-code-capability-comparison.md) — 11 项候选按优先级排序：Agent Plugins v1 原生加载、自动记忆、通道运行时、上下文成本逐项 + `tool_search`、快模型三件套（推测执行 / 下一步建议 / 工具批次摘要）、Arena 与脏状态 worktree、文件历史、Advisor、文件变更钩子、`--json-schema`、托管运行时后端；含不融入项与逐条落点。
 - [qwen-code 采纳工作交接](queries/qwen-code-handoff.md) — 已完成与未完成项、出厂组合接线（星域预设 4 行 + 宿主层 4 行）、门禁与踩坑清单、临时文件授权状态。
-- [论文阅读器翻译与会话永久删除](queries/paper-reader-translation-and-session-delete.md) — 已实现：`dsh-llm/route` 候选路由与 NDJSON 翻译、按页全文翻译与译文卡片，以及翻译跟随会话 `modelSelection` 路由（缺省用部署默认模型）；`SessionPersistence.delete` + `workspace/deleteSession` 的删除链、拒绝码、二次确认与 100% 覆盖率验证。
+- [论文阅读器翻译与会话永久删除](queries/paper-reader-translation-and-session-delete.md) — 已实现：`dsh-llm/route` 候选路由与 NDJSON 翻译、按页全文翻译与译文卡片，翻译跟随会话 `modelSelection` 路由（缺省用部署默认模型），且阅读页头部可在模型目录中自行固定翻译模型（`/paper-reader/models`，选择存浏览器）；`SessionPersistence.delete` + `workspace/deleteSession` 的删除链、拒绝码、二次确认与 100% 覆盖率验证。
 - [回复延迟：codearts 上游排队导致每步等待](queries/session-command-followup-latency.md) — 慢时段首字 63–73 秒中排队 56–62 秒（`tries[].queued`），源自 `codearts` 提供方 `maxConcurrency: 1`；本地开销中位 18 毫秒，同账号兄弟模型同日首字 7.9 秒。
 - [本机经 SOCKS5 代理推送 GitHub](queries/github-push-via-socks-proxy.md) — 直连 SSH 与 HTTPS 都不通时，用 `127.0.0.1:7890` 的 SOCKS5 加 `GIT_SSH_COMMAND` 完成推送；含只读核对与失败阶段分辨。
 - [本机（Windows）合并与门禁踩坑](queries/windows-merge-gates.md) — tsconfig project reference、bsdtar 盘符、双语配对与生成器分类等失败的现象/根因/解法；含 2026-09-26 轮的 AMSI 崩溃、git 时限竞态、分组复跑法与 unknown-cast 基线重生成。

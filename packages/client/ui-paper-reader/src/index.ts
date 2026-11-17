@@ -7,8 +7,8 @@ import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import Schema from '@deepseek-ai/schemastery'
 import { handlePaperRequest } from './paper-service.ts'
-import { PAPER_READER_ROUTE, PAPER_TRANSLATE_ROUTE } from './route.ts'
-import { createPaperTranslator, handleTranslateRequest } from './translate-service.ts'
+import { PAPER_MODELS_ROUTE, PAPER_READER_ROUTE, PAPER_TRANSLATE_ROUTE } from './route.ts'
+import { createPaperTranslator, handleModelsRequest, handleTranslateRequest } from './translate-service.ts'
 
 /** Default largest accepted upload; larger files are refused before any byte reaches the disk. */
 export const MAX_PAPER_BYTES = 100 * 1024 * 1024
@@ -52,5 +52,10 @@ export function apply(ctx: Context, config: Config): void {
       path: PAPER_TRANSLATE_ROUTE,
       handler: (req, res) => handleTranslateRequest(translator, req, res),
     }), 'ui-paper-reader: translate route')
+    serverCtx.effect(() => serverCtx.webServer.register({
+      kind: 'prefix',
+      path: PAPER_MODELS_ROUTE,
+      handler: (req, res) => handleModelsRequest(serverCtx, req, res),
+    }), 'ui-paper-reader: model catalog route')
   })
 }

@@ -17,10 +17,10 @@ import {
   IconChevronLeftOutlineRegular, IconPlusOutlineRegular, IconRefreshOutlineRegular, IconTrashOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
-  PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateRoute, PaperTranslateTarget,
+  PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateModel, PaperTranslateRoute, PaperTranslateTarget,
 } from '../types.ts'
 import {
-  deletePaper, listPapers, readPaper, readPaperBytes, uploadPaper, writeAnnotations,
+  deletePaper, listPapers, listTranslateModels, readPaper, readPaperBytes, uploadPaper, writeAnnotations,
 } from './paper-api.ts'
 import { PdfViewer } from './PdfViewer.tsx'
 import css from './PaperReader.module.css'
@@ -34,6 +34,32 @@ export type PaperReaderLanguageHooks = {
 export type PaperReaderTabProps = PropsRuntime<'sidebar.right.pane.tab'>
   & PropsLocale<'paperReader'>
   & PropsHooks<PaperReaderLanguageHooks>
+
+/** Local storage key holding the reader's fixed translation model (`provider/model`), or none. */
+const TRANSLATE_MODEL_KEY = 'dsh-paper-translate-model'
+
+/** Read the fixed translation model, or '' when the reader follows the session route. */
+function storedTranslateModel(): string {
+  try { return window.localStorage.getItem(TRANSLATE_MODEL_KEY) ?? '' } catch { return '' }
+}
+
+/** Remember the fixed translation model; '' clears it back to the session route. */
+function storeTranslateModel(value: string): void {
+  try {
+    if (value === '') window.localStorage.removeItem(TRANSLATE_MODEL_KEY)
+    else window.localStorage.setItem(TRANSLATE_MODEL_KEY, value)
+  } catch {
+    // Storage unavailable: the choice still applies while the page is open.
+  }
+}
+
+/** Split a stored `provider/model` pair, rejecting a malformed value. */
+function parseStoredModel(value: string): PaperTranslateRoute | undefined {
+  if (value === '') return undefined
+  const separator = value.indexOf('/')
+  if (separator <= 0 || separator === value.length - 1) return undefined
+  return { provider: value.slice(0, separator), model: value.slice(separator + 1) }
+}
 
 /** Which of the page's two views is on screen. */
 type PaperReaderView =
@@ -191,8 +217,29 @@ function PaperView(props: {
   const [failed, setFailed] = useState(false)
   const [annotations, setAnnotations] = useState<readonly PaperAnnotation[]>([])
   const [saveFailed, setSaveFailed] = useState(false)
+  // The catalog is advisory: a failed read leaves the selector on the session route.
+  const [models, setModels] = useState<readonly PaperTranslateModel[]>([])
+  const [fixedModel, setFixedModel] = useState<string>(() => storedTranslateModel())
+
+  useEffect(() => {
+    void listTranslateModels(lifetime.signal).then(
+      (next) => { if (!lifetime.signal.aborted) setModels(next) },
+      () => { if (!lifetime.signal.aborted) setModels([]) },
+    )
+  }, [lifetime])
 
   useEffect(() => () => { lifetime.abort() }, [lifetime])
+
+  // A fixed choice wins when the catalog still offers it; a stale or unreadable
+  // catalog falls back to the conversation's route rather than naming a dead model.
+  const fixed = models.some(option => `${option.provider}/${option.model}` === fixedModel)
+    ? parseStoredModel(fixedModel)
+    : undefined
+  const effectiveRoute = fixed ?? translateRoute
+  const pickModel = (value: string): void => {
+    setFixedModel(value)
+    storeTranslateModel(value)
+  }
 
   useEffect(() => {
     void (async () => {
@@ -230,6 +277,18 @@ function PaperView(props: {
           {t('back')}
         </button>
         <span className={css.headerTitle}>{loaded?.record.name}</span>
+        <label className={css.modelLabel}>
+          <span className={css.modelLabelText}>{t('translateModel')}</span>
+          <select className={css.modelSelect} value={fixedModel} title={t('translateModel')}
+            onChange={(event) => { pickModel(event.target.value) }}>
+            <option value="">{t('translateModelSession')}</option>
+            {models.map(option => (
+              <option key={`${option.provider}/${option.model}`} value={`${option.provider}/${option.model}`}>
+                {`${option.name} (${option.provider})`}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
       {saveFailed ? <p className={css.notice} role="alert">{t('annotationFailed')}</p> : undefined}
       {failed
@@ -237,7 +296,7 @@ function PaperView(props: {
         : loaded === undefined
           ? <p className={css.notice} role="status">{t('loading')}</p>
           : <PdfViewer data={loaded.data} annotations={annotations} signal={lifetime.signal} t={t}
-            translateTarget={translateTarget} translateRoute={translateRoute} ask={ask}
+            translateTarget={translateTarget} translateRoute={effectiveRoute} ask={ask}
             onCreate={create} onRemove={remove} />}
     </>
   )

@@ -10,6 +10,9 @@ export const PAPER_READER_ROUTE = '/paper-reader'
 /** Absolute pathname of the translation route, longer than the library prefix so it wins the prefix match. */
 export const PAPER_TRANSLATE_ROUTE = `${PAPER_READER_ROUTE}/translate`
 
+/** Absolute pathname of the translation model catalog route. */
+export const PAPER_MODELS_ROUTE = `${PAPER_READER_ROUTE}/models`
+
 /** Document-relative prefix the browser half fetches through. */
 export const PAPER_READER_CLIENT_ROUTE = PAPER_READER_ROUTE.slice(1)
 

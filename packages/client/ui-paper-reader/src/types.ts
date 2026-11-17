@@ -74,6 +74,21 @@ export interface PaperTranslateRequest {
   readonly route?: PaperTranslateRoute
 }
 
+/** One provider/model option the reader can translate with. */
+export interface PaperTranslateModel {
+  /** Registered provider route. */
+  readonly provider: string
+  /** Provider-owned model id. */
+  readonly model: string
+  /** Human-readable model name for the selector. */
+  readonly name: string
+}
+
+/** The model catalog answer of `GET /paper-reader/models`. */
+export interface PaperTranslateModelsResponse {
+  readonly models: readonly PaperTranslateModel[]
+}
+
 /** One NDJSON line of a translation response, in arrival order. */
 export type PaperTranslateEvent =
   | { readonly type: 'delta'; readonly text: string }

@@ -1,7 +1,7 @@
 /** Browser client of the paper library: one document-relative request per operation. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  deletePaper, listPapers, readPaper, readPaperBytes, translateText, uploadPaper, writeAnnotations,
+  deletePaper, listPapers, listTranslateModels, readPaper, readPaperBytes, translateText, uploadPaper, writeAnnotations,
 } from '../src/client/paper-api.ts'
 import { PAPER_READER_CLIENT_ROUTE, PAPER_TRANSLATE_CLIENT_ROUTE } from '../src/route.ts'
 import type { PaperAnnotation, PaperRecord } from '../src/types.ts'
@@ -115,6 +115,17 @@ function streamFetch(chunks: readonly string[], status = 200) {
   vi.stubGlobal('fetch', fetch)
   return calls
 }
+
+describe('paper translation model catalog client', () => {
+  it('lists the selectable models through the models route', async () => {
+    const calls = jsonFetch({ models: [{ provider: 'gateway', model: 'model', name: 'Model' }] })
+    await expect(listTranslateModels(signal)).resolves.toEqual([
+      { provider: 'gateway', model: 'model', name: 'Model' },
+    ])
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.url).toBe(`${PAPER_READER_CLIENT_ROUTE}/models`)
+  })
+})
 
 describe('paper translation client', () => {
   it('posts the text and target, forwarding deltas split across chunks', async () => {

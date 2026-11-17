@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, it, onTestFinished } from 'vitest'
 import { Config, MAX_PAPER_BYTES, PAPER_LIBRARY_DIR, apply } from '../src/index.ts'
-import { PAPER_READER_ROUTE, PAPER_TRANSLATE_ROUTE } from '../src/route.ts'
+import { PAPER_MODELS_ROUTE, PAPER_READER_ROUTE, PAPER_TRANSLATE_ROUTE } from '../src/route.ts'
 
 it('defaults to the profile paper library and the 100 MB upload bound', () => {
   expect(Config({})).toEqual({ directory: PAPER_LIBRARY_DIR, maxBytes: MAX_PAPER_BYTES })
@@ -80,8 +80,20 @@ it('adds the translation route once an llm service is composed', async () => {
   onTestFinished(async () => { await fiber.dispose() })
   await fiber.await()
   expect(routes.map(route => [route.kind, route.path]).sort()).toEqual([
-    ['prefix', PAPER_READER_ROUTE], ['prefix', PAPER_TRANSLATE_ROUTE],
+    ['prefix', PAPER_READER_ROUTE], ['prefix', PAPER_TRANSLATE_ROUTE], ['prefix', PAPER_MODELS_ROUTE],
   ].sort())
+
+  // The catalog route answers the selector's options, and refuses a non-GET.
+  let catalogBody = ''
+  const catalogResponse = {
+    writeHead() {}, write() {}, end(text: string) { catalogBody = text },
+  }
+  await routes.find(route => route.path === PAPER_MODELS_ROUTE)?.handler({
+    url: PAPER_MODELS_ROUTE, method: 'GET', on() { return this },
+  }, catalogResponse)
+  expect(JSON.parse(catalogBody)).toEqual({
+    models: [{ provider: 'gateway', model: 'model', name: 'Model' }],
+  })
 
   const body = Buffer.from(JSON.stringify({ text: 'hello', target: 'zh' }))
   const chunks: string[] = []

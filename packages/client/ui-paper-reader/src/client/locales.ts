@@ -64,6 +64,8 @@ export const zh = {
   translateCopied: '已复制',
   translateClose: '关闭译文',
   translateCard: '翻译结果',
+  translateModel: '翻译模型',
+  translateModelSession: '跟随会话模型',
 } satisfies Record<string, string>
 
 /** Locale key set, derived from the Chinese dictionary. */
@@ -122,6 +124,8 @@ export const en = {
   translateCopied: 'Copied',
   translateClose: 'Close translation',
   translateCard: 'Translation',
+  translateModel: 'Translation model',
+  translateModelSession: 'Session model',
 } satisfies Record<PaperReaderLocaleKey, string>
 
 /** Japanese mirror. */
@@ -177,6 +181,8 @@ export const ja = {
   translateCopied: 'コピーしました',
   translateClose: '翻訳を閉じる',
   translateCard: '翻訳結果',
+  translateModel: '翻訳モデル',
+  translateModelSession: 'セッションモデル',
 } satisfies Record<PaperReaderLocaleKey, string>
 
 /** Spanish mirror. */
@@ -232,6 +238,8 @@ export const es = {
   translateCopied: 'Copiado',
   translateClose: 'Cerrar traducción',
   translateCard: 'Resultado de la traducción',
+  translateModel: 'Modelo de traducción',
+  translateModelSession: 'Modelo de la sesión',
 } satisfies Record<PaperReaderLocaleKey, string>
 
 /** French mirror. */
@@ -287,6 +295,8 @@ export const fr = {
   translateCopied: 'Copié',
   translateClose: 'Fermer la traduction',
   translateCard: 'Résultat de la traduction',
+  translateModel: 'Modèle de traduction',
+  translateModelSession: 'Modèle de la session',
 } satisfies Record<PaperReaderLocaleKey, string>
 
 /** German mirror. */
@@ -342,6 +352,8 @@ export const de = {
   translateCopied: 'Kopiert',
   translateClose: 'Übersetzung schließen',
   translateCard: 'Übersetzungsergebnis',
+  translateModel: 'Übersetzungsmodell',
+  translateModelSession: 'Sitzungsmodell',
 } satisfies Record<PaperReaderLocaleKey, string>
 
 /** Russian mirror. */
@@ -397,6 +409,8 @@ export const ru = {
   translateCopied: 'Скопировано',
   translateClose: 'Закрыть перевод',
   translateCard: 'Результат перевода',
+  translateModel: 'Модель перевода',
+  translateModelSession: 'Модель сессии',
 } satisfies Record<PaperReaderLocaleKey, string>
 
 /** Portuguese mirror. */
@@ -452,4 +466,6 @@ export const pt = {
   translateCopied: 'Copiado',
   translateClose: 'Fechar tradução',
   translateCard: 'Resultado da tradução',
+  translateModel: 'Modelo de tradução',
+  translateModelSession: 'Modelo da sessão',
 } satisfies Record<PaperReaderLocaleKey, string>

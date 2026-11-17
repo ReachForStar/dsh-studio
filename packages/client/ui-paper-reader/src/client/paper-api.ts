@@ -4,7 +4,8 @@
  */
 import { PAPER_READER_CLIENT_ROUTE, PAPER_TRANSLATE_CLIENT_ROUTE } from '../route.ts'
 import type {
-  PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateEvent, PaperTranslateRequest,
+  PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateEvent, PaperTranslateModelsResponse,
+  PaperTranslateRequest,
 } from '../types.ts'
 
 /** One library response carrying every stored paper. */
@@ -129,6 +130,15 @@ function parseTranslateEvent(line: string): PaperTranslateEvent {
  * @returns the complete translation.
  * @throws {Error} with the server's status, or the stream's own error message.
  */
+/**
+ * List the models the reader can translate with.
+ * @param signal - request lifetime.
+ * @returns the catalog in provider order.
+ */
+export async function listTranslateModels(signal: AbortSignal): Promise<PaperTranslateModelsResponse['models']> {
+  return (await request<PaperTranslateModelsResponse>('/models', { signal })).models
+}
+
 export async function translateText(
   request: PaperTranslateRequest,
   signal: AbortSignal,

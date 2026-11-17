@@ -18,14 +18,14 @@ status: active
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/route.ts` | 路由唯一来源：宿主注册 `PAPER_READER_ROUTE='/paper-reader'`，浏览器用去掉前导斜杠的 `PAPER_READER_CLIENT_ROUTE` 发起文档相对请求 |
+| `src/route.ts` | 路由唯一来源：宿主注册 `PAPER_READER_ROUTE='/paper-reader'`、`PAPER_TRANSLATE_ROUTE`、`PAPER_MODELS_ROUTE`，浏览器用去掉前导斜杠的 `PAPER_READER_CLIENT_ROUTE` 发起文档相对请求 |
 | `src/index.ts` | 宿主 `apply`：把 `/paper-reader` 前缀挂到 `ctx.webServer`；`Config` 暴露 `directory`（默认 `dshHomePath('profiles','web','papers')`）与 `maxBytes`（默认 100 MiB） |
 | `src/paper-service.ts` | 论文列表/上传/读取/删除与注释读写；上传在写盘前按 `maxBytes` 拒绝 |
 | `src/http.ts` | 两个 HTTP 面共用的请求体有界读取、JSON 应答与 `PaperRequestError` |
-| `src/translate-service.ts` | `/paper-reader/translate`：请求校验（含可选会话路由）、候选路由解析与 NDJSON 流式输出 |
+| `src/translate-service.ts` | `/paper-reader/translate`：请求校验（含可选会话路由）、候选路由解析与 NDJSON 流式输出；`/paper-reader/models`：返回 `listLlmModels` 的提供方/模型/显示名清单 |
 | `src/types.ts` | 论文记录、摘要、注释与归一化矩形类型 |
 | `src/client/definition.ts` | 右侧栏标签页定义（`kind: 'paperReader'`）与引导入口 |
-| `src/client/PaperReader.tsx` | 页面骨架：上传、列表、打开/删除；提问动作经标准 `inputActions` 座位插入 |
+| `src/client/PaperReader.tsx` | 页面骨架：上传、列表、打开/删除；提问动作经标准 `inputActions` 座位插入；阅读页头部的翻译模型选择器（默认跟随会话路由，选择存 `dsh-paper-translate-model`） |
 | `src/client/PdfViewer.tsx` | PDF.js 页面渲染、文本层、高亮覆盖层、选中悬浮菜单与笔记列表 |
 | `src/client/pdf/runtime.ts` | 每篇论文一个真实模块 Worker；启动失败直接报错，不回退主线程解析 |
 | `src/client/pdf/assets.ts` | 构建期内联同版本 PDF.js 的 worker 源码与 cMap/标准字体/wasm 资源，运行期不发网络请求 |
@@ -40,7 +40,8 @@ status: active
 - **提问不直接发送**：`askPrompt` 按界面语言生成，先经 `inputActions.captureInsertion()` 记录插入点，再 `insertText` 写入模板并用 `insertQuote` 追加选中原文；任一步失败返回 `false`，菜单显示不可用提示。
 - **高亮几何**：注释保存归一化矩形，渲染时按当前页尺寸还原，避免缩放漂移。
 - **样式约束**：悬浮菜单用 `ui-primitives` 的 `MenuSurface` 承载材质与阴影，本包只负责定位；圆角走 `--dsw-radius-*`，悬停规则包在 `@media (hover: hover)` 内，边框用 0.5px hairline。
-- **翻译跟随会话模型**：选区提交所选文字；全文按页提取、跳过空页后逐页提交。请求携带会话 `modelSelection` 投影的 `next` 路由（provider/model），宿主用 `llmRouteCandidates` 精确选定该路由；尚未记录选择时宿主改用部署默认模型 `agentDefaultModel.currentSelection()`，未挂载该服务的宿主才退回 provider 目录顺序。目标语言跟随界面语言（`zh*` → 中文，其余 → 英文），卡片可切换。首个片段前失败回 502 JSON，之后失败发 `error` 行；客户端断开时中止模型调用。
+- **翻译模型可选（2026-11-17）**：阅读页头部的选择器默认项跟随会话 `modelSelection` 的 `next` 路由；选目录中的某一项即固定该 provider/model。目录来自 `GET /paper-reader/models`（`listLlmModels` 扁平清单），选择存浏览器 `dsh-paper-translate-model`；目录不再提供该组合或目录读取失败时回退会话路由，避免请求一个已不存在的模型。请求携带生效路由，宿主仍用 `llmRouteCandidates` 精确选定；未携带时才走部署默认模型与目录顺序回退。
+- **翻译流程**：选区提交所选文字；全文按页提取、跳过空页后逐页提交。目标语言跟随界面语言（`zh*` → 中文，其余 → 英文），卡片可切换。首个片段前失败回 502 JSON，之后失败发 `error` 行；客户端断开时中止模型调用。
 - **文案**：8 语言 locale（en/zh/ja/de/es/fr/pt/ru），产品文案全部走 `t`。
 
 ## 接线

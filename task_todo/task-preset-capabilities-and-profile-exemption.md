@@ -11,3 +11,7 @@
 - [x] 验证：profile 合成不再跳过该 bundle；`packages/bundle/web-app` 89 项、`verify-cordis-config`、`typecheck`、`lint`、`test:docs` 通过
 - [x] wiki 同步（`queries/qwen-code-handoff.md`、`index.md`、`log.md`），提交推送
 - [x] tmp 清理
+## 阻塞
+
+- [ ] 阻塞：`chore(todo): 跟踪预设补挂与 profile 豁免任务` 未能推送 —— pre-push 的 typecheck 被并行会话未跟踪的 `packages/context/handoff/` 打断（`src/index.ts` 的 `exactOptionalPropertyTypes` 报错、该包未登记进 `tsconfig.host.json`）。该包就绪并接线后即可推送。
+- [ ] 阻塞：全量测试 1 项失败 `scripts/gen-tsconfig-paths.spec.ts` —— 同样由未跟踪的 `packages/context/handoff/` 引起（把该目录移开后该 spec 7 项全过）。

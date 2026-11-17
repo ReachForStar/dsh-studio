@@ -19,6 +19,12 @@ const EXTRA_CAPABILITIES = [
   ['tool-subagent-claude-code', '@deepseek-ai/dsh-tool-subagent'],
 ] as const
 
+/** Experimental capabilities the fork keeps in its default product (registered product roles). */
+const DEFAULT_EXPERIMENTAL = [
+  ['warming', '@deepseek-ai/dsh-warming'],
+  ['fork-notice', '@deepseek-ai/dsh-fork-notice'],
+] as const
+
 /** Plugin rows of one shipped agent preset, including rows nested in `cordis:group` realms. */
 function presetPlugins(preset: string): { id: string; name: string; disabled?: boolean }[] {
   const [row] = loadOverlayPatches(preset, fileURLToPath(new URL(`../presets/${preset}.patch.yml`, import.meta.url)))
@@ -49,6 +55,14 @@ it('mounts every non-xingchen capability in the default preset', () => {
   expect(disabled('tool-subagent-codex')).toBe(true)
   expect(disabled('tool-subagent-claude-code')).toBe(true)
   expect(presetPlugins('standard').find(row => row.id === 'tool-ssh')?.disabled).toBeUndefined()
+})
+
+it('mounts the registered experimental capabilities in the default preset', () => {
+  const plugins = presetPlugins('standard')
+  for (const [id, name] of DEFAULT_EXPERIMENTAL) {
+    expect(plugins.filter(row => row.id === id).map(row => ({ id: row.id, name: row.name })), `standard row ${id}`)
+      .toEqual([{ id, name }])
+  }
 })
 
 it('keeps the star-domain rows out of the default preset', () => {

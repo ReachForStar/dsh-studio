@@ -3535,6 +3535,9 @@ importers:
       '@deepseek-ai/dsh-followup':
         specifier: workspace:*
         version: link:../../context/followup
+      '@deepseek-ai/dsh-fork-notice':
+        specifier: workspace:*
+        version: link:../../experimental/fork-notice
       '@deepseek-ai/dsh-harness-dev-context':
         specifier: workspace:*
         version: link:../../context/harness-dev-context
@@ -3700,6 +3703,9 @@ importers:
       '@deepseek-ai/dsh-tool-workspace-dependencies':
         specifier: workspace:*
         version: link:../../skill/tool-workspace-dependencies
+      '@deepseek-ai/dsh-warming':
+        specifier: workspace:*
+        version: link:../../experimental/warming
       '@deepseek-ai/dsh-web-frontend':
         specifier: workspace:*
         version: link:../../../apps/web

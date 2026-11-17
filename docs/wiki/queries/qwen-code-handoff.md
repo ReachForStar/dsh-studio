@@ -50,6 +50,7 @@ status: active
 - `speculation/runner` 的 `provider` 与 `model` 必须成对出现，缺一即在加载期抛 `speculation: provider and model must be configured together`；因此默认关闭并保留配置骨架，启用时补两项并去掉 `disabled`。
 - `arena` 需要 `workspaceRoot`/`worktreeRoot`，`agent-plugins` 的 `plugins` 为空时不注册任何技能或 MCP 服务器；两者都用启动目录与 dsh 主目录作默认值。
 - 2026-11-17 调整：这四项原先只在星域预设，默认预设（`standard`）下不可见；现已同时加入 `standard.patch.yml`，默认会话即可用。同日把星域预设里**非星域**的能力行也补进默认预设：`tool-ssh`（启用）与 `tool-subagent-codex`、`tool-subagent-claude-code`（默认停用，启用需对应 provider 包）。星域预设仍独有 `xingchen`/`xingchen-router`/`skill-xingchen`/`command-xingchen-clear`。`packages/bundle/web-app/tests/preset-capabilities.spec.ts` 断言两个预设的能力行、默认预设的补挂项与星域专属行的缺席。
+- 2026-11-17 再补：实验能力 `warming`（提示缓存保活）与 `fork-notice`（fork 归属提示）加入默认预设，并在 `scripts/experimental-package-policy.ts` 的 `DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES` 登记产品角色（隔离门禁据此放行）。`openapi-tools` 的 `Config.spec` 是必填的部署文档，不能作为默认行；`session-log-export` 早已挂在 web-app 宿主层（`/api/session.import` 路由无条件注册）。
 - 验证：`--dump-config` 的合成树含全部 8 行；宿主启动无 `entry did not activate`；`agentPresets/list` 里所有预设 `broken` 为空（含星域预设的 4 个新行）；`verify-cordis-config` 未新增红项；插件清单里 `agent-plugins`/`arena`/`webhook` 为 `active`，`speculation` 为 `enabled: false`（已停用）。
 - 注意：`speculation` 在补 `disabled` 之前启动的实例里会显示「已启用 / 启动失败」；重启进程后即为「已停用」，这与代码状态无关，是组合快照的时效问题。
 

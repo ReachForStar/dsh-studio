@@ -152,6 +152,12 @@
             name: '@deepseek-ai/dsh-step-summary'
           - id: followup
             name: '@deepseek-ai/dsh-followup'
+          # 提示缓存保活：空闲会话按间隔重放请求前缀，回复丢弃、不进日志。
+          - id: warming
+            name: '@deepseek-ai/dsh-warming'
+          # fork 归属提示：fork 子会话首步说明哪些后台工作属于原会话。
+          - id: fork-notice
+            name: '@deepseek-ai/dsh-fork-notice'
           - id: tool-ask-user
             name: '@deepseek-ai/dsh-tool-ask-user'
           - id: tool-todo

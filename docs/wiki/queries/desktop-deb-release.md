@@ -3,7 +3,7 @@ title: Linux 桌面 deb 安装包与 Release 工作流
 type: query
 tags: [desktop, deb, release, linux]
 created: 2026-10-21
-updated: 2026-10-27
+updated: 2026-11-17
 sources: []
 status: active
 ---
@@ -37,6 +37,15 @@ ASAR 内不存在的目录在 Electron 的 `lstatSync(..., { throwIfNoEntry: fal
 - `workflow_dispatch` 的 `release_tag` —— 给一个已存在的 Release 补传桌面安装包（`--clobber` 覆盖同名资产），用于「Release 已建但缺安装包」的补发。
 
 attach 步骤按矩阵条目声明的实际产物收集（`{deb,AppImage,exe,dmg}`），并对每个 target 校验非空；`Validate release version` 仍要求 tag 等于 `dsh-v<版本>`。此前的两个坑（Windows GNU tar 读盘符路径失败、macOS arm64 独立成功）已在本页上文记录；产物仍落在 `apps/desktop/.desktop-build/targets/<target>/unsigned-artifacts/`。
+
+## 本机安装 deb：polkit 桌面弹窗授权（2026-11-17）
+
+Linux 上安装这套 deb 用 `pkexec dpkg -i <deb>`：授权由桌面的 polkit 认证代理弹窗完成（gnome-session 等提供），终端不出现密码提示，命令在执行前后都不需要交互式终端。
+
+- 为何不用 sudo：本机 `sudo -n true` 直接报 `sudo: 需要密码`，没有缓存凭据时 `sudo dpkg -i` 也会因无 TTY 失败；代理式自动化无法替用户输入密码，因此非交互路径只能走 polkit 弹窗（或由用户自己敲命令）。
+- 前提：存在活动桌面会话与认证代理（本机 `DISPLAY=:0`、`loginctl` 显示 `Type=x11`、`Active=yes`）。纯 SSH／无图形会话中 `pkexec` 会因找不到代理而失败，此时改用 `sudo` 由本人执行。
+- 装完自检：`dpkg -s deepseek-harness` 的 `Version` 应为目标版本；二进制在 `/opt/DeepSeek Harness/deepseek-harness`，`/usr/bin/deepseek-harness` 由 `update-alternatives` 指向它；Ubuntu 22.04 上 AppArmor 配置文件会被跳过（该版本 AppArmor 不支持随包 profile），属预期。
+- 同版本重装会覆盖旧包（`dpkg -i` 直接覆盖），无需先卸载；升级前的旧版本记录在 `dpkg -l` 中原样可见替换结果。
 
 ## 验证
 

@@ -1158,3 +1158,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 接线：`scripts/package-dependency-policy.ts` 登记 `dsh-llm/route#llmRouteKey`；`ui-paper-reader` 的 package.json/tsconfig 增加客户端类型依赖（`dsh-agent`、`ui-session`）与宿主默认模型引用。
 - 验证：包内 14 spec、206 测试通过；包级 `tsc -b`（client/host）与 `tsdown` 构建通过；`verify-client-packages`、`verify-client-ui-i18n`、`verify-locale-metadata`、`verify-export-jsdoc`、`verify-translation-pairing`、`verify-md-wrap`、`verify-tsconfig-paths`、`verify-client-catalog`、`verify-dependency-catalog`、`verify-module-graph` 通过；`verify-package-dependencies` 仅剩既有 4 项（ui-polish 未分类导出与 3 个未使用登记）。
 - 详见 [论文阅读器翻译与会话永久删除](queries/paper-reader-translation-and-session-delete.md) 与 [论文阅读器（ui-paper-reader）](entities/ui-paper-reader.md)。
+
+## [2026-11-17] 查询 | 记录 Linux deb 安装的 polkit 授权
+
+- [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) 新增「本机安装 deb：polkit 桌面弹窗授权」：`pkexec dpkg -i` 由桌面认证代理弹窗，本机 `sudo -n` 无缓存凭据不可用；记录前提（活动图形会话）、装后自检（版本/二进制路径/alternatives）与同版本覆盖重装的行为。

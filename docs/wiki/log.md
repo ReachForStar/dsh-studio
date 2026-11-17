@@ -1143,3 +1143,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 修法：`Session.append()` 新增 `LogOnlyEventOptions`（仅非 surface 类型可带 `ignorable`，消息事件运行时拒绝），`session-title-llm` 两条辅助记录改用该标记；新增 Agent Note 并修正 2026-08-30 决策的写入者表述，README、子系统文档 type-equiv 与持久化目录同步。
 - 验证：受影响 1842 通过 / 1 跳过，全量 60695 通过 / 1 既定期望失败 / 274 跳过，`lint`、`build:check`、`test:docs`（21 门）全过。
 - 详见 [旧版 harness 拒读新版 fork 会话](queries/session-unknown-event-across-builds.md)。
+
+## [2026-11-17] 发布 | 重装本地 Linux deb（0.2.2~rc.4）
+
+- 覆盖旧的 `0.2.1~rc.3` 安装：用当前 HEAD（含 CUA 权限页与 `ignorable` 会话修复）重打 Linux 包，`pkexec dpkg -i` 安装，`dpkg -s` 报 `0.2.2~rc.4`，`/opt/DeepSeek Harness/deepseek-harness` 为入口、`/usr/bin/deepseek-harness` 经 alternatives 指向它；asar 内已含 `serviceUnavailable` 文案与 `session/title-llm-usage` 词汇。
+- 本机网络变化后新增两处前置：Electron 走 `ELECTRON_MIRROR` 国内镜像、运行时安装走 `DSH_DESKTOP_NPM_REGISTRY` 国内镜像；非交互安装用 `pkexec`（`sudo -n` 无密码）。已补进 [发布 dsh 0.2.2-rc.4](queries/release-dsh-0.2.2-rc.4.md) 的本地打包小节。
+- 未改发布资产：Release 上的安装包仍是 11-15 的首次构建，与本地这次重打的同版本二进制不一致（后续需要重传或另起版本）。

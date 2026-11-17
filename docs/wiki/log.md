@@ -1175,3 +1175,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 修法：`packages/bundle/web-app/presets/standard.patch.yml` 增加 `tool-search`、`memory-notes`、`tool-summary`、`followup` 四行（星域预设不变）；新增 `tests/preset-capabilities.spec.ts` 断言两个预设都含这四行。
 - 验证：`packages/bundle/web-app` 87 项、`verify-cordis-config`（356 文件）、`typecheck`、`lint`、`test:docs`（21 门）通过。
 - 另记：桌面 profile 依赖 `@deepseek-ai/dsh-subagent-claude-code@0.2.1-rc.3` 与运行时 `0.2.2-rc.4` 不兼容，启动时被跳过；npm 最新为 `0.2.2-rc.3`，需升级并授予精确版本豁免或移除该 bundle。- 同日继续：星域预设里非星域的能力行（`tool-ssh` 启用；`tool-subagent-codex`、`tool-subagent-claude-code` 默认停用）补进默认预设，星域专属行（`xingchen`/`xingchen-router`/`skill-xingchen`/`command-xingchen-clear`）保留在星域预设。
+
+## [2026-11-17] query | pi（earendil-works/pi）能力面与可融入清单
+
+- 事实来源：本机已安装 pi 1.5.2（`/home/asus/.pi/agent/install/releases/1.5.2/node_modules/@earendil-works/`）的 `docs/`、`examples/extensions/`、`schemas/` 与各子包 README；GitHub 网络被重置，未读 main。
+- 排除 20 项已覆盖能力（压缩矩阵、工具检索、技能、子代理、计划、自动审查、缓存保活、钩子、沙箱、MCP、fork、结构化输出、交互、SSH、遥测、Ajv+typert、插件分发、SDK/API、项目资源准入）。
+- 结论 8 项候选：虚拟模型路由（含 router state）、classifier/image 非 LLM 模型、codemode 工具注入式沙箱、提示模板、输入事件 handled 三态、会话标签、git 检查点与 fork 恢复、handoff；含落点、成本与不融入项。
+- 新增页面：[pi 能力面与可融入清单](queries/pi-capability-comparison.md)；与 [pi 后端](entities/pi-backend.md)、[llm-pi-ai](entities/llm-pi-ai.md)、[会话格式代际](concepts/session-format-generations.md) 及 codex/opencode 对比页交叉引用。

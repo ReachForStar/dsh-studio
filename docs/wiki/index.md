@@ -55,6 +55,7 @@ updated: 2026-11-17
 
 ## 查询沉淀 queries
 
+- [pi（earendil-works/pi）能力面与可融入清单](queries/pi-capability-comparison.md) — 基于本机 pi 1.5.2 安装副本（docs/examples/子包）：排除 20 项已覆盖能力后，按优先级给出虚拟模型路由、classifier/image 非 LLM 模型、codemode 工具注入式沙箱、提示模板、输入事件 handled 三态、会话标签、git 检查点与 fork 恢复、handoff 八项及落点；含不融入项（树/分支摘要、pi-tui、pi-telemetry、pi-schema、包分发、RPC 子进程）与待核验前提。
 - [会话统计 Token 用量并入子会话与标题调用](queries/session-token-usage-subagents.md) — 胶囊、统计浮层与标题调用的用量口径：两路展开子会话，`session/title-llm-usage` 记录独立模型调用并进入 `tokenUsage`；含持久化确认与未覆盖边界。
 - [QwenLM/qwen-code 能力面与可融入清单](queries/qwen-code-capability-comparison.md) — 11 项候选按优先级排序：Agent Plugins v1 原生加载、自动记忆、通道运行时、上下文成本逐项 + `tool_search`、快模型三件套（推测执行 / 下一步建议 / 工具批次摘要）、Arena 与脏状态 worktree、文件历史、Advisor、文件变更钩子、`--json-schema`、托管运行时后端；含不融入项与逐条落点。
 - [qwen-code 采纳工作交接](queries/qwen-code-handoff.md) — 已完成与未完成项、出厂组合接线（默认预设与星域预设各 4 行 + 宿主层 4 行，2026-11-17 起默认预设也挂载）、门禁与踩坑清单、临时文件授权状态。

@@ -1149,3 +1149,4 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 覆盖旧的 `0.2.1~rc.3` 安装：用当前 HEAD（含 CUA 权限页与 `ignorable` 会话修复）重打 Linux 包，`pkexec dpkg -i` 安装，`dpkg -s` 报 `0.2.2~rc.4`，`/opt/DeepSeek Harness/deepseek-harness` 为入口、`/usr/bin/deepseek-harness` 经 alternatives 指向它；asar 内已含 `serviceUnavailable` 文案与 `session/title-llm-usage` 词汇。
 - 本机网络变化后新增两处前置：Electron 走 `ELECTRON_MIRROR` 国内镜像、运行时安装走 `DSH_DESKTOP_NPM_REGISTRY` 国内镜像；非交互安装用 `pkexec`（`sudo -n` 无密码）。已补进 [发布 dsh 0.2.2-rc.4](queries/release-dsh-0.2.2-rc.4.md) 的本地打包小节。
 - 未改发布资产：Release 上的安装包仍是 11-15 的首次构建，与本地这次重打的同版本二进制不一致（后续需要重传或另起版本）。
+- 打包残留：本轮本机 `--profile local` 在 `packages/*/*/src/` 与 `vendor/*/src/` 落下 416 个未跟踪编译产物，已按清单清理（未改动用户未提交的论文阅读器改动）。

@@ -45,6 +45,7 @@ status: active
 3. **非 ASCII 路径**：Electron 的 asar 支持读不了含非 ASCII 的路径，打包末段的 `smoke-packaged-runtime` 会报 `ENOTDIR: … app.asar/dsh/desktop-runtime.json`。整条流程的 ESM 模块路径会被 realpath 回真实路径，符号链接绕不过去；做法是把 `linux-unpacked` 与测试夹具复制到 ASCII 临时目录后，用同一命令重跑冒烟校验（本机实测该冒烟退出码 0，包含 docx/xlsx/pptx 的 Office 转换）。
 4. **网络被墙时的两个镜像**：`prepare:runtime` 的 Electron 下载走 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/`（缓存命中时 `@electron/get` 仍会校验远端）；`prepare:dsh` 的运行时安装走 `DSH_DESKTOP_NPM_REGISTRY=https://registry.npmmirror.com`（`registry.npmjs.org` 直连超时会报 `ERR_PNPM_META_FETCH_FAIL`）。同源 tarball 与 lockfile 完整性校验仍生效。
 5. **本机安装**：`pkexec dpkg -i <deb>` 走桌面 polkit 弹窗授权（`sudo -n` 在本机需要密码、无法非交互），装完 `dpkg -s deepseek-harness` 应为 `0.2.2~rc.4`，二进制落在 `/opt/DeepSeek Harness/deepseek-harness`，`/usr/bin/deepseek-harness` 由 `update-alternatives` 指向它。
+6. **打包残留要清理**：本机走 `--profile local` 的打包会把编译产物落在 `packages/*/*/src/` 与 `vendor/*/src/`（`*.js`、`*.d.ts`、`*.map`，本次 416 个），它们不在 `.gitignore` 内，打包后按未跟踪清单删除，别混进提交。
 
 产物落点 `apps/desktop/.desktop-build/targets/linux-x64/unsigned-artifacts/`：`deepseek-harness-0.2.2-rc.4-linux-amd64-unsigned.deb`、`deepseek-harness-0.2.2-rc.4-linux-x86_64-unsigned.AppImage`。校验和按工作流同款格式（`<sha256>  <文件名>`）写到 `SHA256SUMS-linux-x64`，随后 `gh release upload --clobber` 三个文件。本地无 Sigstore 证明能力，Linux 这两件没有 `actions/attest` 覆盖，其余 mac/win 资产仍有。
 

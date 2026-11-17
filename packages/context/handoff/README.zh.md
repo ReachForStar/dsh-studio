@@ -79,6 +79,7 @@ kind: "package-reference"
 
 对主请求无影响：命令既不改变对话的重构内容，也不改变其缓存键。辅助请求有独立前缀，不参与对话缓存。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与后续工作
 
 - 提示词是草稿：用户需将其粘贴到新会话。自动创建带种子的会话尚未实现。

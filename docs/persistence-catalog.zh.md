@@ -62,6 +62,7 @@
 | `event:schedule/change` | event | `a0a2e5c42e1c929445ecd1cd70f49be6b66441894ec72c08e8ae332821d4a3cb` | [`{ type: "schedule/change" }`](#persistence-type-sha256-a0a2e5c42e1c929445ecd1cd70f49be6b66441894ec72c08e8ae332821d4a3cb) |
 | `event:session-log-deepseek/delivery-accepted` | event | `d63b8b8ffad9c02fd80c43a17df4f240c1fe8118ecca9de34f9d5871838ab5b9` | [`{ type: "session-log-deepseek/delivery-accepted" }`](#persistence-type-sha256-d63b8b8ffad9c02fd80c43a17df4f240c1fe8118ecca9de34f9d5871838ab5b9) |
 | `event:session/end-seed` | event | `5e6db6e24948d4a853c71cb9fabd252ad051ce93d4672c1266cf837c1c17b84e` | [`{ type: "session/end-seed" }`](#persistence-type-sha256-5e6db6e24948d4a853c71cb9fabd252ad051ce93d4672c1266cf837c1c17b84e) |
+| `event:session/label` | event | `f7f44448859d5a91808b3824560a7084e29f93217fc5c547900f71765db3f0bd` | [`{ type: "session/label" }`](#persistence-type-sha256-f7f44448859d5a91808b3824560a7084e29f93217fc5c547900f71765db3f0bd) |
 | `event:session/title` | event | `1b912703e2d64f91c99c675b8f805b01076c8325b905c1218ad81ef0b24909d5` | [`{ type: "session/title" }`](#persistence-type-sha256-1b912703e2d64f91c99c675b8f805b01076c8325b905c1218ad81ef0b24909d5) |
 | `event:session/title-llm-request` | event | `93f15cbe8eb42458b9018da66d0f0178db6daf6fdf8641349a70ba1ee79fba61` | [`{ type: "session/title-llm-request" }`](#persistence-type-sha256-93f15cbe8eb42458b9018da66d0f0178db6daf6fdf8641349a70ba1ee79fba61) |
 | `event:session/title-llm-usage` | event | `81d7af3fe0e21b73d273691baa64486e440cf51a6e1c22a5b10785c55d52208b` | [`{ type: "session/title-llm-usage" }`](#persistence-type-sha256-81d7af3fe0e21b73d273691baa64486e440cf51a6e1c22a5b10785c55d52208b) |
@@ -921,6 +922,25 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 ```
 
 来源：[`packages/core/session/src/types.ts:461`](../packages/core/session/src/types.ts)
+
+<a id="sessionlabel--log-only"></a>
+
+#### `session/label` — log-only
+
+```ts persistence-catalog
+/**
+ * 给一个会话条目打标签或清除标签。log-only：不进入模型可见表面。
+ * `label` 为 null 时清除该条目的标签。
+ */
+'session/label': {
+  /** 目标条目的会话序号。 */
+  target: SessionSeq
+  /** 标签文本；null 表示清除。 */
+  label: string | null
+}
+```
+
+来源：[`packages/interaction/command-label/src/index.ts:22`](../packages/interaction/command-label/src/index.ts)
 
 <a id="sessiontitle--log-only"></a>
 
@@ -2890,6 +2910,14 @@ SHA-256: `7f13860ee89a2d35ce09f958e85a04566cd59cb1de1d73a9619a9b631961dc71`
 SHA-256: `1c2686c0682e7bc51d61117b2652bd4a80707e331aa276d6ef915ae32534a330`
 
 `"session/end-seed"`
+
+<a id="persistence-type-sha256-1d9e0dfafb783ade499f3d46b1c11a5f9f7142dc825230c3fea5a554b712f7a4"></a>
+
+### `"session/label"`
+
+SHA-256: `1d9e0dfafb783ade499f3d46b1c11a5f9f7142dc825230c3fea5a554b712f7a4`
+
+`"session/label"`
 
 <a id="persistence-type-sha256-7a651f3b672c52fb615f22c0ce9cb3cc5b22aad92e6bbeefb0808fd7b9233a50"></a>
 
@@ -6589,6 +6617,17 @@ SHA-256: `784bb3534ccb6cf5dc011294dbc2bf18ae6c36d9f7c9d3da37691f7cb4ff80fd`
 - `"dsh"`
 - `"pi"`
 
+<a id="persistence-type-sha256-799231ac91869a6695666505343003905638e1b4d11349bff953d4dbfe3191ba"></a>
+
+### `union (2 variants)`
+
+SHA-256: `799231ac91869a6695666505343003905638e1b4d11349bff953d4dbfe3191ba`
+
+以下类型之一：
+
+- `null`
+- `string`
+
 <a id="persistence-type-sha256-824a4aad44a54e245c67196817d67946734a2dc0eee0b0b6834a5b2a6ef352ce"></a>
 
 ### `union (2 variants)`
@@ -9351,6 +9390,19 @@ SHA-256: `2235d957bf4b7c6cf959231d480f0ba1f3a6d72d82981493fb6c7c963021d3d5`
 |---|---|---|
 | `kind` | 必需 | `"working-directory"` |
 
+<a id="persistence-type-sha256-82c199b76788dd4ada0db79d4ccc3ba4b46e60570221ba3e65c3215f1754aaee"></a>
+
+### `{ label, target }`
+
+SHA-256: `82c199b76788dd4ada0db79d4ccc3ba4b46e60570221ba3e65c3215f1754aaee`
+
+来源：[`packages/interaction/command-label/src/index.ts:22`](../packages/interaction/command-label/src/index.ts)
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `label` | 必需 | [`union (2 variants)`](#persistence-type-sha256-799231ac91869a6695666505343003905638e1b4d11349bff953d4dbfe3191ba) |
+| `target` | 必需 | `number` |
+
 <a id="persistence-type-sha256-9c001ecb5e1d3c3894410db2a1e383842e5f8454fb52182338686158abc1b3ee"></a>
 
 ### `{ max_tokens, messages, model, thinking?, … }`
@@ -10340,6 +10392,22 @@ SHA-256: `5e6db6e24948d4a853c71cb9fabd252ad051ce93d4672c1266cf837c1c17b84e`
 | `seq` | 必需 | `number` |
 | `time` | 必需 | `number` |
 | `type` | 必需 | `"session/end-seed"` |
+
+<a id="persistence-type-sha256-f7f44448859d5a91808b3824560a7084e29f93217fc5c547900f71765db3f0bd"></a>
+
+<a id="persistence-type-eventsessionlabel"></a>
+
+### `{ type: "session/label" }`
+
+SHA-256: `f7f44448859d5a91808b3824560a7084e29f93217fc5c547900f71765db3f0bd`
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `data` | 必需 | [`{ label, target }`](#persistence-type-sha256-82c199b76788dd4ada0db79d4ccc3ba4b46e60570221ba3e65c3215f1754aaee) |
+| `ignorable` | 可选 | `true` |
+| `seq` | 必需 | `number` |
+| `time` | 必需 | `number` |
+| `type` | 必需 | `"session/label"` |
 
 <a id="persistence-type-sha256-1b912703e2d64f91c99c675b8f805b01076c8325b905c1218ad81ef0b24909d5"></a>
 

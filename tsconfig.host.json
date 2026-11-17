@@ -468,6 +468,7 @@
     { "path": "./packages/core/agent" },
     { "path": "./packages/core/agent-default-model" },
     { "path": "./packages/interaction/commands" },
+    { "path": "./packages/interaction/command-label" },
     { "path": "./packages/interaction/prompt-templates" },
     { "path": "./packages/goal/goal" },
     { "path": "./packages/goal/tool-goal" },

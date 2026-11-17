@@ -58,6 +58,7 @@ export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'schedule/change',
   'session-log-deepseek/delivery-accepted',
   'session/end-seed',
+  'session/label',
   'session/title',
   'session/title-llm-request',
   'session/title-llm-usage',

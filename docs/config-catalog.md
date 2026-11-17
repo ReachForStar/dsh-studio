@@ -6136,6 +6136,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-command-compact` | `commands` · `compaction` | [`packages/compaction/command-compact/src/index.ts`](../packages/compaction/command-compact/src/index.ts) |
 | `@deepseek-ai/dsh-command-feedback` | `commands` | [`packages/feedback/command-feedback/src/index.ts`](../packages/feedback/command-feedback/src/index.ts) |
 | `@deepseek-ai/dsh-command-goal` | `commands` · `goals` | [`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts) |
+| `@deepseek-ai/dsh-command-label` | `commands` · `sessionProjections` | [`packages/interaction/command-label/src/index.ts`](../packages/interaction/command-label/src/index.ts) |
 | `@deepseek-ai/dsh-commands` | — | [`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts) |
 | `@deepseek-ai/dsh-compaction-image-offload` | `agents` · `sessions` | [`packages/compaction/compaction-image-offload/src/index.ts`](../packages/compaction/compaction-image-offload/src/index.ts) |
 | `@deepseek-ai/dsh-computer-use` | — | [`packages/computer-use/computer-use/src/index.ts`](../packages/computer-use/computer-use/src/index.ts) |

@@ -1150,3 +1150,11 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 本机网络变化后新增两处前置：Electron 走 `ELECTRON_MIRROR` 国内镜像、运行时安装走 `DSH_DESKTOP_NPM_REGISTRY` 国内镜像；非交互安装用 `pkexec`（`sudo -n` 无密码）。已补进 [发布 dsh 0.2.2-rc.4](queries/release-dsh-0.2.2-rc.4.md) 的本地打包小节。
 - 未改发布资产：Release 上的安装包仍是 11-15 的首次构建，与本地这次重打的同版本二进制不一致（后续需要重传或另起版本）。
 - 打包残留：本轮本机 `--profile local` 在 `packages/*/*/src/` 与 `vendor/*/src/` 落下 416 个未跟踪编译产物，已按清单清理（未改动用户未提交的论文阅读器改动）。
+
+## [2026-11-17] feat | 论文阅读器翻译跟随会话模型
+
+- 需求：翻译固定走 provider 目录第一条路由（默认 deepseek），与会话实际使用的模型不一致。
+- 修法：客户端 `PaperReaderTab` 用标准套件 `useProjection('modelSelection')` 的 `next` 取会话路由，经 `PaperView`/`PdfViewer` 随 `/paper-reader/translate` 请求发送；宿主优先用 `llmRouteCandidates(ctx, llmRouteKey(route))` 精确选定该路由，无记录时改用部署默认模型 `agentDefaultModel.currentSelection()`，未挂载该服务才退回目录顺序。请求校验新增可选 `route`（provider/model 非空字符串、256 字符上限）。
+- 接线：`scripts/package-dependency-policy.ts` 登记 `dsh-llm/route#llmRouteKey`；`ui-paper-reader` 的 package.json/tsconfig 增加客户端类型依赖（`dsh-agent`、`ui-session`）与宿主默认模型引用。
+- 验证：包内 14 spec、206 测试通过；包级 `tsc -b`（client/host）与 `tsdown` 构建通过；`verify-client-packages`、`verify-client-ui-i18n`、`verify-locale-metadata`、`verify-export-jsdoc`、`verify-translation-pairing`、`verify-md-wrap`、`verify-tsconfig-paths`、`verify-client-catalog`、`verify-dependency-catalog`、`verify-module-graph` 通过；`verify-package-dependencies` 仅剩既有 4 项（ui-polish 未分类导出与 3 个未使用登记）。
+- 详见 [论文阅读器翻译与会话永久删除](queries/paper-reader-translation-and-session-delete.md) 与 [论文阅读器（ui-paper-reader）](entities/ui-paper-reader.md)。

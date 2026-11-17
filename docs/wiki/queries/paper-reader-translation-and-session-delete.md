@@ -3,7 +3,7 @@ title: 论文阅读器翻译与会话永久删除
 type: query
 tags: [paper-reader, translation, session, delete, 已实现]
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-17
 sources: []
 status: active
 ---
@@ -22,7 +22,8 @@ status: active
 
 ### 论文阅读器翻译
 
-- 新增宿主路由 `/paper-reader/translate`（`src/translate-service.ts`、`src/route.ts`）：校验 `{ text, target }`，按 provider 顺序遍历 `llmRouteCandidates`，以 NDJSON 返回 `delta` 行、`finish` 行；首个片段之前的失败是 502 JSON，之后的失败是 `error` 行，客户端断开时中止模型调用。正文上限 20 万字符、请求体 512 KiB。
+- 新增宿主路由 `/paper-reader/translate`（`src/translate-service.ts`、`src/route.ts`）：校验 `{ text, target, route? }`，以 NDJSON 返回 `delta` 行、`finish` 行；首个片段之前的失败是 502 JSON，之后的失败是 `error` 行，客户端断开时中止模型调用。正文上限 20 万字符、请求体 512 KiB。
+- 翻译模型与会话一致（2026-11-17）：请求携带会话 `modelSelection` 投影的 `next` 路由；宿主优先精确选定该路由，无记录时改用部署默认模型 `agentDefaultModel.currentSelection()`，未挂载默认模型服务才退回 `llmRouteCandidates(ctx)` 的 provider 目录顺序。客户端 `PaperReaderTab` 经标准套件 `useProjection('modelSelection')` 取路由并透传到 `PdfViewer` 的每次提交。
 - LLM 路由与流式调用所需的消息构造由 `@deepseek-ai/dsh-llm/route`（`llmRouteCandidates`/`listLlmModels`/`llmRouteKey`）与 `createUserMessage` 提供。`llm-route.ts` 从 `ui-polish` 迁入 `dsh-llm`，两个宿主功能共用同一份候选路由；`tsconfig.base.json` 增加子路径映射，`safeHostDependencyExports` 登记 `dsh-llm` 与 `dsh-llm/route` 的运行时导出。
 - 客户端：选区菜单新增「翻译」；工具条新增「翻译全文」，按页用 `extractPageText`（`src/client/pdf/extract.ts`）提取文字，跳过空页后逐页提交。结果进入 `TranslationCard`（可关闭、可复制、中/英切换）；卡片状态由 `PdfViewer` 持有，关闭即中止请求。
 - 目标语言取自界面语言：`zh*` 为中文，其余为英文；`src/client/index.ts` 通过 inject `hooks: { language: ctx.locale }` 把它作为 `useLanguage` 传给页面。

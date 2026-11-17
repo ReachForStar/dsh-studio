@@ -36,7 +36,7 @@ The browser half requires the `slots`, `locale`, `sidebarRightTabs`, `sessions`,
 
 ### Translation
 
-A selection menu translation posts the selected text; the toolbar's full-text action extracts each page's text with PDF.js, skips pages without text, and submits the remaining pages in order. Both use one zero-temperature request per submission through the first LLM route that produces text, and the target defaults to Chinese when the interface language is Chinese and English otherwise; the card can switch between the two. The route answers NDJSON — `delta` lines, then `finish`; a failure before the first delta is a JSON error response, and a failure after it is an `error` line. Nothing about the translation enters the Session log.
+A selection menu translation posts the selected text; the toolbar's full-text action extracts each page's text with PDF.js, skips pages without text, and submits the remaining pages in order. Each submission sends one zero-temperature request carrying the Session's recorded `modelSelection` route, so translation uses the same provider and model as the conversation; while no selection is recorded the Host uses its deployment default model, and a Host composed without the default-model service falls back to the provider catalog order. The target defaults to Chinese when the interface language is Chinese and English otherwise; the card can switch between the two. The route answers NDJSON — `delta` lines, then `finish`; a failure before the first delta is a JSON error response, and a failure after it is an `error` line. Nothing about the translation enters the Session log.
 
 <a id="model-experience"></a>
 ## Model Experience

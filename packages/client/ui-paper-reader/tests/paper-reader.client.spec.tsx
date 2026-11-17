@@ -2,7 +2,9 @@
 /** The paper page: library operations, one open paper, and the composer question. */
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { PaperAnnotation, PaperRecord, PaperSummary } from '../src/types.ts'
+import type {
+  PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateRoute,
+} from '../src/types.ts'
 
 const api = vi.hoisted(() => ({
   listPapers: vi.fn(),
@@ -20,12 +22,16 @@ interface ViewerProps {
   readonly onCreate: (annotation: PaperAnnotation) => void
   readonly onRemove: (id: string) => void
   readonly translateTarget: 'zh' | 'en'
+  readonly translateRoute?: PaperTranslateRoute
 }
 vi.mock('../src/client/PdfViewer.tsx', () => ({
   PdfViewer: (props: ViewerProps) => (
     <div data-testid="viewer">
       <span data-testid="annotation-count">{String(props.annotations.length)}</span>
       <span data-testid="translate-target">{props.translateTarget}</span>
+      <span data-testid="translate-route">
+        {props.translateRoute === undefined ? 'none' : `${props.translateRoute.provider}/${props.translateRoute.model}`}
+      </span>
       <button type="button" onClick={() => { props.onCreate(NEW_ANNOTATION) }}>create</button>
       <button type="button" onClick={() => { props.onRemove(props.annotations[0]?.id ?? 'none') }}>remove</button>
       <button type="button" onClick={() => { props.ask('selected passage') }}>ask</button>
@@ -55,12 +61,16 @@ const inputActions = {
   insertQuote: vi.fn(() => true),
 }
 
-function renderTab(language = 'en') {
+function renderTab(
+  language = 'en',
+  selection?: { readonly next: { readonly provider: string; readonly model: string } | null },
+) {
   const props = {
     t,
     inputActions,
     useLanguage: (selector: (snapshot: { active: string; locales: []; revision: number }) => unknown) =>
       selector({ active: language, locales: [], revision: 0 }),
+    useProjection: (key: string) => key === 'modelSelection' ? selection : undefined,
   } as unknown as PaperReaderTabProps
   return render(<PaperReaderTab {...props} />)
 }
@@ -95,6 +105,28 @@ describe('paper library', () => {
     await waitFor(() => { expect(screen.getByTestId('viewer')).toBeDefined() })
     expect(api.readPaper).toHaveBeenCalledWith('paper-1', expect.any(AbortSignal))
     expect(screen.getByText('attention.pdf')).toBeDefined()
+  })
+
+  it('passes the recorded session model route to the viewer', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(screen.getByTestId('viewer')).toBeDefined() })
+    expect(screen.getByTestId('translate-route').textContent).toBe('session-provider/session-model')
+  })
+
+  it('leaves the route unset while the Agent supplies its initial options', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    renderTab('en', { next: null })
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(screen.getByTestId('viewer')).toBeDefined() })
+    expect(screen.getByTestId('translate-route').textContent).toBe('none')
   })
 
   it('shows an empty library', async () => {

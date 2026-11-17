@@ -73,7 +73,7 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
   // Messages and assembled blocks are plain data. Each caller owns its assembler.
   '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createUserMessage'],
   // Stateless provider/model routing over the LLM catalog; callers own their streams.
-  '@deepseek-ai/dsh-llm/route': ['listLlmModels', 'llmRouteCandidates'],
+  '@deepseek-ai/dsh-llm/route': ['listLlmModels', 'llmRouteCandidates', 'llmRouteKey'],
   '@deepseek-ai/dsh-session': ['SessionId', 'adoptSessionEvent'],
   '@deepseek-ai/dsh-session-format': ['sessionFormatLogFilename'],
   '@deepseek-ai/dsh-storage-domain': ['defineDomain'],

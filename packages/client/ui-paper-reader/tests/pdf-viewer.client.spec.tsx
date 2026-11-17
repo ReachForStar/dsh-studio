@@ -3,7 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PDFPageProxy } from 'pdfjs-dist'
-import type { PaperAnnotation } from '../src/types.ts'
+import type { PaperAnnotation, PaperTranslateRoute } from '../src/types.ts'
 
 const api = vi.hoisted(() => ({
   openPdf: vi.fn(),
@@ -41,6 +41,7 @@ function start(options: {
   readonly signal?: AbortSignal
   readonly pending?: boolean
   readonly translateTarget?: 'zh' | 'en'
+  readonly translateRoute?: PaperTranslateRoute
 } = {}) {
   const document = documentOf()
   const dispose = vi.fn(async () => {})
@@ -57,6 +58,7 @@ function start(options: {
     <PdfViewer data={DATA} annotations={options.annotations ?? []}
       signal={options.signal ?? new AbortController().signal} t={t} ask={ask}
       translateTarget={options.translateTarget ?? 'en'}
+      translateRoute={options.translateRoute}
       onCreate={onCreate} onRemove={onRemove} />,
   )
   return {
@@ -558,6 +560,18 @@ describe('translation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'translateClose' }))
     expect(screen.queryByLabelText('translateCard')).toBeNull()
+  })
+
+  it('sends the session model route with every translation', async () => {
+    echoTranslation()
+    const route: PaperTranslateRoute = { provider: 'session-provider', model: 'session-model' }
+    const h = start({ translateTarget: 'en', translateRoute: route })
+    await h.ready()
+    await select(h.container)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'translateSelection' }))
+    expect(api.translate).toHaveBeenCalledWith(
+      { text: 'chosen words', target: 'en', route }, expect.any(AbortSignal), expect.any(Function),
+    )
   })
 
   it('ignores a target switch that names the language already shown', async () => {

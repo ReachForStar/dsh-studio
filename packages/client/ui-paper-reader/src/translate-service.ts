@@ -5,17 +5,23 @@
  * line per event: `delta` lines as the model streams, then `finish`. A failure
  * before the first delta is a JSON error response with a 5xx status; a failure
  * after text reached the client is an `error` line, because the status is
- * already sent. Candidate routes come from the LLM catalog in provider order,
+ * already sent. A request carries the Session's recorded model route when it
+ * has one; otherwise the deployment default model selects the route, and a
+ * host composed without that service walks the LLM catalog in provider order,
  * so a provider with missing credentials falls through to the next one.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm'
-import { llmRouteCandidates, type LlmRoute } from '@deepseek-ai/dsh-llm/route'
+import { llmRouteCandidates, llmRouteKey, type LlmRoute } from '@deepseek-ai/dsh-llm/route'
+// Type-only: pulls the default model Context merge (ctx.agentDefaultModel).
+import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PaperRequestError, readBody, sendJson } from './http.ts'
 import { PAPER_TRANSLATE_ROUTE } from './route.ts'
-import type { PaperTranslateEvent, PaperTranslateRequest, PaperTranslateTarget } from './types.ts'
+import type {
+  PaperTranslateEvent, PaperTranslateRequest, PaperTranslateRoute, PaperTranslateTarget,
+} from './types.ts'
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -33,6 +39,9 @@ const MAX_TRANSLATE_BODY_BYTES = 512 * 1024
 
 /** Longest text accepted from one request, in UTF-16 code units. */
 const MAX_TRANSLATE_TEXT = 200_000
+
+/** Longest accepted provider or model id in a route hint. */
+const MAX_ROUTE_NAME = 256
 
 /** The language each supported target names for the model. */
 const TARGET_LANGUAGE: Readonly<Record<PaperTranslateTarget, string>> = {
@@ -70,13 +79,13 @@ export interface PaperTranslator {
 
 /**
  * Build the translator over a Host context's LLM service.
- * @param ctx - Host context providing `llm`.
+ * @param ctx - Host context providing `llm`, and optionally the default model.
  * @returns the translator the route invokes per request.
  */
 export function createPaperTranslator(ctx: Context): PaperTranslator {
   return {
     async translate(request, onDelta, signal) {
-      const candidates = await llmRouteCandidates(ctx)
+      const candidates = await candidateRoutes(ctx, request.route)
       const failures: string[] = []
       for (const route of candidates) {
         // Held in an object so the delta callback's write is visible here:
@@ -98,6 +107,26 @@ export function createPaperTranslator(ctx: Context): PaperTranslator {
       throw new Error(`paper translate: no model produced a translation — ${failures.join('; ')}`)
     },
   }
+}
+
+/**
+ * Resolve the routes one request tries, in order. A session route is exact; a
+ * deployment without a recorded selection uses its default model; only a host
+ * composed without the default-model service falls back to catalog order.
+ * @param ctx - Host context providing `llm`, and optionally the default model.
+ * @param route - session-selected route, when the client recorded one.
+ * @returns candidate routes in attempt order.
+ * @throws {Error} when the selected route names no registered provider or model.
+ */
+async function candidateRoutes(
+  ctx: Context,
+  route: PaperTranslateRoute | undefined,
+): Promise<readonly LlmRoute[]> {
+  if (route !== undefined) return llmRouteCandidates(ctx, llmRouteKey(route))
+  const defaults = ctx.get('agentDefaultModel')
+  return defaults === undefined
+    ? llmRouteCandidates(ctx)
+    : llmRouteCandidates(ctx, llmRouteKey(defaults.currentSelection()))
 }
 
 /**
@@ -169,7 +198,32 @@ function parseTranslateRequest(value: unknown): PaperTranslateRequest {
   if (target !== 'zh' && target !== 'en') {
     throw new PaperRequestError(400, 'paper: translate target must be "zh" or "en"')
   }
-  return { text, target }
+  return { text, target, ...parseTranslateRoute(value as Record<string, unknown>) }
+}
+
+/**
+ * Validate the optional session model route of one decoded body.
+ * @param value - decoded JSON body carrying an optional route.
+ * @returns the route spread into the request, or nothing when absent.
+ * @throws {PaperRequestError} when a present route is not a usable pair.
+ */
+function parseTranslateRoute(value: Record<string, unknown>): { route?: PaperTranslateRoute } {
+  const route = value.route
+  if (route === undefined) return {}
+  if (typeof route !== 'object' || route === null || Array.isArray(route)) {
+    throw new PaperRequestError(400, 'paper: translate route must be an object')
+  }
+  const { provider, model } = route as Record<string, unknown>
+  if (typeof provider !== 'string' || provider.trim() === '') {
+    throw new PaperRequestError(400, 'paper: translate route provider must be a non-empty string')
+  }
+  if (typeof model !== 'string' || model.trim() === '') {
+    throw new PaperRequestError(400, 'paper: translate route model must be a non-empty string')
+  }
+  if (provider.length > MAX_ROUTE_NAME || model.length > MAX_ROUTE_NAME) {
+    throw new PaperRequestError(400, `paper: translate route names exceed ${String(MAX_ROUTE_NAME)} characters`)
+  }
+  return { route: { provider, model } }
 }
 
 /**

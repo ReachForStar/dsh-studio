@@ -235,6 +235,26 @@ describe('handleTranslateRequest validation', () => {
     expect(errorOf(response.text())).toMatch(/exceeds 200000 characters/)
   })
 
+  it('rejects an invalid session route', async () => {
+    for (const route of [
+      'provider/model',
+      { provider: 7, model: 'm' },
+      { provider: ' ', model: 'm' },
+      { provider: 'p', model: '' },
+      { provider: 'p'.repeat(257), model: 'm' },
+    ]) {
+      const response = await call(OK, { body: JSON.stringify({ text: 'hello', target: 'en', route }) })
+      expect(response.status).toBe(400)
+    }
+  })
+
+  it('passes a valid session route to the translator', async () => {
+    const seen: unknown[] = []
+    await call(translatorOf(async (request) => { seen.push(request) }),
+      { body: JSON.stringify({ text: 'hello', target: 'en', route: { provider: 'p', model: 'm' } }) })
+    expect(seen).toEqual([{ text: 'hello', target: 'en', route: { provider: 'p', model: 'm' } }])
+  })
+
   it('rejects an unsupported target language', async () => {
     const response = await call(OK, { body: JSON.stringify({ text: 'hello', target: 'ja' }) })
     expect(response.status).toBe(400)
@@ -264,6 +284,7 @@ function llmContext(
   catalog: Record<string, { id: string; name: string }[]>,
   streams: Record<string, () => AsyncIterable<unknown>>,
   onRequest?: (options: unknown) => void,
+  defaults?: { provider: string; model: string },
 ): Context {
   return {
     llm: {
@@ -275,6 +296,10 @@ function llmContext(
         if (open === undefined) throw new Error(`no stream scripted for ${options.provider}`)
         return open()
       },
+    },
+    get: (name: string) => {
+      if (name !== 'agentDefaultModel' || defaults === undefined) return undefined
+      return { currentSelection: () => ({ provider: defaults.provider, model: defaults.model }) }
     },
   } as unknown as Context
 }
@@ -312,6 +337,60 @@ describe('createPaperTranslator', () => {
     expect(deltas).toEqual(['Hel', 'lo'])
     expect(options[0]?.system).toContain('Translate into English.')
     expect(options[0]?.temperature).toBe(0)
+  })
+
+  it('prefers the session route over the catalog order', async () => {
+    const options: { provider?: string }[] = []
+    const ctx = llmContext(
+      { gateway: [{ id: 'm1', name: 'Model 1' }], mirror: [{ id: 'm2', name: 'Model 2' }] },
+      { gateway: emit([TEXT('wrong'), FINISH()]), mirror: emit([TEXT('chosen'), FINISH()]) },
+      (value) => { options.push(value as { provider?: string }) },
+    )
+    const deltas: string[] = []
+    await createPaperTranslator(ctx).translate(
+      { ...REQUEST, route: { provider: 'mirror', model: 'm2' } },
+      (text) => { deltas.push(text) },
+      new AbortController().signal,
+    )
+    expect(deltas).toEqual(['chosen'])
+    expect(options.map(option => option.provider)).toEqual(['mirror'])
+  })
+
+  it('rejects a session route that no provider offers', async () => {
+    const ctx = llmContext({ gateway: [{ id: 'm1', name: 'Model 1' }] }, {
+      gateway: emit([TEXT('fallback'), FINISH()]),
+    })
+    await expect(createPaperTranslator(ctx).translate(
+      { ...REQUEST, route: { provider: 'ghost', model: 'm0' } },
+      () => {},
+      new AbortController().signal,
+    )).rejects.toThrow(/ghost\/m0.*not available/)
+  })
+
+  it('uses the deployment default model when the request carries no route', async () => {
+    const options: { provider?: string }[] = []
+    const ctx = llmContext(
+      { gateway: [{ id: 'm1', name: 'Model 1' }], mirror: [{ id: 'm2', name: 'Model 2' }] },
+      { gateway: emit([TEXT('default'), FINISH()]), mirror: emit([TEXT('other'), FINISH()]) },
+      (value) => { options.push(value as { provider?: string }) },
+      { provider: 'gateway', model: 'm1' },
+    )
+    const deltas: string[] = []
+    await createPaperTranslator(ctx).translate(REQUEST, (text) => { deltas.push(text) },
+      new AbortController().signal)
+    expect(deltas).toEqual(['default'])
+    expect(options.map(option => option.provider)).toEqual(['gateway'])
+  })
+
+  it('falls back to catalog order without the default-model service', async () => {
+    const ctx = llmContext(
+      { gateway: [{ id: 'm1', name: 'Model 1' }], mirror: [{ id: 'm2', name: 'Model 2' }] },
+      { gateway: emit([TEXT('first'), FINISH()]), mirror: emit([TEXT('second'), FINISH()]) },
+    )
+    const deltas: string[] = []
+    await createPaperTranslator(ctx).translate(REQUEST, (text) => { deltas.push(text) },
+      new AbortController().signal)
+    expect(deltas).toEqual(['first'])
   })
 
   it('names Chinese for a zh target', async () => {

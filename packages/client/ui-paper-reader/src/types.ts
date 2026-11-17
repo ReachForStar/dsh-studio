@@ -56,12 +56,22 @@ export interface PaperAnnotationsUpdate {
 /** Languages the reader can translate a selection or a page into. */
 export type PaperTranslateTarget = 'zh' | 'en'
 
+/** One provider/model route a translation follows. */
+export interface PaperTranslateRoute {
+  /** Registered provider route. */
+  readonly provider: string
+  /** Provider-owned model id. */
+  readonly model: string
+}
+
 /** One translation request from the reader. */
 export interface PaperTranslateRequest {
   /** Text to translate; the host bounds it before calling a model. */
   readonly text: string
   /** Language the translation is written in. */
   readonly target: PaperTranslateTarget
+  /** Session model route; omitted lets the Host use its deployment default. */
+  readonly route?: PaperTranslateRoute
 }
 
 /** One NDJSON line of a translation response, in arrival order. */

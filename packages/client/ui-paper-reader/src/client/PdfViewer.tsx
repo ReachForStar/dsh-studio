@@ -6,7 +6,9 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNo
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import { IconTrashOutlineRegular, MenuSurface } from '@deepseek-ai/dsh-client-ui-primitives'
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
-import type { PaperAnnotation, PaperRect, PaperTranslateTarget } from '../types.ts'
+import type {
+  PaperAnnotation, PaperRect, PaperTranslateRoute, PaperTranslateTarget,
+} from '../types.ts'
 import { translateText } from './paper-api.ts'
 import { extractPageText } from './pdf/extract.ts'
 import { openPdf, type PdfDocument } from './pdf/runtime.ts'
@@ -43,6 +45,8 @@ export interface PdfViewerProps {
   readonly t: TranslateNS<'paperReader'>
   /** Language a translation starts in; the card can switch between zh and en. */
   readonly translateTarget: PaperTranslateTarget
+  /** Session model route; undefined lets the Host apply its deployment default. */
+  readonly translateRoute?: PaperTranslateRoute | undefined
   /** Fill the conversation draft with one question; false when no Session accepts input. */
   readonly ask: (text: string) => boolean
   readonly onCreate: (annotation: PaperAnnotation) => void
@@ -55,7 +59,7 @@ export interface PdfViewerProps {
  * @returns the page stack and the annotation list.
  */
 export function PdfViewer(props: PdfViewerProps): ReactNode {
-  const { data, annotations, signal, t, translateTarget, ask, onCreate, onRemove } = props
+  const { data, annotations, signal, t, translateTarget, translateRoute, ask, onCreate, onRemove } = props
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' })
   const [zoom, setZoom] = useState(1)
   const [selection, setSelection] = useState<SelectionState>()
@@ -158,7 +162,11 @@ export function PdfViewer(props: PdfViewerProps): ReactNode {
       for (const [index, page] of pages.entries()) {
         life.signal.throwIfAborted()
         let pageText = ''
-        await translateText({ text: page, target }, life.signal, (delta) => {
+        await translateText({
+          text: page,
+          target,
+          ...translateRoute === undefined ? {} : { route: translateRoute },
+        }, life.signal, (delta) => {
           pageText += delta
           const next = complete === '' ? pageText : `${complete}\n\n${pageText}`
           setTranslation(current => current === undefined ? current : { ...current, text: next })

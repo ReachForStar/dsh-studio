@@ -3,7 +3,7 @@ title: 论文阅读器（ui-paper-reader）
 type: entity
 tags: [web, sidebar, pdf, 论文, 标注, fork]
 created: 2026-11-09
-updated: 2026-11-10
+updated: 2026-11-17
 sources: []
 status: active
 ---
@@ -22,7 +22,7 @@ status: active
 | `src/index.ts` | 宿主 `apply`：把 `/paper-reader` 前缀挂到 `ctx.webServer`；`Config` 暴露 `directory`（默认 `dshHomePath('profiles','web','papers')`）与 `maxBytes`（默认 100 MiB） |
 | `src/paper-service.ts` | 论文列表/上传/读取/删除与注释读写；上传在写盘前按 `maxBytes` 拒绝 |
 | `src/http.ts` | 两个 HTTP 面共用的请求体有界读取、JSON 应答与 `PaperRequestError` |
-| `src/translate-service.ts` | `/paper-reader/translate`：请求校验、候选路由遍历与 NDJSON 流式输出 |
+| `src/translate-service.ts` | `/paper-reader/translate`：请求校验（含可选会话路由）、候选路由解析与 NDJSON 流式输出 |
 | `src/types.ts` | 论文记录、摘要、注释与归一化矩形类型 |
 | `src/client/definition.ts` | 右侧栏标签页定义（`kind: 'paperReader'`）与引导入口 |
 | `src/client/PaperReader.tsx` | 页面骨架：上传、列表、打开/删除；提问动作经标准 `inputActions` 座位插入 |
@@ -40,7 +40,7 @@ status: active
 - **提问不直接发送**：`askPrompt` 按界面语言生成，先经 `inputActions.captureInsertion()` 记录插入点，再 `insertText` 写入模板并用 `insertQuote` 追加选中原文；任一步失败返回 `false`，菜单显示不可用提示。
 - **高亮几何**：注释保存归一化矩形，渲染时按当前页尺寸还原，避免缩放漂移。
 - **样式约束**：悬浮菜单用 `ui-primitives` 的 `MenuSurface` 承载材质与阴影，本包只负责定位；圆角走 `--dsw-radius-*`，悬停规则包在 `@media (hover: hover)` 内，边框用 0.5px hairline。
-- **翻译**：选区提交所选文字；全文按页提取、跳过空页后逐页提交。目标语言跟随界面语言（`zh*` → 中文，其余 → 英文），卡片可切换。宿主按 provider 顺序尝试候选路由，首个片段前失败回 502 JSON，之后失败发 `error` 行；客户端断开时中止模型调用。
+- **翻译跟随会话模型**：选区提交所选文字；全文按页提取、跳过空页后逐页提交。请求携带会话 `modelSelection` 投影的 `next` 路由（provider/model），宿主用 `llmRouteCandidates` 精确选定该路由；尚未记录选择时宿主改用部署默认模型 `agentDefaultModel.currentSelection()`，未挂载该服务的宿主才退回 provider 目录顺序。目标语言跟随界面语言（`zh*` → 中文，其余 → 英文），卡片可切换。首个片段前失败回 502 JSON，之后失败发 `error` 行；客户端断开时中止模型调用。
 - **文案**：8 语言 locale（en/zh/ja/de/es/fr/pt/ru），产品文案全部走 `t`。
 
 ## 接线
@@ -48,7 +48,7 @@ status: active
 - `tsconfig.base.json` 路径别名、`tsconfig.client.json` 与 `tsconfig.host.json` 工程引用。
 - `packages/bundle/web-app/cordis.patch.yml` 的 `ui-paper-reader` 行与 `packages/bundle/web-app/package.json` 依赖。
 - `packages/client/README.md`/`.zh.md` 与 `README.i18n.yaml` 的包条目；`scripts/verify-package-readme-model-experience.ts` 登记。
-- 宿主依赖：`@deepseek-ai/dsh-home-paths`、`@deepseek-ai/dsh-llm`（含 `./route` 子路径）、`@deepseek-ai/schemastery`（`dependencies`）；`@deepseek-ai/cordis` 保持 `peerDependencies` 与 `devDependencies` 配对。
+- 宿主依赖：`@deepseek-ai/dsh-home-paths`、`@deepseek-ai/dsh-llm`（含 `./route` 子路径）、`@deepseek-ai/schemastery`（`dependencies`）；`@deepseek-ai/dsh-agent-default-model` 为类型级 Context 合并依赖（`devDependencies`）。客户端从标准套件 `useProjection('modelSelection')` 读取路由，类型来自 `@deepseek-ai/dsh-agent/types` 与 `@deepseek-ai/dsh-client-ui-session/client`（均为 `devDependencies`，tsconfig.client 增加对应工程引用）。
 
 ## 验证
 

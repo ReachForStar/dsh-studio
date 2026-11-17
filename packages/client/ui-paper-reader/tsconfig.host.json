@@ -18,6 +18,9 @@
       "path": "../../../vendor/cordis"
     },
     {
+      "path": "../../core/agent-default-model"
+    },
+    {
       "path": "../../llm/llm"
     },
     {

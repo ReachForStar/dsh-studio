@@ -8,11 +8,17 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: the Session standard kit contributes `useProjection`, and the
+// Agent projection table gives the `modelSelection` key its value type.
+import type {} from '@deepseek-ai/dsh-agent/types'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { HostObservable, PropsHooks, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   IconChevronLeftOutlineRegular, IconPlusOutlineRegular, IconRefreshOutlineRegular, IconTrashOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateTarget } from '../types.ts'
+import type {
+  PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateRoute, PaperTranslateTarget,
+} from '../types.ts'
 import {
   deletePaper, listPapers, readPaper, readPaperBytes, uploadPaper, writeAnnotations,
 } from './paper-api.ts'
@@ -40,7 +46,10 @@ type PaperReaderView =
  * @returns the current view.
  */
 export function PaperReaderTab(props: PaperReaderTabProps): ReactNode {
-  const { t, inputActions, useLanguage } = props
+  const { t, inputActions, useLanguage, useProjection } = props
+  // The recorded session selection is the model the conversation itself uses;
+  // null while the Agent's initial options still supply the route.
+  const translateRoute: PaperTranslateRoute | undefined = useProjection('modelSelection')?.next ?? undefined
   const [view, setView] = useState<PaperReaderView>({ kind: 'library' })
   // Only Chinese and English are offered as translation targets, so every other
   // interface language starts in English.
@@ -60,7 +69,7 @@ export function PaperReaderTab(props: PaperReaderTabProps): ReactNode {
       {view.kind === 'library'
         ? <PaperLibrary t={t} onOpen={open} />
         : <PaperView key={view.id} paperId={view.id} t={t} ask={ask} onBack={back}
-          translateTarget={translateTarget} />}
+          translateTarget={translateTarget} translateRoute={translateRoute} />}
     </div>
   )
 }
@@ -173,8 +182,10 @@ function PaperView(props: {
   readonly ask: (text: string) => boolean
   readonly onBack: () => void
   readonly translateTarget: PaperTranslateTarget
+  /** Session model route; undefined lets the Host apply its deployment default. */
+  readonly translateRoute?: PaperTranslateRoute | undefined
 }): ReactNode {
-  const { paperId, t, ask, onBack, translateTarget } = props
+  const { paperId, t, ask, onBack, translateTarget, translateRoute } = props
   const [lifetime] = useState(() => new AbortController())
   const [loaded, setLoaded] = useState<{ readonly record: PaperRecord; readonly data: Uint8Array<ArrayBuffer> }>()
   const [failed, setFailed] = useState(false)
@@ -226,7 +237,8 @@ function PaperView(props: {
         : loaded === undefined
           ? <p className={css.notice} role="status">{t('loading')}</p>
           : <PdfViewer data={loaded.data} annotations={annotations} signal={lifetime.signal} t={t}
-            translateTarget={translateTarget} ask={ask} onCreate={create} onRemove={remove} />}
+            translateTarget={translateTarget} translateRoute={translateRoute} ask={ask}
+            onCreate={create} onRemove={remove} />}
     </>
   )
 }

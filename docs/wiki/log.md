@@ -1182,3 +1182,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 排除 20 项已覆盖能力（压缩矩阵、工具检索、技能、子代理、计划、自动审查、缓存保活、钩子、沙箱、MCP、fork、结构化输出、交互、SSH、遥测、Ajv+typert、插件分发、SDK/API、项目资源准入）。
 - 结论 8 项候选：虚拟模型路由（含 router state）、classifier/image 非 LLM 模型、codemode 工具注入式沙箱、提示模板、输入事件 handled 三态、会话标签、git 检查点与 fork 恢复、handoff；含落点、成本与不融入项。
 - 新增页面：[pi 能力面与可融入清单](queries/pi-capability-comparison.md)；与 [pi 后端](entities/pi-backend.md)、[llm-pi-ai](entities/llm-pi-ai.md)、[会话格式代际](concepts/session-format-generations.md) 及 codex/opencode 对比页交叉引用。- 桌面 profile 依赖修复：`@deepseek-ai/dsh-subagent-claude-code` 由 `0.2.1-rc.3` 升到 npm 最新的 `0.2.2-rc.3` 并重装；在 `~/.dsh/profiles/desktop/compatibility.json` 写入精确版本豁免（`0.2.2-rc.3` 对运行时 `0.2.2-rc.4`）。复制 profile 合成验证：该 bundle 不再被跳过（此前报 `is incompatible with dsh 0.2.2-rc.4`），仅剩 Linux 上 `cua-bundle` 的平台跳过。- 同日再补实验能力：`warming`、`fork-notice` 进入默认预设并在 `experimental-package-policy.ts` 登记产品角色；`openapi-tools` 因 `spec` 必填不入默认；`session-log-export` 的导入路由已在 web-app 宿主层无条件注册。
+
+## [2026-11-17] feat | pi 能力落地 handoff、提示模板、会话标签
+
+- 第 8 项 handoff：`packages/context/handoff`，`/handoff <目标>` 用辅助模型读派生历史生成自包含新会话提示词草稿；当前会话不改写，辅助请求不进模型表面。提交 `9a79451953`。
+- 第 4 项提示模板：`packages/interaction/prompt-templates`，目录内 `.md` 模板（YAML frontmatter + 正文）注册为命令，`/名字 参数` 展开后作为用户消息注入；支持 `$1`、`$@`、`${1:-default}`、`${@:N:L}` 与类 shell 引用。
+- 第 6 项会话标签：`packages/interaction/command-label`，`/label` 写 `session/label` log-only 事件，宿主投影 `sessionLabels` 折叠；不换代。
+- 附带清偿既有持久化分叉：`event:agent/inbox/spliced` 由 `--update 2026-11-05-timeline-priority-notice` 重算消除；`verify-persistence-changes` 转绿。
+- 验证：三包各自单测通过；`typecheck`、`lint`、`build:artifacts`、`build:check`、`doc-sync`（除三处既有红项）、`verify-translation-pairing`、`verify-package-readme-model-experience` 通过。
+- 进度与剩余项（5、1、2、7、3）见 [pi 能力面与可融入清单](queries/pi-capability-comparison.md)。

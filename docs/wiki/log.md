@@ -1174,4 +1174,4 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 现象：桌面会话的 159 个工具里没有 `tool_search`/`memory_write`，`followup`/`tool-summary` 也不生效；原因是这四项只挂在星域预设，而 profile 默认预设是 `standard`。
 - 修法：`packages/bundle/web-app/presets/standard.patch.yml` 增加 `tool-search`、`memory-notes`、`tool-summary`、`followup` 四行（星域预设不变）；新增 `tests/preset-capabilities.spec.ts` 断言两个预设都含这四行。
 - 验证：`packages/bundle/web-app` 87 项、`verify-cordis-config`（356 文件）、`typecheck`、`lint`、`test:docs`（21 门）通过。
-- 另记：桌面 profile 依赖 `@deepseek-ai/dsh-subagent-claude-code@0.2.1-rc.3` 与运行时 `0.2.2-rc.4` 不兼容，启动时被跳过；npm 最新为 `0.2.2-rc.3`，需升级并授予精确版本豁免或移除该 bundle。
+- 另记：桌面 profile 依赖 `@deepseek-ai/dsh-subagent-claude-code@0.2.1-rc.3` 与运行时 `0.2.2-rc.4` 不兼容，启动时被跳过；npm 最新为 `0.2.2-rc.3`，需升级并授予精确版本豁免或移除该 bundle。- 同日继续：星域预设里非星域的能力行（`tool-ssh` 启用；`tool-subagent-codex`、`tool-subagent-claude-code` 默认停用）补进默认预设，星域专属行（`xingchen`/`xingchen-router`/`skill-xingchen`/`command-xingchen-clear`）保留在星域预设。

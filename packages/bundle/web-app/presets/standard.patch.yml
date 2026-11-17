@@ -35,6 +35,10 @@
             name: '@deepseek-ai/dsh-tool-fs-search'
             config:
               sampleOverCapGlobResults: false
+          # 远程 SSH/SFTP：provider 与 known-hosts 注册在宿主层（base），
+          # 这一行给模型提供该能力接缝上的工具。
+          - id: tool-ssh
+            name: '@reachforstar/dsh-tool-ssh'
           # Excalidraw whiteboard scene tools: read/write/draw/export the
           # workspace scene file that the web canvas tab renders
           # (`<workspace>/.dsh/excalidraw/`).
@@ -115,6 +119,22 @@
                 config:
                   provider: fork
                   toolName: subagent_fork
+              # 外部 provider 子代理席位：对应的 provider 包未安装时启用会加载失败，
+              # 因此默认停用，需要时在本预设的 profile 覆盖里按 id 打开。
+              - id: tool-subagent-codex
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: codex
+                  toolName: subagent_codex
+                  maxDepth: provider-managed
+              - id: tool-subagent-claude-code
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: claude-code
+                  toolName: subagent_claude_code
+                  maxDepth: provider-managed
               - id: workflow-ptc
                 name: '@deepseek-ai/dsh-workflow-ptc'
                 config:

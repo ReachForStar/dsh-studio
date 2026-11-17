@@ -550,6 +550,7 @@
       "@deepseek-ai/dsh-fs-ssh": ["./packages/ssh/fs-ssh/src"],
       "@deepseek-ai/dsh-goal": ["./packages/goal/goal/src"],
       "@deepseek-ai/dsh-goal-round-driver": ["./packages/goal/goal-round-driver/src"],
+      "@deepseek-ai/dsh-handoff": ["./packages/context/handoff/src"],
       "@deepseek-ai/dsh-harness-dev-context": ["./packages/context/harness-dev-context/src"],
       "@deepseek-ai/dsh-headless": ["./packages/bundle/headless/src"],
       "@deepseek-ai/dsh-home-paths": ["./packages/util/home-paths/src"],

@@ -308,6 +308,7 @@
     { "path": "./packages/boot/agent-plugins" },
     { "path": "./packages/core/arena" },
     { "path": "./packages/context/followup" },
+    { "path": "./packages/context/handoff" },
     { "path": "./packages/interaction/btw/tsconfig.host.json" },
     { "path": "./packages/experimental/fork-notice" },
     { "path": "./packages/experimental/warming" },

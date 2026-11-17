@@ -1808,6 +1808,31 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-goal -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-handoff -->
+<a id="deepseek-aidsh-handoff"></a>
+
+## `@deepseek-ai/dsh-handoff`
+
+- `inject`: `commands` · `llm`
+- `source`: [`packages/context/handoff/src/index.ts:40`](../packages/context/handoff/src/index.ts)
+
+```ts config-catalog
+/** 辅助提示词请求的配置。 */
+export interface Config {
+  /** 单次请求的输出 token 上限。 */
+  maxOutputTokens: number
+  /** 端到端辅助请求截止时间（毫秒）。 */
+  timeoutMs: number
+  /** 纳入派生历史的消息条数上限。 */
+  maxHistoryMessages: number
+  /** 可选的显式 provider 路由；必须与 `model` 成对。 */
+  provider?: string
+  /** 可选的显式 model id；必须与 `provider` 成对。 */
+  model?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-handoff -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-headless -->
 <a id="deepseek-aidsh-headless"></a>
 

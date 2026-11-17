@@ -128,7 +128,7 @@ pi 示例 `handoff.ts` 用辅助模型把当前对话提取成自包含提示词
 
 ## 涉及模块
 
-`packages/llm/llm`（route 解析）、`packages/llm/llm-pi-ai`（classifier/image 目录与调用）、`packages/core/agent-default-model`、`packages/core/agent-loop`（模型解析与输入准入）、`packages/ptc-runtime/*`（codemode runtime）、`packages/interaction/commands`（提示模板）、`packages/experimental/hook-protocol`（输入三态）、`packages/session/session-projection`（router state、store、label）、`packages/experimental/worktree`（git 检查点）、`packages/experimental/followup`（handoff）。
+`packages/llm/llm`（route 解析）、`packages/llm/llm-pi-ai`（classifier/image 目录与调用）、`packages/core/agent-default-model`、`packages/core/agent-loop`（模型解析与输入准入）、`packages/ptc-runtime/*`（codemode runtime）、`packages/interaction/commands`（提示模板）、`packages/experimental/hook-protocol`（输入三态）、`packages/session/session-projection`（router state、store、label）、`packages/experimental/worktree`（git 检查点）、`packages/context/followup`（handoff）。
 
 ## 待核验
 

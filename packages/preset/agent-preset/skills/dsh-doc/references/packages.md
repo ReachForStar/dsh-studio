@@ -167,6 +167,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-agent-instructions` | yes | Workspace context loader for AGENTS.md/CLAUDE.md instruction files |
 | `@deepseek-ai/dsh-file-reference-local` | yes | Local-filesystem ctx.fileReferences provider with bounded fuzzy indexes |
 | `@deepseek-ai/dsh-followup` | yes | Model-suggested next steps for the user after each completed turn |
+| `@deepseek-ai/dsh-handoff` | yes | Human-facing slash command that drafts a self-contained prompt for a new session |
 | `@deepseek-ai/dsh-harness-dev-context` | no | Model context naming the DeepSeek Harness checkout and Web GUI URL without letting either change the system prompt |
 | `@deepseek-ai/dsh-memory-notes` | yes | Project memory notes: MEMORY.md baseline context kept current |
 | `@deepseek-ai/dsh-session-reference` | yes | Cross-session snapshot references and durable untrusted model context (ctx.sessionReferenceResolver) |

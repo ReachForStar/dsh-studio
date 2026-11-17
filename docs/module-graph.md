@@ -249,6 +249,7 @@ flowchart TD
     pkg_file_reference["file-reference"]
     pkg_file_reference_local["file-reference-local"]
     pkg_followup["followup"]
+    pkg_handoff["handoff"]
     pkg_harness_dev_context["harness-dev-context"]
     pkg_memory_notes["memory-notes"]
     pkg_session_reference["session-reference"]
@@ -820,6 +821,11 @@ flowchart TD
   pkg_compaction --> pkg_commands
   pkg_compaction --> pkg_llm
   pkg_compaction --> pkg_session
+  pkg_handoff --> pkg_agent
+  pkg_handoff --> pkg_brand
+  pkg_handoff --> pkg_commands
+  pkg_handoff --> pkg_llm
+  pkg_handoff --> pkg_timeout
   pkg_command_feedback --> pkg_anonymous_user_id
   pkg_command_feedback --> pkg_commands
   pkg_command_feedback --> pkg_session
@@ -1909,6 +1915,7 @@ flowchart TD
 | [`fs-sandbox`](../packages/fs/fs-sandbox) | `fs` | [`fs`](../packages/fs/fs), [`fs-local`](../packages/fs/fs-local), [`sandbox`](../packages/sandbox/sandbox), [`sandbox-policy`](../packages/sandbox/sandbox-policy) |
 | [`web-search-deepseek`](../packages/web/web-search-deepseek) | `web` | [`agent`](../packages/core/agent), [`credentials`](../packages/credentials/credentials), [`deepseek-account`](../packages/credentials/deepseek-account), [`launch-environment`](../packages/util/launch-environment), [`llm-deepseek`](../packages/llm/llm-deepseek), [`session`](../packages/core/session), [`web`](../packages/web/web) |
 | [`compaction`](../packages/compaction/compaction) | `compaction` | [`commands`](../packages/interaction/commands), [`llm`](../packages/llm/llm), [`session`](../packages/core/session) |
+| [`handoff`](../packages/context/handoff) | `context` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`commands`](../packages/interaction/commands), [`llm`](../packages/llm/llm), [`timeout`](../packages/util/timeout) |
 | [`command-feedback`](../packages/feedback/command-feedback) | `feedback` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`commands`](../packages/interaction/commands), [`session`](../packages/core/session), [`typert-protocol`](../packages/typert/protocol) |
 | [`user-approval`](../packages/interaction/user-approval) | `interaction` | [`agent`](../packages/core/agent), [`commands`](../packages/interaction/commands), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`system-prompt`](../packages/core/system-prompt) |
 | [`jobs-local`](../packages/jobs/jobs-local) | `jobs` | [`agent`](../packages/core/agent), [`jobs`](../packages/jobs/jobs), [`scope`](../packages/core/scope), [`timeout`](../packages/util/timeout) |

@@ -3261,6 +3261,23 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-plugin-package-inventory-deepseek -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-prompt-templates -->
+<a id="deepseek-aidsh-prompt-templates"></a>
+
+## `@deepseek-ai/dsh-prompt-templates`
+
+- `inject`: `commands`
+- `source`: [`packages/interaction/prompt-templates/src/index.ts:40`](../packages/interaction/prompt-templates/src/index.ts)
+
+```ts config-catalog
+/** 配置。 */
+export interface Config {
+  /** 扫描模板的目录；直接子文件中的 `.md` 会被加载。 */
+  directories: string[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-prompt-templates -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-ptc-runtime-node -->
 <a id="deepseek-aidsh-ptc-runtime-node"></a>
 

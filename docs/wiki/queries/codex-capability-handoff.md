@@ -167,7 +167,7 @@ status: superseded
 
 ## 待办 9：记忆写管线
 
-现状：`packages/experimental/memory-notes` 只读 `MEMORY.md` 并注入，没有提取与合并。
+现状：`packages/context/memory-notes` 只读 `MEMORY.md` 并注入，没有提取与合并。
 
 参考：`tmp/codex/codex-rs/memories/write/src/{start,phase1_output}.rs`、`memories/read/src/{lib,citations,usage}.rs`。
 

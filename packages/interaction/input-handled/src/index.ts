@@ -40,6 +40,7 @@ export interface InputInterceptor {
  * 输入拦截服务（`ctx.inputHandling`）：按注册顺序调用拦截器。
  */
 export class InputHandlingService extends Service {
+  /** 服务名。 */
   static provide = 'inputHandling'
 
   private readonly interceptors: InputInterceptor[] = []

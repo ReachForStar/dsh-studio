@@ -47,7 +47,11 @@ export const Config: z<Config> = z.object({
   directories: z.array(z.string()).default([]),
 })
 
-/** 解析 shell 风格参数：引号只在参数开头生效，引号内反斜杠转义同种引号。 */
+/**
+ * 解析 shell 风格参数：引号只在参数开头生效，引号内反斜杠转义同种引号。
+ * @param input - 原始输入。
+ * @returns 参数列表。
+ */
 export function parseArguments(input: string): string[] {
   const args: string[] = []
   let current = ''
@@ -100,7 +104,12 @@ export function parseArguments(input: string): string[] {
   return args
 }
 
-/** 把参数代入模板正文；支持 `$1`、`$@`、`$ARGUMENTS` 与 `${...}` 形式。 */
+/**
+ * 把参数代入模板正文；支持 `$1`、`$@`、`$ARGUMENTS` 与 `${...}` 形式。
+ * @param body - 模板正文。
+ * @param args - 参数。
+ * @returns 展开后的文本。
+ */
 export function expandTemplate(body: string, args: readonly string[]): string {
   const all = () => args.join(' ')
   const positional = (index: number): string => (index >= 1 && index <= args.length ? args[index - 1] ?? '' : '')
@@ -135,7 +144,12 @@ export function expandTemplate(body: string, args: readonly string[]): string {
   return body.replace(/\$\{([^}]*)\}|\$@|\$ARGUMENTS|\$([1-9])/gu, substitute)
 }
 
-/** 解析一个模板文件；缺少描述或正文为空时返回 undefined。 */
+/**
+ * 解析一个模板文件；缺少描述或正文为空时返回 undefined。
+ * @param name - 命令名。
+ * @param raw - 文件原文。
+ * @returns 模板；无效时 undefined。
+ */
 export function parseTemplate(name: string, raw: string): PromptTemplate | undefined {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(raw)
   if (match === null) return undefined
@@ -148,7 +162,12 @@ export function parseTemplate(name: string, raw: string): PromptTemplate | undef
   return { name, description, ...argumentHint === undefined ? {} : { argumentHint }, body }
 }
 
-/** 展开一条输入：匹配 `/名字 参数` 时返回展开文本，否则 undefined。 */
+/**
+ * 展开一条输入：匹配 `/名字 参数` 时返回展开文本，否则 undefined。
+ * @param templates - 模板映射。
+ * @param input - 用户输入。
+ * @returns 展开文本；不匹配时 undefined。
+ */
 export function expandInput(templates: ReadonlyMap<string, PromptTemplate>, input: string): string | undefined {
   const trimmed = input.trimStart()
   if (!trimmed.startsWith('/')) return undefined
@@ -161,7 +180,11 @@ export function expandInput(templates: ReadonlyMap<string, PromptTemplate>, inpu
   return expandTemplate(template.body, parseArguments(rest))
 }
 
-/** 从目录加载模板；非 `.md` 文件与解析失败的文件被忽略。 */
+/**
+ * 从目录加载模板；非 `.md` 文件与解析失败的文件被忽略。
+ * @param directories - 模板目录。
+ * @returns 命令名到模板的映射。
+ */
 export async function loadTemplates(directories: readonly string[]): Promise<Map<string, PromptTemplate>> {
   const templates = new Map<string, PromptTemplate>()
   for (const directory of directories) {
@@ -187,7 +210,12 @@ export async function loadTemplates(directories: readonly string[]): Promise<Map
   return templates
 }
 
-/** 执行模板命令：展开结果作为用户消息注入，命令自身不产生模型消息。 */
+/**
+ * 执行模板命令：展开结果作为用户消息注入，命令自身不产生模型消息。
+ * @param invocation - 命令调用。
+ * @param template - 命中的模板。
+ * @returns 命令结果。
+ */
 export function executeTemplate(
   invocation: CommandInvocation,
   template: PromptTemplate,

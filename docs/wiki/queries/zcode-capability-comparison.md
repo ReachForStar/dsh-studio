@@ -136,7 +136,7 @@ ZCode 用 `MEMORY.md` 索引 + frontmatter 文件记忆；主轮成功后后台 
 - **流式只改透明度**：DOM 文本首帧完整，用 rehype 插件逐段改透明度，避免高度逐帧增长破坏虚拟滚动（`packages/ui/src/components/ai-elements/message.tsx`）。本 fork 的增量解析可保留，透明度揭示可作为可选层。
 - **turn render unit**：以用户 query 为锚折叠工作段，显示“已工作 N 秒”，手动压缩不出用户气泡（`v4/conversationTurnRenderUnits.ts`）。
 - **side pane 多标签 + 侧问**：侧问是独立 child session，右侧复用会话视图（`app-shell/SelectionSideChatPane.tsx`）；本 fork 的侧问待办可参照。
-- **帧桶性能工具**：把流式体验量化成每帧字符数与峰值预测（`packages/stream-animate/src/server/frameBuckets.ts`），可做渲染性能门禁。
+- **帧桶性能工具**：把流式体验量化成每帧字符数与峰值预测（zcode 的 `stream-animate/frameBuckets`），可做渲染性能门禁。
 - **design-runtime**：内置浏览器里点选页面元素改样式并写回源码，带期望内容校验与撤销（`packages/design-runtime/src/CONTRACT.md`）；属新能力，优先级低。
 - **formal-proof**：产品状态空间枚举器，穷举上下文 × 动作并产出可评审 trace（`packages/formal-proof/src/model.ts`）；可作为交互回归的补充工具。
 
@@ -158,7 +158,7 @@ ZCode 的 extension host 是单进程扩展宿主，能力表是唯一定义，�
 
 ### 15. 安全与诊断的小项
 
-- 一次性短期 host capability ticket 叠在长期 token 之上，消费即删、30 秒 TTL（`packages/server/src/hostCapability.ts`）：可用于远端工作区或外部入口。
+- 一次性短期 host capability ticket 叠在长期 token 之上，消费即删、30 秒 TTL（zcode 的 `server/hostCapability`）：可用于远端工作区或外部入口。
 - 拒绝并附反馈、审批 responder 竞速：并入第 2 项。
 - CUA 的 fail-closed 占位包保持契约稳定（`packages/zcode-cua`）。
 
@@ -172,7 +172,7 @@ ZCode 的 extension host 是单进程扩展宿主，能力表是唯一定义，�
 
 ## 涉及模块
 
-`packages/workflow/workflow`、`packages/interaction/user-approval`、`packages/api/session-controller`、`packages/core/system-prompt`、`agent-loop/runtime-context`、`packages/fs/*`、`packages/deliverables/*`、`packages/experimental/hook-protocol`、`packages/core/tools`（调度）、`packages/compaction/*`、`packages/schedule`、`packages/session-query/*`、`packages/experimental/memory-notes`、`packages/client/ui-chat`、`packages/llm/*`、`packages/client/ui-plugin-manager`。
+`packages/workflow/workflow`、`packages/interaction/user-approval`、`packages/api/session-controller`、`packages/core/system-prompt`、`agent-loop/runtime-context`、`packages/fs/*`、`packages/deliverables/*`、`packages/experimental/hook-protocol`、`packages/core/tools`（调度）、`packages/compaction/*`、`packages/schedule`、`packages/session-query/*`、`packages/context/memory-notes`、`packages/client/ui-chat`、`packages/llm/*`、`packages/client/ui-plugin-manager`。
 
 ## 待核验
 

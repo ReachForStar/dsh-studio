@@ -75,6 +75,7 @@ function routeKey(provider: string, id: string): string {
  * 虚拟模型服务（`ctx.virtualModels`）：注册虚拟模型并解析每次请求的物理选择。
  */
 export class VirtualModelService extends Service {
+  /** 服务名。 */
   static provide = 'virtualModels'
   static inject = ['sessionProjections']
 

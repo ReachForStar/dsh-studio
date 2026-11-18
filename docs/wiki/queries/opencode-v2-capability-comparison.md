@@ -97,9 +97,9 @@ opencode 的 `packages/core/src/mcp/oauth.ts` 内置 OAuth provider 与凭据选
 
 opencode codemode 的四个可借点：
 
-1. 只发签名目录：`packages/core/src/codemode/catalog.ts` 的 `INLINE_BUDGET = 2_000` 字符、描述截断 120 字、按命名空间轮流选签名，目录变化只发增量（`UPDATE_BUDGET = 1_000`）；其余工具靠内建 `search`（字段加权 BM25、前缀与短名偏好）按需发现。
-2. OpenAPI 3.x 转工具：`packages/codemode/src/openapi/index.ts` 的 `fromSpec`，`operationId` 的点号造命名空间，认证由主机 `AuthResolver` 在调用时解析、不对模型可见。
-3. 静态扫描：`packages/codemode/src/scan.ts` 用 Acorn 提取静态 `tools.*` 调用，定时任务据此先做禁用清单与权限判定再执行。
+1. 只发签名目录：opencode 的 `codemode/catalog.ts` 的 `INLINE_BUDGET = 2_000` 字符、描述截断 120 字、按命名空间轮流选签名，目录变化只发增量（`UPDATE_BUDGET = 1_000`）；其余工具靠内建 `search`（字段加权 BM25、前缀与短名偏好）按需发现。
+2. OpenAPI 3.x 转工具：opencode 的 codemode `openapi` 入口 的 `fromSpec`，`operationId` 的点号造命名空间，认证由主机 `AuthResolver` 在调用时解析、不对模型可见。
+3. 静态扫描：opencode 的 codemode `scan` 用 Acorn 提取静态 `tools.*` 调用，定时任务据此先做禁用清单与权限判定再执行。
 4. 挂起与恢复：自研字节码 VM 在工具 await 处保存快照续跑（`vm/snapshot/snapshot.ts`），`idempotent` 与 `durable` 决定在途调用语义。
 
 本 fork 现状：`tool-executor-ptc` 每次请求发送完整生成 SDK，README「Token effect」写明成本与可见定义成正比；没有按需目录与 `search`、没有 OpenAPI 导入、没有静态扫描；程序内存随进程结束，没有挂起恢复。
@@ -116,7 +116,7 @@ opencode 的 `packages/process-daemon` 是 Rust `opencode-pty`：所有权文件
 
 ### 7. 会话文件回滚（revert）
 
-opencode 的 `packages/core/src/session/revert.ts` 按消息边界用文件快照恢复，`capture`/`restore` 走 `snapshot.ts`，stage 与 commit 两段。
+opencode 的 opencode 的 `session/revert` 按消息边界用文件快照恢复，`capture`/`restore` 走 `snapshot.ts`，stage 与 commit 两段。
 
 本 fork 现状：`workspace-changes` 已按轮拍 turn 首尾快照并保留到会话销毁，但没有恢复动作。
 
@@ -124,7 +124,7 @@ opencode 的 `packages/core/src/session/revert.ts` 按消息边界用文件快�
 
 ### 8. 侧问面板（btw）
 
-opencode 的 `packages/gui-plugins/src/btw` 是主/渲染进程状态机加侧栏面板：就当前上下文问一句，不进入主会话。
+opencode 的 opencode 的 `gui-plugins/btw` 是主/渲染进程状态机加侧栏面板：就当前上下文问一句，不进入主会话。
 
 本 fork 现状：没有侧问；`subagent` 只能委派任务并在主会话回报。
 

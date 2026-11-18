@@ -25,7 +25,7 @@ status: draft
 
 | # | 能力 | 状态 | 落点 |
 | --- | --- | --- | --- |
-| 8 | handoff | 已落地，提交 `9a79451953` | `packages/context/handoff`（`/handoff` 命令） |
+| 8 | handoff | 已落地（见 git log） | `packages/context/handoff`（`/handoff` 命令） |
 | 4 | 提示模板 | 已落地，提交见 `feat(prompt-templates)` | `packages/interaction/prompt-templates`（模板→命令，展开进模型） |
 | 6 | 会话标签 | 已落地，提交见 `feat(command-label)` | `packages/interaction/command-label`（`/label` + `session/label` 事件与投影） |
 | 5 | 输入事件 handled | 已落地，`feat(input-handled)` | `packages/interaction/input-handled` + `session-controller` 准入 |

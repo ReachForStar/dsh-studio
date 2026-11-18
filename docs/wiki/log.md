@@ -1185,7 +1185,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-11-17] feat | pi 能力落地 handoff、提示模板、会话标签
 
-- 第 8 项 handoff：`packages/context/handoff`，`/handoff <目标>` 用辅助模型读派生历史生成自包含新会话提示词草稿；当前会话不改写，辅助请求不进模型表面。提交 `9a79451953`。
+- 第 8 项 handoff：`packages/context/handoff`，`/handoff <目标>` 用辅助模型读派生历史生成自包含新会话提示词草稿；当前会话不改写，辅助请求不进模型表面。提交见 git log。
 - 第 4 项提示模板：`packages/interaction/prompt-templates`，目录内 `.md` 模板（YAML frontmatter + 正文）注册为命令，`/名字 参数` 展开后作为用户消息注入；支持 `$1`、`$@`、`${1:-default}`、`${@:N:L}` 与类 shell 引用。
 - 第 6 项会话标签：`packages/interaction/command-label`，`/label` 写 `session/label` log-only 事件，宿主投影 `sessionLabels` 折叠；不换代。
 - 附带清偿既有持久化分叉：`event:agent/inbox/spliced` 由 `--update 2026-11-05-timeline-priority-notice` 重算消除；`verify-persistence-changes` 转绿。

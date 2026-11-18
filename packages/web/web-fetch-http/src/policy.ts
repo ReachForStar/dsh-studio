@@ -125,7 +125,12 @@ function isUtf8Label(label: string): boolean {
 }
 
 
-/** Whether one hostname matches an exact rule or a `*.example.com` suffix rule. */
+/**
+ * Whether one hostname matches an exact rule or a `*.example.com` suffix rule.
+ * @param rule - 规则文本。
+ * @param hostname - 待判定主机名。
+ * @returns 是否匹配。
+ */
 export function matchesHostRule(rule: string, hostname: string): boolean {
   const normalized = rule.trim().toLowerCase()
   const host = hostname.toLowerCase()

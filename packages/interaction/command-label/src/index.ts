@@ -49,14 +49,22 @@ export const sessionLabelsProjectionDefinition = {
   },
 } satisfies ProjectionDefinition<'sessionLabels', SessionLabelsState>
 
-/** 校验标签文本：去空白后非空且不超过 80 字符。 */
+/**
+ * 校验标签文本：去空白后非空且不超过 80 字符。
+ * @param raw - 原始标签文本。
+ * @returns 规范化标签；无效时 undefined。
+ */
 export function normalizeLabel(raw: string): string | undefined {
   const label = raw.trim()
   if (label.length === 0 || label.length > 80) return undefined
   return label
 }
 
-/** 找到当前会话中最后一条助手消息的条目序号。 */
+/**
+ * 找到当前会话中最后一条助手消息的条目序号。
+ * @param session - 会话。
+ * @returns 条目序号；无助手消息时 undefined。
+ */
 export function lastAssistantSeq(session: { snapshotEvents(): readonly SessionEvent[] }): SessionSeq | undefined {
   const events = session.snapshotEvents()
   for (let index = events.length - 1; index >= 0; index -= 1) {
@@ -66,7 +74,11 @@ export function lastAssistantSeq(session: { snapshotEvents(): readonly SessionEv
   return undefined
 }
 
-/** 执行 `/label`：无参数显示用法，`clear` 清除，其余文本作为标签。 */
+/**
+ * 执行 `/label`：无参数显示用法，`clear` 清除，其余文本作为标签。
+ * @param invocation - 命令调用。
+ * @returns 命令结果。
+ */
 export function executeLabel(invocation: CommandInvocation): CommandResult {
   const input = invocation.rawInput.trim()
   if (input.length === 0) return { kind: 'error', text: 'Usage: /label <name> or /label clear' }

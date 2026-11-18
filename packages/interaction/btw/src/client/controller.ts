@@ -10,6 +10,7 @@ export interface BtwState {
 
 /** Owns the single open dialog; opening another Session replaces it. */
 export class BtwController {
+  /** 当前侧问状态快照。 */
   readonly store: SnapshotStore<BtwState> = createSnapshotStore<BtwState>({ sessionId: null })
 
   /**

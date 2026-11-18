@@ -118,7 +118,11 @@ function errorMessage(error: unknown): string {
 /** 脚本调用 `exit()` 时抛出的内部信号。 */
 class CodemodeExit extends Error {}
 
-/** 创建 `run_code` 工具定义。 */
+/**
+ * 创建 `run_code` 工具定义。
+ * @param service - 执行脚本的沙箱服务。
+ * @returns 工具定义。
+ */
 export function createCodemodeTool(service: CodemodeService): ToolDefinition {
   return defineTool({
     name: 'run_code',

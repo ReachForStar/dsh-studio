@@ -29,7 +29,7 @@ status: draft
 | MCP 资源订阅 | `packages/mcp/mcp-resources` 的 `watch_mcp_resource` | MCP 307 项 |
 | 按轮 Web 来源 | `packages/client/ui-chat` 的 `turn-sources` 节点 | ui-chat 1037 项 |
 | PTC 按需目录 | `packages/core/tool-executor-ptc` 的 `sdkBudgetTokens`、`sdk-catalog.ts` | 包测试 281 项，新文件覆盖率 100% |
-| 会话导入 | `packages/session-log-export/src/importer.ts`、`POST /api/session.import` | 包测试 150 项，`importer.ts` 覆盖率 100% |
+| 会话导入 | `packages/session-query/session-log-export/src/importer.ts`、`POST /api/session.import` | 包测试 150 项，`importer.ts` 覆盖率 100% |
 | 权限规则求值 | `packages/interaction/user-approval/src/rules.ts`；`ToolDefinition.approvalResources`；fs `write`/`edit` 与 `bash` 分类 | 规则 6 项、服务 6 项、管道 2 项 |
 | 项目规则与始终允许 | `packages/interaction/user-approval` 的 `approval_rules` 域与 `/allow`；`packages/client/ui-approval` | 服务 61 项、客户端 46 项 |
 | 修改后允许 | `/correct` 命令与拒绝原因回传；审批面板纠正输入框 | 管道与客户端测试 |

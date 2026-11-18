@@ -139,6 +139,13 @@ export async function listTranslateModels(signal: AbortSignal): Promise<PaperTra
   return (await request<PaperTranslateModelsResponse>('/models', { signal })).models
 }
 
+/**
+ * 翻译一段论文文本并回调增量。
+ * @param request - 翻译请求。
+ * @param signal - 取消信号。
+ * @param onDelta - 增量文本回调。
+ * @returns 完成的翻译结果。
+ */
 export async function translateText(
   request: PaperTranslateRequest,
   signal: AbortSignal,

@@ -26,7 +26,7 @@ codex 源码在 `tmp/codex`（Rust monorepo `codex-rs`，含 CLI、TUI、app-ser
 | --- | --- |
 | 程序化工具调用 | `packages/ptc-runtime`、`packages/core/tool-executor-ptc`（run_code + 生成 SDK + 子调用限流） |
 | 工具检索 | `packages/core/tool-search` |
-| 技能目录与按需加载 | `packages/skill/*`、`packages/tool-skill` |
+| 技能目录与按需加载 | `packages/skill/*`、`packages/skill/tool-skill` |
 | 共享任务板 | `packages/team/agent-team` |
 | 计划模式 | `packages/plan/plan-mode` |
 | 自动审查 | `packages/experimental/auto-review`（逐工具调用由当前模型评估） |
@@ -112,7 +112,7 @@ codex 的消息板是三段式：`AgentMessageBoard` 接口 / `MessageBoardHost`
 
 codex 的记忆读写分 crate：写侧在 root 会话启动后后台两阶段提取（单 rollout 并发 + 合并），带租约、失败延后、密钥脱敏；读侧注入 developer 指令、解析引用并统计用量（`memories/write/src/{start,phase1_output}.rs`、`memories/read/src/{lib,citations,usage}.rs`）。
 
-本 fork 现状：`packages/experimental/memory-notes` 只读 `MEMORY.md` 并注入，没有提取、合并、清理（[qwen 对比](qwen-code-capability-comparison.md) 已记同一缺口）。
+本 fork 现状：`packages/context/memory-notes` 只读 `MEMORY.md` 并注入，没有提取、合并、清理（[qwen 对比](qwen-code-capability-comparison.md) 已记同一缺口）。
 
 融入方式：新增写侧插件，后台用辅助模型从会话提取事实，按预算重写 `MEMORY.md`，并做密钥扫描；提取请求不进主会话历史。
 
@@ -151,7 +151,7 @@ codex 有网络代理（HTTP/SOCKS5、域名策略、MITM、凭证代理与延�
 
 ## 涉及模块
 
-`packages/interaction/user-approval`、`packages/client/ui-approval`、`packages/schedule`、`packages/storage`、`packages/core/agent-loop`（runtime-context）、`packages/context/*`、`packages/ptc-runtime/*`、`packages/core/tool-executor-ptc`、`packages/fs/*`、`packages/shell/*`、`packages/experimental/hook-protocol`、`packages/compaction/*`、`packages/experimental/memory-notes`、`packages/session-query/*`、`packages/sandbox/*`、`packages/experimental/worktree`、`packages/team/*`、`packages/llm/token-meter`。
+`packages/interaction/user-approval`、`packages/client/ui-approval`、`packages/schedule`、`packages/storage`、`packages/core/agent-loop`（runtime-context）、`packages/context/*`、`packages/ptc-runtime/*`、`packages/core/tool-executor-ptc`、`packages/fs/*`、`packages/shell/*`、`packages/experimental/hook-protocol`、`packages/compaction/*`、`packages/context/memory-notes`、`packages/session-query/*`、`packages/sandbox/*`、`packages/experimental/worktree`、`packages/team/*`、`packages/llm/token-meter`。
 
 ## 待核验
 

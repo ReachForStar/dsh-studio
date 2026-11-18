@@ -16,6 +16,7 @@ export const zh = {
 /** Approval dictionary key union. */
 export type BtwKey = keyof typeof zh
 
+/** en 文案字典。 */
 export const en = {
   'menu.ask': 'Ask about this session',
   title: 'Side question',
@@ -28,6 +29,7 @@ export const en = {
   answer: 'Answer',
 } satisfies Record<BtwKey, string>
 
+/** ja 文案字典。 */
 export const ja = {
   'menu.ask': 'このセッションについて質問',
   title: 'サイド質問',
@@ -40,6 +42,7 @@ export const ja = {
   answer: '回答',
 } satisfies Record<BtwKey, string>
 
+/** es 文案字典。 */
 export const es = {
   'menu.ask': 'Preguntar sobre esta sesión',
   title: 'Pregunta lateral',
@@ -52,6 +55,7 @@ export const es = {
   answer: 'Respuesta',
 } satisfies Record<BtwKey, string>
 
+/** fr 文案字典。 */
 export const fr = {
   'menu.ask': 'Question sur cette session',
   title: 'Question latérale',
@@ -64,6 +68,7 @@ export const fr = {
   answer: 'Réponse',
 } satisfies Record<BtwKey, string>
 
+/** de 文案字典。 */
 export const de = {
   'menu.ask': 'Zu dieser Sitzung fragen',
   title: 'Seitenfrage',
@@ -76,6 +81,7 @@ export const de = {
   answer: 'Antwort',
 } satisfies Record<BtwKey, string>
 
+/** ru 文案字典。 */
 export const ru = {
   'menu.ask': 'Спросить об этой сессии',
   title: 'Боковой вопрос',
@@ -88,6 +94,7 @@ export const ru = {
   answer: 'Ответ',
 } satisfies Record<BtwKey, string>
 
+/** pt 文案字典。 */
 export const pt = {
   'menu.ask': 'Perguntar sobre esta sessão',
   title: 'Pergunta lateral',
@@ -100,4 +107,5 @@ export const pt = {
   answer: 'Resposta',
 } satisfies Record<BtwKey, string>
 
+/** locale 命名空间。 */
 export const NS = 'btw'

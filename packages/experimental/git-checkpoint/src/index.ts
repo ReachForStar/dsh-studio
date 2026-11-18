@@ -44,6 +44,7 @@ interface GitRun {
  * Git 检查点服务（`ctx.gitCheckpoints`）：在工作目录执行 git 并保存最近引用。
  */
 export class GitCheckpointService extends Service {
+  /** 服务名。 */
   static provide = 'gitCheckpoints'
   static inject = ['shell']
 
@@ -121,7 +122,13 @@ export class GitCheckpointService extends Service {
   }
 }
 
-/** 执行 `/checkpoint`：无参数捕获，`restore` 恢复，`clear` 清除引用。 */
+/**
+ * 执行 `/checkpoint`：无参数捕获，`restore` 恢复，`clear` 清除引用。
+ * @param service - 检查点服务。
+ * @param invocation - 命令调用。
+ * @param config - 生效配置。
+ * @returns 命令结果。
+ */
 export function executeCheckpoint(
   service: GitCheckpointService,
   invocation: CommandInvocation,

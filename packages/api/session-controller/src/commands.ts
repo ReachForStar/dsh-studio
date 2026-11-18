@@ -6,6 +6,7 @@ import { continuationProjectionDefinition, type ContinuationState } from './cont
 import { modelAvailable } from './catalog.ts'
 import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
+import type { InputDecision, InputHandlingService } from '@deepseek-ai/dsh-input-handled'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { Agent, ModelSelection as AgentModelSelection } from '@deepseek-ai/dsh-agent'
 import { AttachmentError } from '@deepseek-ai/dsh-attachment'
@@ -337,8 +338,17 @@ export class SessionCommandController {
         throw new RemoteError('session/agent-busy', 'generation continuation was not accepted', { reason: String(error) })
       }
     }
+    const handling = this.ctx.inputHandling as InputHandlingService | undefined
+    const inputText = request.content.filter((part): part is { readonly type: 'text'; readonly text: string } => part.type === 'text').map(part => part.text).join('\n')
+    const decision: InputDecision = inputText.length === 0
+      ? { action: 'continue' }
+      : (await handling?.handle(agent, inputText, new AbortController().signal)) ?? { action: 'continue' }
+    if (decision.action === 'handled') return { accepted: true }
+    const content = decision.action === 'transform'
+      ? [{ type: 'text' as const, text: decision.text }]
+      : request.content
     const admission = resolvePromptFileReceipts(
-      request.content,
+      content,
       receiptId => this.ctx.fileUploads.resolve(agent, receiptId),
     )
     // Encoded images and image upload receipts both make an image prompt.

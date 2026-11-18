@@ -9,6 +9,9 @@
 
 ```mermaid
 flowchart LR
+  pkg_interaction_input_handled["interaction/input-handled"]
+  svc_inputHandling["ctx.inputHandling<br/>Input handling"]
+  pkg_api_session_controller["api/session-controller"]
   pkg_experimental_git_checkpoint["experimental/git-checkpoint"]
   svc_gitCheckpoints["ctx.gitCheckpoints<br/>Git checkpoints"]
   pkg_core_agent_virtual_model["core/agent-virtual-model"]
@@ -99,7 +102,6 @@ flowchart LR
   pkg_attachment["attachment"]
   svc_attachments["ctx.attachments<br/>Durable binary attachment storage"]
   pkg_attachment_local["attachment-local"]
-  pkg_api_session_controller["api-session-controller"]
   pkg_llm_pi_ai["llm-pi-ai"]
   pkg_llm_deepseek["llm-deepseek"]
   pkg_client_file_upload["client-file-upload"]
@@ -434,6 +436,7 @@ flowchart LR
   pkg_host_product_telemetry_otel --> svc_productTelemetry
   pkg_host_webserver --> svc_webServer
   pkg_inspector --> svc_inspector
+  pkg_interaction_input_handled --> svc_inputHandling
   pkg_jobs --> svc_jobs
   pkg_jobs_local --> svc_jobs
   pkg_llm --> svc_llm
@@ -577,6 +580,7 @@ flowchart LR
   svc_fs --> pkg_tool_fs
   svc_headlessStartup --> pkg_headless
   svc_hmr --> pkg_app_boot
+  svc_inputHandling --> pkg_api_session_controller
   svc_jobs --> pkg_api_job_controller
   svc_jobs --> pkg_tool_bash
   svc_jobs --> pkg_tool_jobs
@@ -794,6 +798,7 @@ flowchart LR
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`api-session-controller`](../packages/api/session-controller), [`headless`](../packages/bundle/headless) | - | Reads the default ModelSelection from volatile Config and saves selections through the profile editor. |
 | `ctx.virtualModels` | `service` | `core/agent-virtual-model` | - | `core/agent-loop` | - | 拥有虚拟模型注册表与按请求的物理解析；agent-loop 通过 AgentModel 询问它。 |
 | `ctx.gitCheckpoints` | `service` | `experimental/git-checkpoint` | - | - | - | 在会话工作目录执行 git stash create/apply，服务 /checkpoint 命令。 |
+| `ctx.inputHandling` | `service` | `interaction/input-handled` | - | `api/session-controller` | - | 在提示提交时运行已注册拦截器，输入到达模型前生效。 |
 | `ctx.agentLoop` | `bundle` | [`agent-loop`](../packages/core/agent-loop) | - | [`base`](../packages/bundle/base), [`sdk-minimal`](../packages/bundle/sdk-minimal) | - | 唯一的具体循环插件；扩展包依赖 dsh-agent 的事件和服务，而不依赖此包。 |
 | `ctx.mcpManager` | `core` | [`mcp-manager`](../packages/mcp/mcp-manager) | - | [`client-ui-settings-mcp`](../packages/client/ui-settings-mcp) | - | 依据自身 volatile servers 配置对账 mcp-client 实例，聚合它们的连接状态，并向管理界面提供 restart、probe 与 OAuth 授权。 |
 | `ctx.mcpPool` | `service` | [`mcp-client`](../packages/mcp/mcp-client) | - | [`mcp-client`](../packages/mcp/mcp-client) | - | 为相同的解析后服务器配置持有一个 transport 与一次握手；实例以租约使用它，最后一个持有者负责关闭。 |

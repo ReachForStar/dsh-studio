@@ -108,6 +108,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'inputHandling',
+    pkg: 'interaction/input-handled',
+    title: 'Input handling',
+    mode: 'service',
+    consumers: ['api/session-controller'],
+    note: 'Runs registered interceptors on prompt submission before the input reaches the model.',
+  },
+  {
     key: 'gitCheckpoints',
     pkg: 'experimental/git-checkpoint',
     title: 'Git checkpoints',

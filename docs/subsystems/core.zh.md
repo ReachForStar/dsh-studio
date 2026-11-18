@@ -897,6 +897,32 @@ Types: [Session](session.zh.md)
 
 Source: [`packages/experimental/git-checkpoint/src/index.ts`](../../packages/experimental/git-checkpoint/src/index.ts)
 
+<a id="ctxinputhandling--inputhandlingservice"></a>
+
+### `ctx.inputHandling` — `InputHandlingService`
+
+输入拦截服务（`ctx.inputHandling`）：按注册顺序调用拦截器。
+
+```ts cordis-catalog
+/**
+ * 注册一个拦截器。
+ * @param interceptor - 拦截器。
+ * @returns 注销函数。
+ */
+register(interceptor: InputInterceptor): () => void
+
+/**
+ * 依次调用拦截器，返回第一个非 `continue` 的决策。
+ * @param agent - 接收输入的代理。
+ * @param text - 输入文本。
+ * @param signal - 取消信号。
+ * @returns 生效的决策；无拦截器命中时为 `continue`。
+ */
+async handle(agent: Agent, text: string, signal: AbortSignal): Promise<InputDecision>
+```
+
+Source: [`packages/interaction/input-handled/src/index.ts`](../../packages/interaction/input-handled/src/index.ts)
+
 <a id="ctxvirtualmodels--virtualmodelservice"></a>
 
 ### `ctx.virtualModels` — `VirtualModelService`

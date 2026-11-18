@@ -2181,6 +2181,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'inputHandling',
+    summary: '输入拦截服务（`ctx.inputHandling`）：按注册顺序调用拦截器。',
+    description: '输入拦截服务（`ctx.inputHandling`）：按注册顺序调用拦截器。',
+    methods: [
+      {
+        signature: 'register(interceptor: InputInterceptor): () => void',
+        description: '注册一个拦截器。',
+        parameters: [{ name: 'interceptor', description: '拦截器。' }],
+        returns: '注销函数。',
+      },
+      {
+        signature: 'async handle(agent: Agent, text: string, signal: AbortSignal): Promise<InputDecision>',
+        description: '依次调用拦截器，返回第一个非 `continue` 的决策。',
+        parameters: [{ name: 'agent', description: '接收输入的代理。' }, { name: 'text', description: '输入文本。' }, { name: 'signal', description: '取消信号。' }],
+        returns: '生效的决策；无拦截器命中时为 `continue`。',
+      },
+    ],
+  },
+  {
     key: 'inspector',
     summary: 'Shared Host/Client service façade over the realm\'s source publisher.',
     description: 'Shared Host/Client service façade over the realm\'s source publisher.',
@@ -7955,6 +7974,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'IndexInjectionPlacement',
     declaration: 'export type IndexInjectionPlacement = \'head\' | \'body\';',
+  },
+  {
+    name: 'InputDecision',
+    declaration: 'export type InputDecision = {\n    readonly action: \'continue\';\n} | {\n    readonly action: \'transform\';\n    readonly text: string;\n} | {\n    readonly action: \'handled\';\n};',
+  },
+  {
+    name: 'InputInterceptor',
+    declaration: 'export interface InputInterceptor {\n    intercept(agent: Agent, text: string, signal: AbortSignal): InputDecision | Promise<InputDecision>;\n}',
   },
   {
     name: 'InspectOptions',

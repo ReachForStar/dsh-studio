@@ -75,6 +75,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   agentDefaultModel: 'core.md',
   virtualModels: 'core.md',
   gitCheckpoints: 'core.md',
+  inputHandling: 'core.md',
   agentPresets: 'core.md',
   agents: 'core.md',
   approval: 'approval.md',
@@ -1245,6 +1246,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   LlmClassifyResult: 'classifier result is owned by packages/llm/llm/README.md',
   LlmGenerateImagesRequest: 'image generation request is owned by packages/llm/llm/README.md',
   LlmGenerateImagesResult: 'image generation result is owned by packages/llm/llm/README.md',
+  InputInterceptor: 'input interceptor contract is owned by packages/interaction/input-handled/README.md',
+  InputDecision: 'input decision contract is owned by packages/interaction/input-handled/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

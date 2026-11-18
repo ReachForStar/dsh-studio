@@ -339,6 +339,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-btw` | yes | Side questions about a Session, answered from its completed history without adding a turn |
 | `@deepseek-ai/dsh-command-label` | no | Human-facing slash command that labels a session entry for navigation |
 | `@deepseek-ai/dsh-commands` | no | Plugin-owned human command registry for DeepSeek Harness UIs |
+| `@deepseek-ai/dsh-input-handled` | no | Intercept user input before it enters the model |
 | `@deepseek-ai/dsh-permission-presets` | yes | User-facing permission presets (ctx.permissionPresets) for the DeepSeek Harness: one product-level Permissions select bundling the sandbox-mode and approval-policy knobs, written through to their own session events |
 | `@deepseek-ai/dsh-prompt-templates` | yes | Markdown prompt templates that expand into user messages through slash commands |
 | `@deepseek-ai/dsh-tool-ask-user` | yes | Model-facing ask_user_question tool over the ctx.userQuestions seam |

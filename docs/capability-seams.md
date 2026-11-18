@@ -7,6 +7,9 @@ A service can be a core spine service, a swappable capability seam, a bundle/com
 
 ```mermaid
 flowchart LR
+  pkg_interaction_input_handled["interaction/input-handled"]
+  svc_inputHandling["ctx.inputHandling<br/>Input handling"]
+  pkg_api_session_controller["api/session-controller"]
   pkg_experimental_git_checkpoint["experimental/git-checkpoint"]
   svc_gitCheckpoints["ctx.gitCheckpoints<br/>Git checkpoints"]
   pkg_core_agent_virtual_model["core/agent-virtual-model"]
@@ -97,7 +100,6 @@ flowchart LR
   pkg_attachment["attachment"]
   svc_attachments["ctx.attachments<br/>Durable binary attachment storage"]
   pkg_attachment_local["attachment-local"]
-  pkg_api_session_controller["api-session-controller"]
   pkg_llm_pi_ai["llm-pi-ai"]
   pkg_llm_deepseek["llm-deepseek"]
   pkg_client_file_upload["client-file-upload"]
@@ -432,6 +434,7 @@ flowchart LR
   pkg_host_product_telemetry_otel --> svc_productTelemetry
   pkg_host_webserver --> svc_webServer
   pkg_inspector --> svc_inspector
+  pkg_interaction_input_handled --> svc_inputHandling
   pkg_jobs --> svc_jobs
   pkg_jobs_local --> svc_jobs
   pkg_llm --> svc_llm
@@ -575,6 +578,7 @@ flowchart LR
   svc_fs --> pkg_tool_fs
   svc_headlessStartup --> pkg_headless
   svc_hmr --> pkg_app_boot
+  svc_inputHandling --> pkg_api_session_controller
   svc_jobs --> pkg_api_job_controller
   svc_jobs --> pkg_tool_bash
   svc_jobs --> pkg_tool_jobs
@@ -707,6 +711,7 @@ flowchart LR
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.inputHandling` | `service` | `interaction/input-handled` | - | `api/session-controller` | - | Runs registered interceptors on prompt submission before the input reaches the model. |
 | `ctx.gitCheckpoints` | `service` | `experimental/git-checkpoint` | - | - | - | Runs git stash create/apply in the session working directory for the /checkpoint command. |
 | `ctx.virtualModels` | `service` | `core/agent-virtual-model` | - | `core/agent-loop` | - | Owns the virtual model registry and per-request physical resolution; agent-loop asks it through AgentModel. |
 | `ctx.actionCards` | `service` | [`action-cards`](../packages/experimental/action-cards) | - | [`creation-recommendations`](../packages/experimental/creation-recommendations), [`client-ui-action-cards`](../packages/experimental/client-ui-action-cards) | - | Owns the card tool, card state, user actions and status notices; card kinds register their actions and handlers. |

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Tratamento de entrada",
+    "description": "Interceta a entrada do utilizador antes de entrar no modelo."
+  }
+}

@@ -473,6 +473,7 @@
     { "path": "./packages/interaction/commands" },
     { "path": "./packages/interaction/command-label" },
     { "path": "./packages/interaction/prompt-templates" },
+    { "path": "./packages/interaction/input-handled" },
     { "path": "./packages/goal/goal" },
     { "path": "./packages/goal/tool-goal" },
     { "path": "./packages/goal/goal-round-driver" },

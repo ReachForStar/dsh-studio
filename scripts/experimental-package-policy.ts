@@ -142,4 +142,6 @@ export const DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES: Readonly<Record<string, stri
   '@deepseek-ai/dsh-warming': '默认预设为每个安装提供提示缓存保活',
   // fork 归属提示：默认预设在 fork 子会话首步说明后台工作归属，避免模型重复等待。
   '@deepseek-ai/dsh-fork-notice': '默认预设为每个安装提供 fork 归属提示',
+  // Git 检查点：默认预设提供 `/checkpoint`，用 git 给当前工作区做可回退快照。
+  '@deepseek-ai/dsh-git-checkpoint': '默认预设为每个安装提供 Git 检查点命令',
 }

@@ -3268,6 +3268,9 @@ importers:
       '@deepseek-ai/dsh-agent-tool-presentation':
         specifier: workspace:*
         version: link:../../core/agent-tool-presentation
+      '@deepseek-ai/dsh-agent-virtual-model':
+        specifier: workspace:*
+        version: link:../../core/agent-virtual-model
       '@deepseek-ai/dsh-api-job-controller':
         specifier: workspace:*
         version: link:../../api/job-controller
@@ -3514,6 +3517,9 @@ importers:
       '@deepseek-ai/dsh-command-goal':
         specifier: workspace:*
         version: link:../../goal/command-goal
+      '@deepseek-ai/dsh-command-label':
+        specifier: workspace:*
+        version: link:../../interaction/command-label
       '@deepseek-ai/dsh-compaction-basic':
         specifier: workspace:*
         version: link:../../compaction/compaction-basic
@@ -3541,6 +3547,12 @@ importers:
       '@deepseek-ai/dsh-fork-notice':
         specifier: workspace:*
         version: link:../../experimental/fork-notice
+      '@deepseek-ai/dsh-git-checkpoint':
+        specifier: workspace:*
+        version: link:../../experimental/git-checkpoint
+      '@deepseek-ai/dsh-handoff':
+        specifier: workspace:*
+        version: link:../../context/handoff
       '@deepseek-ai/dsh-harness-dev-context':
         specifier: workspace:*
         version: link:../../context/harness-dev-context
@@ -3571,6 +3583,9 @@ importers:
       '@deepseek-ai/dsh-host-webserver':
         specifier: workspace:*
         version: link:../../host/webserver
+      '@deepseek-ai/dsh-input-handled':
+        specifier: workspace:*
+        version: link:../../interaction/input-handled
       '@deepseek-ai/dsh-launch-environment':
         specifier: workspace:*
         version: link:../../util/launch-environment
@@ -3601,6 +3616,9 @@ importers:
       '@deepseek-ai/dsh-plugin-market':
         specifier: workspace:*
         version: link:../../boot/plugin-market
+      '@deepseek-ai/dsh-prompt-templates':
+        specifier: workspace:*
+        version: link:../../interaction/prompt-templates
       '@deepseek-ai/dsh-schedule':
         specifier: workspace:*
         version: link:../../schedule/schedule

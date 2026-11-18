@@ -158,6 +158,30 @@
           # fork 归属提示：fork 子会话首步说明哪些后台工作属于原会话。
           - id: fork-notice
             name: '@deepseek-ai/dsh-fork-notice'
+          # 从 pi 吸收的能力：虚拟模型路由、输入事件 handled、会话标签、
+          # 上下文转移命令、提示模板（目录由部署补）、Git 检查点。
+          # 这三个插件各自 provide 服务，必须放在独立 isolate 域内，
+          # 否则预设的服务泄漏审计会拒绝挂载。
+          - id: pi-services
+            name: cordis:group
+            group: true
+            isolate:
+              virtualModels: true
+              inputHandling: true
+              gitCheckpoints: true
+            config:
+              - id: virtual-model
+                name: '@deepseek-ai/dsh-agent-virtual-model'
+              - id: input-handled
+                name: '@deepseek-ai/dsh-input-handled'
+              - id: git-checkpoint
+                name: '@deepseek-ai/dsh-git-checkpoint'
+          - id: command-label
+            name: '@deepseek-ai/dsh-command-label'
+          - id: handoff
+            name: '@deepseek-ai/dsh-handoff'
+          - id: prompt-templates
+            name: '@deepseek-ai/dsh-prompt-templates'
           - id: tool-ask-user
             name: '@deepseek-ai/dsh-tool-ask-user'
           - id: tool-todo

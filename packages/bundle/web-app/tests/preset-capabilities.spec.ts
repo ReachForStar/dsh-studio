@@ -23,6 +23,16 @@ const EXTRA_CAPABILITIES = [
 const DEFAULT_EXPERIMENTAL = [
   ['warming', '@deepseek-ai/dsh-warming'],
   ['fork-notice', '@deepseek-ai/dsh-fork-notice'],
+  ['git-checkpoint', '@deepseek-ai/dsh-git-checkpoint'],
+] as const
+
+/** Agent-layer capabilities absorbed from pi that the default preset mounts. */
+const PI_CAPABILITIES = [
+  ['virtual-model', '@deepseek-ai/dsh-agent-virtual-model'],
+  ['input-handled', '@deepseek-ai/dsh-input-handled'],
+  ['command-label', '@deepseek-ai/dsh-command-label'],
+  ['handoff', '@deepseek-ai/dsh-handoff'],
+  ['prompt-templates', '@deepseek-ai/dsh-prompt-templates'],
 ] as const
 
 /** Plugin rows of one shipped agent preset, including rows nested in `cordis:group` realms. */
@@ -72,6 +82,14 @@ it('offers the freeform apply_patch tool in the default preset', () => {
 it('mounts the registered experimental capabilities in the default preset', () => {
   const plugins = presetPlugins('standard')
   for (const [id, name] of DEFAULT_EXPERIMENTAL) {
+    expect(plugins.filter(row => row.id === id).map(row => ({ id: row.id, name: row.name })), `standard row ${id}`)
+      .toEqual([{ id, name }])
+  }
+})
+
+it('mounts the pi-absorbed agent-layer capabilities in the default preset', () => {
+  const plugins = presetPlugins('standard')
+  for (const [id, name] of PI_CAPABILITIES) {
     expect(plugins.filter(row => row.id === id).map(row => ({ id: row.id, name: row.name })), `standard row ${id}`)
       .toEqual([{ id, name }])
   }

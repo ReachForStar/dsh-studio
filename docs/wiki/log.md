@@ -1234,3 +1234,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `verify-translation-pairing`：upgrade-guide 配对重新记录。
 - 结果：`doc-sync` 43 门全绿，`lint`、`tsc`、`build:check` 通过。
 - 核实：`docs/capability-seams.zh.md` 的 mermaid 标签历史上一直为英文（图内不翻译），与生成器一致，无需重译；当前仅节点 id 采用生成器的完整路径风格。
+## [2026-11-18] feat | pi 能力挂载进默认预设
+
+- `standard.patch.yml` 新增 `pi-services` 组（`virtual-model`、`input-handled`、`git-checkpoint`，域键与服务名一致）与 `command-label`、`handoff`、`prompt-templates`；web-app 包依赖同步。
+- 修 `git-checkpoint` 的重复 provide：`GitCheckpointService` 的 `static provide` 已由 Service 基类登记，删掉 `apply` 里多余的 `ctx.provide`（重建 lib 后预设可挂载）。
+- `codemode` 仍不能挂：`run_code` 是 `tools.register` 的保留名，需在包里改名或改为 PTC runtime。
+- 验证：`packages/bundle/web-app` 92 项、`verify-cordis-config`、`verify-default-product-isolation`、`typecheck`、`lint`、`build:artifacts` + `build:check`、`test:docs`（21 门）通过；预设挂载 e2e 不再报服务注册错误。
+- 详见 [pi 能力面与可融入清单](queries/pi-capability-comparison.md)。

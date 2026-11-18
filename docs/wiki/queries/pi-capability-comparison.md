@@ -153,6 +153,23 @@ pi 示例 `handoff.ts` 用辅助模型把当前对话提取成自包含提示词
 - 本 fork 的 `interaction/commands` 是否适合作为提示模板的宿主，或应并入 `skill`。
 - pi main 是否已把 classifier/image 模型接进默认 provider 目录，决定第 2 项的目录工作量。
 
+## 出厂组合挂载（2026-11-18）
+
+八项能力全部落地后，除 classifier/image（本就随 `llm-pi-ai` 在宿主层）外，其余六项已挂进默认预设 `packages/bundle/web-app/presets/standard.patch.yml`：
+
+| 能力 | 预设行 | 备注 |
+| --- | --- | --- |
+| 虚拟模型路由 | `pi-services/virtual-model` | 与 `input-handled`、`git-checkpoint` 同组 |
+| 输入事件 handled | `pi-services/input-handled` | 同上 |
+| Git 检查点 | `pi-services/git-checkpoint` | 实验包，已在 `experimental-package-policy.ts` 登记产品角色 |
+| 会话标签 | `command-label` | `/label` + `session/label` 投影 |
+| handoff | `handoff` | `/handoff`，需 `commands` 与 `llm` |
+| 提示模板 | `prompt-templates` | 模板目录由部署补（默认空目录不产生命令） |
+
+`codemode` 未挂：它注册的工具名是 `run_code`，而 `tools.register` 对 `run_code` 是**保留名**，挂载即抛错；需要给它换工具名或改成 PTC runtime 之后才能进预设。
+
+服务类插件（虚拟模型、输入 handled、Git 检查点）必须放进 `cordis:group` 且 `isolate` 的域键与其 `static provide` 服务名一致，否则预设的服务泄漏审计会拒绝挂载；域键写错（如 `virtualModel` 对 `virtualModels`）报「Preset services require isolate realms」。
+
 ## 复发预防
 
 - 判定缺口前先在本 fork 搜同义实现（compaction、tool-search、auto-review、warming、hook-protocol、worktree、followup）。

@@ -61,3 +61,8 @@
 - [x] 里程碑：第 5、6 项输入 handled 与会话标签落地
 - [x] 里程碑：第 8 项 handoff 与第 7 项 Git 检查点落地
 - [x] 里程碑：全量 typecheck/lint/build:check 通过，wiki 回写
+## 挂载（2026-11-18）
+
+- [x] 六项挂进默认预设：`virtual-model`、`input-handled`、`git-checkpoint`（`pi-services` 组）、`command-label`、`handoff`、`prompt-templates`
+- [x] 服务类插件用 `cordis:group` + 与服务名一致的 `isolate` 域键；修 `git-checkpoint` 的重复 `provide`
+- [ ] 阻塞：`codemode` 未挂 —— 工具名 `run_code` 是 `tools.register` 的保留名，需在该包内改名或改为 PTC runtime

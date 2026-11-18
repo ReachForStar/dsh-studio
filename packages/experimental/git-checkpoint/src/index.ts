@@ -161,8 +161,8 @@ export const inject = ['commands', 'shell']
 
 /** 注册 `/checkpoint` 命令。 */
 export function apply(ctx: Context, config: Config): void {
+  // GitCheckpointService 的 `static provide` 已由 Service 基类登记，这里不再重复 provide。
   const service = new GitCheckpointService(ctx)
-  ctx.provide('gitCheckpoints', service)
   ctx.commands.register({
     name: 'checkpoint',
     description: 'Create or restore a Git checkpoint of the working directory',

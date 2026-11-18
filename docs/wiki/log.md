@@ -1212,3 +1212,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 新增 `packages/experimental/git-checkpoint`：`/checkpoint` 经 `ctx.shell` 执行 `git stash create` 并记住引用，`restore` 执行 `git stash apply`，`clear` 清除引用；引用按会话存进程内存。
 - 限制：无每回合自动捕获与 fork 自动恢复（显式命令）；引用重启后丢失，但 stash 仍在仓库，可经 `git stash list` 查看。
 - 6 项单测通过（stub shell）；`typecheck`、`lint`、`build:check`、`doc-sync`（除既有红项）通过。
+
+## [2026-11-18] feat | codemode 沙箱脚本工具落地
+
+- 新增 `packages/experimental/codemode`：`run_code` 工具在 Node `node:vm` 沙箱执行模型脚本，只注入 `tools`（经 `ctx.tools.execute`，策略/审批/日志不变）与 `models`（经 `ctx.llm.classify/generateImages`），外加 `text`/`store`/`load`/`exit`。
+- 无新第三方依赖；脚本作为 async 函数体运行，支持顶层 await/return；输出上限与同步超时预算。
+- 限制：`store` 为进程内存；`timeoutMs` 不约束异步工具调用；`console` 输出不收集；不支持嵌套 run_code。
+- 5 项单测通过；`typecheck`、`lint`、`build`、`doc-sync`（除既有红项）通过。

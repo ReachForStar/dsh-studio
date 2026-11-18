@@ -550,6 +550,7 @@
       "@deepseek-ai/dsh-fs-patch": ["./packages/fs/fs-patch/src"],
       "@deepseek-ai/dsh-fs-sandbox": ["./packages/fs/fs-sandbox/src"],
       "@deepseek-ai/dsh-fs-ssh": ["./packages/ssh/fs-ssh/src"],
+      "@deepseek-ai/dsh-git-checkpoint": ["./packages/experimental/git-checkpoint/src"],
       "@deepseek-ai/dsh-goal": ["./packages/goal/goal/src"],
       "@deepseek-ai/dsh-goal-round-driver": ["./packages/goal/goal-round-driver/src"],
       "@deepseek-ai/dsh-handoff": ["./packages/context/handoff/src"],

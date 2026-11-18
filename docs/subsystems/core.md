@@ -844,6 +844,47 @@ Types: [AgentBackend](session.md) · [Session](session.md)
 
 Source: [`packages/core/agent/src/index.ts`](../../packages/core/agent/src/index.ts)
 
+<a id="ctxgitcheckpoints--gitcheckpointservice"></a>
+
+### `ctx.gitCheckpoints` — `GitCheckpointService`
+
+Git 检查点服务（`ctx.gitCheckpoints`）：在工作目录执行 git 并保存最近引用。
+
+```ts cordis-catalog
+/**
+ * 读取一个会话最近一次的检查点引用。
+ * @param session - 会话。
+ * @returns stash 引用；无检查点时 undefined。
+ */
+lastOf(session: Session): string | undefined
+
+/**
+ * 清除一个会话保存的检查点引用。
+ * @param session - 会话。
+ */
+clear(session: Session): void
+
+/**
+ * 为会话工作目录创建检查点。
+ * @param session - 会话。
+ * @param timeoutMs - 单条命令截止时间。
+ * @returns stash 引用；工作区无改动时 undefined。
+ */
+async capture(session: Session, timeoutMs: number): Promise<string | undefined>
+
+/**
+ * 把一个检查点引用恢复到会话工作目录。
+ * @param session - 会话。
+ * @param ref - stash 引用。
+ * @param timeoutMs - 单条命令截止时间。
+ */
+async restore(session: Session, ref: string, timeoutMs: number): Promise<void>
+```
+
+Types: [Session](session.md)
+
+Source: [`packages/experimental/git-checkpoint/src/index.ts`](../../packages/experimental/git-checkpoint/src/index.ts)
+
 <a id="ctxvirtualmodels--virtualmodelservice"></a>
 
 ### `ctx.virtualModels` — `VirtualModelService`

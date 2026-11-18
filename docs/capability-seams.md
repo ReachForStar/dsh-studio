@@ -7,6 +7,8 @@ A service can be a core spine service, a swappable capability seam, a bundle/com
 
 ```mermaid
 flowchart LR
+  pkg_experimental_git_checkpoint["experimental/git-checkpoint"]
+  svc_gitCheckpoints["ctx.gitCheckpoints<br/>Git checkpoints"]
   pkg_core_agent_virtual_model["core/agent-virtual-model"]
   svc_virtualModels["ctx.virtualModels<br/>Virtual model routing"]
   pkg_core_agent_loop["core/agent-loop"]
@@ -407,6 +409,7 @@ flowchart LR
   pkg_experimental_forge --> svc_forge
   pkg_experimental_forge_github --> svc_forge
   pkg_experimental_forge_session --> svc_forgeSession
+  pkg_experimental_git_checkpoint --> svc_gitCheckpoints
   pkg_experimental_liveshare --> svc_liveshareShares
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
@@ -704,6 +707,7 @@ flowchart LR
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.gitCheckpoints` | `service` | `experimental/git-checkpoint` | - | - | - | Runs git stash create/apply in the session working directory for the /checkpoint command. |
 | `ctx.virtualModels` | `service` | `core/agent-virtual-model` | - | `core/agent-loop` | - | Owns the virtual model registry and per-request physical resolution; agent-loop asks it through AgentModel. |
 | `ctx.actionCards` | `service` | [`action-cards`](../packages/experimental/action-cards) | - | [`creation-recommendations`](../packages/experimental/creation-recommendations), [`client-ui-action-cards`](../packages/experimental/client-ui-action-cards) | - | Owns the card tool, card state, user actions and status notices; card kinds register their actions and handlers. |
 | `ctx.pluginRecommendations` | `service` | [`plugin-recommendations`](../packages/experimental/plugin-recommendations) | - | [`client-ui-plugin-recommendations`](../packages/experimental/client-ui-plugin-recommendations) | - | Reads the current catalog text of an official plugin card and enables the plugin through the profile plugin manager after a click. |

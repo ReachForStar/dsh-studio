@@ -74,6 +74,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   mcpPool: 'mcp.md',
   agentDefaultModel: 'core.md',
   virtualModels: 'core.md',
+  gitCheckpoints: 'core.md',
   agentPresets: 'core.md',
   agents: 'core.md',
   approval: 'approval.md',

@@ -9,6 +9,8 @@
 
 ```mermaid
 flowchart LR
+  pkg_experimental_git_checkpoint["experimental/git-checkpoint"]
+  svc_gitCheckpoints["ctx.gitCheckpoints<br/>Git checkpoints"]
   pkg_core_agent_virtual_model["core/agent-virtual-model"]
   svc_virtualModels["ctx.virtualModels<br/>Virtual model routing"]
   pkg_core_agent_loop["core/agent-loop"]
@@ -409,6 +411,7 @@ flowchart LR
   pkg_experimental_forge --> svc_forge
   pkg_experimental_forge_github --> svc_forge
   pkg_experimental_forge_session --> svc_forgeSession
+  pkg_experimental_git_checkpoint --> svc_gitCheckpoints
   pkg_experimental_liveshare --> svc_liveshareShares
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
@@ -790,6 +793,7 @@ flowchart LR
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), [`subagent`](../packages/subagent/subagent) | - | 拥有实时 Agent 句柄、创建／恢复工厂 seam，以及进程本地的发起方传播。 |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`api-session-controller`](../packages/api/session-controller), [`headless`](../packages/bundle/headless) | - | Reads the default ModelSelection from volatile Config and saves selections through the profile editor. |
 | `ctx.virtualModels` | `service` | `core/agent-virtual-model` | - | `core/agent-loop` | - | 拥有虚拟模型注册表与按请求的物理解析；agent-loop 通过 AgentModel 询问它。 |
+| `ctx.gitCheckpoints` | `service` | `experimental/git-checkpoint` | - | - | - | 在会话工作目录执行 git stash create/apply，服务 /checkpoint 命令。 |
 | `ctx.agentLoop` | `bundle` | [`agent-loop`](../packages/core/agent-loop) | - | [`base`](../packages/bundle/base), [`sdk-minimal`](../packages/bundle/sdk-minimal) | - | 唯一的具体循环插件；扩展包依赖 dsh-agent 的事件和服务，而不依赖此包。 |
 | `ctx.mcpManager` | `core` | [`mcp-manager`](../packages/mcp/mcp-manager) | - | [`client-ui-settings-mcp`](../packages/client/ui-settings-mcp) | - | 依据自身 volatile servers 配置对账 mcp-client 实例，聚合它们的连接状态，并向管理界面提供 restart、probe 与 OAuth 授权。 |
 | `ctx.mcpPool` | `service` | [`mcp-client`](../packages/mcp/mcp-client) | - | [`mcp-client`](../packages/mcp/mcp-client) | - | 为相同的解析后服务器配置持有一个 transport 与一次握手；实例以租约使用它，最后一个持有者负责关闭。 |

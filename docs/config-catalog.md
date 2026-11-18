@@ -1791,6 +1791,23 @@ export type Config = LocalConfig
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-fs-sandbox -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-git-checkpoint -->
+<a id="deepseek-aidsh-git-checkpoint"></a>
+
+## `@deepseek-ai/dsh-git-checkpoint`
+
+- `inject`: `commands` · `shell`
+- `source`: [`packages/experimental/git-checkpoint/src/index.ts:26`](../packages/experimental/git-checkpoint/src/index.ts)
+
+```ts config-catalog
+/** 配置。 */
+export interface Config {
+  /** 单条 git 命令的截止时间（毫秒）。 */
+  timeoutMs: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-git-checkpoint -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-goal -->
 <a id="deepseek-aidsh-goal"></a>
 

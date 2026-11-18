@@ -2004,6 +2004,35 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'gitCheckpoints',
+    summary: 'Git 检查点服务（`ctx.gitCheckpoints`）：在工作目录执行 git 并保存最近引用。',
+    description: 'Git 检查点服务（`ctx.gitCheckpoints`）：在工作目录执行 git 并保存最近引用。',
+    methods: [
+      {
+        signature: 'lastOf(session: Session): string | undefined',
+        description: '读取一个会话最近一次的检查点引用。',
+        parameters: [{ name: 'session', description: '会话。' }],
+        returns: 'stash 引用；无检查点时 undefined。',
+      },
+      {
+        signature: 'clear(session: Session): void',
+        description: '清除一个会话保存的检查点引用。',
+        parameters: [{ name: 'session', description: '会话。' }],
+      },
+      {
+        signature: 'async capture(session: Session, timeoutMs: number): Promise<string | undefined>',
+        description: '为会话工作目录创建检查点。',
+        parameters: [{ name: 'session', description: '会话。' }, { name: 'timeoutMs', description: '单条命令截止时间。' }],
+        returns: 'stash 引用；工作区无改动时 undefined。',
+      },
+      {
+        signature: 'async restore(session: Session, ref: string, timeoutMs: number): Promise<void>',
+        description: '把一个检查点引用恢复到会话工作目录。',
+        parameters: [{ name: 'session', description: '会话。' }, { name: 'ref', description: 'stash 引用。' }, { name: 'timeoutMs', description: '单条命令截止时间。' }],
+      },
+    ],
+  },
+  {
     key: 'goals',
     summary: 'Goal service (`ctx.goals`) backed exclusively by the owning session log.',
     description: 'Goal service (`ctx.goals`) backed exclusively by the owning session log.',

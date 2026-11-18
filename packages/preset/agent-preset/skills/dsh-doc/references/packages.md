@@ -256,6 +256,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-translator` | yes | Machine translation with reusable Session results |
 | `@deepseek-ai/dsh-experimental-worktree` | yes | Creates a named Git worktree and changes the calling Session working directory |
 | `@deepseek-ai/dsh-fork-notice` | no | Tells a forked Session's model which background work belongs to the original conversation |
+| `@deepseek-ai/dsh-git-checkpoint` | yes | Human-facing slash command that creates and restores Git checkpoints |
 | `@deepseek-ai/dsh-hooks-claude-code` | yes | Bridge plugin: run a Claude Code hooks.json / settings hook config on the DeepSeek Harness interception seams |
 | `@deepseek-ai/dsh-hooks-codex` | yes | Bridge plugin: run a Codex hooks.json hook config on the DeepSeek Harness interception seams |
 | `@deepseek-ai/dsh-openapi-tools` | yes | Expose OpenAPI 3.x operations as model-visible tools with host-side authentication |

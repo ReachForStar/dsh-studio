@@ -328,6 +328,7 @@ flowchart TD
     pkg_experimental_webworker_runtime["experimental-webworker-runtime"]
     pkg_experimental_worktree["experimental-worktree"]
     pkg_fork_notice["fork-notice"]
+    pkg_git_checkpoint["git-checkpoint"]
     pkg_hook_protocol["hook-protocol"]
     pkg_hooks_claude_code["hooks-claude-code"]
     pkg_hooks_codex["hooks-codex"]
@@ -834,6 +835,9 @@ flowchart TD
   pkg_handoff --> pkg_commands
   pkg_handoff --> pkg_llm
   pkg_handoff --> pkg_timeout
+  pkg_git_checkpoint --> pkg_commands
+  pkg_git_checkpoint --> pkg_session
+  pkg_git_checkpoint --> pkg_shell
   pkg_command_feedback --> pkg_anonymous_user_id
   pkg_command_feedback --> pkg_commands
   pkg_command_feedback --> pkg_session
@@ -1930,6 +1934,7 @@ flowchart TD
 | [`web-search-deepseek`](../packages/web/web-search-deepseek) | `web` | [`agent`](../packages/core/agent), [`credentials`](../packages/credentials/credentials), [`deepseek-account`](../packages/credentials/deepseek-account), [`launch-environment`](../packages/util/launch-environment), [`llm-deepseek`](../packages/llm/llm-deepseek), [`session`](../packages/core/session), [`web`](../packages/web/web) |
 | [`compaction`](../packages/compaction/compaction) | `compaction` | [`commands`](../packages/interaction/commands), [`llm`](../packages/llm/llm), [`session`](../packages/core/session) |
 | [`handoff`](../packages/context/handoff) | `context` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`commands`](../packages/interaction/commands), [`llm`](../packages/llm/llm), [`timeout`](../packages/util/timeout) |
+| [`git-checkpoint`](../packages/experimental/git-checkpoint) | `experimental` | [`commands`](../packages/interaction/commands), [`session`](../packages/core/session), [`shell`](../packages/shell/shell) |
 | [`command-feedback`](../packages/feedback/command-feedback) | `feedback` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`commands`](../packages/interaction/commands), [`session`](../packages/core/session), [`typert-protocol`](../packages/typert/protocol) |
 | [`command-label`](../packages/interaction/command-label) | `interaction` | [`commands`](../packages/interaction/commands), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection) |
 | [`prompt-templates`](../packages/interaction/prompt-templates) | `interaction` | [`commands`](../packages/interaction/commands), [`llm`](../packages/llm/llm) |

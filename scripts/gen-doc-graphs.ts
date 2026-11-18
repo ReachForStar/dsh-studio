@@ -108,6 +108,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'gitCheckpoints',
+    pkg: 'experimental/git-checkpoint',
+    title: 'Git checkpoints',
+    mode: 'service',
+    consumers: [],
+    note: 'Runs git stash create/apply in the session working directory for the /checkpoint command.',
+  },
+  {
     key: 'virtualModels',
     pkg: 'core/agent-virtual-model',
     title: 'Virtual model routing',

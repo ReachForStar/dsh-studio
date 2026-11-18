@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/git-checkpoint/README.md
+/:
+  en: aa07384ecde16e87
+  zh: afe42db8c46add8f
+/deepseek-ai-dsh-git-checkpoint:
+  en: a45a5ae77d772d88
+  zh: 0e24e7ade81ccbb2
+/deepseek-ai-dsh-git-checkpoint/summary:
+  en: 0ac232f9ac618a6a
+  zh: 8bf9859ae0f2788e
+/deepseek-ai-dsh-git-checkpoint/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 4accf1f88efaa45b
+/deepseek-ai-dsh-git-checkpoint/use-this-package:
+  en: 0959c8c5818b3b90
+  zh: 283d4958c19a3a1d
+/deepseek-ai-dsh-git-checkpoint/understand-the-implementation:
+  en: d9347bfbcc9a75fb
+  zh: fadffa3d1f667472
+/deepseek-ai-dsh-git-checkpoint/further-exploration:
+  en: 3fdeb2d9a1903e2a
+  zh: 5ad9ae973050bb1a
+/deepseek-ai-dsh-git-checkpoint/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-git-checkpoint/model-experience/git-checkpoint:
+  en: 4dcb92c0461cd610
+  zh: 5b4bb8a655b5b541
+/deepseek-ai-dsh-git-checkpoint/model-experience/git-checkpoint/what-the-model-sees:
+  en: b1cc87f1fe7b2e4d
+  zh: c4f15422cc0e681e
+/deepseek-ai-dsh-git-checkpoint/model-experience/git-checkpoint/token-effect:
+  en: d33a44478b1c1e4e
+  zh: d420d659118b32fb
+/deepseek-ai-dsh-git-checkpoint/model-experience/git-checkpoint/kv-cache-effect:
+  en: 90da49bf4c499f68
+  zh: f3d594e2cf458187
+/deepseek-ai-dsh-git-checkpoint/known-limitations-and-deferred-work:
+  en: 7075ffb65869ce4c
+  zh: 381d8cdacc88ab93
+/deepseek-ai-dsh-git-checkpoint/known-limitations-and-deferred-work/dev-note:
+  en: c90456da13939fd7
+  zh: d57f1fd1c1bf9815

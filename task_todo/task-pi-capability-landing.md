@@ -44,10 +44,10 @@
 - [x] 测试 + 局部验证
 
 ### 7 Git 检查点与 fork 恢复
-- [ ] 阻塞：需 shell 执行、检查点存储与 fork 交互点，留待后续会话
-- [ ] 核验 `experimental/worktree` 与 fork 交互
-- [ ] 实现回合检查点与 fork 恢复
-- [ ] 测试 + 局部验证
+- [x] shell 执行、检查点存储（进程内存）与显式恢复命令
+- [x] 核验 `experimental/worktree` 与 fork 交互
+- [x] 实现检查点命令（显式捕获/恢复/清除）
+- [x] 测试 + 局部验证
 
 ### 8 handoff
 - [x] 核验 `followup` 与辅助调用记录
@@ -59,5 +59,5 @@
 - [x] 里程碑：第 1、2 项虚拟模型路由与 classifier/image 落地
 - [ ] 里程碑：第 3 项 codemode 沙箱落地
 - [ ] 里程碑：第 5、6 项输入 handled 与会话标签落地
-- [x] 里程碑：第 8 项 handoff 落地；第 7 项 git 检查点未开始
+- [x] 里程碑：第 8 项 handoff 与第 7 项 Git 检查点落地
 - [ ] 里程碑：全量 typecheck/lint/build:check 通过，wiki 回写

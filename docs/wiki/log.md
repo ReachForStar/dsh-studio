@@ -1206,3 +1206,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `llm-pi-ai` 的 `PiAiAdapter` 实现三类方法，经 pi-ai `Models` 的 `getModelsOfType`/`classify`/`generateImages` 运行；目录只服务非聊天查询，聊天目录仍只含 chat 模型。
 - 类型：`LlmNonChatModelInfo/Type`、`LlmClassifyRequest/Result`、`LlmGenerateImagesRequest/Result`；README 与 `docs/subsystems/llm-streaming` 的 type-equiv 块同步。
 - 验证：`llm` 新增 3 项委托测试，`llm-pi-ai` 498 项回归通过；`typecheck`、`lint`、`build:check`、`doc-sync`（除既有红项）通过。
+
+## [2026-11-18] feat | Git 检查点落地
+
+- 新增 `packages/experimental/git-checkpoint`：`/checkpoint` 经 `ctx.shell` 执行 `git stash create` 并记住引用，`restore` 执行 `git stash apply`，`clear` 清除引用；引用按会话存进程内存。
+- 限制：无每回合自动捕获与 fork 自动恢复（显式命令）；引用重启后丢失，但 stash 仍在仓库，可经 `git stash list` 查看。
+- 6 项单测通过（stub shell）；`typecheck`、`lint`、`build:check`、`doc-sync`（除既有红项）通过。

@@ -1190,4 +1190,4 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 第 6 项会话标签：`packages/interaction/command-label`，`/label` 写 `session/label` log-only 事件，宿主投影 `sessionLabels` 折叠；不换代。
 - 附带清偿既有持久化分叉：`event:agent/inbox/spliced` 由 `--update 2026-11-05-timeline-priority-notice` 重算消除；`verify-persistence-changes` 转绿。
 - 验证：三包各自单测通过；`typecheck`、`lint`、`build:artifacts`、`build:check`、`doc-sync`（除三处既有红项）、`verify-translation-pairing`、`verify-package-readme-model-experience` 通过。
-- 进度与剩余项（5、1、2、7、3）见 [pi 能力面与可融入清单](queries/pi-capability-comparison.md)。
+- 进度与剩余项（5、1、2、7、3）见 [pi 能力面与可融入清单](queries/pi-capability-comparison.md)。- 文件面补齐：Web `standard` 预设的 `tool-fs.applyPatch` 由 `false` 改为 `true`，默认会话在 `edit` 之外提供 `apply_patch`（原先只有星域预设启用，且与 `tool-fs` README 的描述不一致）；`ptc`/`cordis` 预设保持 `false`。

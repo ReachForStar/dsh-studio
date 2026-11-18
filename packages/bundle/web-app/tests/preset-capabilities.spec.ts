@@ -57,6 +57,18 @@ it('mounts every non-xingchen capability in the default preset', () => {
   expect(presetPlugins('standard').find(row => row.id === 'tool-ssh')?.disabled).toBeUndefined()
 })
 
+/** The freeform patch tool the default preset offers beside `edit`. */
+function applyPatchEnabled(preset: string): boolean {
+  const [row] = loadOverlayPatches(preset, fileURLToPath(new URL(`../presets/${preset}.patch.yml`, import.meta.url)))
+    .flatMap(patch => patch.insert ?? [])
+  const plugins = (row!.config as { plugins: { id: string; config?: { applyPatch?: boolean } }[] }).plugins
+  return plugins.find(plugin => plugin.id === 'tool-fs')?.config?.applyPatch === true
+}
+
+it('offers the freeform apply_patch tool in the default preset', () => {
+  expect(applyPatchEnabled('standard')).toBe(true)
+})
+
 it('mounts the registered experimental capabilities in the default preset', () => {
   const plugins = presetPlugins('standard')
   for (const [id, name] of DEFAULT_EXPERIMENTAL) {

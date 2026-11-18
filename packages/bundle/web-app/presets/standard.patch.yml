@@ -29,8 +29,8 @@
           - id: tool-fs
             name: '@deepseek-ai/dsh-tool-fs'
             config:
-              # Set false to drop the apply_patch tool beside edit.
-              applyPatch: false
+              # codex/zcode 文件面能力：edit 之外再给模型 freeform 补丁工具。
+              applyPatch: true
           - id: tool-fs-search
             name: '@deepseek-ai/dsh-tool-fs-search'
             config:

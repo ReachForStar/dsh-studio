@@ -93,6 +93,8 @@ status: draft
 
 参考 codex `apply-patch/src/*` 与 `core/src/tools/handlers/apply_patch_spec.rs`。复用现有 `fs-patch` 解析，新增 freeform 工具包，沿用读后写与沙箱边界；可选 shell 拦截。
 
+落地状态（2026-11-17）：`tool-fs` 已依赖 `fs-patch`，`applyPatch: true` 即注册 `apply_patch` 与 `tool:apply_patch` 引导；Web `standard` 预设原为 `applyPatch: false`（与 `tool-fs` README 的描述不符），现已改为 `true`，默认会话与 `edit` 并列提供该工具（`ptc`/`cordis` 预设仍显式 `false`）。
+
 ### 3.3 文件回滚
 
 参考 ZCode `runtime/methods/file-rewind.ts` 与 codex 的 fork 快照。基于 `deliverables/workspace-changes` 现有按轮快照加“恢复到某轮”，不安全文件（二进制、超限、被外部修改）不自动恢复并列出原因。

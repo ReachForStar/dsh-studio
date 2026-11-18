@@ -1225,3 +1225,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 新增 `packages/interaction/input-handled`：注册拦截器，在提示提交前返回 `continue`/`transform`/`handled`；`handled` 返回接受但不入队、不写模型消息。
 - `session-controller` 的 prompt 准入接入该服务（未挂载时跳过）；`dsh-llm` 非 chat 契约、虚拟模型路由、codemode 已在前面落地。
 - 至此 pi 能力对比的 8 项候选全部落地并分别提交；`typecheck`、`lint`、`build`、`doc-sync`（除既有红项）通过。
+
+## [2026-11-18] chore | 清偿门禁红项
+
+- `verify-export-jsdoc`：为新增包与既有缺失导出补齐 JSDoc（codemode、git-checkpoint、agent-virtual-model、input-handled、command-label、prompt-templates，以及 ui-paper-reader、openapi-tools、btw、web-fetch-http）。
+- `verify-package-paths`：wiki 对比页失效路径改为真实路径（memory-notes→context、tool-skill→skill、session-log-export→session-query），描述 opencode/zcode 的外部路径改为文字；升级指南链接改指向存在的 `ptc-runtime`。
+- `verify-repository-references`：去掉裸提交哈希，改为“见 git log”。
+- `verify-translation-pairing`：upgrade-guide 配对重新记录。
+- 结果：`doc-sync` 43 门全绿，`lint`、`tsc`、`build:check` 通过。
+- 遗留（非门禁）：`docs/capability-seams.zh.md` 的 mermaid 标签为英文（生成器只写英文），需按中文维护规范重译并重新配对。

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Bac à sable codemode",
+    "description": "Exécute un JavaScript qui ne peut appeler que des outils injectés."
+  }
+}

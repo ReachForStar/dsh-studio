@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/codemode/README.md
+/:
+  en: 37d89f49c052383b
+  zh: d1db829011e576f5
+/deepseek-ai-dsh-codemode:
+  en: f5d00e33ec621e24
+  zh: e32a82b5f71c7d55
+/deepseek-ai-dsh-codemode/summary:
+  en: 3ced26d4d1fe9e21
+  zh: 3df8710f6574ea28
+/deepseek-ai-dsh-codemode/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 4accf1f88efaa45b
+/deepseek-ai-dsh-codemode/use-this-package:
+  en: 85b6af745fbb27ae
+  zh: e68297adb21e2a08
+/deepseek-ai-dsh-codemode/use-this-package/script-globals:
+  en: 340f8a8e019470d9
+  zh: e9c5442e5fb75264
+/deepseek-ai-dsh-codemode/understand-the-implementation:
+  en: 6d5444418ce86049
+  zh: 5c9b5d2feff7797e
+/deepseek-ai-dsh-codemode/further-exploration:
+  en: 5598cafae2089c48
+  zh: 2e4a921ff51d34ba
+/deepseek-ai-dsh-codemode/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-codemode/model-experience/codemode-script:
+  en: 718d078a09379820
+  zh: fef9deb213b82ba8
+/deepseek-ai-dsh-codemode/model-experience/codemode-script/what-the-model-sees:
+  en: 9270d37f78a4d7f1
+  zh: a66c51a9c8dd69ea
+/deepseek-ai-dsh-codemode/model-experience/codemode-script/token-effect:
+  en: 6e7d5b2a3471457c
+  zh: c585a851a0725d3c
+/deepseek-ai-dsh-codemode/model-experience/codemode-script/kv-cache-effect:
+  en: 7ac726f7293ba5e0
+  zh: 68aca94167212d48
+/deepseek-ai-dsh-codemode/known-limitations-and-deferred-work:
+  en: 35df7dfb809159d3
+  zh: e810dbf51cb5f640
+/deepseek-ai-dsh-codemode/known-limitations-and-deferred-work/dev-note:
+  en: 2571be2e6e3896e2
+  zh: 388984a8c72a9740

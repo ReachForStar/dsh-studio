@@ -451,6 +451,7 @@
     { "path": "./packages/session/working-directory" },
     { "path": "./packages/experimental/worktree" },
     { "path": "./packages/experimental/git-checkpoint" },
+    { "path": "./packages/experimental/codemode" },
     { "path": "./packages/experimental/tool-worktree" },
     { "path": "./packages/experimental/forge" },
     { "path": "./packages/experimental/forge-github" },

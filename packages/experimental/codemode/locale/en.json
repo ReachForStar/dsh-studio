@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Codemode sandbox",
+    "description": "Run JavaScript that can only call injected tools."
+  }
+}

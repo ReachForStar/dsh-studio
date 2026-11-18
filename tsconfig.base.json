@@ -521,6 +521,7 @@
       "@deepseek-ai/dsh-btw": ["./packages/interaction/btw/src"],
       "@deepseek-ai/dsh-chunked-list": ["./packages/util/chunked-list/src"],
       "@deepseek-ai/dsh-cmdline": ["./packages/boot/cmdline/src"],
+      "@deepseek-ai/dsh-codemode": ["./packages/experimental/codemode/src"],
       "@deepseek-ai/dsh-command-compact": ["./packages/compaction/command-compact/src"],
       "@deepseek-ai/dsh-command-feedback": ["./packages/feedback/command-feedback/src"],
       "@deepseek-ai/dsh-command-goal": ["./packages/goal/command-goal/src"],

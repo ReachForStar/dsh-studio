@@ -224,6 +224,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-action-cards` | no | Action cards below completed answers: the shared card frame, kind bodies and the compact tool row |
 | `@deepseek-ai/dsh-client-ui-creation-recommendations` | no | Body of the personalized page card: location choice, creation progress, Undo and Restore |
 | `@deepseek-ai/dsh-client-ui-plugin-recommendations` | no | Official plugin card body with catalog text and enabling |
+| `@deepseek-ai/dsh-codemode` | yes | Sandboxed JavaScript execution where the only capability is calling injected tools |
 | `@deepseek-ai/dsh-creation-recommendations` | no | Create persistent removable interface plugins from explicit conversation needs |
 | `@deepseek-ai/dsh-cua` | no | Shared Computer Use application objects, authorization, and logged tool execution |
 | `@deepseek-ai/dsh-cua-macos` | yes | macOS native provider for shared Computer Use application and window objects |

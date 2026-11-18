@@ -854,6 +854,25 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-client-ui-trajectory -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-codemode -->
+<a id="deepseek-aidsh-codemode"></a>
+
+## `@deepseek-ai/dsh-codemode`
+
+- `inject`: `llm` · `tools`
+- `source`: [`packages/experimental/codemode/src/index.ts:20`](../packages/experimental/codemode/src/index.ts)
+
+```ts config-catalog
+/** 配置。 */
+export interface Config {
+  /** 脚本同步执行的截止时间（毫秒）；异步工具调用不受此限制。 */
+  timeoutMs: number
+  /** 脚本输出的字符上限。 */
+  maxOutputChars: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-codemode -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-compaction-basic -->
 <a id="deepseek-aidsh-compaction-basic"></a>
 

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Sandbox codemode",
+    "description": "Executa JavaScript que só pode chamar ferramentas injetadas."
+  }
+}

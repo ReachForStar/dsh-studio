@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Codemode サンドボックス",
+    "description": "注入されたツールだけを呼び出せる JavaScript を実行します。"
+  }
+}

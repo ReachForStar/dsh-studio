@@ -1199,3 +1199,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `agent-loop` 的 `preStep` 用解析后的物理选择做工具解析、系统提示与请求；模型选择器与切换提示仍用记录的虚拟选择。
 - 持久化记录 `docs/persistence-changes/2026-11-18-virtual-model-state.md`；5 项单测通过，`typecheck`/`lint`/`build`/`doc-sync`（除既有红项）通过。
 - 待办：`docs/capability-seams.zh.md` 的 mermaid 块因生成器只写英文而临时与英文一致（标签英文），需按中文维护规范重译并重新配对。
+
+## [2026-11-18] feat | 暴露分类器与图像模型运行能力
+
+- `dsh-llm` 的 `LlmAdapter` 新增可选非聊天能力：`listNonChatModels`、`classify`、`generateImages`；`LlmRuntime` 提供同名委托，未实现的适配器以 `UNSUPPORTED_OPTION` 拒绝。
+- `llm-pi-ai` 的 `PiAiAdapter` 实现三类方法，经 pi-ai `Models` 的 `getModelsOfType`/`classify`/`generateImages` 运行；目录只服务非聊天查询，聊天目录仍只含 chat 模型。
+- 类型：`LlmNonChatModelInfo/Type`、`LlmClassifyRequest/Result`、`LlmGenerateImagesRequest/Result`；README 与 `docs/subsystems/llm-streaming` 的 type-equiv 块同步。
+- 验证：`llm` 新增 3 项委托测试，`llm-pi-ai` 498 项回归通过；`typecheck`、`lint`、`build:check`、`doc-sync`（除既有红项）通过。

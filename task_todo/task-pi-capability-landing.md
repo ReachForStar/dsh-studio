@@ -12,11 +12,11 @@
 - [x] 测试 + 局部验证
 
 ### 2 classifier / image 非 LLM 模型
-- [ ] 阻塞：需扩展 `dsh-llm` adapter 契约与 `llm-pi-ai`，跨包改动，留待后续会话
-- [ ] 核验 `llm-pi-ai` 目录与调用路径
-- [ ] 暴露 classifier/image 目录与一次性调用
-- [ ] 定义会话记录与计价口径
-- [ ] 测试 + 局部验证
+- [x] 扩展 `dsh-llm` adapter 契约、`llm-pi-ai` 实现与非 chat 委托
+- [x] 核验 `llm-pi-ai` 目录与调用路径
+- [x] 暴露 classifier/image 目录与一次性调用
+- [x] 定义会话记录与计价口径
+- [x] 测试 + 局部验证
 
 ### 3 codemode 工具注入式沙箱
 - [ ] 阻塞：需新沙箱运行时与依赖引入确认，成本最高
@@ -56,7 +56,7 @@
 
 ## 里程碑
 - [x] 里程碑：第 4 项提示模板落地并通过验证
-- [x] 里程碑：第 1 项虚拟模型路由落地；第 2 项 classifier/image 未开始
+- [x] 里程碑：第 1、2 项虚拟模型路由与 classifier/image 落地
 - [ ] 里程碑：第 3 项 codemode 沙箱落地
 - [ ] 里程碑：第 5、6 项输入 handled 与会话标签落地
 - [x] 里程碑：第 8 项 handoff 落地；第 7 项 git 检查点未开始

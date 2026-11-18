@@ -1,0 +1,16 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {"key":"event:virtual-model/state","kind":"event","event":"virtual-model/state","surface":false,"digest":"7eaa920533f0adf7f98248229a615974079f852ade6b8d125ae7d4745e8a8b85"}
+  ],
+  "types": [],
+  "nodes": {
+    "0657d3ca5ac4e7bf": {"kind":"primitive","type":"number"},
+    "2549678449e23529": {"kind":"object","properties":[{"name":"modelId","type":"4cd48f3e5108bd6e","optional":false},{"name":"provider","type":"4cd48f3e5108bd6e","optional":false},{"name":"state","type":"bbc5696e3f13c758","optional":false}],"indices":[]},
+    "4cd48f3e5108bd6e": {"kind":"primitive","type":"string"},
+    "7eaa920533f0adf7": {"kind":"object","properties":[{"name":"data","type":"2549678449e23529","optional":false},{"name":"ignorable","type":"dacf3d5f3e4ff619","optional":true},{"name":"seq","type":"0657d3ca5ac4e7bf","optional":false},{"name":"time","type":"0657d3ca5ac4e7bf","optional":false},{"name":"type","type":"8ccbf80e7509f5bf","optional":false}],"indices":[]},
+    "8ccbf80e7509f5bf": {"kind":"literal","value":"virtual-model/state"},
+    "bbc5696e3f13c758": {"kind":"opaque","reason":"unknown"},
+    "dacf3d5f3e4ff619": {"kind":"literal","value":true}
+  }
+}

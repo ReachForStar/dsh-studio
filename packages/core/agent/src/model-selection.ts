@@ -4,6 +4,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Model, AgentOptions, PreStepDecision } from './runtime-types.ts'
 import type { ModelSelection } from './types.ts'
+import type { ModelRouteRequest, ModelRouteResolver } from './model-route.ts'
 import { boundContextSummary, createUserMessage, type ContextFormed } from '@deepseek-ai/dsh-llm'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { ReasoningEffortId } from '@deepseek-ai/dsh-llm/types'
@@ -101,6 +102,7 @@ export class AgentModel implements Model {
     private readonly readState: () => ModelSelectionProjectionState,
     private readonly session: Session,
     private readonly options: AgentOptions,
+    private readonly resolver?: ModelRouteResolver,
   ) {}
 
   current(): Readonly<ModelSelection> | undefined {
@@ -113,6 +115,18 @@ export class AgentModel implements Model {
   select(selection: Readonly<ModelSelection>): void {
     if (sameModelSelection(this.recordedSelection(), selection)) return
     this.session.append('model/selection', toSelection(selection.provider, selection.model, selection.reasoningEffort))
+  }
+
+  /**
+   * 解析本次请求使用的物理选择。无虚拟模型解析器时返回当前选择。
+   * @param request - 请求上下文。
+   * @returns 物理 provider/model 选择。
+   */
+  async resolve(request: ModelRouteRequest): Promise<ModelSelection> {
+    const selection = this.current()
+    if (selection === undefined) throw new Error('agent has no provider/model')
+    if (this.resolver === undefined) return selection
+    return this.resolver.resolve(selection, request)
   }
 
   private recordedSelection(): ModelSelection | null {

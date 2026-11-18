@@ -49,6 +49,7 @@ flowchart TD
     pkg_agent_default_model["agent-default-model"]
     pkg_agent_loop["agent-loop"]
     pkg_agent_tool_presentation["agent-tool-presentation"]
+    pkg_agent_virtual_model["agent-virtual-model"]
     pkg_arena["arena"]
     pkg_pi_agent_loop["pi-agent-loop"]
     pkg_scope["scope"]
@@ -716,6 +717,9 @@ flowchart TD
   pkg_llm_retry --> pkg_timeout
   pkg_agent_default_model --> pkg_agent
   pkg_agent_default_model --> pkg_llm
+  pkg_agent_virtual_model --> pkg_agent
+  pkg_agent_virtual_model --> pkg_session
+  pkg_agent_virtual_model --> pkg_session_projection
   pkg_pi_agent_loop --> pkg_agent
   pkg_pi_agent_loop --> pkg_llm
   pkg_pi_agent_loop --> pkg_scope
@@ -1898,6 +1902,7 @@ flowchart TD
 | [`llm-deepseek-api-key`](../packages/llm/llm-deepseek-api-key) | `llm` | [`credentials`](../packages/credentials/credentials), [`launch-environment`](../packages/util/launch-environment), [`llm`](../packages/llm/llm), [`llm-deepseek`](../packages/llm/llm-deepseek) |
 | [`llm-retry`](../packages/llm/llm-retry) | `llm` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`timeout`](../packages/util/timeout) |
 | [`agent-default-model`](../packages/core/agent-default-model) | `core` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm) |
+| [`agent-virtual-model`](../packages/core/agent-virtual-model) | `core` | [`agent`](../packages/core/agent), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection) |
 | [`pi-agent-loop`](../packages/core/pi-agent-loop) | `core` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session) |
 | [`goal`](../packages/goal/goal) | `goal` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`typert-protocol`](../packages/typert/protocol) |
 | [`file-reference`](../packages/context/file-reference) | `context` | [`agent`](../packages/core/agent) |

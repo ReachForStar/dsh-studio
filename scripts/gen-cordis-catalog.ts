@@ -73,6 +73,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   mcpManager: 'mcp.md',
   mcpPool: 'mcp.md',
   agentDefaultModel: 'core.md',
+  virtualModels: 'core.md',
   agentPresets: 'core.md',
   agents: 'core.md',
   approval: 'approval.md',
@@ -1234,6 +1235,9 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   AgentTerminalRequest: 'Agent terminal allocation fields are owned by packages/api/terminal-controller/README.md',
   TerminalScreenRequest: 'Browser terminal screen reads are owned by packages/api/terminal-controller/README.md',
   TerminalScreenPage: 'Browser terminal screen reads are owned by packages/api/terminal-controller/README.md',
+  VirtualModelDefinition: 'virtual model route contract is owned by packages/core/agent-virtual-model/README.md',
+  ModelRouteRequest: 'virtual model route request is owned by packages/core/agent-virtual-model/README.md',
+  ModelRouteResolver: 'virtual model route resolver is owned by packages/core/agent-virtual-model/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

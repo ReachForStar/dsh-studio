@@ -844,6 +844,54 @@ Types: [AgentBackend](session.md) · [Session](session.md)
 
 Source: [`packages/core/agent/src/index.ts`](../../packages/core/agent/src/index.ts)
 
+<a id="ctxvirtualmodels--virtualmodelservice"></a>
+
+### `ctx.virtualModels` — `VirtualModelService`
+
+虚拟模型服务（`ctx.virtualModels`）：注册虚拟模型并解析每次请求的物理选择。
+
+```ts cordis-catalog
+/**
+ * 注册或替换一个虚拟模型。
+ * @param definition - 虚拟模型定义。
+ * @returns 注销该定义的函数。
+ */
+register(definition: VirtualModelDefinition): () => void
+
+/**
+ * 注销一个虚拟模型。
+ * @param provider - provider。
+ * @param id - 模型 id。
+ */
+unregister(provider: string, id: string): void
+
+/**
+ * 列出已注册的虚拟模型定义。
+ * @returns 注册顺序的定义列表。
+ */
+list(): readonly VirtualModelDefinition[]
+
+/**
+ * 解析一次选择：未注册为虚拟模型时原样返回。
+ * @param session - 会话，用于读写路由状态。
+ * @param selection - 用户选择或路由 fallback。
+ * @param request - 请求上下文。
+ * @returns 本次请求使用的物理选择。
+ */
+async resolve(session: Session, selection: ModelSelection, request: ModelRouteRequest): Promise<ModelSelection>
+
+/**
+ * 绑定会话的解析器，供 `AgentModel` 使用。
+ * @param session - 会话。
+ * @returns 解析器。
+ */
+resolverFor(session: Session): ModelRouteResolver
+```
+
+Types: [Session](session.md)
+
+Source: [`packages/core/agent-virtual-model/src/index.ts`](../../packages/core/agent-virtual-model/src/index.ts)
+
 <a id="agent-events"></a>
 
 ### `agent/*` events

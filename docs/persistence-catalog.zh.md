@@ -92,6 +92,7 @@
 | `event:turn/end` | event | `0f8512903d94f57a4748fa1a2092e64342856796684e6b8343db685b192745ce` | [`{ type: "turn/end" }`](#persistence-type-sha256-0f8512903d94f57a4748fa1a2092e64342856796684e6b8343db685b192745ce) |
 | `event:turn/start` | event | `aa0957eca50aeb28bcd2e6930b95809926edacb550c8c340ba526ba6b861b3d8` | [`{ type: "turn/start" }`](#persistence-type-sha256-aa0957eca50aeb28bcd2e6930b95809926edacb550c8c340ba526ba6b861b3d8) |
 | `event:user/message` | event | `fdca9c87136aa76b33f0a0246f5dd7c827fcf53ae8f1a423d2e470c2aed095ac` | [`{ type: "user/message" }`](#persistence-type-sha256-fdca9c87136aa76b33f0a0246f5dd7c827fcf53ae8f1a423d2e470c2aed095ac) |
+| `event:virtual-model/state` | event | `7eaa920533f0adf7f98248229a615974079f852ade6b8d125ae7d4745e8a8b85` | [`{ type: "virtual-model/state" }`](#persistence-type-sha256-7eaa920533f0adf7f98248229a615974079f852ade6b8d125ae7d4745e8a8b85) |
 | `event:web/deepseek-search-llm-request` | event | `0c556c9b9f2a96238a6b9bbb99e748206cbff2ed6203041c9571f04ae5802f52` | [`{ type: "web/deepseek-search-llm-request" }`](#persistence-type-sha256-0c556c9b9f2a96238a6b9bbb99e748206cbff2ed6203041c9571f04ae5802f52) |
 | `event:working-directory/change` | event | `124aa62078ca3311353b39cc3bf6c75da281338be6bbf672f8b361d828cddca3` | [`{ type: "working-directory/change" }`](#persistence-type-sha256-124aa62078ca3311353b39cc3bf6c75da281338be6bbf672f8b361d828cddca3) |
 | `event:workspace/changes` | event | `e308ccf867a5398e316e0af8cb6ce238a8d33a63b9b384c8250a686786285f72` | [`{ type: "workspace/changes" }`](#persistence-type-sha256-e308ccf867a5398e316e0af8cb6ce238a8d33a63b9b384c8250a686786285f72) |
@@ -1463,6 +1464,29 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 ```
 
 来源：[`packages/core/session/src/types.ts:332`](../packages/core/session/src/types.ts)
+
+### `virtual-model/*`
+
+<a id="virtual-modelstate--log-only"></a>
+
+#### `virtual-model/state` — log-only
+
+```ts persistence-catalog
+/**
+ * 虚拟模型路由状态。log-only：不进入模型可见表面。
+ * 每条记录一个虚拟模型的当前状态。
+ */
+'virtual-model/state': {
+  /** 虚拟模型 provider。 */
+  provider: string
+  /** 虚拟模型 id。 */
+  modelId: string
+  /** 路由器保存的 JSON 状态。 */
+  state: unknown
+}
+```
+
+来源：[`packages/core/agent-virtual-model/src/index.ts:28`](../packages/core/agent-virtual-model/src/index.ts)
 
 ### `web/*`
 
@@ -3478,6 +3502,14 @@ SHA-256: `9645cf93769a6dfb227bd400bd6cb9fa7bab9140f4a851e4ae92514ade6e3114`
 SHA-256: `de25352d2dc4196309bd84b5bac6319f6d5c898ea0e82bb5ae66c5738d0d426f`
 
 `"user/message"`
+
+<a id="persistence-type-sha256-8ccbf80e7509f5bfebaa027825c1aaa7cee91a9bac4289aaf9210647c85c443c"></a>
+
+### `"virtual-model/state"`
+
+SHA-256: `8ccbf80e7509f5bfebaa027825c1aaa7cee91a9bac4289aaf9210647c85c443c`
+
+`"virtual-model/state"`
 
 <a id="persistence-type-sha256-5a5dfc847ca3929ac40d3e480701df7aa3b2b02ac3dd567a80c05ba845d078af"></a>
 
@@ -9501,6 +9533,20 @@ SHA-256: `9890113e97dd3541787bfe6704f2b223d3a890b5325ca0acae2b0398909b413e`
 | `mode` | 必需 | [`SandboxMode`](#persistence-type-sha256-fab2bb09bc5e3b9db0685e8f5500b029af1a2b33e70bc703c1d5d0f596fbc1fd) |
 | `source` | 可选 | `"delegation"` |
 
+<a id="persistence-type-sha256-2549678449e235296f72eb95a39c49cead5a2c944fdc050ee73eeeccf2a41610"></a>
+
+### `{ modelId, provider, state }`
+
+SHA-256: `2549678449e235296f72eb95a39c49cead5a2c944fdc050ee73eeeccf2a41610`
+
+来源：[`packages/core/agent-virtual-model/src/index.ts:28`](../packages/core/agent-virtual-model/src/index.ts)
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `modelId` | 必需 | `string` |
+| `provider` | 必需 | `string` |
+| `state` | 必需 | `unknown`（不透明） |
+
 <a id="persistence-type-sha256-11f70b595aa76897fc4e25a352bfa718c659f44b799e5aa14e84e5a38fe72912"></a>
 
 ### `{ policy, source? }`
@@ -10955,6 +11001,22 @@ SHA-256: `fdca9c87136aa76b33f0a0246f5dd7c827fcf53ae8f1a423d2e470c2aed095ac`
 | `surfaceOp` | 必需 | [`SurfaceOp`](#persistence-type-sha256-335e242de1fcc17b6ca920fc420d71bec2d76e53e37955c00948b65ab77f05c5) |
 | `time` | 必需 | `number` |
 | `type` | 必需 | `"user/message"` |
+
+<a id="persistence-type-sha256-7eaa920533f0adf7f98248229a615974079f852ade6b8d125ae7d4745e8a8b85"></a>
+
+<a id="persistence-type-eventvirtual-modelstate"></a>
+
+### `{ type: "virtual-model/state" }`
+
+SHA-256: `7eaa920533f0adf7f98248229a615974079f852ade6b8d125ae7d4745e8a8b85`
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `data` | 必需 | [`{ modelId, provider, state }`](#persistence-type-sha256-2549678449e235296f72eb95a39c49cead5a2c944fdc050ee73eeeccf2a41610) |
+| `ignorable` | 可选 | `true` |
+| `seq` | 必需 | `number` |
+| `time` | 必需 | `number` |
+| `type` | 必需 | `"virtual-model/state"` |
 
 <a id="persistence-type-sha256-0c556c9b9f2a96238a6b9bbb99e748206cbff2ed6203041c9571f04ae5802f52"></a>
 

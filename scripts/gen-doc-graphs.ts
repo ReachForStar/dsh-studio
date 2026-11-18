@@ -108,6 +108,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'virtualModels',
+    pkg: 'core/agent-virtual-model',
+    title: 'Virtual model routing',
+    mode: 'service',
+    consumers: ['core/agent-loop'],
+    note: 'Owns the virtual model registry and per-request physical resolution; agent-loop asks it through AgentModel.',
+  },
+  {
     key: 'actionCards',
     pkg: 'action-cards',
     title: 'Optional action cards',

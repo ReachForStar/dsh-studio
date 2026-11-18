@@ -183,6 +183,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-agent-default-model` | yes | Default model selection shared by Agent entry points |
 | `@deepseek-ai/dsh-agent-loop` | yes | The concrete agent loop plugin for the DeepSeek Harness |
 | `@deepseek-ai/dsh-agent-tool-presentation` | yes | Deprecated tool presentation selector; use dsh-tool-executor-native or dsh-tool-executor-ptc directly |
+| `@deepseek-ai/dsh-agent-virtual-model` | no | Virtual model routing that resolves a selected model to a physical model per request |
 | `@deepseek-ai/dsh-arena` | yes | Run one prompt through several models in isolated worktrees and apply the chosen result |
 | `@deepseek-ai/dsh-pi-agent-loop` | yes | Pi coding-agent runtime as a dsh agent-loop backend (POC) |
 | `@deepseek-ai/dsh-session` | no | Event-sourced session store for the DeepSeek Harness |

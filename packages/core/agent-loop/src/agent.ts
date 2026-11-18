@@ -30,6 +30,8 @@ import {
 import { assertNever, deepFreeze } from '@deepseek-ai/dsh-util-values'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import { createScope } from '@deepseek-ai/dsh-scope'
+import type { ModelRouteResolver } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-agent-virtual-model'
 import type { EpochHeader, RequestContext, Session, SessionId, SessionSeq, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
 import { canonicalHeader, headerEquals, ToolCallRecovery } from '@deepseek-ai/dsh-session'
 import { renderContextSections, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
@@ -148,7 +150,11 @@ export class ReactLoopAgent implements Agent {
     this.dispatch = agentEvents(loopCtx, this)
     this.scope = createScope(loopCtx, this)
     this.ctx = this.scope.ctx
-    this.model = new AgentModel(projections.modelSelection, session, options)
+    let modelResolver: ModelRouteResolver | undefined
+    loopCtx.inject(['virtualModels'], () => {
+      modelResolver = loopCtx.virtualModels.resolverFor(session)
+    })
+    this.model = new AgentModel(projections.modelSelection, session, options, modelResolver)
     this.inbox = new ReactLoopInbox(projections.inbox, session, this.dispatch)
     this.phase = { kind: 'idle', lastTurn }
     this.runtimeContext = new RuntimeContextProjection(this.ctx, session)
@@ -292,10 +298,14 @@ export class ReactLoopAgent implements Agent {
     if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": pre-step outside running phase`)
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
-    const selection = this.model.current()
-    if (selection === undefined) {
-      throw new Error(`agent "${this.id}" has no provider/model: set AgentOptions.provider and AgentOptions.model or record a model selection`)
-    }
+    const selection = await this.model.resolve({
+      reason: position.step === 1 ? 'user' : 'continuation',
+      previous: this.session.requestHeader()?.config,
+      failed: undefined,
+      state: undefined,
+      messages: claimed,
+      signal,
+    })
     const toolSet = await this.loopCtx.tools.resolve({ agent: this, modelSelection: selection, signal })
     try {
       const assembly = await this.loopCtx.systemPrompt.assemble({ ...assembleContextFor(this, signal), modelSelection: selection, toolSet })

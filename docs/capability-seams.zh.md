@@ -9,6 +9,9 @@
 
 ```mermaid
 flowchart LR
+  pkg_core_agent_virtual_model["core/agent-virtual-model"]
+  svc_virtualModels["ctx.virtualModels<br/>Virtual model routing"]
+  pkg_core_agent_loop["core/agent-loop"]
   pkg_action_cards["action-cards"]
   svc_actionCards["ctx.actionCards<br/>Optional action cards"]
   pkg_creation_recommendations["creation-recommendations"]
@@ -386,6 +389,7 @@ flowchart LR
   pkg_config_editor --> svc_configEditor
   pkg_cordis_host_runner --> svc_cordisInspect
   pkg_cordis_host_runner --> svc_dynamicCordisRunner
+  pkg_core_agent_virtual_model --> svc_virtualModels
   pkg_credentials --> svc_credentials
   pkg_credentials_local --> svc_credentials
   pkg_cua --> svc_cuaAccess
@@ -678,6 +682,7 @@ flowchart LR
   svc_typert --> pkg_api_gateway
   svc_typert --> pkg_typert_loader
   svc_userQuestions --> pkg_tool_ask_user
+  svc_virtualModels --> pkg_core_agent_loop
   svc_web --> pkg_tool_web
   svc_webApp --> pkg_harness_dev_context
   svc_webServer --> pkg_client_connection
@@ -784,6 +789,7 @@ flowchart LR
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`sandbox-windows-acl`](../packages/sandbox/sandbox-windows-acl), [`skill-badge`](../packages/experimental/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem), [`skill-office`](../packages/skill/skill-office) | [`tool-skill`](../packages/skill/tool-skill) | - | 合并提供方的 skill（技能）目录；tool-skill 渲染会话前缀目录，并加载完整的 skill 正文。 |
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), [`subagent`](../packages/subagent/subagent) | - | 拥有实时 Agent 句柄、创建／恢复工厂 seam，以及进程本地的发起方传播。 |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`api-session-controller`](../packages/api/session-controller), [`headless`](../packages/bundle/headless) | - | Reads the default ModelSelection from volatile Config and saves selections through the profile editor. |
+| `ctx.virtualModels` | `service` | `core/agent-virtual-model` | - | `core/agent-loop` | - | 拥有虚拟模型注册表与按请求的物理解析；agent-loop 通过 AgentModel 询问它。 |
 | `ctx.agentLoop` | `bundle` | [`agent-loop`](../packages/core/agent-loop) | - | [`base`](../packages/bundle/base), [`sdk-minimal`](../packages/bundle/sdk-minimal) | - | 唯一的具体循环插件；扩展包依赖 dsh-agent 的事件和服务，而不依赖此包。 |
 | `ctx.mcpManager` | `core` | [`mcp-manager`](../packages/mcp/mcp-manager) | - | [`client-ui-settings-mcp`](../packages/client/ui-settings-mcp) | - | 依据自身 volatile servers 配置对账 mcp-client 实例，聚合它们的连接状态，并向管理界面提供 restart、probe 与 OAuth 授权。 |
 | `ctx.mcpPool` | `service` | [`mcp-client`](../packages/mcp/mcp-client) | - | [`mcp-client`](../packages/mcp/mcp-client) | - | 为相同的解析后服务器配置持有一个 transport 与一次握手；实例以租约使用它，最后一个持有者负责关闭。 |

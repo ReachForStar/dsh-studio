@@ -4942,6 +4942,42 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'virtualModels',
+    summary: '虚拟模型服务（`ctx.virtualModels`）：注册虚拟模型并解析每次请求的物理选择。',
+    description: '虚拟模型服务（`ctx.virtualModels`）：注册虚拟模型并解析每次请求的物理选择。',
+    methods: [
+      {
+        signature: 'register(definition: VirtualModelDefinition): () => void',
+        description: '注册或替换一个虚拟模型。',
+        parameters: [{ name: 'definition', description: '虚拟模型定义。' }],
+        returns: '注销该定义的函数。',
+      },
+      {
+        signature: 'unregister(provider: string, id: string): void',
+        description: '注销一个虚拟模型。',
+        parameters: [{ name: 'provider', description: 'provider。' }, { name: 'id', description: '模型 id。' }],
+      },
+      {
+        signature: 'list(): readonly VirtualModelDefinition[]',
+        description: '列出已注册的虚拟模型定义。',
+        parameters: [],
+        returns: '注册顺序的定义列表。',
+      },
+      {
+        signature: 'async resolve(session: Session, selection: ModelSelection, request: ModelRouteRequest): Promise<ModelSelection>',
+        description: '解析一次选择：未注册为虚拟模型时原样返回。',
+        parameters: [{ name: 'session', description: '会话，用于读写路由状态。' }, { name: 'selection', description: '用户选择或路由 fallback。' }, { name: 'request', description: '请求上下文。' }],
+        returns: '本次请求使用的物理选择。',
+      },
+      {
+        signature: 'resolverFor(session: Session): ModelRouteResolver',
+        description: '绑定会话的解析器，供 `AgentModel` 使用。',
+        parameters: [{ name: 'session', description: '会话。' }],
+        returns: '解析器。',
+      },
+    ],
+  },
+  {
     key: 'web',
     summary: 'The web access service.',
     description: 'The web access service. Registered as `ctx.web` (one instance per context) and exposed to Clients as the `web` Remote namespace (`listProviders`).\n\nSelection semantics (resolved at execution time, never order-dependent):\n\n- A configured id that is registered and `available()` → that provider.\n- A configured id not registered → `WEB_PROVIDER_CONFIGURED_MISSING`.\n- A configured id registered but unavailable → `WEB_PROVIDER_CONFIGURED_UNAVAILABLE`.\n- No id configured, exactly one registered usable provider → that provider.\n- No id configured, multiple usable providers → `WEB_PROVIDER_AMBIGUOUS`.\n- No id configured, no usable provider → `WEB_PROVIDER_UNAVAILABLE`.',
@@ -8510,6 +8546,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ModelReasoningEffort {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
   },
   {
+    name: 'ModelRouter',
+    declaration: 'export type ModelRouter = (request: ModelRouteRequest) => ModelRouteResult | Promise<ModelRouteResult>;',
+  },
+  {
+    name: 'ModelRouteReason',
+    declaration: 'export type ModelRouteReason = \'user\' | \'continuation\' | \'retry\' | \'direct\';',
+  },
+  {
+    name: 'ModelRouteRequest',
+    declaration: 'export interface ModelRouteRequest {\n    readonly reason: ModelRouteReason;\n    readonly previous: ModelSelection | undefined;\n    readonly failed: ModelSelection | undefined;\n    readonly state: unknown;\n    readonly messages: readonly Message[];\n    readonly signal: AbortSignal;\n}',
+  },
+  {
+    name: 'ModelRouteResolver',
+    declaration: 'export interface ModelRouteResolver {\n    resolve(selection: ModelSelection, request: ModelRouteRequest): Promise<ModelSelection>;\n}',
+  },
+  {
+    name: 'ModelRouteResult',
+    declaration: 'export interface ModelRouteResult {\n    readonly selection: ModelSelection;\n    readonly state?: unknown;\n}',
+  },
+  {
     name: 'ModEvents',
     declaration: 'export interface ModEvents {\n    \'session.start\': {\n        input: SessionStartInput;\n        result: SessionStartResult;\n    };\n    \'session.end\': {\n        input: SessionEndInput;\n        result: SessionEndResult;\n    };\n    \'prompt.submit\': {\n        input: PromptSubmitInput;\n        result: PromptSubmitResult;\n    };\n    \'turn.start\': {\n        input: TurnStartInput;\n        result: TurnStartResult;\n    };\n    \'turn.complete\': {\n        input: TurnCompleteInput;\n        result: TurnCompleteResult;\n    };\n    \'tool.call\': {\n        input: ToolCallInput;\n        result: ToolCallResult;\n    };\n    \'command.run\': {\n        input: CommandRunInput;\n        result: CommandRunResult;\n    };\n    \'ui.render\': {\n        input: UiRenderInput;\n        result: UiRenderResult;\n    };\n}',
   },
@@ -11296,6 +11352,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ViewerPluginPolicy',
     declaration: 'export interface ViewerPluginPolicy {\n    readonly plugin: string;\n    readonly mode: \'all\' | \'none\' | \'selected\';\n    readonly endpoints?: readonly string[];\n}',
+  },
+  {
+    name: 'VirtualModelDefinition',
+    declaration: 'export interface VirtualModelDefinition {\n    readonly provider: string;\n    readonly id: string;\n    readonly name: string;\n    readonly thinkingLevels?: readonly string[];\n    readonly contextWindow?: number;\n    readonly maxTokens?: number;\n    readonly route: ModelRouter;\n}',
   },
   {
     name: 'WebAdmission',

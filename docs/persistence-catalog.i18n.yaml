@@ -9,8 +9,8 @@
   en: 1387c4505dde2faf
   zh: 48570fa1c13d6910
 /session-persistence-event-catalog/persistence-type-fingerprints:
-  en: 0643f5a42bdcb6d1
-  zh: a3cf6968282396d0
+  en: 12139fbef6e5ca34
+  zh: 723743eed0e8b558
 /session-persistence-event-catalog/event-envelope:
   en: d701c281e37dcc73
   zh: e6a69b9d30acd561
@@ -320,6 +320,12 @@
 /session-persistence-event-catalog/events/user/user-message-surface:
   en: d358cef8fcd3218a
   zh: f79247f85518fa0b
+/session-persistence-event-catalog/events/virtual-model:
+  en: c92e0a474b2f2924
+  zh: c92e0a474b2f2924
+/session-persistence-event-catalog/events/virtual-model/virtual-model-state-log-only:
+  en: 8d322659e8c10585
+  zh: a0ca1f7543f583a4
 /session-persistence-event-catalog/events/web:
   en: d278748103cf1640
   zh: d278748103cf1640
@@ -1068,8 +1074,11 @@
   en: ce169abc5bc0ad1f
   zh: ce169abc5bc0ad1f
 /session-persistence-event-catalog/resolved-persistence-types/user-message:
-  en: 9ea4911e44f42620
-  zh: 9ea4911e44f42620
+  en: fa458983d5ba68a8
+  zh: fa458983d5ba68a8
+/session-persistence-event-catalog/resolved-persistence-types/virtual-model-state:
+  en: 98a040705c756f54
+  zh: 98a040705c756f54
 /session-persistence-event-catalog/resolved-persistence-types/warming:
   en: f5df616c1b3c404c
   zh: f5df616c1b3c404c
@@ -2277,8 +2286,11 @@
   en: 39b24e7c4c5d21dc
   zh: 33b0c2e6b76979f2
 /session-persistence-event-catalog/resolved-persistence-types/mode-source:
-  en: 3028b222670ce5ad
-  zh: cae4c9437e560d61
+  en: 273dcbcebc837509
+  zh: 8ad8f1ae2f76e813
+/session-persistence-event-catalog/resolved-persistence-types/modelid-provider-state:
+  en: c00b0d4029c4c159
+  zh: 7c67079256f65c52
 /session-persistence-event-catalog/resolved-persistence-types/policy-source:
   en: 22c26e90693f113b
   zh: d6d1bbbe2a049929
@@ -2559,8 +2571,11 @@
   en: 7e7e99bf2540d9e3
   zh: a9760eadf80ffed3
 /session-persistence-event-catalog/resolved-persistence-types/type-user-message:
-  en: f7e8557b9520676f
-  zh: 4c2d4dba13b38f03
+  en: f411cd128435cbaa
+  zh: 5cd304da6aeaa737
+/session-persistence-event-catalog/resolved-persistence-types/type-virtual-model-state:
+  en: 282a4d59945b2e4d
+  zh: 278e27cc89a1bde7
 /session-persistence-event-catalog/resolved-persistence-types/type-web-deepseek-search-llm-request:
   en: 99c8837344178a47
   zh: bf746f5678346596

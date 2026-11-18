@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/core/agent-virtual-model/README.md
+/:
+  en: b11ac0d0c1ece0eb
+  zh: 76f6c5b9bbdd1f4d
+/deepseek-ai-dsh-agent-virtual-model:
+  en: 858fbbf9aae6f1d4
+  zh: 0c4eec08ab0fe37b
+/deepseek-ai-dsh-agent-virtual-model/summary:
+  en: 762fbb4ef3e9a47c
+  zh: 9e1d1227f265788a
+/deepseek-ai-dsh-agent-virtual-model/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 4accf1f88efaa45b
+/deepseek-ai-dsh-agent-virtual-model/use-this-package:
+  en: 5cdb35fdd76790a2
+  zh: ca42ed52f697fbfd
+/deepseek-ai-dsh-agent-virtual-model/understand-the-implementation:
+  en: b929de8af6a65f6e
+  zh: bd14d224a5c50fdf
+/deepseek-ai-dsh-agent-virtual-model/further-exploration:
+  en: 3edb32e0de7da684
+  zh: 951d8fb29aa29e8d
+/deepseek-ai-dsh-agent-virtual-model/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-agent-virtual-model/model-experience/virtual-model-routing:
+  en: 95b699d31c5d4651
+  zh: e42659990a68db7a
+/deepseek-ai-dsh-agent-virtual-model/model-experience/virtual-model-routing/what-the-model-sees:
+  en: 100384144f367e69
+  zh: ce0cb288eab71bf6
+/deepseek-ai-dsh-agent-virtual-model/model-experience/virtual-model-routing/token-effect:
+  en: 2885ce8d5d485444
+  zh: 1ebe30679733f695
+/deepseek-ai-dsh-agent-virtual-model/model-experience/virtual-model-routing/kv-cache-effect:
+  en: ec8545119d42246c
+  zh: 852885937c279f55
+/deepseek-ai-dsh-agent-virtual-model/known-limitations-and-deferred-work:
+  en: cb0025e7711f1723
+  zh: 064cc9ee92c6d9e7
+/deepseek-ai-dsh-agent-virtual-model/known-limitations-and-deferred-work/dev-note:
+  en: 880547773c756fe1
+  zh: f28363bed7cec52d

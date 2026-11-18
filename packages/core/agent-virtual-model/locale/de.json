@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Virtuelle Modellweiterleitung",
+    "description": "Löst ein ausgewähltes virtuelles Modell pro Anfrage in ein physisches Modell auf."
+  }
+}

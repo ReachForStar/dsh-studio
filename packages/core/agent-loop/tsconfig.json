@@ -39,6 +39,9 @@
       "path": "../../core/agent"
     },
     {
+      "path": "../../core/agent-virtual-model"
+    },
+    {
       "path": "../../core/scope"
     },
     {

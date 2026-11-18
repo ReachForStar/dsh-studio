@@ -12,12 +12,14 @@
 - [x] 测试 + 局部验证
 
 ### 2 classifier / image 非 LLM 模型
+- [ ] 阻塞：需扩展 `dsh-llm` adapter 契约与 `llm-pi-ai`，跨包改动，留待后续会话
 - [ ] 核验 `llm-pi-ai` 目录与调用路径
 - [ ] 暴露 classifier/image 目录与一次性调用
 - [ ] 定义会话记录与计价口径
 - [ ] 测试 + 局部验证
 
 ### 3 codemode 工具注入式沙箱
+- [ ] 阻塞：需新沙箱运行时与依赖引入确认，成本最高
 - [ ] 核验 `ptc-runtime` 运行时抽象与工具注入点
 - [ ] 设计沙箱运行时（工具调用 + store + 发现 + 预算）
 - [ ] 实现 store 的会话投影持久化
@@ -30,6 +32,7 @@
 - [x] 测试 + 局部验证
 
 ### 5 输入事件 handled
+- [ ] 阻塞：与既有 commands 语义重叠，且需异步输入准入，建议跳过或单独立项
 - [ ] 核验输入准入与 hook-protocol 事件面
 - [ ] 实现 continue/transform/handled 三态
 - [ ] 保证 handled 不写模型消息且反馈可见
@@ -41,6 +44,7 @@
 - [x] 测试 + 局部验证
 
 ### 7 Git 检查点与 fork 恢复
+- [ ] 阻塞：需 shell 执行、检查点存储与 fork 交互点，留待后续会话
 - [ ] 核验 `experimental/worktree` 与 fork 交互
 - [ ] 实现回合检查点与 fork 恢复
 - [ ] 测试 + 局部验证

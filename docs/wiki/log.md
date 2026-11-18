@@ -1233,4 +1233,4 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `verify-repository-references`：去掉裸提交哈希，改为“见 git log”。
 - `verify-translation-pairing`：upgrade-guide 配对重新记录。
 - 结果：`doc-sync` 43 门全绿，`lint`、`tsc`、`build:check` 通过。
-- 遗留（非门禁）：`docs/capability-seams.zh.md` 的 mermaid 标签为英文（生成器只写英文），需按中文维护规范重译并重新配对。
+- 核实：`docs/capability-seams.zh.md` 的 mermaid 标签历史上一直为英文（图内不翻译），与生成器一致，无需重译；当前仅节点 id 采用生成器的完整路径风格。

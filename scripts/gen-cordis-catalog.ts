@@ -1238,6 +1238,12 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   VirtualModelDefinition: 'virtual model route contract is owned by packages/core/agent-virtual-model/README.md',
   ModelRouteRequest: 'virtual model route request is owned by packages/core/agent-virtual-model/README.md',
   ModelRouteResolver: 'virtual model route resolver is owned by packages/core/agent-virtual-model/README.md',
+  LlmNonChatModelInfo: 'non-chat model metadata is owned by packages/llm/llm/README.md',
+  LlmNonChatModelType: 'non-chat model category is owned by packages/llm/llm/README.md',
+  LlmClassifyRequest: 'classifier request is owned by packages/llm/llm/README.md',
+  LlmClassifyResult: 'classifier result is owned by packages/llm/llm/README.md',
+  LlmGenerateImagesRequest: 'image generation request is owned by packages/llm/llm/README.md',
+  LlmGenerateImagesResult: 'image generation result is owned by packages/llm/llm/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

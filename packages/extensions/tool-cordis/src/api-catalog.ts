@@ -2416,6 +2416,24 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the same deterministic handle text used at adapter dispatch.',
       },
       {
+        signature: 'async listNonChatModels(provider: string, type: LlmNonChatModelType): Promise<LlmNonChatModelInfo[]>',
+        description: 'List non-chat models (classifiers or image models) advertised by one registered provider. The base adapter offers none.',
+        parameters: [{ name: 'provider', description: 'registered provider route.' }, { name: 'type', description: 'model category.' }],
+        returns: 'detached non-chat model metadata.',
+      },
+      {
+        signature: 'classify(request: LlmClassifyRequest): Promise<LlmClassifyResult>',
+        description: 'Run one classifier request through the provider\'s adapter.',
+        parameters: [{ name: 'request', description: 'classification request.' }],
+        returns: 'answers by question id.',
+      },
+      {
+        signature: 'generateImages(request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult>',
+        description: 'Run one image generation request through the provider\'s adapter.',
+        parameters: [{ name: 'request', description: 'image request.' }],
+        returns: 'generated text and image blocks.',
+      },
+      {
         signature: 'async listModels(provider: string): Promise<LlmModelInfo[]>',
         description: 'Discover models advertised by one registered provider. Catalog membership does not constrain core routing. Catalog-driven entry points may restrict selection and submission to the advertised models.',
         parameters: [{ name: 'provider', description: 'registered provider route to inspect.' }],
@@ -8107,7 +8125,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'LlmAdapter',
-    declaration: 'export abstract class LlmAdapter {\n    providerInfo(provider: string): LlmProviderInfo;\n    providerRetryPolicy(_provider: string): ResolvedRetryPolicy | undefined;\n    imageRequestPricing(_provider: string, _model: string): LlmImageRequestPricing | undefined;\n    imageRequestTarget(_provider: string, _model: string, image: ImageAttachmentRef): ImageRequestTarget;\n    listModels(_provider: string): Promise<readonly LlmModelInfo[]>;\n    resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;\n    async prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;\n    abstract stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
+    declaration: 'export abstract class LlmAdapter {\n    providerInfo(provider: string): LlmProviderInfo;\n    providerRetryPolicy(_provider: string): ResolvedRetryPolicy | undefined;\n    imageRequestPricing(_provider: string, _model: string): LlmImageRequestPricing | undefined;\n    imageRequestTarget(_provider: string, _model: string, image: ImageAttachmentRef): ImageRequestTarget;\n    listModels(_provider: string): Promise<readonly LlmModelInfo[]>;\n    listNonChatModels(_provider: string, _type: LlmNonChatModelType): Promise<readonly LlmNonChatModelInfo[]>;\n    classify(_request: LlmClassifyRequest): Promise<LlmClassifyResult>;\n    generateImages(_request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult>;\n    resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;\n    async prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;\n    abstract stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
   },
   {
     name: 'LlmAttemptId',
@@ -8126,6 +8144,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface LlmCallControls {\n    reasoningEffort?: ReasoningEffortId;\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n}',
   },
   {
+    name: 'LlmClassifierQuestion',
+    declaration: 'export type LlmClassifierQuestion = {\n    readonly type: \'choice\';\n    readonly instructions: string;\n    readonly criteria: Readonly<Record<string, string>>;\n} | {\n    readonly type: \'score\';\n    readonly instructions: string;\n    readonly criteria: readonly string[];\n} | {\n    readonly type: \'bool\';\n    readonly instructions: string;\n    readonly criteria: {\n        readonly true: string;\n        readonly false: string;\n    };\n};',
+  },
+  {
+    name: 'LlmClassifyRequest',
+    declaration: 'export interface LlmClassifyRequest {\n    provider: string;\n    model: string;\n    state: Readonly<Record<string, unknown>>;\n    images?: readonly {\n        readonly data: string;\n        readonly mimeType: string;\n    }[];\n    questions: Readonly<Record<string, LlmClassifierQuestion>>;\n    signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'LlmClassifyResult',
+    declaration: 'export interface LlmClassifyResult {\n    answers: Readonly<Record<string, unknown>>;\n    stopReason: \'stop\' | \'error\' | \'aborted\';\n    errorMessage?: string;\n}',
+  },
+  {
     name: 'LlmConfigurableProvider',
     declaration: 'export interface LlmConfigurableProvider {\n    provider: string;\n    displayName: string;\n    settingsNs: string;\n    settingsPath: readonly string[];\n    declared?: boolean;\n    defaultBaseURL?: string;\n    baseURLEnv?: readonly string[];\n    nativeAuth?: LlmNativeAuth;\n    error?: string;\n}',
   },
@@ -8138,12 +8168,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface LlmFailure {\n    readonly message: string;\n    readonly code: string;\n    readonly status?: number;\n    readonly providerRetryAfterMs?: number;\n    readonly requestId?: ProviderRequestId;\n    readonly offloadImages?: number;\n}',
   },
   {
+    name: 'LlmGenerateImagesRequest',
+    declaration: 'export interface LlmGenerateImagesRequest {\n    provider: string;\n    model: string;\n    input: readonly LlmImagesInput[];\n    signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'LlmGenerateImagesResult',
+    declaration: 'export interface LlmGenerateImagesResult {\n    output: readonly LlmImagesOutput[];\n    stopReason: \'stop\' | \'error\' | \'aborted\';\n    errorMessage?: string;\n}',
+  },
+  {
     name: 'LlmImageRequestPrice',
     declaration: 'export interface LlmImageRequestPrice {\n    visualTokens: number;\n    text: string;\n}',
   },
   {
     name: 'LlmImageRequestPricing',
     declaration: 'export interface LlmImageRequestPricing {\n    priceImages(images: readonly ImageBlock[]): readonly LlmImageRequestPrice[];\n}',
+  },
+  {
+    name: 'LlmImagesInput',
+    declaration: 'export type LlmImagesInput = {\n    readonly type: \'text\';\n    readonly text: string;\n} | {\n    readonly type: \'image\';\n    readonly data: string;\n    readonly mimeType: string;\n};',
+  },
+  {
+    name: 'LlmImagesOutput',
+    declaration: 'export type LlmImagesOutput = {\n    readonly type: \'text\';\n    readonly text: string;\n} | {\n    readonly type: \'image\';\n    readonly data: string;\n    readonly mimeType: string;\n};',
   },
   {
     name: 'LlmModelBadge',
@@ -8174,6 +8220,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface LlmNativeAuth {\n    env: readonly string[];\n    oauth: boolean;\n}',
   },
   {
+    name: 'LlmNonChatModelInfo',
+    declaration: 'export interface LlmNonChatModelInfo {\n    provider: string;\n    id: string;\n    name: string;\n}',
+  },
+  {
+    name: 'LlmNonChatModelType',
+    declaration: 'export type LlmNonChatModelType = \'classifier\' | \'image\';',
+  },
+  {
     name: 'LlmProviderInfo',
     declaration: 'export interface LlmProviderInfo {\n    id: string;\n    name: string;\n}',
   },
@@ -8195,7 +8249,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'LlmRuntime',
-    declaration: 'export class LlmRuntime extends TypertRemoteService {\n    constructor(ctx: Context);\n    registerAdapter(providers: string[], adapter: LlmAdapter): AdapterRegistrationHandle;\n    @Remote\n    listProviders(): LlmProviderInfo[];\n    registerConfigurableProviders(entries: readonly LlmConfigurableProvider[]): DirectoryRegistrationHandle;\n    @Remote\n    listConfigurableProviders(): LlmConfigurableProvider[];\n    registerModelDiscovery(settingsNs: string, discover: (request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>): () => void;\n    async discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal): Promise<LlmDiscoveredModel[]>;\n    @Remote(\'discoverModels\')\n    async remoteDiscoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal: AbortSignal): Promise<LlmDiscoveredModel[]>;\n    providerRetryPolicy(provider: string): ResolvedRetryPolicy;\n    imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;\n    imageRequestTarget(provider: string, model: string, image: ImageAttachmentRef): ImageRequestTarget;\n    fileRequestText(ref: FileAttachmentRef): string;\n    async listModels(provider: string): Promise<LlmModelInfo[]>;\n    async resolveModelInfo(provider: string, model: string, signal?: AbortSignal): Promise<LlmResolvedModelInfo>;\n    async resolveCallConfig(config: LlmCallConfig, signal?: AbortSignal): Promise<LlmCallConfig>;\n    async prepareCall(conf /* …truncated — full shape in source */',
+    declaration: 'export class LlmRuntime extends TypertRemoteService {\n    constructor(ctx: Context);\n    registerAdapter(providers: string[], adapter: LlmAdapter): AdapterRegistrationHandle;\n    @Remote\n    listProviders(): LlmProviderInfo[];\n    registerConfigurableProviders(entries: readonly LlmConfigurableProvider[]): DirectoryRegistrationHandle;\n    @Remote\n    listConfigurableProviders(): LlmConfigurableProvider[];\n    registerModelDiscovery(settingsNs: string, discover: (request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>): () => void;\n    async discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal): Promise<LlmDiscoveredModel[]>;\n    @Remote(\'discoverModels\')\n    async remoteDiscoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal: AbortSignal): Promise<LlmDiscoveredModel[]>;\n    providerRetryPolicy(provider: string): ResolvedRetryPolicy;\n    imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;\n    imageRequestTarget(provider: string, model: string, image: ImageAttachmentRef): ImageRequestTarget;\n    fileRequestText(ref: FileAttachmentRef): string;\n    async listNonChatModels(provider: string, type: LlmNonChatModelType): Promise<LlmNonChatModelInfo[]>;\n    classify(request: LlmClassifyRequest): Promise<LlmClassifyResult>;\n    generateImages(request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult>;\n    async listModels(provider: string /* …truncated — full shape in source */',
   },
   {
     name: 'LocalAtInput',

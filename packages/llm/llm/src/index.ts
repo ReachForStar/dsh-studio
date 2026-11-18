@@ -17,8 +17,14 @@ import type {
   LlmFailure,
   LlmImageRequestPricing,
   LlmModelContext,
+  LlmClassifyRequest,
+  LlmClassifyResult,
+  LlmGenerateImagesRequest,
+  LlmGenerateImagesResult,
   LlmModelDiscoveryRequest,
   LlmModelInfo,
+  LlmNonChatModelInfo,
+  LlmNonChatModelType,
   LlmResolvedModelInfo,
   LlmProviderInfo,
   ModelModality,
@@ -274,6 +280,35 @@ export abstract class LlmAdapter {
    */
   listModels(_provider: string): Promise<readonly LlmModelInfo[]> {
     return Promise.resolve([])
+  }
+
+  /**
+   * List non-chat models (classifiers or image models) this adapter can run.
+   * The base adapter offers none.
+   * @param _provider - provider route owned by this adapter.
+   * @param _type - model category.
+   * @returns discoverable non-chat models.
+   */
+  listNonChatModels(_provider: string, _type: LlmNonChatModelType): Promise<readonly LlmNonChatModelInfo[]> {
+    return Promise.resolve([])
+  }
+
+  /**
+   * Run one classifier request. The base adapter rejects it.
+   * @param _request - classification request.
+   * @returns answers by question id.
+   */
+  classify(_request: LlmClassifyRequest): Promise<LlmClassifyResult> {
+    return Promise.reject(new HarnessError('UNSUPPORTED_OPTION', 'this adapter does not support classifier models'))
+  }
+
+  /**
+   * Run one image generation request. The base adapter rejects it.
+   * @param _request - image request.
+   * @returns generated text and image blocks.
+   */
+  generateImages(_request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult> {
+    return Promise.reject(new HarnessError('UNSUPPORTED_OPTION', 'this adapter does not support image models'))
   }
 
   /**
@@ -721,6 +756,36 @@ export class LlmRuntime extends TypertRemoteService {
   /** Detach typed adapter-owned modality metadata. */
   private detachedModalities(modalities: readonly ModelModality[] | undefined): ModelModality[] | undefined {
     return modalities === undefined ? undefined : [...modalities]
+  }
+
+  /**
+   * List non-chat models (classifiers or image models) advertised by one
+   * registered provider. The base adapter offers none.
+   * @param provider - registered provider route.
+   * @param type - model category.
+   * @returns detached non-chat model metadata.
+   */
+  async listNonChatModels(provider: string, type: LlmNonChatModelType): Promise<LlmNonChatModelInfo[]> {
+    const adapter = this.registration(provider).adapter
+    return [...await adapter.listNonChatModels(provider, type)]
+  }
+
+  /**
+   * Run one classifier request through the provider's adapter.
+   * @param request - classification request.
+   * @returns answers by question id.
+   */
+  classify(request: LlmClassifyRequest): Promise<LlmClassifyResult> {
+    return this.registration(request.provider).adapter.classify(request)
+  }
+
+  /**
+   * Run one image generation request through the provider's adapter.
+   * @param request - image request.
+   * @returns generated text and image blocks.
+   */
+  generateImages(request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult> {
+    return this.registration(request.provider).adapter.generateImages(request)
   }
 
   /**

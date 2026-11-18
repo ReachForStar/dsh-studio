@@ -47,8 +47,14 @@ import {
 import type {
   GenerateOptions,
   ImageAttachmentAccess,
+  LlmClassifyRequest,
+  LlmClassifyResult,
   LlmDiscoveredModel,
+  LlmGenerateImagesRequest,
+  LlmGenerateImagesResult,
   LlmModelInfo,
+  LlmNonChatModelInfo,
+  LlmNonChatModelType,
   LlmProviderInfo,
   LlmResolvedModelInfo,
   PreparedAdapterCall,
@@ -57,6 +63,7 @@ import type {
   StreamChunk,
   ToolSchema,
 } from '@deepseek-ai/dsh-llm'
+import type { ClassifierContext, ClassifierResult, ImagesContext, AssistantImages } from '@earendil-works/pi-ai'
 import type { AttachmentStore, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
@@ -536,6 +543,55 @@ export class PiAiAdapter extends LlmAdapter {
 
   override providerRetryPolicy(provider: string): ResolvedRetryPolicy | undefined {
     return this.config.profiles().get(provider)?.retryPolicy
+  }
+
+  override async listNonChatModels(provider: string, type: LlmNonChatModelType): Promise<readonly LlmNonChatModelInfo[]> {
+    const snapshot = await this.snapshotFor(provider)
+    return snapshot.models.getModelsOfType(type, provider).map(model => ({ provider, id: model.id, name: model.name }))
+  }
+
+  /**
+   * Run one classifier request through the addressed route.
+   * @param request - classification request.
+   * @returns answers by question id.
+   */
+  override async classify(request: LlmClassifyRequest): Promise<LlmClassifyResult> {
+    const snapshot = await this.snapshotFor(request.provider)
+    const model = snapshot.models.getModelOfType('classifier', request.provider, request.model)
+    if (model === undefined) {
+      throw new LlmError(`classifier model "${request.provider}/${request.model}" is not in the catalog`, 'MODEL_UNSUPPORTED')
+    }
+    const context = {
+      state: request.state as ClassifierContext['state'],
+      ...request.images === undefined ? {} : { images: request.images },
+      questions: request.questions as ClassifierContext['questions'],
+    } as ClassifierContext
+    const result: ClassifierResult = await snapshot.models.classify(model, context)
+    return {
+      answers: result.answers,
+      stopReason: result.stopReason,
+      ...result.errorMessage === undefined ? {} : { errorMessage: result.errorMessage },
+    }
+  }
+
+  /**
+   * Run one image generation request through the addressed route.
+   * @param request - image request.
+   * @returns generated text and image blocks.
+   */
+  override async generateImages(request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult> {
+    const snapshot = await this.snapshotFor(request.provider)
+    const model = snapshot.models.getModelOfType('image', request.provider, request.model)
+    if (model === undefined) {
+      throw new LlmError(`image model "${request.provider}/${request.model}" is not in the catalog`, 'MODEL_UNSUPPORTED')
+    }
+    const context: ImagesContext = { input: request.input as ImagesContext['input'] }
+    const result: AssistantImages = await snapshot.models.generateImages(model, context)
+    return {
+      output: result.output,
+      stopReason: result.stopReason,
+      ...result.errorMessage === undefined ? {} : { errorMessage: result.errorMessage },
+    }
   }
 
   override async listModels(provider: string): Promise<readonly LlmModelInfo[]> {

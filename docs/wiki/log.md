@@ -1219,3 +1219,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 无新第三方依赖；脚本作为 async 函数体运行，支持顶层 await/return；输出上限与同步超时预算。
 - 限制：`store` 为进程内存；`timeoutMs` 不约束异步工具调用；`console` 输出不收集；不支持嵌套 run_code。
 - 5 项单测通过；`typecheck`、`lint`、`build`、`doc-sync`（除既有红项）通过。
+
+## [2026-11-18] feat | 输入拦截落地，pi 八项全部完成
+
+- 新增 `packages/interaction/input-handled`：注册拦截器，在提示提交前返回 `continue`/`transform`/`handled`；`handled` 返回接受但不入队、不写模型消息。
+- `session-controller` 的 prompt 准入接入该服务（未挂载时跳过）；`dsh-llm` 非 chat 契约、虚拟模型路由、codemode 已在前面落地。
+- 至此 pi 能力对比的 8 项候选全部落地并分别提交；`typecheck`、`lint`、`build`、`doc-sync`（除既有红项）通过。

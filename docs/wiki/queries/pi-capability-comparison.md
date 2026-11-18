@@ -21,18 +21,18 @@ status: draft
 - 形态差异：pi 是单进程 agent harness，会话是带 `id`/`parentId` 的 JSONL 树；本 fork 是 Cordis 插件树，会话是 v5 线性事件 + 投影 + 世代迁移。只取能力语义与设计边界，不取存储格式。
 - 已覆盖项先在本 fork 搜同义实现再排除，避免重复。
 
-## 落地进度（2026-11-17）
+## 落地进度（2026-11-18 全部完成）
 
 | # | 能力 | 状态 | 落点 |
 | --- | --- | --- | --- |
 | 8 | handoff | 已落地，提交 `9a79451953` | `packages/context/handoff`（`/handoff` 命令） |
 | 4 | 提示模板 | 已落地，提交见 `feat(prompt-templates)` | `packages/interaction/prompt-templates`（模板→命令，展开进模型） |
 | 6 | 会话标签 | 已落地，提交见 `feat(command-label)` | `packages/interaction/command-label`（`/label` + `session/label` 事件与投影） |
-| 5 | 输入事件 handled | 未开始 | 需输入准入扩展点；`agent-loop` 的 `send` 为同步契约，异步拦截需重新设计 |
-| 1 | 虚拟模型路由 | 未开始 | 需改 `AgentModel` 选择语义与 `llm` 路由解析 |
-| 2 | classifier / image | 未开始 | 依赖第 1 项 |
-| 7 | Git 检查点 | 未开始 | 需 shell 执行、检查点存储与 fork 交互点 |
-| 3 | codemode | 未开始 | 需新沙箱运行时与工具注入，成本最高 |
+| 5 | 输入事件 handled | 已落地，`feat(input-handled)` | `packages/interaction/input-handled` + `session-controller` 准入 |
+| 1 | 虚拟模型路由 | 已落地，`feat(agent-virtual-model)` | `packages/core/agent-virtual-model` + `dsh-agent`/`agent-loop` |
+| 2 | classifier / image | 已落地，`feat(llm)` | `dsh-llm` 非 chat 契约 + `llm-pi-ai` 实现 |
+| 7 | Git 检查点 | 已落地，`feat(git-checkpoint)` | `packages/experimental/git-checkpoint`（显式命令） |
+| 3 | codemode | 已落地，`feat(codemode)` | `packages/experimental/codemode`（Node `node:vm`，无新依赖） |
 
 落地过程附带清偿一处既有持久化债务：`event:agent/inbox/spliced` 的历史分叉（`2026-10-29-fork-message-source-kinds` 与 `2026-11-05-timeline-priority-notice` 同时声明 successor），用 `tsx scripts/persistence-changes.ts --update 2026-11-05-timeline-priority-notice --decision same-version` 重算消除。
 

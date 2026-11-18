@@ -32,11 +32,11 @@
 - [x] 测试 + 局部验证
 
 ### 5 输入事件 handled
-- [ ] 阻塞：与既有 commands 语义重叠，且需异步输入准入；建议跳过或单独立项
-- [ ] 核验输入准入与 hook-protocol 事件面
-- [ ] 实现 continue/transform/handled 三态
-- [ ] 保证 handled 不写模型消息且反馈可见
-- [ ] 测试 + 局部验证
+- [x] 实现输入拦截服务（continue/transform/handled）并接入 prompt 准入
+- [x] 核验输入准入与 hook-protocol 事件面
+- [x] 实现 continue/transform/handled 三态
+- [x] 保证 handled 不写模型消息（返回接受不入队）
+- [x] 测试 + 局部验证
 
 ### 6 会话标签
 - [x] 核验 `session-projection` 与日志事件面
@@ -58,6 +58,6 @@
 - [x] 里程碑：第 4 项提示模板落地并通过验证
 - [x] 里程碑：第 1、2 项虚拟模型路由与 classifier/image 落地
 - [x] 里程碑：第 3 项 codemode 沙箱落地
-- [ ] 里程碑：第 5、6 项输入 handled 与会话标签落地
+- [x] 里程碑：第 5、6 项输入 handled 与会话标签落地
 - [x] 里程碑：第 8 项 handoff 与第 7 项 Git 检查点落地
-- [ ] 里程碑：全量 typecheck/lint/build:check 通过，wiki 回写
+- [x] 里程碑：全量 typecheck/lint/build:check 通过，wiki 回写

@@ -62,9 +62,9 @@ The result adapter retains canonical MCP JSON for programmatic callers and prepa
 <a id="resources-and-instructions"></a>
 ## Resources and instructions
 
-Resource calls require an explicit configured server name. When system-prompt assembly is available, the resource service lists caller-visible names from the same registry used for dispatch, including servers with no tools or instructions. The shared registry resolves that name in the calling Agent's scope before dispatch; unavailable servers fail without a network request. Discovery, reads, and one-update watches are on demand, including for servers that expose resources without tools. The [resource package](../../packages/mcp/mcp-resources/README.md) owns pagination, content rendering, and the watch tool; its generated tool schemas live in the [tool catalog](../tool-catalog.md#deepseek-aidsh-mcp-resources).
+Resource calls require an explicit configured server name. When system-prompt assembly is available, the resource service lists caller-visible names from the same registry used for dispatch, including servers with no tools or instructions. The shared registry resolves that name in the calling Agent's scope before dispatch; unavailable servers fail without a network request. Discovery and reads are on demand, including for servers that expose resources without tools. The [resource package](../../packages/mcp/mcp-resources/README.md) owns pagination and content rendering; its generated tool schemas live in the [tool catalog](../tool-catalog.md#deepseek-aidsh-mcp-resources).
 
-Resource providers remain connection-owned. Scope disposal removes registrations; the MCP client controls cancellation, subscriptions, and recovery. Canonical results retain complete JSON for programmatic callers, while the text projection replaces binary blobs with descriptions and reports a watch's update flag without the resource body. Returned text enters ordinary tool history; content is not fetched merely because a server connects.
+Resource providers remain connection-owned. Scope disposal removes registrations; the MCP client controls cancellation and recovery. Canonical results retain complete JSON for programmatic callers, while the text projection replaces binary blobs with descriptions. Returned text enters ordinary tool history; content is not fetched merely because a server connects.
 
 When system-prompt assembly is composed, the client publishes nonblank server instructions as a scoped, server-attributed section. Instructions remain literal text and pass the configured size limit before publication. A replacement connection publishes instructions only after discovery succeeds; absent instructions add no section. The [system-prompt subsystem](system-prompt.md) owns assembly and recording.
 
@@ -80,14 +80,6 @@ The connection provider receives one operation and the original tool execution, 
 type McpResourceRequest =
   | { method: 'resources/list' | 'resources/templates/list'; cursor?: string }
   | { method: 'resources/read'; uri: string }
-  | {
-    /** Subscribe to one resource, wait for its first update or the timeout, then unsubscribe. */
-    method: 'resources/watch'
-    /** Resource URI to watch. */
-    uri: string
-    /** Tool-requested wait in milliseconds; omission uses the connection's configured default. */
-    timeoutMs?: number
-  }
 ```
 
 ```ts type-equiv
@@ -96,11 +88,10 @@ interface McpResourceProvider {
   /**
    * Run an operation against one live connection generation. The resource tools
    * dispatch in parallel, so one provider may receive several concurrent requests;
-   * each must settle independently. A watch subscribes and releases within this
-   * call; `exec.signal` cancels the wait and the subscription.
+   * each must settle independently.
    * @param request - MCP resource method and parameters.
    * @param exec - caller identity and cancellation for this invocation.
-   * @returns the protocol result, or the watch outcome, as lossless JSON.
+   * @returns the protocol result as lossless JSON.
    */
   request(request: McpResourceRequest, exec: ToolExecution): Promise<JsonValue>
 }
@@ -111,7 +102,7 @@ interface McpResourceProvider {
 <a id="limits"></a>
 ## Limits
 
-MCP prompt templates, human-input elicitation, and task-based execution are unsupported. Resource watches cover one URI and one update per call and require the server to advertise `resources.subscribe`; list-change notifications are not watched. Resource tools require a caller-visible configured server; binary resources remain programmatic data with text descriptions for the model. Servers without a tools capability connect with an empty tool set. Connection and discovery timeouts follow the SDK; the client has no separate settings for them.
+MCP prompt templates, human-input elicitation, task-based execution, and resource subscriptions are unsupported. Resource tools require a caller-visible configured server; binary resources remain programmatic data with text descriptions for the model. Servers without a tools capability connect with an empty tool set. Connection and discovery timeouts follow the SDK; the client has no separate settings for them.
 
 -----
 
@@ -267,22 +258,6 @@ async probe(name: string, options?: McpProbeOptions): Promise<McpProbeResult>
 async startAuthorization(name: string): Promise<McpOAuthAttemptView>
 
 /**
- * Start an interactive authorization for a management surface.
- *
- * Returns as soon as the flow reports the page to open; the flow keeps
- * running and its committed grant replaces the connection.
- * @param name - the configured or registered server key.
- * @returns the authorization page, or undefined while the attempt is still starting.
- */
-@Remote('authorize') async authorizeFromClient(name: string): Promise<string | undefined>
-
-/**
- * Remove one server's stored grant for a management surface.
- * @param name - the configured or registered server key.
- */
-@Remote('forgetAuthorization') forgetAuthorizationFromClient(name: string): Promise<void>
-
-/**
  * Cancel the selected attempt and drain its work; an admitted credential commit completes.
  * @param name - managed entry.
  * @param id - selected attempt; stale or absent attempts are ignored.
@@ -303,7 +278,7 @@ Source: [`packages/mcp/mcp-manager/src/index.ts`](../../packages/mcp/mcp-manager
 
 ### `ctx.mcpResources` — `McpResourceRuntime`
 
-Scoped resource access plus four tools shared by configured MCP servers.
+Scoped resource access plus three tools shared by configured MCP servers.
 
 ```ts cordis-catalog
 /**

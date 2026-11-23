@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Gestion des entrées",
-    "description": "Intercepte l'entrée utilisateur avant qu'elle n'entre dans le modèle."
-  }
-}

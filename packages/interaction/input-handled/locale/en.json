@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Input handling",
-    "description": "Intercept user input before it enters the model."
-  }
-}

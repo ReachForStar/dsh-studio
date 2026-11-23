@@ -70,8 +70,6 @@ Add one entry per server; nothing else is required. After the harness starts, th
 | `reconnect.maxAttempts` | `10` | Consecutive failed attempts per outage before giving up |
 | `toolLoading` | `eager` | `on-demand` keeps the server's tools out of every tool list until an agent loads them with `mcp__<serverName>__load_tools` |
 | `catalogDescriptionMaxLength` | `160` | Maximum characters of each tool summary in an on-demand server's prompt catalog |
-| `resourceWatchTimeoutMs` | `30,000` | Default wait for one `watch_mcp_resource` call when the model omits `timeoutMs` |
-| `maxResourceWatchTimeoutMs` | `300,000` | Ceiling applied to a model-requested resource-watch wait |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-mcp-client) is the exhaustive source for every accepted field.
 
@@ -118,19 +116,6 @@ With `expandTemplates: true`, `command`, `args`, `env` values, `cwd`, `url`, and
 Credential notifications rebuild the connection only when the resolved values change; same-value notifications preserve the connection and its reconnect budget. The old connection must close and finish local cleanup before a replacement starts. Incomplete cleanup blocks replacement until the Host restarts.
 
 With template expansion enabled, failure diagnostics, tool-call failures, and MCP `isError` tool-result text keep upstream messages but replace every value the instance resolved, including earlier rotations and URL-encoded forms, with `[redacted]`; the failure keeps its `name` and `code`. Successful tool results retain their content.
-
-### Resource updates
-
-When a server advertises `resources.subscribe`, the shared [`watch_mcp_resource`](../mcp-resources/README.md) tool can wait for one resource's next change. A modern connection opens an SDK `subscriptions/listen` stream; a legacy connection sends `resources/subscribe`. Both wait for the first `notifications/resources/updated` for the URI and then release the subscription, also on cancellation or connection closure. Concurrent watches of the same URI share one subscription, released by the last watcher. A server without the capability fails the call instead of waiting for a notification that cannot arrive. `resourceWatchTimeoutMs` sets the omitted-timeout wait and `maxResourceWatchTimeoutMs` caps larger model requests; the connection re-validates both at load.
-
-<a id="shared-connections"></a>
-### Shared connections
-
-A composition that mounts `@deepseek-ai/dsh-mcp-client/pool` once shares one transport and one handshake between instances whose resolved connection configuration is identical: transport, command, arguments, working directory, environment, URL, headers, `startupTimeoutMs`, and `closeTimeoutMs`. The server name is not part of that identity, so two Agent scopes that expose the same server under different names still share the connection and keep separate tool names. Environment and header values enter the identity only as fingerprints. The shipped base bundle mounts the pool row.
-
-Each instance keeps its own tool registrations, reconnect budget, status, and instruction attribution. The last instance to disconnect closes the transport; releasing one instance leaves the connection serving the others. A shared connection that closes reports the loss to every holder, and each holder applies its own reconnect policy. Resource watches keep their per-instance wait limits while the shared connection routes update notifications to every holder.
-
-The pool does not retry a failed handshake. A shared connection that cannot be established marks its configuration unshareable for the life of the process and logs one warning; that instance and every later one then dial their own connection, exactly as they would without a pool. Omitting the pool row disables sharing without changing any other behavior.
 
 <a id="oauth"></a>
 ### OAuth
@@ -180,10 +165,6 @@ This section explains the design decisions behind the bridge and points at the c
 | [`src/oauth-credentials.ts`](src/oauth-credentials.ts) | Durable grant and client records, with refresh serialized by the credential provider |
 | [`src/oauth.ts`](src/oauth.ts) | Explicit browser authorization: callback, flow, and in-flight work under one owner |
 | [`src/types.ts`](src/types.ts) | Client-safe connection status, probe outcome, and OAuth attempt types (`./types`) |
-| [`src/client.ts`](src/client.ts) | SDK client construction shared by supervised and pooled connections |
-| [`src/pool.ts`](src/pool.ts) | Shared connections (`./pool`): lease lifetime, holder fan-out, private fallback |
-| [`src/pool-key.ts`](src/pool-key.ts) | Sharing key over the resolved connection inputs, with fingerprinted secrets |
-| [`src/resource-watch.ts`](src/resource-watch.ts) | Per-generation resource watches: era-specific subscriptions, sharing, notification routing, and release |
 
 
 The exported `createMcpToolDefinition(ctx, options)` adapts an upstream tool schema and raw-result callback to the same canonical values, errors, and durable image projection. Each callback receives the exact `ToolExecution`, including its Agent and cancellation signal; SDK spec-type validation checks its result before projection. Callers own registration, cancellation deadlines, and provider teardown. The native Cua Driver provider uses this adapter without opening an MCP transport.

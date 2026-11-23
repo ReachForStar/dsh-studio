@@ -36,9 +36,8 @@ declare module '../contract/chat-nodes.ts' {
 }
 
 /** Read one attribution field from a merge-extensible source payload. */
-function producerField(source: object, key: string): string {
-  if (!(key in source)) return ''
-  const value: unknown = Reflect.get(source, key)
+function producerField(source: Record<string, unknown>, key: string): string {
+  const value = source[key]
   return typeof value === 'string' ? value : ''
 }
 
@@ -58,7 +57,7 @@ export const peerMessageDefinition: ConversationNodeDefinition<PeerMessageNode> 
       throw new Error('peer-message start requires assistant/peer-message')
     }
     const event = match.event
-    const source = event.data.message.source
+    const source = event.data.message.source as unknown as Record<string, unknown>
     return {
       kind: 'peer-message',
       seq: event.seq,

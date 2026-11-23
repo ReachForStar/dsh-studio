@@ -250,23 +250,18 @@ export function readJson(req: IncomingMessage): Promise<Record<string, unknown>>
       const raw = Buffer.concat(chunks).toString('utf8')
       if (raw.length === 0) { resolveBody({}); return }
       try {
-        const value: unknown = JSON.parse(raw)
-        if (!isJsonObject(value)) {
+        const value = JSON.parse(raw) as unknown
+        if (typeof value !== 'object' || value === null || Array.isArray(value)) {
           reject(new Error('latex panel: JSON body must be an object'))
           return
         }
-        resolveBody(value)
+        resolveBody(value as Record<string, unknown>)
       } catch (error) {
         reject(new Error(`latex panel: invalid JSON body: ${String(error)}`))
       }
     })
     req.on('error', reject)
   })
-}
-
-/** Whether one parsed JSON value is a plain object. */
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**

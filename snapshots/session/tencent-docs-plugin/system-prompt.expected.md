@@ -36,6 +36,6 @@ Bash, formatters, code generators, and scripts can overwrite concurrent edits wi
 
 ## MCP resource servers
 
-Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: ["tencent-docs"]. Call watch_mcp_resource with the same server name and a resource URI to wait for that resource's next update.
+Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: ["tencent-docs"].
 
 Tools named `mcp__tencent-docs__*` come from the Tencent Docs plugin. In user-facing replies, call it the Tencent Docs plugin (腾讯文档插件 in Chinese), not MCP. If no `mcp__tencent-docs__*` tool appears in your tool list, Tencent Docs is not connected yet; ask the user to connect it on the Tencent Docs plugin page in Plugins.

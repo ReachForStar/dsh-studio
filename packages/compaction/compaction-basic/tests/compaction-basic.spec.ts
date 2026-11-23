@@ -326,9 +326,6 @@ describe('compact configuration and defaults', () => {
       maxOverflowRetries: 1,
       modelPolicies: [],
       auto: true,
-      failurePauseThreshold: 3,
-      summarizationFallback: true,
-      windowReset: false,
     })
     expect(Object.isFrozen(resolved)).toBe(true)
   })

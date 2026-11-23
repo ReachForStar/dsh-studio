@@ -13,7 +13,6 @@ export type {} from './conversation-nodes/tool.ts'
 export type {} from './conversation-nodes/turn-error.ts'
 export type {} from './conversation-nodes/turn-max-tokens.ts'
 export type {} from './conversation-nodes/turn-process.ts'
-export type {} from './conversation-nodes/turn-sources.ts'
 export type {} from './conversation-nodes/turn-tail.ts'
 
 export type {
@@ -28,7 +27,7 @@ export type {
 export type {
   AssistantChatData, ChatConversationViewNode, ChatNode, ChatNodeKind,
   FinalAssistantChatData, ManualCompactionChatData, RetryChatData, ToolChatData,
-  TurnProcessChatData, TurnSourcesChatData, TurnSourceEntry, TurnTailChatData,
+  TurnProcessChatData, TurnTailChatData,
 } from './contract/chat-nodes.ts'
 export type { ChatGroupTree } from './contract/group-tree.ts'
 export type { ChatStoreState, ToolCallId, TurnProcessViewEntry } from './contract/store.ts'

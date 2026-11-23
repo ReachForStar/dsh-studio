@@ -194,7 +194,7 @@
     },
     {
       "name": "enter_worktree",
-      "description": "Change this session's working directory to a Git worktree of the checkout it is in. An existing worktree named name is entered as it is. Otherwise a new branch and worktree are created from a local commit, branch, or tag, and uncommitted files stay in the source checkout unless mirrorUncommitted asks to copy them. exit_worktree returns to the source checkout.",
+      "description": "Change this session's working directory to a Git worktree of the checkout it is in. An existing worktree named name is entered as it is. Otherwise a new branch and worktree are created from a local commit, branch, or tag, and uncommitted files stay in the source checkout. exit_worktree returns to the source checkout.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -205,10 +205,6 @@
           "from": {
             "type": "string",
             "description": "Local commit, branch, or tag a new worktree starts from. Defaults to HEAD; no fetch is performed. Fails when the worktree already exists."
-          },
-          "mirrorUncommitted": {
-            "type": "boolean",
-            "description": "Copy the source checkout's uncommitted changes and untracked files into the new checkout. Defaults to false, leaving the new checkout at the pinned commit."
           }
         }
       }

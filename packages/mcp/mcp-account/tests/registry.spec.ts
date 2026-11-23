@@ -9,7 +9,7 @@ import { ATTEMPT, COPY, fakeManager, OPERATION } from './fixture.ts'
 async function registry() {
   const ctx = new Context()
   onTestFinished(async () => { await ctx.fiber.dispose() })
-  const manager = fakeManager([{ name: 'acme', configured: true, oauth: true, status: { state: 'waiting-authorization', reason: 'missing', lastError: 'none' } }])
+  const manager = fakeManager([{ name: 'acme', configured: true, status: { state: 'waiting-authorization', reason: 'missing', lastError: 'none' } }])
   ctx.provide('mcpManager', manager)
   await ctx.plugin(ConnectorAccounts)
   const service = ctx.plugin(McpAccounts)

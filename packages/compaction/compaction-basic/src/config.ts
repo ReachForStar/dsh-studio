@@ -40,9 +40,6 @@ const BASIC_COMPACT_CONFIG_KEYS: ReadonlySet<string> = new Set([
   ...POLICY_CONFIG_KEYS,
   'modelPolicies',
   'auto',
-  'failurePauseThreshold',
-  'summarizationFallback',
-  'windowReset',
 ])
 
 /** Complete exact-target override key set. */
@@ -73,16 +70,6 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
   validatePolicy(config, 'BasicCompactionConfig')
   if (config.auto !== undefined && typeof config.auto !== 'boolean') {
     throw new Error('BasicCompactionConfig: auto must be a boolean')
-  }
-  if (config.summarizationFallback !== undefined && typeof config.summarizationFallback !== 'boolean') {
-    throw new Error('BasicCompactionConfig: summarizationFallback must be a boolean')
-  }
-  if (config.windowReset !== undefined && typeof config.windowReset !== 'boolean') {
-    throw new Error('BasicCompactionConfig: windowReset must be a boolean')
-  }
-  const failurePauseThreshold = config.failurePauseThreshold ?? 3
-  if (!Number.isSafeInteger(failurePauseThreshold) || failurePauseThreshold < 0) {
-    throw new Error('BasicCompactionConfig: failurePauseThreshold must be a non-negative integer')
   }
 
   const headroomTokens = config.headroomTokens ?? 65_536
@@ -119,9 +106,6 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     maxOverflowRetries: config.maxOverflowRetries ?? 1,
     modelPolicies,
     auto: config.auto ?? true,
-    failurePauseThreshold,
-    summarizationFallback: config.summarizationFallback ?? true,
-    windowReset: config.windowReset ?? false,
   })
 }
 
@@ -154,12 +138,6 @@ export function resolveTargetPolicy(
   })
 }
 
-/** Per-call pressure threshold override applied after target-policy resolution. */
-export interface CompactSpecOverride {
-  /** Compact at this fraction of the model's context window for this call. */
-  thresholdRatio?: number
-}
-
 /**
  * Scale one routed policy into concrete token budgets for its model capacity.
  *
@@ -170,15 +148,12 @@ export interface CompactSpecOverride {
  * @param policy - merged policy for the exact routed target.
  * @param contextWindow - positive adapter-owned capacity for that target.
  * @param reservedCompletionTokens - output tokens one routed request reserves.
- * @param override - optional per-call threshold override applied in place of
- *   the policy's configured ratio; retention and retry budgets are unchanged.
  * @returns detached immutable pressure and retention budgets.
  */
 export function resolveCompactSpec(
   policy: ResolvedTargetPolicy,
   contextWindow: number,
   reservedCompletionTokens: number,
-  override?: CompactSpecOverride,
 ): ResolvedCompactSpec {
   const targetKey = `${policy.target.provider}/${policy.target.model}`
   if (!Number.isInteger(contextWindow) || contextWindow <= 0) {
@@ -213,12 +188,8 @@ export function resolveCompactSpec(
       + 'compaction headroomTokens, or configure a larger adapter model contextWindow',
     )
   }
-  const thresholdRatio = override?.thresholdRatio ?? policy.thresholdRatio
-  if (override?.thresholdRatio !== undefined) {
-    assertRatio('BasicCompactionConfig: per-call thresholdRatio', override.thresholdRatio)
-  }
   const thresholdTokens = Math.floor(Math.min(
-    contextWindow * thresholdRatio,
+    contextWindow * policy.thresholdRatio,
     pressureBudgetTokens,
   ))
   const retainTokens = policy.retainTokens === undefined
@@ -234,7 +205,7 @@ export function resolveCompactSpec(
   return deepFreeze({
     target: { ...policy.target },
     contextWindow,
-    thresholdRatio,
+    thresholdRatio: policy.thresholdRatio,
     thresholdTokens,
     retainTokens,
     summarizationProvider: policy.summarizationProvider,

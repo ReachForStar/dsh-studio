@@ -101,19 +101,19 @@ describe('recorded-session corpus policy', () => {
     expect(() => assertSnapshotCorpusPolicy([{ key: 'session/empty', selectedVersions: [] }]))
       .toThrow('session/empty: scenario owns no selected Session role')
     expect(() => assertSnapshotCorpusPolicy([{ key: 'session/old', selectedVersions: [1] }]))
-      .toThrow(`session/old: selected Session generation v1 must be retained baseline v3 or current v${SESSION_FORMAT_VERSION}`)
+      .toThrow(`session/old: selected Session generation v1 must be a retained historical generation (v3 or v4) or current v${SESSION_FORMAT_VERSION}`)
     expect(() => assertSnapshotCorpusPolicy([{ ...completeV0, selectedVersions: [0, SESSION_FORMAT_VERSION] }]))
       .toThrow(`session/v0: selected Session generation v${SESSION_FORMAT_VERSION} does not match expected v0`)
   })
 
   it.each([2, SESSION_FORMAT_VERSION + 1])('rejects unsupported child generation %s', (version) => {
     expect(() => assertSnapshotCorpusPolicy([{ key: 'sdk/invalid-child', selectedVersions: [3, version] }]))
-      .toThrow(`sdk/invalid-child: selected Session generation v${version} must be retained baseline v3 or current v${SESSION_FORMAT_VERSION}`)
+      .toThrow(`sdk/invalid-child: selected Session generation v${version} must be a retained historical generation (v3 or v4) or current v${SESSION_FORMAT_VERSION}`)
   })
 
   it('rejects future unpinned generations', () => {
     expect(() => assertSnapshotCorpusPolicy([{ key: 'session/future', selectedVersions: [SESSION_FORMAT_VERSION + 1] }]))
-      .toThrow(`session/future: selected Session generation v${SESSION_FORMAT_VERSION + 1} must be retained baseline v3 or current v${SESSION_FORMAT_VERSION}`)
+      .toThrow(`session/future: selected Session generation v${SESSION_FORMAT_VERSION + 1} must be a retained historical generation (v3 or v4) or current v${SESSION_FORMAT_VERSION}`)
   })
 
   it.each([SESSION_FORMAT_VERSION, SESSION_FORMAT_VERSION + 1, -1, 0.5])(
@@ -137,8 +137,8 @@ describe('recorded-session corpus policy', () => {
     ]).retainedRoles).toBe(13)
     expect(() => assertSnapshotCorpusPolicy([
       baseline, current,
-      { ...completeV0, selectedVersions: Array<number>(9).fill(0) }, ...adjacent, ...retiredOffice,
-    ])).toThrow('Session corpus retains 14 historical roles; maximum is 13')
+      { ...completeV0, selectedVersions: Array<number>(36).fill(0) }, ...adjacent, ...retiredOffice,
+    ])).toThrow('Session corpus retains 41 historical roles; maximum is 40')
     expect(() => assertSnapshotCorpusPolicy([
       { ...baseline, selectedVersions: [3] }, completeV0, ...adjacent,
     ])).toThrow(`Session corpus requires a baseline/current majority; baseline=1, current=0, retained=${1 + adjacent.length}`)

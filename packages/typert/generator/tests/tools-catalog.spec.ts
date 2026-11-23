@@ -17,7 +17,7 @@ afterEach(() => {
 })
 
 describe('model-driven tool package generation', () => {
-  it('round-trips the complete service and event structure through the runtime registry', { timeout: 30_000 }, async ({ onTestFinished }) => {
+  it('round-trips the complete service and event structure through the runtime registry', { timeout: 120_000 }, async ({ onTestFinished }) => {
     const workspace = new WorkspaceAnalyzer({
       root: workspaceRoot,
       faces: ['host'],

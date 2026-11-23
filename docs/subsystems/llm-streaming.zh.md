@@ -957,26 +957,6 @@ declare abstract class LlmAdapter {
    */
   listModels(_provider: string): Promise<readonly LlmModelInfo[]>;
   /**
-   * List non-chat models (classifiers or image models) this adapter can run.
-   * The base adapter offers none.
-   * @param _provider - provider route owned by this adapter.
-   * @param _type - model category.
-   * @returns discoverable non-chat models.
-   */
-  listNonChatModels(_provider: string, _type: LlmNonChatModelType): Promise<readonly LlmNonChatModelInfo[]>;
-  /**
-   * Run one classifier request. The base adapter rejects it.
-   * @param _request - classification request.
-   * @returns answers by question id.
-   */
-  classify(_request: LlmClassifyRequest): Promise<LlmClassifyResult>;
-  /**
-   * Run one image generation request. The base adapter rejects it.
-   * @param _request - image request.
-   * @returns generated text and image blocks.
-   */
-  generateImages(_request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult>;
-  /**
    * Resolve all metadata available for one exact model. This query is
    * independent of the advisory catalog and does not validate request routing.
    * @param provider - one provider route owned by this adapter.
@@ -1154,29 +1134,6 @@ imageRequestTarget(provider: string, model: string, image: ImageAttachmentRef): 
  * @returns the same deterministic handle text used at adapter dispatch.
  */
 fileRequestText(ref: FileAttachmentRef): string
-
-/**
- * List non-chat models (classifiers or image models) advertised by one
- * registered provider. The base adapter offers none.
- * @param provider - registered provider route.
- * @param type - model category.
- * @returns detached non-chat model metadata.
- */
-async listNonChatModels(provider: string, type: LlmNonChatModelType): Promise<LlmNonChatModelInfo[]>
-
-/**
- * Run one classifier request through the provider's adapter.
- * @param request - classification request.
- * @returns answers by question id.
- */
-classify(request: LlmClassifyRequest): Promise<LlmClassifyResult>
-
-/**
- * Run one image generation request through the provider's adapter.
- * @param request - image request.
- * @returns generated text and image blocks.
- */
-generateImages(request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult>
 
 /**
  * Discover models advertised by one registered provider. Catalog membership

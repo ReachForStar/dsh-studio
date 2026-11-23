@@ -55,9 +55,6 @@ kind: "package-bundle"
 <a id="further-exploration"></a>
 ## 深入探索
 
-`mirrorUncommitted` 默认 false；置为 true 时要求服务把源检出的未提交改动与未跟踪文件复制进新检出，服务配置用 `mirrorMaxFileBytes` 限制单个被复制的未跟踪文件。
-
-
 - [工作树运行时](../worktree/README.zh.md)——配置、创建语义与写权限。
 - [工作目录](../../session/working-directory/README.zh.md)——Session 上下文与离开操作。
 - [工具编写](../../../docs/cookbook/adding-a-tool.zh.md)——规范结果与纯展示函数。

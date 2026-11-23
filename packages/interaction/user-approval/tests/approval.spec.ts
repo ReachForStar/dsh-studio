@@ -9,8 +9,7 @@ import SessionStore, { Session, type SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ApprovalService, { ApprovalOutcome, ApprovalRequest, ApprovalRequestId, setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
-import type { ApprovalRule } from '@deepseek-ai/dsh-user-approval'
+import ApprovalService, { ApprovalOutcome, ApprovalRequest, setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 
 // Keep the Agent structural while exercising committed events on a real managed Session.
 function fakeAgent(ctx: Context, seed: Array<{ type: 'turn/start' | 'turn/end' | 'user/message' }> = [{ type: 'turn/start' }, { type: 'user/message' }]): { agent: Agent; appended: Array<{ type: string; data: Record<string, unknown> }> } {
@@ -24,7 +23,7 @@ function fakeAgent(ctx: Context, seed: Array<{ type: 'turn/start' | 'turn/end' |
     }
   }
   ctx.on('session/event', (subject, event) => {
-    if (subject === session && (event.type === 'approval/asked' || event.type === 'approval/decided' || event.type === 'approval/full-access')) {
+    if (subject === session && (event.type === 'approval/asked' || event.type === 'approval/decided')) {
       appended.push({ type: event.type, data: { ...event.data } })
     }
   })
@@ -111,9 +110,7 @@ describe('ApprovalService.request', () => {
 
     await expect(ctx.approval.request(request)).resolves.toBe('allowed-once')
     expect(carrier).toBe(agent)
-    expect(received).toMatchObject(request)
-    expect(received?.requestId).toBe(appended[0]?.data['id'])
-    expect(received?.fullAccess).toBeUndefined()
+    expect(received).toBe(request)
     expect(appended).toHaveLength(2)
     expect(appended[0]?.data).toMatchObject({
       toolName: 'scoped-tool',
@@ -526,227 +523,5 @@ describe('approval policy (the approval/policy fold)', () => {
     expect(await contextFor()).toBeDefined()
     await fiber.dispose()
     expect(await contextFor()).toBeUndefined()
-  })
-})
-
-describe('ApprovalService configured rules', () => {
-  it('defaults to no rules when the configuration omits them', async () => {
-    const ctx = await context()
-    expect(new ApprovalService(ctx, {})).toBeDefined()
-  })
-
-  async function mountedWith(config: { policy?: 'ask' | 'never'; rules?: ApprovalRule[]; timeoutMs?: number }): Promise<Context> {
-    const ctx = await context()
-    await ctx.plugin(ApprovalService, config)
-    return ctx
-  }
-
-  it('grants a matching allow rule without consulting any answerer', async () => {
-    const ctx = await mountedWith({ rules: [{ action: 'write', resource: 'notes/**', effect: 'allow', match: 'glob' }] })
-    const { agent, appended } = fakeAgent(ctx)
-    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('rejected'))
-    ctx.on('approval/request', answerer)
-
-    const outcome = await ctx.approval.request(requestOf(agent, {
-      toolName: 'write', action: 'write', resources: ['notes/guide.txt'],
-    }))
-
-    expect(outcome).toBe('allowed-once')
-    expect(answerer).not.toHaveBeenCalled()
-    expect(appended.map(event => event.type)).toEqual(['approval/asked', 'approval/decided'])
-    expect(appended[1]?.data).toMatchObject({ outcome: 'allowed-once' })
-  })
-
-  it('rejects a matching deny rule before the answerers and even under the never policy', async () => {
-    const ctx = await mountedWith({
-      policy: 'never',
-      rules: [{ action: 'bash', resource: 'rm *', effect: 'deny', match: 'glob' }],
-    })
-    const { agent } = fakeAgent(ctx)
-    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
-    ctx.on('approval/request', answerer)
-
-    await expect(ctx.approval.request(requestOf(agent, {
-      toolName: 'bash', action: 'bash', resources: ['rm -rf build'],
-    }))).resolves.toBe('rejected')
-    expect(answerer).not.toHaveBeenCalled()
-  })
-
-  it('lets an explicit allow rule unlock the never policy for exactly its action and resource', async () => {
-    const ctx = await mountedWith({
-      policy: 'never',
-      rules: [{ action: 'bash', resource: 'git *', effect: 'allow', match: 'glob' }],
-    })
-    const { agent } = fakeAgent(ctx)
-
-    await expect(ctx.approval.request(requestOf(agent, {
-      toolName: 'bash', action: 'bash', resources: ['git status'],
-    }))).resolves.toBe('allowed-once')
-    await expect(ctx.approval.request(requestOf(agent, {
-      toolName: 'bash', action: 'bash', resources: ['npm test'],
-    }))).resolves.toBe('rejected')
-  })
-
-  it('falls through to the answerers for an ask effect', async () => {
-    const ctx = await mountedWith({
-      rules: [{ action: 'write', resource: '**', effect: 'ask', match: 'glob' }],
-    })
-    const { agent } = fakeAgent(ctx)
-    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
-    ctx.on('approval/request', answerer)
-
-    await expect(ctx.approval.request(requestOf(agent, {
-      toolName: 'write', action: 'write', resources: ['notes/guide.txt'],
-    }))).resolves.toBe('allowed-once')
-    expect(answerer).toHaveBeenCalledOnce()
-  })
-
-  it('defaults an unclassified request to the tool name with no resources', async () => {
-    const ctx = await mountedWith({ rules: [{ action: 'echo', resource: 'notes.txt', effect: 'allow', match: 'glob' }] })
-    const { agent } = fakeAgent(ctx)
-
-    await expect(ctx.approval.request(requestOf(agent))).resolves.toBe('unavailable')
-    await expect(ctx.approval.request(requestOf(agent, { resources: ['notes.txt'] }))).resolves.toBe('allowed-once')
-  })
-
-  it('settles timed-out when the configured answer window elapses', async () => {
-    const ctx = await mountedWith({ timeoutMs: 5 })
-    const { agent, appended } = fakeAgent(ctx)
-    ctx.on('approval/request', () => new Promise<ApprovalOutcome>(() => {}))
-
-    await expect(ctx.approval.request(requestOf(agent))).resolves.toBe('timed-out')
-    expect(appended.at(-1)?.data).toMatchObject({ outcome: 'timed-out' })
-  })
-})
-
-describe('ApprovalService full access', () => {
-  /** Extend the structural fake with the inbox a live Agent owns. */
-  function withInbox(
-    agent: Agent,
-    nextTurn: readonly ReturnType<typeof createUserMessage>[],
-    nextStep: readonly ReturnType<typeof createUserMessage>[] = [],
-  ): Agent {
-    return { ...agent, inbox: { nextTurn, nextStep } } as Agent
-  }
-
-  function message(text: string): ReturnType<typeof createUserMessage> {
-    return createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
-  }
-
-  interface Pending {
-    readonly requestId: ApprovalRequestId
-    settle(outcome: ApprovalOutcome): void
-    readonly done: Promise<ApprovalOutcome>
-  }
-
-  /** Ask once and capture the dispatched identity while the answerer waits. */
-  async function pendingRequest(ctx: Context, agent: Agent): Promise<Pending> {
-    const answer = Promise.withResolvers<ApprovalOutcome>()
-    let requestId: ApprovalRequestId | undefined
-    ctx.on('approval/request', (req) => {
-      requestId = req.requestId
-      return answer.promise
-    })
-    const done = ctx.approval.request(requestOf(agent, { toolName: 'bash' }))
-    await vi.waitFor(() => { expect(requestId).toBeDefined() })
-    return { requestId: requestId!, settle: answer.resolve, done }
-  }
-
-  it('advertises full access only while an applier is registered', async () => {
-    const ctx = await mounted()
-    const { agent } = fakeAgent(ctx)
-    const seen: (boolean | undefined)[] = []
-    ctx.on('approval/request', (req) => {
-      seen.push(req.fullAccess)
-      return Promise.resolve<ApprovalOutcome>('allowed-once')
-    })
-
-    await ctx.approval.request(requestOf(agent))
-    const dispose = ctx.approval.registerFullAccess(() => {})
-    await ctx.approval.request(requestOf(agent))
-    dispose()
-    await ctx.approval.request(requestOf(agent))
-
-    expect(seen).toEqual([undefined, true, undefined])
-    expect(() => { ctx.approval.registerFullAccess(() => {}) }).not.toThrow()
-  })
-
-  it('refuses a second applier registration', async () => {
-    const ctx = await mounted()
-    ctx.approval.registerFullAccess(() => {})
-
-    expect(() => { ctx.approval.registerFullAccess(() => {}) }).toThrow(/already registered/)
-  })
-
-  it('commits the pending input identities as one receipt and applies the grant', async () => {
-    const ctx = await mounted()
-    const { agent, appended } = fakeAgent(ctx)
-    const live = withInbox(agent, [message('a'), message('b')], [message('c')])
-    const applied = vi.fn()
-    ctx.approval.registerFullAccess(applied)
-    const pending = await pendingRequest(ctx, live)
-
-    const commit = await ctx.approval.requestFullAccess(live, pending.requestId)
-
-    const queued = [String(live.inbox.nextTurn[0]!.id), String(live.inbox.nextTurn[1]!.id), String(live.inbox.nextStep[0]!.id)]
-    expect(commit.targets).toEqual(queued)
-    expect(applied).toHaveBeenCalledWith(commit)
-    const receipt = appended.find(event => event.type === 'approval/full-access')
-    expect(receipt?.data).toEqual({ requestId: pending.requestId, targets: commit.targets })
-    expect(appended.map(event => event.type)).toEqual(['approval/asked', 'approval/full-access'])
-    pending.settle('allowed-once')
-    await pending.done
-  })
-
-  it('reuses the committed targets when the same request retries', async () => {
-    const ctx = await mounted()
-    const { agent, appended } = fakeAgent(ctx)
-    const live = withInbox(agent, [message('first')])
-    ctx.approval.registerFullAccess(() => {})
-    const pending = await pendingRequest(ctx, live)
-
-    const first = await ctx.approval.requestFullAccess(live, pending.requestId)
-    // Input queued after the commit is outside the receipt.
-    const widened = withInbox(agent, [message('first'), message('second')])
-    const retried = await ctx.approval.requestFullAccess(widened, pending.requestId)
-
-    expect(retried.targets).toEqual(first.targets)
-    expect(appended.filter(event => event.type === 'approval/full-access')).toHaveLength(1)
-    pending.settle('allowed-once')
-    await pending.done
-  })
-
-  it('rejects a request that no longer waits and one with no applier', async () => {
-    const ctx = await mounted()
-    const { agent } = fakeAgent(ctx)
-    const live = withInbox(agent, [])
-    const pending = await pendingRequest(ctx, live)
-
-    await expect(ctx.approval.requestFullAccess(live, pending.requestId))
-      .rejects.toMatchObject({ code: 'FULL_ACCESS_UNAVAILABLE' })
-
-    ctx.approval.registerFullAccess(() => {})
-    pending.settle('rejected')
-    await pending.done
-    await expect(ctx.approval.requestFullAccess(live, pending.requestId))
-      .rejects.toMatchObject({ code: 'FULL_ACCESS_STALE' })
-  })
-
-  it('rejects a concurrent commit as busy until the first settles', async () => {
-    const ctx = await mounted()
-    const { agent } = fakeAgent(ctx)
-    const live = withInbox(agent, [])
-    const gate = Promise.withResolvers<undefined>()
-    const applied = vi.fn(() => gate.promise)
-    ctx.approval.registerFullAccess(applied)
-    const pending = await pendingRequest(ctx, live)
-
-    const first = ctx.approval.requestFullAccess(live, pending.requestId)
-    await expect(ctx.approval.requestFullAccess(live, pending.requestId))
-      .rejects.toMatchObject({ code: 'FULL_ACCESS_BUSY' })
-    gate.resolve(undefined)
-    await expect(first).resolves.toMatchObject({ requestId: pending.requestId })
-    pending.settle('allowed-once')
-    await pending.done
   })
 })

@@ -65,15 +65,6 @@ export interface ContextBreakdownProjection {
   toolsTokens: number
   /** Heuristic tokens of every other visible surface node. */
   messageTokens: number
-  /**
-   * Idle-cost estimate of one empty request: the surface without tool schemas
-   * (`systemTokens + messageTokens`), so it is independent of the model and the
-   * window. Do not add it to the other three fields, which already carry the
-   * same mass.
-   */
-  idleCostTokens: number
-  /** Per-tool schema estimates of the newest request envelope; empty before any request. */
-  tools: readonly { name: string; tokens: number }[]
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {

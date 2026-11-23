@@ -38,4 +38,4 @@ Tools named `mcp__linear__*` come from the Linear plugin. In user-facing replies
 
 ## MCP resource servers
 
-Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: ["linear"]. Call watch_mcp_resource with the same server name and a resource URI to wait for that resource's next update.
+Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: ["linear"].

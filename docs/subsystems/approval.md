@@ -18,15 +18,14 @@ Every request receives a fresh `ApprovalRequestId`. The brand pairs the `approva
 type ApprovalRequestId = Branded<'ApprovalRequestId'>
 ```
 
-`ApprovalOutcome` is closed and fail-closed. `allowed-once` grants only the asked-about action; callers deny on `rejected`, `cancelled`, `unavailable`, and `timed-out`. A missing, non-owning, throwing, or non-conforming answerer becomes `unavailable` rather than opening the gate; an elapsed answer window becomes `timed-out`.
+`ApprovalOutcome` is closed and fail-closed. `allowed-once` grants only the asked-about action; callers deny on `rejected`, `cancelled`, and `unavailable`. A missing, non-owning, throwing, or non-conforming answerer becomes `unavailable` rather than opening the gate.
 
 ```ts type-equiv
 /**
  * Closed approval outcomes: a one-shot grant, explicit rejection, withdrawn
- * request, unavailable answerer, or an elapsed answer window. Callers fail
- * closed on everything except `allowed-once`.
+ * request, or unavailable answerer. Callers fail closed on `unavailable`.
  */
-type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable' | 'timed-out'
+type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'
 ```
 
 ## Per-session policy
@@ -82,10 +81,6 @@ interface ApprovalRequest extends ApprovalRequestEvent {
 }
 ```
 
-## Full-access commit
-
-An approval prompt is also the place a person can grant full access instead of deciding one action. `registerFullAccess(handler)` installs the single applier; while one is registered, every dispatched `ApprovalRequestEvent` carries `requestId` and `fullAccess: true`. `requestFullAccess(agent, requestId)` requires that exact request to still wait (`FULL_ACCESS_STALE` otherwise), refuses a second commit for the same session while the first settles (`FULL_ACCESS_BUSY`), and fails without an applier (`FULL_ACCESS_UNAVAILABLE`). It appends one `approval/full-access` receipt holding the pending input identities, then runs the applier; a retry for the same request reuses the receipt, so input queued later stays outside the grant. The receipt is a log-only audit record, not a rule: nothing about it auto-allows a later request.
-
 ## Dispatch and audit
 
 `ctx.approval.request(req)` requires the requesting session to be inside an open turn. It appends `approval/asked`, obtains one outcome, appends the matching `approval/decided`, and resolves with that outcome. The `never` policy is enforced inside the service before waterfall dispatch, so even an answerer registered later with `prepend` cannot bypass it. Answerers return an outcome when they own the request or call `next()` to delegate; the first answer occupies the single decision slot.
@@ -137,112 +132,6 @@ setPolicy(agent: Agent, policy: ApprovalPolicy): void
 async request(req: ApprovalRequest): Promise<ApprovalOutcome>
 
 /**
- * Record the one applier that grants full access from an approval prompt.
- * A deployment registers at most one: the commit is a single explicit
- * action, not a rule, and two independent appliers could widen the same
- * session twice with different meanings. While a handler is registered,
- * every dispatched request advertises `fullAccess`, so clients can offer
- * the action only where the host can execute it.
- * @param handler - invoked after the receipt commits; owns the policy write.
- * @returns the disposer that withdraws this handler.
- * @throws when another handler is already registered.
- */
-registerFullAccess(handler: FullAccessHandler): () => void
-
-/**
- * Whether one approval request is still waiting for its decision.
- * @param session - the session that owns the request.
- * @param requestId - the request identity carried to the client.
- * @returns whether an answerer chain is still awaiting this request.
- */
-isPending(session: Session, requestId: ApprovalRequestId): boolean
-
-/**
- * Commit full access for one pending prompt. This is a distinct action, not
- * an allowed-once outcome: it records a durable receipt for the exact
- * request, covers the input identities pending when it commits, and then
- * hands the receipt to the registered applier, which writes the wider
- * policy. The targets are fixed at the first commit; a retry for the same
- * request reuses them, so input queued after the commit stays outside the
- * grant. One commit per session may be in flight: a concurrent retry fails
- * with `FULL_ACCESS_BUSY` instead of racing the policy write.
- * @param agent - the agent whose pending request is being granted.
- * @param requestId - the exact pending request the user acted on.
- * @returns the committed receipt: request identity and covered targets.
- * @throws `FullAccessError` when the request is no longer pending, the
- *   composition has no applier, or another commit is still in flight.
- */
-async requestFullAccess(agent: Agent, requestId: ApprovalRequestId): Promise<FullAccessCommit>
-
-/**
- * Read the rules stored for one project directory.
- * @param cwd - the session's recorded working directory.
- * @returns the stored rules, or none without a directory or storage.
- */
-projectRulesFor(cwd: string | undefined): readonly ApprovalRule[]
-
-/**
- * Read the rules added to one Session's memory for its lifetime.
- * @param session - the session whose rules apply.
- * @returns the session's ordered rules.
- */
-sessionRulesFor(session: Session): readonly ApprovalRule[]
-
-/**
- * Append one in-memory rule to a Session. The rule is evaluated after
- * project rules and disappears with the Session; nothing is persisted.
- * @param session - the session receiving the rule.
- * @param rule - the rule to append.
- * @returns the session's complete rule list after the write.
- */
-addSessionRule(session: Session, rule: ApprovalRule): readonly ApprovalRule[]
-
-/**
- * Remove one in-memory rule from a Session by position.
- * @param session - the session owning the rule.
- * @param index - the rule's position in {@link sessionRulesFor}.
- * @returns the removed rule, or `undefined` when the position does not exist.
- */
-removeSessionRule(session: Session, index: number): ApprovalRule | undefined
-
-/**
- * Append one rule to a project's stored rules.
- * @param cwd - the project directory.
- * @param rule - the rule to append.
- * @returns the project's complete rule list after the write.
- * @throws when the deployment mounts no storage domain for rules.
- */
-async addProjectRule(cwd: string, rule: ApprovalRule): Promise<readonly ApprovalRule[]>
-
-/**
- * Remove one rule from a project by zero-based position.
- * @param cwd - the project directory.
- * @param index - the rule's position in {@link projectRulesFor}.
- * @returns the removed rule, or `undefined` when the position does not exist.
- * @throws when the deployment mounts no storage domain for rules.
- */
-async removeProjectRule(cwd: string, index: number): Promise<ApprovalRule | undefined>
-
-/**
- * Record the user's replacement arguments for one pending call. The pipeline
- * consumes the text when the answer is `rejected`, so the model receives it
- * as the tool failure reason and can retry with the corrected arguments.
- * @param agent - the agent whose session owns the call.
- * @param callId - the exact tool call the correction belongs to.
- * @param text - the user's replacement arguments or instruction.
- */
-recordCorrection(agent: Agent, callId: ToolCallId, text: string): void
-
-/**
- * Consume one recorded correction. Reading removes it, so a stale rejection
- * reason cannot leak into a later call.
- * @param agent - the agent whose session owns the call.
- * @param callId - the exact tool call being rejected.
- * @returns the correction text, or `undefined` when none was recorded.
- */
-takeCorrection(agent: Agent, callId: ToolCallId): string | undefined
-
-/**
  * Read the session override without applying the configured default.
  * @param session - session whose log supplies the override.
  * @returns the last logged policy, or `undefined` without one.
@@ -250,7 +139,7 @@ takeCorrection(agent: Agent, callId: ToolCallId): string | undefined
 overrideOf(session: Session): ApprovalPolicy | undefined
 ```
 
-Types: [Agent](core.md) · [Session](session.md) · [ToolCallId](llm-streaming.md)
+Types: [Agent](core.md) · [Session](session.md)
 
 Source: [`packages/interaction/user-approval/src/index.ts`](../../packages/interaction/user-approval/src/index.ts)
 

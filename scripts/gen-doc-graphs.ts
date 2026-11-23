@@ -108,30 +108,6 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
-    key: 'inputHandling',
-    pkg: 'interaction/input-handled',
-    title: 'Input handling',
-    mode: 'service',
-    consumers: ['api/session-controller'],
-    note: 'Runs registered interceptors on prompt submission before the input reaches the model.',
-  },
-  {
-    key: 'gitCheckpoints',
-    pkg: 'experimental/git-checkpoint',
-    title: 'Git checkpoints',
-    mode: 'service',
-    consumers: [],
-    note: 'Runs git stash create/apply in the session working directory for the /checkpoint command.',
-  },
-  {
-    key: 'virtualModels',
-    pkg: 'core/agent-virtual-model',
-    title: 'Virtual model routing',
-    mode: 'service',
-    consumers: ['core/agent-loop'],
-    note: 'Owns the virtual model registry and per-request physical resolution; agent-loop asks it through AgentModel.',
-  },
-  {
     key: 'remoteConnection',
     pkg: 'client-remote-connection',
     title: 'Remote browser login',
@@ -278,14 +254,6 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Forge panel Remote',
     mode: 'service',
     note: 'Streams one panel state per followed Session: Git inspection using Session permissions, the recognized code host and its sign-in, and the bound change requests with polled status.',
-  },
-  {
-    key: 'arena',
-    pkg: 'arena',
-    title: 'Model comparison runs',
-    mode: 'service',
-    consumers: [],
-    note: 'Runs one prompt through several models, each in its own checkout on a shared base commit, and applies a chosen contender diff to the workspace on request.',
   },
   {
     key: 'worktrees',

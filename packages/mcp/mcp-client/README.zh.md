@@ -70,8 +70,6 @@ kind: "package-reference"
 | `reconnect.maxAttempts` | `10` | 每次中断内连续失败尝试次数上限，超出后放弃 |
 | `toolLoading` | `eager` | `on-demand` 让服务器的工具不进入任何工具列表，直到 agent 用 `mcp__<serverName>__load_tools` 加载 |
 | `catalogDescriptionMaxLength` | `160` | 按需服务器提示词目录中每个工具摘要的最大字符数 |
-| `resourceWatchTimeoutMs` | `30,000` | 模型省略 `timeoutMs` 时，单次 `watch_mcp_resource` 的默认等待 |
-| `maxResourceWatchTimeoutMs` | `300,000` | 对模型请求的资源等待所施加的上限 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-mcp-client)是每个受支持字段的穷尽式真源。
 
@@ -118,18 +116,6 @@ kind: "package-reference"
 凭据通知只有在解析值变化时才重建连接；值相同的通知保留连接及其重连预算。替代连接启动前，旧连接必须关闭并完成本地清理。清理未完成会阻止替换，直到宿主重启。
 
 启用模板展开时，失败诊断、工具调用失败与 MCP `isError` 工具结果文本保留上游消息，但会把本实例解析过的每个值（包括此前轮换的值及其 URL 编码形式）替换为 `[redacted]`，失败的 `name` 与 `code` 保持不变。成功工具结果保留原始内容。
-
-### 资源更新
-
-服务器声明 `resources.subscribe` 后，共享的 [`watch_mcp_resource`](../mcp-resources/README.zh.md) 工具可以等待某个资源的下一次变化。现代连接打开 SDK 的 `subscriptions/listen` 流；旧版连接发送 `resources/subscribe`。两者都会等待该 URI 的首条 `notifications/resources/updated`，随后释放订阅；取消调用或连接关闭时也会释放。同一 URI 的并发等待共享一个订阅，由最后一个等待者释放。服务器没有该能力时，调用直接失败，而不是等待一条不可能到达的通知。`resourceWatchTimeoutMs` 设定省略超时时的等待，`maxResourceWatchTimeoutMs` 为更大的模型请求封顶；连接在加载时重新校验这两个值。
-
-### 共享连接
-
-在组合中挂载一次 `@deepseek-ai/dsh-mcp-client/pool` 后，解析后连接配置完全相同的实例共用一个传输与一次握手：传输类型、命令、参数、工作目录、环境、URL、头、`startupTimeoutMs` 与 `closeTimeoutMs`。服务器名称不属于该身份，因此两个以不同名称暴露同一服务器的 Agent 作用域仍共用连接，并各自保留工具名称。环境与头的值只以指纹进入身份。出厂基础组合已挂载连接池行。
-
-每个实例保留自己的工具注册、重连预算、状态与指令归属。最后一个断开的实例关闭传输；释放一个实例后，连接继续为其余实例服务。共享连接关闭时会通知每个持有者，各持有者按自己的重连策略处理。资源等待保留各实例的超时限制，共享连接负责把更新通知转发给每个持有者。
-
-连接池不重试失败的握手。无法建立的共享连接会在进程生命周期内把该配置标记为不可共享，并记录一条警告；该实例及之后的所有实例改为各自建立连接，行为与没有连接池时一致。省略连接池行会关闭共享，不影响其他行为。
 
 <a id="oauth"></a>
 ### OAuth
@@ -179,10 +165,6 @@ kind: "package-reference"
 | [`src/oauth-credentials.ts`](src/oauth-credentials.ts) | 持久化的授权与客户端记录，刷新经凭据提供方串行执行 |
 | [`src/oauth.ts`](src/oauth.ts) | 显式浏览器授权：回调、流程与进行中的工作共用一个所有者 |
 | [`src/types.ts`](src/types.ts) | 客户端可用的连接状态、探测结果与 OAuth 尝试类型（`./types`） |
-| [`src/client.ts`](src/client.ts) | 受监督连接与共享连接共用的 SDK 客户端构造 |
-| [`src/pool.ts`](src/pool.ts) | 共享连接（`./pool`）：租约生命周期、持有者通知、独占回退 |
-| [`src/pool-key.ts`](src/pool-key.ts) | 基于解析后连接输入的共享键，密钥只取指纹 |
-| [`src/resource-watch.ts`](src/resource-watch.ts) | 单世代资源等待：双协议世代订阅、共享计数、通知路由与释放 |
 
 
 导出的 `createMcpToolDefinition(ctx, options)` 将上游工具 schema 和原始结果回调适配到相同的规范值、错误和持久化图像投影。每次回调都收到原样的 `ToolExecution`，包括其 Agent 和取消信号；SDK 的规范类型校验会在投影前检查返回结果。调用方负责注册、取消截止时间和提供方卸载。原生 Cua Driver 提供方使用此适配函数，无需打开 MCP 传输。

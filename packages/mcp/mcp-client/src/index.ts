@@ -94,10 +94,6 @@ export interface StdioConfig {
   toolLoading: 'eager' | 'on-demand'
   /** Maximum characters of each tool's summary in an on-demand server's prompt catalog (default 160). */
   catalogDescriptionMaxLength: number
-  /** Wait used when a resource-watch request omits its own timeout, in milliseconds (default 30000). */
-  resourceWatchTimeoutMs?: number
-  /** Ceiling applied to a resource-watch request's timeout, in milliseconds (default 300000). */
-  maxResourceWatchTimeoutMs?: number
 }
 
 /** Config for connecting to an MCP server over Streamable HTTP (SSE). */
@@ -134,10 +130,6 @@ export interface StreamableHttpConfig {
   toolLoading: 'eager' | 'on-demand'
   /** Maximum characters of each tool's summary in an on-demand server's prompt catalog (default 160). */
   catalogDescriptionMaxLength: number
-  /** Wait used when a resource-watch request omits its own timeout, in milliseconds (default 30000). */
-  resourceWatchTimeoutMs?: number
-  /** Ceiling applied to a resource-watch request's timeout, in milliseconds (default 300000). */
-  maxResourceWatchTimeoutMs?: number
 }
 
 /** Configuration for one stdio or Streamable HTTP MCP server. */

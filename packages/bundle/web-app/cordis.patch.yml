@@ -66,15 +66,6 @@
     # Browser Session export: `/export` command plus the shared download dialog.
     - id: session-log-download
       name: '@deepseek-ai/dsh-session-log-export'
-
-    # Side questions about the displayed Session: one forked child per question,
-    # answered from the completed history without adding a turn.
-    - id: btw
-      name: '@deepseek-ai/dsh-btw'
-
-    # Session-menu application choices over Host resolution on macOS, Windows,
-    # and Linux. An empty catalog hides the action. The Host routes and browser
-    # controls also serve the file-tree directory opener.
     - id: open-in-app
       name: '@deepseek-ai/dsh-host-open-in-app'
       config:
@@ -391,12 +382,6 @@
     # connectors register their accounts with `ctx.connectorAccounts`.
     - id: ui-connector-account
       name: '@deepseek-ai/dsh-client-ui-connector-account'
-
-    # MCP servers tab: the managed fleet's live status, with authorization,
-    # grant removal, and restart over the mcpManager Remote.
-    - id: ui-settings-mcp
-      name: '@deepseek-ai/dsh-client-ui-settings-mcp'
-
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'
 
@@ -408,11 +393,6 @@
 
     - id: ui-chat
       name: '@deepseek-ai/dsh-client-ui-chat'
-
-    # Chat Markdown mermaid fences: the drawn diagram after a reply settles,
-    # the code block while it streams or after a drawing failure.
-    - id: ui-markdown-mermaid
-      name: '@deepseek-ai/dsh-client-ui-markdown-mermaid'
 
     # Official occupants for the sidebar brand slots and the home whale frame layer.
     - id: ui-brand-official
@@ -718,31 +698,6 @@
       name: '@deepseek-ai/dsh-agent-preset-registry'
       config:
         default: standard
-
-    # ── 从 qwen-code 吸收的宿主层能力 ─────────────────────────────────────
-    # Agent Plugins v1 加载器：`plugins` 为空时不注册任何技能或 MCP 服务器，
-    # 部署者在自己的 profile patch 里列出插件根目录即可启用。
-    - id: agent-plugins
-      name: '@deepseek-ai/dsh-agent-plugins'
-
-    # 推测执行运行方：预测下一请求并预执行只读调用，写操作落 overlay。
-    # 它必须同时拿到 `provider` 与 `model`，所以默认关闭；在 profile patch 里
-    # 按 id 覆盖这两项并去掉 `disabled` 即启用。不给 `workspaceRoot` 时按每个
-    # 会话自己的工作目录预测，一份部署因此可以服务任意工作区。
-    - id: speculation
-      name: '@deepseek-ai/dsh-speculation/runner'
-      disabled: true
-      config:
-        overlayRoot: !!js dshHomePath('speculation')
-
-    # Arena 多模型对比：每模型一个 worktree 与一个会话，按需应用胜者 diff。
-    # 它只提供程序化服务，没有界面与工具；调用方自行驱动。
-    - id: arena
-      name: '@deepseek-ai/dsh-arena'
-      config:
-        workspaceRoot: !!js process.cwd()
-        worktreeRoot: !!js dshHomePath('arena/worktrees')
-
     # webhook 规则运行时：提供投递原语与 `ctx.webhookRuntime`，
     # 具体规则由集成包（如 webhook-github）注册。
     - id: webhook

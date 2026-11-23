@@ -7,7 +7,6 @@
 import { Context, Service, type Volatile } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { FsError } from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-fs'
 import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
@@ -64,8 +63,6 @@ export interface Config {
    * listing, so it bounds only their stderr.
    */
   maxOutputBytes?: number
-  /** Maximum size of one untracked file copied into a mirroring checkout. */
-  mirrorMaxFileBytes?: number
 }
 
 type ResolvedConfig = Required<Config> & ProcessConfig
@@ -113,7 +110,6 @@ export class WorktreeService extends Service {
     timeoutMs: z.number().default(300_000),
     graceMs: z.number().default(3_000),
     maxOutputBytes: z.number().default(65_536),
-    mirrorMaxFileBytes: z.number().default(20 * 1_024 * 1_024),
   })
 
   private readonly config: ResolvedConfig
@@ -133,7 +129,7 @@ export class WorktreeService extends Service {
     for (const key of ['gitCommand', 'nodeCommand'] as const) {
       if (this.config[key].trim().length === 0) throw new Error(`worktree: ${key} must not be empty`)
     }
-    for (const key of ['timeoutMs', 'graceMs', 'maxOutputBytes', 'mirrorMaxFileBytes'] as const) {
+    for (const key of ['timeoutMs', 'graceMs', 'maxOutputBytes'] as const) {
       const value = this.config[key]
       if (!Number.isSafeInteger(value) || value <= 0 || value > MAX_TIMER_DELAY_MS) {
         throw new Error(`worktree: ${key} must be a positive integer no greater than ${MAX_TIMER_DELAY_MS}`)
@@ -165,8 +161,7 @@ export class WorktreeService extends Service {
   /**
    * Create a fresh branch and checkout at a pinned local revision, then enter it. A request that asks to fetch
    * first fetches its remote-tracking branch, only that branch and without tags, then pins the fetched commit.
-   * Existing branches or checkout paths fail. Uncommitted files stay in the source checkout unless the request
-   * asks to mirror them.
+   * Existing branches or checkout paths fail. Uncommitted files stay in the source checkout.
    * Checkout disables configured clean, smudge, and process filters without changing Git config.
    * Repository-local replacement refs still apply; baseCommit reports the resolved object name.
    * The new checkout becomes current only after Git setup succeeds. Failures may retain newly
@@ -188,7 +183,7 @@ export class WorktreeService extends Service {
   ): Promise<CreatedWorktree> {
     const operationSignal = signal === undefined ? this.lifetime.signal : AbortSignal.any([this.lifetime.signal, signal])
     operationSignal.throwIfAborted()
-    const operation = this.createCheckout(agent, this.resolve(agent, request), request.mirrorUncommitted === true, operationSignal, onPhase)
+    const operation = this.createCheckout(agent, this.resolve(agent, request), operationSignal, onPhase)
     this.pending.add(operation)
     try {
       return await operation
@@ -336,7 +331,6 @@ export class WorktreeService extends Service {
   private async createCheckout(
     agent: Agent,
     { branch, revision, fetch }: WorktreeSpec,
-    mirrorUncommitted: boolean,
     signal: AbortSignal,
     onPhase: ((phase: CreateWorktreePhase) => void) | undefined,
   ): Promise<CreatedWorktree> {
@@ -367,59 +361,12 @@ export class WorktreeService extends Service {
       const overrides = await filterOverrides(run, path)
       onPhase?.('checkout')
       await run(path, ['--work-tree', path, 'reset', '--hard', '--no-recurse-submodules', baseCommit], undefined, overrides)
-      if (mirrorUncommitted) await this.mirrorDirtyState(run, repositoryRoot, path, policy, signal)
       const canonicalPath = await this.ctx.workingDirectory.set(agent, path, signal)
       const created: CreatedWorktree = { path: canonicalPath, branch, baseCommit, repositoryRoot }
       appendPluginRecord(agent.session, CREATED_RECORD, created)
       return created
     } catch (error) {
       throw retainedFailure(`Could not finish worktree ${branch} at ${path}. Any created checkout and branch are retained.`, error, signal)
-    }
-  }
-
-  /**
-   * Copy uncommitted work from the source checkout into a new checkout.
-   * Tracked changes travel through a `git stash create` snapshot, which never
-   * touches the source index or working tree; untracked files are copied one by
-   * one through the filesystem provider under the caller's sandbox policy.
-   * @param run - confined Git runner bound to the caller's policy and signal.
-   * @param repositoryRoot - source checkout root.
-   * @param checkoutPath - new checkout that receives the mirrored work.
-   * @param policy - sandbox policy governing every copied file.
-   * @param signal - cancellation between files.
-   */
-  private async mirrorDirtyState(
-    run: GitRun,
-    repositoryRoot: string,
-    checkoutPath: string,
-    policy: SandboxExecutionPolicy,
-    signal: AbortSignal,
-  ): Promise<void> {
-    const snapshot = (await run(repositoryRoot, ['stash', 'create'])).stdout.trim()
-    if (snapshot.length > 0) {
-      await run(checkoutPath, ['--work-tree', checkoutPath, 'stash', 'apply', snapshot])
-    }
-    const untracked = (await run(repositoryRoot, ['ls-files', '--others', '--exclude-standard', '-z'])).stdout
-    for (const relative of untracked.split('\0')) {
-      if (relative.length === 0) continue
-      signal.throwIfAborted()
-      const source = await this.ctx.fs.resolve(relative, { cwd: repositoryRoot, signal })
-      const destination = await this.ctx.fs.resolve(relative, { cwd: checkoutPath, signal })
-      const bytes = await this.ctx.fs.readBytes(source, signal, this.config.mirrorMaxFileBytes)
-      // A text-only backend cannot take raw bytes; copy UTF-8 content through
-      // its text seam and leave genuinely binary files to the byte path.
-      const text = decodeUtf8Bytes(bytes)
-      if (text !== undefined) {
-        try {
-          await this.ctx.fs.writeBytes(destination, bytes, undefined, signal, policy)
-          continue
-        } catch (error: unknown) {
-          if (!(error instanceof FsError) || error.code !== 'FS_UNSUPPORTED_BINARY_WRITE') throw error
-        }
-        await this.ctx.fs.writeText(destination, text, undefined, signal, policy)
-        continue
-      }
-      await this.ctx.fs.writeBytes(destination, bytes, undefined, signal, policy)
     }
   }
 
@@ -619,13 +566,3 @@ async function filterOverrides(run: GitRun, path: string): Promise<NodeJS.Proces
 }
 
 export default WorktreeService
-
-
-/** Decode bytes as UTF-8 text, or `undefined` when the content is not text. */
-function decodeUtf8Bytes(bytes: Uint8Array): string | undefined {
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
-  } catch {
-    return undefined
-  }
-}

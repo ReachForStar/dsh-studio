@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Eingabehandhabung",
-    "description": "Fängt Benutzereingaben ab, bevor sie in das Modell gelangen."
-  }
-}

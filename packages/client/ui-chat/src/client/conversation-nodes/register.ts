@@ -14,7 +14,6 @@ import { registerToolConversationNode } from './tool.ts'
 import { registerTurnErrorConversationNode } from './turn-error.ts'
 import { registerTurnMaxTokensConversationNode } from './turn-max-tokens.ts'
 import { registerTurnProcess } from './turn-process.ts'
-import { registerTurnSourcesConversationNode } from './turn-sources.ts'
 import { registerTurnTailConversationNode } from './turn-tail.ts'
 import { processGroupDefinition } from './process-groups.ts'
 
@@ -36,7 +35,6 @@ export function registerConversationNodes(ctx: Context): void {
   registerRetryConversationNode(ctx)
   registerTurnErrorConversationNode(ctx)
   registerTurnMaxTokensConversationNode(ctx)
-  registerTurnSourcesConversationNode(ctx)
   registerTurnTailConversationNode(ctx)
   registerUnknownConversationFallback(ctx)
   registerChatConversationView(ctx)

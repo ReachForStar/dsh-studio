@@ -69,7 +69,6 @@
     "@deepseek-ai/dsh-token-meter": "workspace:*",
     "@deepseek-ai/dsh-tool-testkit": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*",
-    "@deepseek-ai/dsh-compaction-image-offload": "workspace:*",
-    "@deepseek-ai/dsh-goal": "workspace:*"
+    "@deepseek-ai/dsh-compaction-image-offload": "workspace:*"
   }
 }

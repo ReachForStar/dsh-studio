@@ -83,16 +83,6 @@ interface ToolDefinition extends ToolSchema {
    */
   isConcurrencySafe?(args: unknown): boolean
   /**
-   * Classify one accepted call for approval rules: the action name and the
-   * resource names a `{action, resource, effect}` rule can match. Pure and
-   * synchronous; a throw or omission falls back to the tool name with no
-   * resources, so a failing classifier cannot widen a rule. Never
-   * model-visible.
-   * @param args - parsed arguments after the schema boundary.
-   * @returns the action and zero or more resource names.
-   */
-  approvalResources?(args: unknown): ToolApprovalResources
-  /**
    * Optional: how to present the PENDING state of one call in a UI, derived from
    * the call's `args` (parsed arguments, `unknown` — the tool validates/narrows
    * its own input). Returns a {@link ToolCallView} (a `card`-tagged render intent),
@@ -567,17 +557,6 @@ type PreToolDecision =
   | { kind: 'ask'; reason?: string; displayReason?: { readonly en: string; readonly [locale: string]: string } }
 ```
 
-`tools/permission-request` runs before the approval seam for an `ask` call; a hook or policy listener may deny without prompting, while returning nothing or calling `next()` delegates. It cannot grant, so human-only requests still reach a person.
-
-```ts type-equiv
-/**
- * Pre-approval decision for an `ask` call. A listener may deny before any
- * answerer sees the request; returning nothing (or calling `next()`) delegates
- * to the approval seam. This waterfall cannot grant: only `allowed-once` from
- * the approval service runs the call.
- */
-type PermissionRequestDecision = { kind: 'deny'; reason?: string }
-```
 
 
 ```ts type-equiv
@@ -817,30 +796,6 @@ Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a nor
  * @mode waterfall
  */
 'tools/execute'(this: Scoped<ToolsService>, exec: ToolDispatchExecution, next: () => Promise<ToolExecutionResult>): Promise<ToolExecutionResult>
-```
-
-Types: [Scoped](scope.md)
-
-Source: [`packages/core/tools/src/events.ts`](../../packages/core/tools/src/events.ts)
-
-<a id="toolspermission-request--waterfall"></a>
-
-#### `tools/permission-request` — waterfall
-
-Decide an `ask` call before the approval seam prompts anyone. A listener may deny; returning nothing or calling `next()` delegates. This point cannot grant: only the approval service's `allowed-once` runs the call, so a human-only request stays human-only. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
-
-```ts cordis-catalog
-/**
- * Decide an `ask` call before the approval seam prompts anyone. A listener
- * may deny; returning nothing or calling `next()` delegates. This point
- * cannot grant: only the approval service's `allowed-once` runs the call,
- * so a human-only request stays human-only.
- * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
- * @param exec - the pending call whose approval would otherwise be requested.
- * @param next - delegates to the next listener; the default result is no decision.
- * @mode waterfall
- */
-'tools/permission-request'(this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PermissionRequestDecision | undefined>): Promise<PermissionRequestDecision | undefined>
 ```
 
 Types: [Scoped](scope.md)

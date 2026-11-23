@@ -22,13 +22,8 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/hooks-claude-code': '@deepseek-ai/dsh-hooks-claude-code',
   'packages/experimental/hooks-codex': '@deepseek-ai/dsh-hooks-codex',
   'packages/experimental/webhook-github': '@deepseek-ai/dsh-webhook-github',
-  'packages/experimental/fork-notice': '@deepseek-ai/dsh-fork-notice',
-  'packages/experimental/warming': '@deepseek-ai/dsh-warming',
-  'packages/experimental/openapi-tools': '@deepseek-ai/dsh-openapi-tools',
   'packages/experimental/forge-gitlab': '@deepseek-ai/dsh-forge-gitlab',
   'packages/experimental/deepseek-chat-import': '@deepseek-ai/dsh-deepseek-chat-import',
-  'packages/experimental/codemode': '@deepseek-ai/dsh-codemode',
-  'packages/experimental/git-checkpoint': '@deepseek-ai/dsh-git-checkpoint',
 } satisfies Record<`packages/experimental/${string}`, `@deepseek-ai/dsh-${string}`>
 
 /** Legacy npm namespace, allowed only in `LEGACY_PREFIXED_EXPERIMENTAL_PACKAGE_DIRECTORIES`. */
@@ -134,12 +129,6 @@ export function isPublicExperimentalPackageDirectory(
  * default reach requires updating this record.
  */
 export const DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES: Readonly<Record<string, string>> = {
-  // 提示缓存保活：默认预设按间隔重放空闲会话的请求前缀，属每个安装都启用的能力。
-  '@deepseek-ai/dsh-warming': '默认预设为每个安装提供提示缓存保活',
-  // fork 归属提示：默认预设在 fork 子会话首步说明后台工作归属，避免模型重复等待。
-  '@deepseek-ai/dsh-fork-notice': '默认预设为每个安装提供 fork 归属提示',
-  // Git 检查点：默认预设提供 `/checkpoint`，用 git 给当前工作区做可回退快照。
-  '@deepseek-ai/dsh-git-checkpoint': '默认预设为每个安装提供 Git 检查点命令',
   // Browser Use 后端：随可选 bundle `dsh-browser-use` 提供，只有安装该 bundle 才接入。
   '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp': '可选 bundle dsh-browser-use 的唯一后端',
   '@deepseek-ai/dsh-experimental-browser-use-runtime': '可选 bundle dsh-browser-use 的后端运行时',

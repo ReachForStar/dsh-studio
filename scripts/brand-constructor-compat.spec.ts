@@ -10,7 +10,7 @@ import { CompactionId } from '../packages/compaction/compaction/src/brand.ts'
 import { ComputerUseProviderName } from '../packages/computer-use/computer-use/src/brand.ts'
 import { SessionId } from '../packages/core/session/src/types.ts'
 import { OfficeKitGeneration, OfficeKitKey, OfficeSourceKey } from '../packages/document/office-kit/src/identity.ts'
-import { WebhookDeliveryId, WebhookRuleId, WebhookSourceId } from '../packages/api/webhook/src/brand.ts'
+import { WebhookDeliveryId, WebhookRuleId, WebhookSourceId } from '../packages/experimental/webhook/src/brand.ts'
 import {
   ApprovalRequestId as CordisApprovalRequestId,
   CordisDynamicPackageId,

@@ -7,16 +7,13 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { CompactionEngine, ManualCompactionError } from '@deepseek-ai/dsh-compaction'
-import type { CompactionResult, CompactionTrigger, PressureTriggerOptions } from '@deepseek-ai/dsh-compaction'
+import type { CompactionResult, CompactionTrigger } from '@deepseek-ai/dsh-compaction'
 import type { EpochHeader, Session, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
-import { CONTEXT_WINDOW_EXCEEDED_CODE, IMAGE_OFFLOAD_REQUIRED_CODE, LlmError } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, Message } from '@deepseek-ai/dsh-llm'
-// Type-only: makes the optional goal service available to `ctx.get()`.
-import type {} from '@deepseek-ai/dsh-goal'
+import { CONTEXT_WINDOW_EXCEEDED_CODE, LlmError } from '@deepseek-ai/dsh-llm'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import type { CommandId } from '@deepseek-ai/dsh-commands'
+import type { CommandId } from '@deepseek-ai/dsh-commands/types'
 // Type-only: makes the optional sibling service available to `ctx.get()`.
 import type {} from '@deepseek-ai/dsh-compaction-tool-result-pruner'
 import { answeredRouteProjectionDefinition } from './answered-route.ts'
@@ -87,40 +84,6 @@ function conversationTarget(
   return completeRoute(answered ?? undefined) ?? routedTarget(agent.session) ?? completeRoute(agent.options)
 }
 
-/**
- * Build the locally authored window card: the current goal and the most recent
- * user request, framed as the replacement for a span dropped at the token
- * budget. No provider or model was consulted, and the card records that through
- * its route fields.
- * @param ctx - context that may compose the optional goal service.
- * @param agent - owner of the compacted session.
- * @param messages - the replayed conversation prefix being replaced.
- * @returns summary blocks plus the local route identity.
- */
-function windowResetSummary(ctx: Context, agent: Agent, messages: readonly Message[]): SummaryResult {
-  const objective = ctx.get('goals')?.get(agent)?.objective.trim()
-  const lastRequest = messages
-    .filter(message => message.role === 'user')
-    .flatMap(message => message.content)
-    .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
-    .at(-1)?.text.trim()
-  // The card must stay cheaper than the span it replaces: keep the most recent
-  // request to a short intent preview instead of copying the whole prompt.
-  const preview = lastRequest?.replace(/\s+/gu, ' ')
-  const lastLine = preview === undefined ? undefined
-    : preview.length > 160 ? `${preview.slice(0, 157)}…` : preview
-  const lines = [
-    'This session reached its token budget and restarted its context window; earlier detail was dropped by the configured window-reset policy.',
-    ...objective === undefined || objective.length === 0 ? [] : [`Current goal: ${objective}`],
-    ...lastLine === undefined || lastLine.length === 0 ? [] : [`Most recent request: ${lastLine}`],
-  ]
-  return {
-    summary: [{ type: 'text', text: lines.join('\n\n') }],
-    provider: 'local',
-    model: 'window-reset',
-  }
-}
-
 const thresholdRatioSchema = z.number()
 const headroomTokensSchema = z.number().step(1).min(0)
 const retainRatioSchema = z.number()
@@ -130,9 +93,6 @@ const summarizationModelSchema = z.string()
 const maxTokensSchema = z.number().step(1).min(1)
 const compactionRetriesSchema = z.number().step(1).min(0)
 const maxOverflowRetriesSchema = z.number().step(1).min(0)
-const failurePauseThresholdSchema = z.number().step(1).min(0)
-const summarizationFallbackSchema = z.boolean()
-const windowResetSchema = z.boolean()
 
 const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   provider: z.string().required(),
@@ -171,9 +131,6 @@ export class BasicCompactionEngine extends CompactionEngine {
     maxOverflowRetries: maxOverflowRetriesSchema,
     modelPolicies: z.array(modelPolicy),
     auto: z.boolean(),
-    failurePauseThreshold: failurePauseThresholdSchema,
-    summarizationFallback: summarizationFallbackSchema,
-    windowReset: windowResetSchema,
   })
 
   /** Resolved and validated compaction configuration. */
@@ -184,9 +141,6 @@ export class BasicCompactionEngine extends CompactionEngine {
   private readonly overflowAgents = new WeakMap<Session, Agent>()
   /** Registered at construction; `summarize()` awaits it, so no read precedes readiness. */
   private readonly answeredRoute: Promise<ProjectionHandle<AnsweredRoute>>
-  /** Consecutive pre-step compaction failures, and agents paused until a success or model switch. */
-  private readonly pressureFailures = new WeakMap<Agent, number>()
-  private readonly pausedAgents = new WeakSet<Agent>()
 
   constructor(ctx: Context, config: BasicCompactionConfig = {}) {
     super(ctx)
@@ -219,10 +173,9 @@ export class BasicCompactionEngine extends CompactionEngine {
       { agent, signal },
       next,
     ): Promise<PreStepDecision> => {
-      if (!signal.aborted && !this.pausedAgents.has(agent)) {
+      if (!signal.aborted) {
         try {
           const result = await this.compactIfNeeded(agent, 'pressure', signal)
-          this.clearPressurePause(agent)
           if (result !== null) logResult(result, 'step pressure')
         } catch (error: unknown) {
           if (error instanceof TargetPressureConfigError) {
@@ -231,7 +184,6 @@ export class BasicCompactionEngine extends CompactionEngine {
           }
           const message = error instanceof Error ? error.message : String(error)
           ctx.logger.warn(`step compaction failed: ${message}; continuing the turn`)
-          this.notePressureFailure(agent, message)
         }
       }
       return next()
@@ -248,7 +200,6 @@ export class BasicCompactionEngine extends CompactionEngine {
       const previous = agent.session.requestHeader()
       if (signal.aborted || previous === undefined || config.provider === '' || config.model === ''
         || (previous.config.provider === config.provider && previous.config.model === config.model)) return config
-      this.clearPressurePause(agent)
       try {
         const header = { ...previous, config }
         const result = await this.compactPressure(agent, header, signal, true)
@@ -339,29 +290,11 @@ export class BasicCompactionEngine extends CompactionEngine {
     agent: Agent,
     signal?: AbortSignal,
   ): Promise<SummaryResult> {
-    // The window-reset policy authors its card locally and makes no model call,
-    // so the configured or routed summarization target never applies.
-    if (this.config.windowReset) return windowResetSummary(this.ctx, agent, input.messages)
     const target = conversationTarget(agent, (await this.answeredRoute).stateOf(agent.session))
     const config = target === undefined
       ? this.config
       : resolveTargetPolicy(this.config, target)
-    try {
-      return await summarizeWithLlm(this.ctx, config, input, agent, target, signal)
-    } catch (error: unknown) {
-      signal?.throwIfAborted()
-      // Image offload is a durable surface repair owned by `compaction/summary-error`
-      // listeners; another route repeats the same failure and skips that repair.
-      if (error instanceof LlmError && error.code === IMAGE_OFFLOAD_REQUIRED_CODE) throw error
-      if (!this.config.summarizationFallback || config.summarizationProvider.length === 0) throw error
-      if (target === undefined
-        || (target.provider === config.summarizationProvider && target.model === config.summarizationModel)) throw error
-      this.ctx.logger.warn(
-        `compaction summary model ${config.summarizationProvider}/${config.summarizationModel} failed: `
-        + `${error instanceof Error ? error.message : String(error)}; retrying with the conversation's routed model`,
-      )
-      return summarizeWithLlm(this.ctx, { ...config, summarizationProvider: '', summarizationModel: '' }, input, agent, target, signal)
-    }
+    return summarizeWithLlm(this.ctx, config, input, agent, target, signal)
   }
 
   /**
@@ -378,13 +311,12 @@ export class BasicCompactionEngine extends CompactionEngine {
     agent: Agent,
     trigger: CompactionTrigger,
     signal: AbortSignal,
-    options?: PressureTriggerOptions,
   ): Promise<CompactionResult | null> {
     const header = agent.session.requestHeader()
     if (header === undefined || routedTarget(agent.session) === undefined) return null
     switch (trigger) {
       case 'pressure':
-        return this.compactPressure(agent, header, signal, false, options)
+        return this.compactPressure(agent, header, signal, false)
       case 'context-overflow': {
         this.ctx.get('toolResultPruner')?.pruneSession(agent.session)
         const measurement = this.ctx.tokenMeter.measure(agent.session)
@@ -404,7 +336,6 @@ export class BasicCompactionEngine extends CompactionEngine {
     header: EpochHeader,
     signal: AbortSignal,
     requireBelowThreshold: boolean,
-    options?: PressureTriggerOptions,
   ): Promise<CompactionResult | null> {
     const target = header.config
     const policy = resolveTargetPolicy(this.config, target)
@@ -425,7 +356,6 @@ export class BasicCompactionEngine extends CompactionEngine {
       policy,
       info.context.contextWindow,
       reservedCompletionTokens(header, info.defaultMaxTokens),
-      options,
     )
     if (measurement.totalTokens < spec.thresholdTokens) return null
 
@@ -498,9 +428,8 @@ export class BasicCompactionEngine extends CompactionEngine {
     sourceCommandId?: CommandId,
   ): Promise<CompactionResult | null> {
     signal.throwIfAborted()
-    let running: Promise<CompactionResult | null>
     try {
-      running = agent.runMaintenance(async (agentSignal) => {
+      return agent.runMaintenance(async (agentSignal) => {
         const operationSignal = AbortSignal.any([agentSignal, signal])
         try {
           operationSignal.throwIfAborted()
@@ -545,29 +474,6 @@ export class BasicCompactionEngine extends CompactionEngine {
         { cause: error },
       )
     }
-    return running.then((result) => {
-      this.clearPressurePause(agent)
-      return result
-    })
-  }
-
-  /** Reset the automatic pressure failure count after a success or model switch. */
-  private clearPressurePause(agent: Agent): void {
-    this.pressureFailures.delete(agent)
-    this.pausedAgents.delete(agent)
-  }
-
-  /** Count one pre-step failure and pause automatic pressure at the configured threshold. */
-  private notePressureFailure(agent: Agent, message: string): void {
-    const failures = (this.pressureFailures.get(agent) ?? 0) + 1
-    this.pressureFailures.set(agent, failures)
-    const threshold = this.config.failurePauseThreshold
-    if (threshold === 0 || failures < threshold || this.pausedAgents.has(agent)) return
-    this.pausedAgents.add(agent)
-    this.ctx.logger.warn(
-      `step compaction failed ${String(failures)} consecutive times; pausing automatic pressure `
-      + `until a successful compaction or a model switch: ${message}`,
-    )
   }
 
   /** Bind the effective token meter and dynamically dispatched summarizer hook. */

@@ -224,7 +224,6 @@ export default class McpServerManager extends TypertRemoteService {
       return {
         name,
         configured: Object.hasOwn(entries, name),
-        oauth: entries[name]?.oauth !== undefined,
         status: this.currentStatus(name, entries),
         ...authorization === undefined ? {} : { authorization },
       }
@@ -356,29 +355,6 @@ export default class McpServerManager extends TypertRemoteService {
    */
   async startAuthorization(name: string): Promise<McpOAuthAttemptView> {
     return this.authorizationFor(name).start()
-  }
-
-  /**
-   * Start an interactive authorization for a management surface.
-   *
-   * Returns as soon as the flow reports the page to open; the flow keeps
-   * running and its committed grant replaces the connection.
-   * @param name - the configured or registered server key.
-   * @returns the authorization page, or undefined while the attempt is still starting.
-   */
-  @Remote('authorize')
-  async authorizeFromClient(name: string): Promise<string | undefined> {
-    const attempt = await this.startAuthorization(name)
-    return attempt.authorizationUrl
-  }
-
-  /**
-   * Remove one server's stored grant for a management surface.
-   * @param name - the configured or registered server key.
-   */
-  @Remote('forgetAuthorization')
-  forgetAuthorizationFromClient(name: string): Promise<void> {
-    return this.signOut(name)
   }
 
   /**

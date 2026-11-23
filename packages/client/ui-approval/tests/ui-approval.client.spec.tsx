@@ -5,7 +5,6 @@ import type { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Mock } from 'vitest'
 import { ApprovalCard } from '../src/client/ApprovalCard.tsx'
 import { ApprovalWarning } from '../src/client/ApprovalWarning.tsx'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -20,8 +19,6 @@ type ApprovalListener = (
   this: Context,
   request: {
     toolName: string
-    requestId?: string
-    fullAccess?: boolean
     callId?: string
     reason?: string
     displayReason?: PendingApproval['displayReason']
@@ -29,14 +26,6 @@ type ApprovalListener = (
   },
   next: () => Promise<'unavailable'>,
 ) => Promise<unknown>
-
-type CommandResultValue = { ok: true; value: { result: { kind: string } } } | { ok: false; error: { code: string; message: string } }
-type CommandExecuteMock = Mock<(
-  sessionId: SessionId,
-  line: string,
-  attachments: readonly never[],
-  signal: AbortSignal,
-) => Promise<CommandResultValue>>
 
 interface PluginBench {
   readonly ctx: Context
@@ -48,7 +37,6 @@ interface PluginBench {
   readonly register: ReturnType<typeof vi.fn>
   readonly injectSlot: ReturnType<typeof vi.fn>
   readonly shortcuts: ReturnType<typeof vi.fn<(entry: { label: () => string }) => () => void>>
-  readonly commandsExecute: CommandExecuteMock
   releasePending(): Promise<void>
   registration(): {
     options: {
@@ -91,13 +79,11 @@ async function setupPlugin(): Promise<PluginBench> {
     const dispose = ctx.effect(() => mount())
     return () => { void dispose() }
   })
-  const commandsExecute: CommandExecuteMock = vi.fn(async () => ({ ok: true, value: { result: { kind: 'success' } } }))
   ctx.provide('remote', {
     $on: (_event: string, callback: ApprovalListener) => {
       listener = callback
       return () => {}
     },
-    commands: { execute: commandsExecute },
   } as never)
   ctx.provide('sessions', { scopeOf } as never)
   ctx.provide('uiSession', { registerPendingInteraction } as never)
@@ -123,7 +109,6 @@ async function setupPlugin(): Promise<PluginBench> {
     register,
     injectSlot,
     shortcuts,
-    commandsExecute,
     async releasePending() {
       const delegates = [...pending.values()]
       pending.clear()
@@ -228,159 +213,6 @@ describe('PendingApproval', () => {
 })
 
 describe('approval Remote Event consumer', () => {
-  it('saves project rules for a classified action before granting', async () => {
-    const bench = await setupPlugin()
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const next = vi.fn(() => Promise.resolve<'unavailable'>('unavailable'))
-    const result = bench.listener.call(scope.ctx, {
-      toolName: 'write', action: 'write', resources: ['notes/guide.txt', 'build/out.txt'],
-    }, next)
-    const pending = bench.pending.getSnapshot()[0]!
-    const { options } = bench.registration()
-
-    await options.inject().alwaysAllow(pending)
-
-    expect(bench.commandsExecute.mock.calls.map(([sessionId, line]): [string, string] => [sessionId, line])).toEqual([
-      ['s1', '/allow write notes/guide.txt'],
-      ['s1', '/allow write build/out.txt'],
-    ])
-    await expect(result).resolves.toBe('allowed-once')
-  })
-
-  it('saves a wildcard resource when the action declares none', async () => {
-    const bench = await setupPlugin()
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const result = bench.listener.call(scope.ctx, { toolName: 'bash', action: 'bash' }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-    await bench.registration().options.inject().alwaysAllow(pending)
-    expect(bench.commandsExecute.mock.calls.map(([, line]) => line)).toEqual(['/allow bash *'])
-    await expect(result).resolves.toBe('allowed-once')
-  })
-
-  it('records a correction then rejects the call', async () => {
-    const bench = await setupPlugin()
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const result = bench.listener.call(scope.ctx, { toolName: 'write', callId: 'call-7' as ToolCallId }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-    await bench.registration().options.inject().rejectWithCorrection(pending, 'use notes/guide.txt')
-    expect(bench.commandsExecute.mock.calls.map(([, line]): string => line)).toEqual(['/correct call-7 use notes/guide.txt'])
-    await expect(result).resolves.toBe('rejected')
-  })
-
-  it('rejects without a command when the request has no call id and keeps the refusal on failure', async () => {
-    const bench = await setupPlugin()
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const first = bench.listener.call(scope.ctx, { toolName: 'bash' }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-    await bench.registration().options.inject().rejectWithCorrection(pending, 'ignored')
-    expect(bench.commandsExecute).not.toHaveBeenCalled()
-    await expect(first).resolves.toBe('rejected')
-
-    bench.commandsExecute.mockRejectedValue('transport closed')
-    const warn = vi.spyOn(bench.ctx.logger, 'warn').mockImplementation(() => {})
-    const second = bench.listener.call(scope.ctx, { toolName: 'write', callId: 'call-8' as ToolCallId }, vi.fn())
-    const nextPending = bench.pending.getSnapshot()[0]!
-    await bench.registration().options.inject().rejectWithCorrection(nextPending, 'use notes/guide.txt')
-    expect(warn).toHaveBeenCalled()
-    await expect(second).resolves.toBe('rejected')
-  })
-
-  it('keeps the refusal when the correction command reports a failure', async () => {
-    const bench = await setupPlugin()
-    bench.commandsExecute.mockResolvedValue({ ok: false, error: { code: 'DENIED', message: 'no' } })
-    const warn = vi.spyOn(bench.ctx.logger, 'warn').mockImplementation(() => {})
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const result = bench.listener.call(scope.ctx, { toolName: 'write', callId: 'call-9' as ToolCallId }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-    await bench.registration().options.inject().rejectWithCorrection(pending, 'use notes/guide.txt')
-    expect(warn.mock.calls[0]?.[0]).toContain('DENIED')
-    await expect(result).resolves.toBe('rejected')
-  })
-
-  it('grants without saving when the request declares no action', async () => {
-    const bench = await setupPlugin()
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const result = bench.listener.call(scope.ctx, { toolName: 'bash' }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-    await bench.registration().options.inject().alwaysAllow(pending)
-    expect(bench.commandsExecute).not.toHaveBeenCalled()
-    await expect(result).resolves.toBe('allowed-once')
-  })
-
-  it('still grants when the command reports a failure', async () => {
-    const bench = await setupPlugin()
-    bench.commandsExecute.mockResolvedValue({ ok: false, error: { code: 'DENIED', message: 'no' } })
-    const warn = vi.spyOn(bench.ctx.logger, 'warn').mockImplementation(() => {})
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const result = bench.listener.call(scope.ctx, {
-      toolName: 'bash', action: 'bash', resources: ['git status'],
-    }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-    await bench.registration().options.inject().alwaysAllow(pending)
-    expect(warn.mock.calls[0]?.[0]).toContain('DENIED')
-    await expect(result).resolves.toBe('allowed-once')
-  })
-
-  it('still grants when saving the rule fails', async () => {
-    const bench = await setupPlugin()
-    bench.commandsExecute.mockRejectedValue('transport closed')
-    const warn = vi.spyOn(bench.ctx.logger, 'warn').mockImplementation(() => {})
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const result = bench.listener.call(scope.ctx, {
-      toolName: 'bash', action: 'bash', resources: ['git status'],
-    }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-    await bench.registration().options.inject().alwaysAllow(pending)
-    expect(warn).toHaveBeenCalled()
-    await expect(result).resolves.toBe('allowed-once')
-  })
-
-  it('commits full access through /full-access and then grants the request', async () => {
-    const bench = await setupPlugin()
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const result = bench.listener.call(scope.ctx, {
-      toolName: 'bash', requestId: 'req-1', fullAccess: true,
-    }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-
-    expect(pending.requestId).toBe('req-1')
-    expect(pending.fullAccess).toBe(true)
-    await bench.registration().options.inject().grantFullAccess(pending)
-
-    expect(bench.commandsExecute.mock.calls.map(([, line]) => line)).toEqual(['/full-access req-1'])
-    await expect(result).resolves.toBe('allowed-once')
-  })
-
-  it('keeps the prompt open when the full-access command refuses or is missing', async () => {
-    const bench = await setupPlugin()
-    const scope = createScope(bench.ctx, id('s1'))
-    await scope.fiber.await()
-    const first = bench.listener.call(scope.ctx, {
-      toolName: 'bash', requestId: 'req-2', fullAccess: true,
-    }, vi.fn())
-    const pending = bench.pending.getSnapshot()[0]!
-    bench.commandsExecute.mockResolvedValue({ ok: false, error: { code: 'DENIED', message: 'no' } })
-    await expect(bench.registration().options.inject().grantFullAccess(pending)).rejects.toThrow(/DENIED/)
-    expect(pending.answerable).toBe(true)
-
-    bench.commandsExecute.mockResolvedValue({ ok: true, value: undefined } as never)
-    await expect(bench.registration().options.inject().grantFullAccess(pending)).rejects.toThrow(/no \/full-access command/)
-    bench.commandsExecute.mockResolvedValue({ ok: true, value: { result: { kind: 'error', text: 'stale' } } } as never)
-    await expect(bench.registration().options.inject().grantFullAccess(pending)).rejects.toThrow('stale')
-    expect(pending.answerable).toBe(true)
-    await pending.answer('rejected')
-    await expect(first).resolves.toBe('rejected')
-  })
-
   it('delegates an event that has no Agent scope', async () => {
     const bench = await setupPlugin()
     const next = vi.fn(() => Promise.resolve<'unavailable'>('unavailable'))
@@ -495,9 +327,6 @@ describe('approval Remote Event consumer', () => {
 function panelProps(
   pending: PendingApproval,
   renderSlot: FactoryComponentPropsOf<'conversation.approval.card'>['renderSlot'] = vi.fn(() => null),
-  alwaysAllow: (approval: PendingApproval) => Promise<void> = vi.fn(async () => {}),
-  rejectWithCorrection: (approval: PendingApproval, text: string) => Promise<void> = vi.fn(async () => {}),
-  grantFullAccess: (approval: PendingApproval) => Promise<void> = vi.fn(async () => {}),
 ): ApprovalComposerProps {
   const messages: Record<string, string> = {
     waiting: 'Waiting',
@@ -506,24 +335,12 @@ function panelProps(
     reject: 'Reject',
     allowOnce: 'Allow once',
     allowAlways: 'Always allow',
-    fullAccess: 'Full access',
-    'fullAccessConfirm.title': 'Grant full access',
-    'fullAccessConfirm.description': 'This session switches to full access.',
-    'fullAccessConfirm.acknowledge': 'I understand the risk',
-    'fullAccessConfirm.enable': 'Grant full access',
-    'fullAccessConfirm.cancel': 'Cancel',
-    'fullAccessConfirm.close': 'Close',
-    rejectWithCorrection: 'Reject with correction',
-    correctionPlaceholder: 'Corrected arguments or approach',
   }
   return {
     matched: pending,
     renderFactorySlot: (_name: string, input: ApprovalCardInput) => <ApprovalCard {...{ ...input, renderSlot,
       t: (key: string) => messages[key] ?? key } as FactoryComponentPropsOf<'conversation.approval.card'>} />,
     resolveReason: (reason: NonNullable<PendingApproval['displayReason']>) => reason.en,
-    alwaysAllow,
-    grantFullAccess,
-    rejectWithCorrection,
     t: (key: string) => messages[key] ?? key,
   } as ApprovalComposerProps
 }
@@ -676,76 +493,6 @@ describe('ApprovalPanel', () => {
     fireEvent.keyDown(group, { key: 'Enter', code: 'Enter' })
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
     expect(answer).not.toHaveBeenCalled()
-  })
-
-  it('offers always-allow only for a classified action and saves the rule', async () => {
-    const alwaysAllow = vi.fn(async () => {})
-    const classified = new PendingApproval(id('s1'), {
-      toolName: 'write', action: 'write', resources: ['notes/guide.txt'],
-    })
-    const view = render(<ApprovalPanel {...panelProps(classified, undefined, alwaysAllow)} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Always allow' }))
-    expect(alwaysAllow).toHaveBeenCalledWith(classified)
-    classified.abort(new Error('test cleanup'))
-    await classified.result.catch(() => {})
-    view.unmount()
-
-    const unclassified = new PendingApproval(id('s2'), { toolName: 'bash' })
-    render(<ApprovalPanel {...panelProps(unclassified, undefined, alwaysAllow)} />)
-    expect(screen.queryByRole('button', { name: 'Always allow' })).toBeNull()
-    unclassified.abort(new Error('test cleanup'))
-    await unclassified.result.catch(() => {})
-  })
-
-  it('offers full access only for a Host that can grant it and requires the risk acknowledgement', async () => {
-    const grantFullAccess = vi.fn(async (approval: PendingApproval) => { await approval.answer('allowed-once') })
-    const pending = new PendingApproval(id('s1'), {
-      toolName: 'bash', requestId: 'req-1', fullAccess: true,
-    })
-    render(<ApprovalPanel {...panelProps(pending, undefined, undefined, undefined, grantFullAccess)} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Full access' }))
-    const confirm = screen.getByRole<HTMLButtonElement>('button', { name: 'Grant full access' })
-    expect(confirm.disabled).toBe(true)
-    expect(grantFullAccess).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('checkbox', { name: 'I understand the risk' }))
-    expect(confirm.disabled).toBe(false)
-    fireEvent.click(confirm)
-
-    expect(grantFullAccess).toHaveBeenCalledWith(pending)
-    await expect(pending.result).resolves.toBe('allowed-once')
-  })
-
-  it('hides full access when the Host cannot grant it', async () => {
-    const pending = new PendingApproval(id('s1'), { toolName: 'bash', requestId: 'req-1' })
-    render(<ApprovalPanel {...panelProps(pending)} />)
-    expect(screen.queryByRole('button', { name: 'Full access' })).toBeNull()
-    pending.abort(new Error('test cleanup'))
-    void pending.result.catch(() => {})
-  })
-
-  it('omits the correction field when the request has no call id', () => {
-    const pending = new PendingApproval(id('s1'), { toolName: 'bash' })
-    render(<ApprovalPanel {...panelProps(pending)} />)
-    expect(screen.queryByRole('textbox', { name: 'Corrected arguments or approach' })).toBeNull()
-    pending.abort(new Error('test cleanup'))
-    void pending.result.catch(() => {})
-  })
-
-  it('rejects with corrected arguments through the correction field', async () => {
-    const rejectWithCorrection = vi.fn(async () => {})
-    const pending = new PendingApproval(id('s1'), { toolName: 'write', callId: 'call-9' as ToolCallId })
-    render(<ApprovalPanel {...panelProps(pending, undefined, vi.fn(async () => {}), rejectWithCorrection)} />)
-    const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Corrected arguments or approach' })
-    fireEvent.keyDown(input, { key: 'Enter' })
-    fireEvent.keyDown(input, { key: 'a' })
-    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
-    expect(rejectWithCorrection).not.toHaveBeenCalled()
-    fireEvent.change(input, { target: { value: 'use notes/guide.txt' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Reject with correction' }))
-    expect(rejectWithCorrection).toHaveBeenCalledWith(pending, 'use notes/guide.txt')
-    pending.abort(new Error('test cleanup'))
-    await pending.result.catch(() => {})
   })
 
   it('re-enables actions when answering fails', async () => {

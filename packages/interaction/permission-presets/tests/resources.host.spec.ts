@@ -28,11 +28,7 @@ async function mounted(): Promise<Context> {
     run() { throw new Error('resource tests do not execute shell commands') },
     start() { throw new Error('resource tests do not execute shell commands') },
   })
-  ctx.provide('approval', {
-    config: { policy: 'ask' },
-    registerFullAccess: () => () => {},
-    requestFullAccess: () => Promise.resolve({ granted: false }),
-  })
+  ctx.provide('approval', { config: { policy: 'ask' } })
   await ctx.plugin(PermissionPresetService, {})
   return ctx
 }

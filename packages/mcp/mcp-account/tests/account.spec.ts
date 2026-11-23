@@ -8,7 +8,7 @@ import { present, sectionCopy, ServerAccount, type McpAccountView } from '../src
 import { ATTEMPT, COPY, fakeManager, OPERATION } from './fixture.ts'
 
 const server = (status: McpManagedServerStatus, authorization?: McpOAuthAttemptView): McpManagedServerView =>
-  ({ name: 'acme', configured: true, oauth: authorization !== undefined, status, ...authorization === undefined ? {} : { authorization } })
+  ({ name: 'acme', configured: true, status, ...authorization === undefined ? {} : { authorization } })
 
 const shown = (account: McpManagedServerView | undefined) => present({ account } satisfies McpAccountView, COPY)
 const labels = (account: McpManagedServerView | undefined) => shown(account).buttons.map(button => button.label)

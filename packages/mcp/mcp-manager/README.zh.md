@@ -122,8 +122,6 @@ export function apply(ctx: Context): void {
 
 浏览器客户端经 [`dsh-api-remotes`](../../api/remotes/README.zh.md) 以 `ctx.remote.mcpManager` 访问管理器。`watch(signal)` 在订阅时推送完整服务器列表，之后每次状态或条目变化再推送一次，订阅方尚未读取的变化会合并；中止信号结束该流，管理器销毁结束所有流。`restart(name)` 与 `probe(name, signal)` 执行上述操作。授权、取消与退出只在宿主上执行：插件页经由 [`dsh-mcp-account`](../mcp-account/README.zh.md) 调用它们，因此浏览器从不指定要授权的服务器。配置写入仍走 Settings Remote；管理器不提供写入方法，因此浏览器无法定义服务器命令。
 
-设置界面同样可以发起授权：`authorize(name)` 启动一次尝试并返回宿主发布的浏览器地址，`forgetAuthorization(name)` 走同一条清理路径为单个条目退出登录。
-
 -----
 
 <a id="understand-the-implementation"></a>
@@ -187,7 +185,7 @@ export function apply(ctx: Context): void {
 
 这些限制描述今天用本管理器做不到的事。它们是当前包约束，不是任务清单。
 
-- **OAuth 登录由设置页与插件账号两处提供**——[`dsh-mcp-account`](../mcp-account/README.zh.md) 为向它注册的插件服务器在**插件**页面显示账号；MCP 设置页则经 `authorize` Remote 为任意已配置条目发起授权。
+- **OAuth 登录界面只随插件账号提供**——[`dsh-mcp-account`](../mcp-account/README.zh.md) 为向它注册的插件服务器在**插件**页面显示账号；其他服务器没有浏览器界面可以授权，因为授权只经由宿主上的调用方执行。
 - **只治理全局面**——agent preset 或静态 `cordis.yml` 行挂载的实例既不被列出也不受治理；静态实例只在受管条目试图复用其名字时以 `serverName` 冲突现身。
 - **重建存在工具空窗**——变更的条目先销毁再重挂，其工具会从模型工具集消失直到新实例完成初次同步；没有旧代继续服务到换代完成的交接。
 - **注册条目由其插件固定**——Settings 无法覆盖注册条目的预算；注册插件需要的可调参数放在它自己的配置中。

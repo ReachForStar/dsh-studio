@@ -225,8 +225,6 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'messageFeedback/list': 'owner-only', // owner message feedback
   'messageFeedback/put': 'owner-only', // owner message feedback
   'pluginInventory/list': 'owner-only', // owner plugin inventory
-  'mcpManager/authorize': 'owner-only', // owner MCP server authorization
-  'mcpManager/forgetAuthorization': 'owner-only', // owner MCP server authorization
   'mcpManager/probe': 'owner-only', // owner MCP server management
   'mcpManager/restart': 'owner-only', // owner MCP server management
   'mcpManager/watch': 'owner-only', // owner MCP server management

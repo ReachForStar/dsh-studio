@@ -48,7 +48,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.webhookRuntime` — `WebhookRuntime`
 
-Fire-and-forget rule runtime. Session creation and live-Session delivery are the built-in actions.
+Fire-and-forget rule runtime. Session creation is the built-in action.
 
 ```ts cordis-catalog
 /**
@@ -66,5 +66,5 @@ register<K extends string>(rule: WebhookRule<K>): () => Promise<void>
 dispatch<K extends string>(delivery: VerifiedWebhookDelivery<K>): void
 ```
 
-Source: [`packages/api/webhook/src/index.ts`](../../packages/api/webhook/src/index.ts)
+Source: [`packages/experimental/webhook/src/index.ts`](../../packages/experimental/webhook/src/index.ts)
 <!-- END GENERATED cordis-surface -->

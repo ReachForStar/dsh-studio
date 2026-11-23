@@ -215,7 +215,6 @@ describe('mcp-manager', () => {
     expect(manager.list()).toEqual([{
       name: 'base',
       configured: true,
-      oauth: false,
       status: { state: 'connected', toolCount: 1, connectedAt: anyNumber },
     }])
   })
@@ -680,7 +679,7 @@ describe('mcp-manager', () => {
       await closing.promise
       await vi.advanceTimersByTimeAsync(50)
       await vi.waitFor(() => {
-        expect(manager.list()).toEqual([{ name: 'srv', configured: false, oauth: false, status: {
+        expect(manager.list()).toEqual([{ name: 'srv', configured: false, status: {
           state: 'failed', reason: 'cleanup', result: { closeConfirmed: false, cleanupError: probe.cleanupError },
         } }])
       })
@@ -1122,7 +1121,7 @@ describe('mcp-manager', () => {
     let views: unknown
     await vi.waitFor(async () => {
       views = (await stream.next()).value
-      expect(views).toEqual([{ name: 'srv', configured: true, oauth: false, status: expect.objectContaining({ state: 'connected' }) as McpManagedServerStatus }])
+      expect(views).toEqual([{ name: 'srv', configured: true, status: expect.objectContaining({ state: 'connected' }) as McpManagedServerStatus }])
     })
     subscriber.abort()
     await expect(stream.next()).resolves.toEqual({ done: true, value: undefined })

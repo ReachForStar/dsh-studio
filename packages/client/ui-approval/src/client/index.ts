@@ -46,15 +46,11 @@ async function answerApproval(
   if (sessionId === undefined) return next()
   const pending = new PendingApproval(sessionId, {
     toolName: request.toolName,
-    ...(request.requestId === undefined ? {} : { requestId: request.requestId }),
-    ...(request.fullAccess === true ? { fullAccess: true } : {}),
     ...(request.callId === undefined
       ? {}
       : { callId: request.callId }),
     ...(request.reason === undefined ? {} : { reason: request.reason }),
     ...(request.displayReason === undefined ? {} : { displayReason: request.displayReason }),
-    ...(request.action === undefined ? {} : { action: request.action }),
-    ...(request.resources === undefined ? {} : { resources: request.resources }),
     ...(request.signal === undefined ? {} : { signal: request.signal }),
   })
   const completed = Promise.withResolvers<void>()
@@ -106,89 +102,9 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     inject: () => ({
       resolveReason: (reason: NonNullable<PendingApproval['displayReason']>) => ctx.locale.resolveText(reason),
-      alwaysAllow: (approval: PendingApproval) => saveAlwaysAllow(ctx, approval),
-      grantFullAccess: (approval: PendingApproval) => grantFullAccess(ctx, approval),
-      rejectWithCorrection: (approval: PendingApproval, text: string) => rejectWithCorrection(ctx, approval, text),
     }),
   }, ApprovalPanel))
   ctx.remote.$on('approval/request', function (request, next) {
     return answerApproval(ctx, this, request, next, registerPendingInteraction)
   })
-}
-
-/**
- * Persist the pending request's scope as project allow rules through the
- * `/allow` command, then grant this request. A failed save still grants the
- * current request; the failure is logged instead of silently pretending the
- * rule exists.
- * @param ctx - client root context carrying the Remote command channel.
- * @param approval - the pending request whose action and resources become rules.
- */
-async function saveAlwaysAllow(ctx: ClientContext, approval: PendingApproval): Promise<void> {
-  if (approval.action === undefined) {
-    await approval.answer('allowed-once')
-    return
-  }
-  const resources = approval.resources.length === 0 ? ['*'] : approval.resources
-  try {
-    for (const resource of resources) {
-      const result = await ctx.remote.commands.execute(
-        approval.sessionId,
-        `/allow ${approval.action} ${resource}`,
-        [],
-        new AbortController().signal,
-      )
-      if (!result.ok) throw new Error(`approval rule save failed: ${result.error.code}: ${result.error.message}`)
-    }
-  } catch (error: unknown) {
-    ctx.logger.warn(`approval: ${error instanceof Error ? error.message : String(error)}`)
-  }
-  await approval.answer('allowed-once')
-}
-
-/**
- * Commit full access for the pending request through `/full-access`, then
- * grant the request. The Host binds the grant to the request identity, applies
- * its configured preset, and records a receipt; a failed command keeps the
- * prompt open so the user can choose another outcome.
- * @param ctx - client root context carrying the Remote command channel.
- * @param approval - the pending request whose identity the grant cites.
- */
-async function grantFullAccess(ctx: ClientContext, approval: PendingApproval): Promise<void> {
-  const requestId = approval.requestId
-  if (requestId === undefined) throw new Error('approval: full access requires a request identity')
-  const result = await ctx.remote.commands.execute(
-    approval.sessionId,
-    `/full-access ${requestId}`,
-    [],
-    new AbortController().signal,
-  )
-  if (!result.ok) throw new Error(`full access failed: ${result.error.code}: ${result.error.message}`)
-  if (result.value === undefined) throw new Error('the host offers no /full-access command')
-  if (result.value.result.kind !== 'success') throw new Error(result.value.result.text)
-  await approval.answer('allowed-once')
-}
-
-/**
- * Record replacement arguments for the pending call through `/correct`, then
- * reject it. A failed save still rejects, so the user's refusal always stands.
- * @param ctx - client root context carrying the Remote command channel.
- * @param approval - the pending request being rejected.
- * @param text - the user's replacement arguments or instruction.
- */
-async function rejectWithCorrection(ctx: ClientContext, approval: PendingApproval, text: string): Promise<void> {
-  if (approval.callId !== undefined) {
-    try {
-      const result = await ctx.remote.commands.execute(
-        approval.sessionId,
-        `/correct ${String(approval.callId)} ${text.trim()}`,
-        [],
-        new AbortController().signal,
-      )
-      if (!result.ok) throw new Error(`approval correction failed: ${result.error.code}: ${result.error.message}`)
-    } catch (error: unknown) {
-      ctx.logger.warn(`approval: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-  await approval.answer('rejected')
 }

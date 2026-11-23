@@ -41,9 +41,6 @@
     },
     {
       "path": "../compaction-tool-result-pruner"
-    },
-    {
-      "path": "../../goal/goal"
     }
   ]
 }

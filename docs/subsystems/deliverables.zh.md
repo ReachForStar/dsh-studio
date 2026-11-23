@@ -132,15 +132,6 @@ interface WorkspaceChanges {
    * @throws when a snapshot read fails for a live Session.
    */
   diff(sessionId: SessionId, seq: number, index: number, signal: AbortSignal): Promise<WorkspaceFileDiff | undefined>
-  /**
-   * Restore the files one recorded turn changed, skipping unsafe sides.
-   * @param sessionId - the Session that owns the turn.
-   * @param turn - the recorded turn to revert.
-   * @param signal - cancels the preflight and writes.
-   * @returns what was restored and why each remaining file was skipped, or
-   *   undefined when the Host holds no record for that turn.
-   */
-  rewind(sessionId: SessionId, turn: number, signal: AbortSignal): Promise<WorkspaceRewindResult | undefined>
 }
 ```
 
@@ -181,16 +172,6 @@ summary(sessionId: SessionId, seq: number): WorkspaceChangesSummary | undefined
  * @throws when a snapshot read fails for a live Session.
  */
 diff(sessionId: SessionId, seq: number, index: number, signal: AbortSignal): Promise<WorkspaceFileDiff | undefined>
-
-/**
- * Restore the files one recorded turn changed, skipping unsafe sides.
- * @param sessionId - the Session that owns the turn.
- * @param turn - the recorded turn to revert.
- * @param signal - cancels the preflight and writes.
- * @returns what was restored and why each remaining file was skipped, or
- *   undefined when the Host holds no record for that turn.
- */
-rewind(sessionId: SessionId, turn: number, signal: AbortSignal): Promise<WorkspaceRewindResult | undefined>
 ```
 
 Types: [SessionId](core.zh.md)

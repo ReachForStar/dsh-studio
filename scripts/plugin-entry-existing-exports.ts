@@ -25,7 +25,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
   '@deepseek-ai/dsh-agent-team': ['TeamId', 'TeamMessageId', 'TeamTaskId'],
   '@deepseek-ai/dsh-api-remote-access': ['REMOTE_ACCESS_SNAPSHOT_KEY'],
   '@deepseek-ai/dsh-api-remotes': ['API_REMOTE_FORWARDED_EVENTS'],
-  '@deepseek-ai/dsh-arena': ['Config'],
   '@deepseek-ai/dsh-attachment-local': [
     'DEFAULT_IMAGE_COMPRESSION_CONCURRENCY',
     'DEFAULT_MAX_IMAGES_PER_MESSAGE',
@@ -48,7 +47,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'validateImageFile',
   ],
   '@deepseek-ai/dsh-bash-local': ['ENV_OVERRIDES', 'assertServiceableBashConfig'],
-  '@deepseek-ai/dsh-btw': ['BTW_ASK_PATH', 'BTW_ASK_ROUTE'],
   '@deepseek-ai/dsh-client-connection': [
     'API_PATH',
     'CONNECT_PATH',
@@ -103,14 +101,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
   '@deepseek-ai/dsh-experimental-inspector': ['resolveInspectorOptions', 'startInspector'],
   '@deepseek-ai/dsh-experimental-worktree': [
     'CREATED_RECORD', 'createdWorktreeSchema', 'generatedWorktreeName', 'worktreeProjection',
-  ],
-  '@deepseek-ai/dsh-followup': [
-    'FOLLOWUP_TIMEOUT_CODE',
-    'renderSuggestionInput',
-    'boundUtf8',
-    'parseSuggestions',
-    'accumulateTurn',
-    'requestSuggestions',
   ],
   '@deepseek-ai/dsh-goal': [
     'GOAL_CHANGE_VERSION',
@@ -216,17 +206,7 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
   '@deepseek-ai/dsh-mcp-client': [
     'createMcpToolDefinition',
   ],
-  '@deepseek-ai/dsh-memory-notes': [
-    'findProjectRoot',
-    'loadMemoryFiles',
-    'userMemoryDirectory',
-    'isMemoryNoteMessage',
-    'renderMemoryNote',
-    'loadMemoryNote',
-    'applyPreStepMemory',
-  ],
   '@deepseek-ai/dsh-office-kit': ['Config', 'OfficeKitGeneration', 'OfficeKitKey', 'OfficeSourceKey'],
-  '@deepseek-ai/dsh-openapi-tools': ['buildTools', 'credentialName'],
   '@deepseek-ai/dsh-permission-presets': ['AUTO_PRESET', 'CUSTOM_PRESET'],
   '@deepseek-ai/dsh-persona': ['PERSONA_PREFIX_SECTION', 'PERSONA_SUFFIX_SECTION'],
   '@deepseek-ai/dsh-pi-agent-loop': ['PiLoopAgent', 'PiEventTranslator', 'adaptDshTool', 'adaptPiTool'],
@@ -366,14 +346,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'sessionDir',
     'sweepSpillRoots',
   ],
-  '@deepseek-ai/dsh-step-summary': [
-    'TOOL_SUMMARY_TIMEOUT_CODE',
-    'collectToolBatch',
-    'resultExcerpt',
-    'renderBatchInput',
-    'normalizeSummary',
-    'requestSummary',
-  ],
   '@deepseek-ai/dsh-storage': ['BackendRegistry', 'UNIT_NAME_RE', 'storageBackendServiceKey'],
   '@deepseek-ai/dsh-storage-domain': ['DomainFacility', 'defineDomain', 'descriptorOf', 'domainTable'],
   '@deepseek-ai/dsh-storage-json': ['JsonStorageBackend'],
@@ -460,7 +432,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'presentLspCall',
     'renderUri',
   ],
-  '@deepseek-ai/dsh-tool-search': ['searchTools', 'renderCatalog', 'createToolSearchTool'],
   '@deepseek-ai/dsh-tool-session-query': ['DEFAULT_MAX_SEARCH_RESULTS', 'DEFAULT_SEARCH_TIMEOUT_MS'],
   '@deepseek-ai/dsh-tool-terminal': ['DEFAULT_MAX_RESULT_BYTES', 'MIN_MAX_RESULT_BYTES'],
   '@deepseek-ai/dsh-tool-web': [
@@ -518,15 +489,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'matchApprovalPattern',
   ],
   '@deepseek-ai/dsh-user-questions': ['TIMED_WAIT_PARAMETER', 'isTimedAskUserQuestionSchema'],
-  '@deepseek-ai/dsh-warming': [
-    'WARMING_TIMEOUT_CODE',
-    'KEEP_ALIVE_PROMPT',
-    'AUTO_INTERVAL_MS',
-    'resolveIntervalMs',
-    'pingFitsWindow',
-    'routeOf',
-    'requestKeepAlive',
-  ],
   '@deepseek-ai/dsh-web-app': ['internals'],
   '@deepseek-ai/dsh-web-deepseek-api': [
     'DEEPSEEK_DEFAULT_COUNT',

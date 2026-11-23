@@ -16,7 +16,6 @@
  */
 
 import { Client } from '@modelcontextprotocol/client'
-import type { AuthProvider, FetchLike } from '@modelcontextprotocol/client'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ScopeKey } from '@deepseek-ai/dsh-scope'
 import { assertNever, deepEqualJson, type JsonValue } from '@deepseek-ai/dsh-util-values'
@@ -34,8 +33,6 @@ import { McpToolRegistrationError, syncTools } from './tools.ts'
 import { McpToolLoader } from './tool-loading.ts'
 import type { ToolDisposers } from './tools.ts'
 import type { Config } from './index.ts'
-import type { McpLease } from './pool.ts'
-import { ResourceWatchRegistry } from './resource-watch.ts'
 
 /** Automatic reconnect policy for one MCP server connection. */
 export interface ReconnectConfig {
@@ -56,50 +53,6 @@ export const RECONNECT_DEFAULTS: Required<ReconnectConfig> = Object.freeze({
   maxDelayMs: 30_000,
   maxAttempts: 10,
 })
-
-/** Default wait for one resource update watch (ms). */
-export const DEFAULT_RESOURCE_WATCH_TIMEOUT_MS = 30_000
-
-/** Default ceiling for a tool-requested resource update watch (ms). */
-export const DEFAULT_MAX_RESOURCE_WATCH_TIMEOUT_MS = 300_000
-
-/** Fully resolved resource-watch wait limits captured at plugin load. */
-interface ResourceWatchLimits {
-  /** Wait used when the tool call omits a timeout. */
-  timeoutMs: number
-  /** Ceiling applied to a tool-requested wait. */
-  maxTimeoutMs: number
-}
-
-/**
- * Judge the resource-watch waits once and produce the limits the connection
- * runs. Programmatic construction may bypass Schemastery normalization, so
- * every bound is re-judged here; misconfiguration fails the plugin instance at
- * load.
- *
- * @param config - Raw watch limits from the plugin configuration.
- * @param path - Diagnostic prefix naming the config location in thrown messages.
- * @returns The frozen resolved limits.
- */
-function resolveResourceWatchLimits(
-  config: Partial<Pick<Config, 'resourceWatchTimeoutMs' | 'maxResourceWatchTimeoutMs'>>,
-  path: string,
-): Readonly<ResourceWatchLimits> {
-  const timeoutMs = config.resourceWatchTimeoutMs ?? DEFAULT_RESOURCE_WATCH_TIMEOUT_MS
-  const maxTimeoutMs = config.maxResourceWatchTimeoutMs ?? DEFAULT_MAX_RESOURCE_WATCH_TIMEOUT_MS
-  for (const [name, value] of [
-    ['resourceWatchTimeoutMs', timeoutMs],
-    ['maxResourceWatchTimeoutMs', maxTimeoutMs],
-  ] as const) {
-    if (!Number.isSafeInteger(value) || value < 1 || value > MAX_TIMER_DELAY_MS) {
-      throw new Error(`${path}.${name} must be a positive safe integer no greater than ${MAX_TIMER_DELAY_MS}`)
-    }
-  }
-  if (timeoutMs > maxTimeoutMs) {
-    throw new Error(`${path}.resourceWatchTimeoutMs must not exceed maxResourceWatchTimeoutMs`)
-  }
-  return Object.freeze({ timeoutMs, maxTimeoutMs })
-}
 
 /** Default UTF-8 byte limit for attributed server instructions. */
 export const DEFAULT_MAX_INSTRUCTION_BYTES = 32_768
@@ -189,9 +142,8 @@ export function startConnection(
   const loader = config.toolLoading === 'on-demand'
     ? new McpToolLoader(ctx, config.serverName, config.catalogDescriptionMaxLength)
     : undefined
-  const watchLimits = resolveResourceWatchLimits(config, label)
 
-  type Generation = { wire: McpGeneration; watches: ResourceWatchRegistry; connectedAt?: number }
+  type Generation = { wire: McpGeneration; connectedAt?: number }
   let current: Generation | undefined
   let bindingValue: { config?: Config; grantId?: string } | undefined
   let disposed = false
@@ -387,16 +339,8 @@ export function startConnection(
       capabilities: {}, versionNegotiation: { mode: 'auto' },
       listChanged: { tools: { autoRefresh: false, debounceMs: 0, onChanged: onToolListChanged } },
     })
-    const watches = new ResourceWatchRegistry({
-      client,
-      label,
-      requestTimeoutMs: config.toolCallTimeoutMs,
-      defaultWaitMs: watchLimits.timeoutMs,
-      maxWaitMs: watchLimits.maxTimeoutMs,
-    })
     const record: Generation = {
       wire: new McpGeneration(client, config.closeTimeoutMs, error => diagnostic(error, 'cleanup')),
-      watches,
     }
     current = record
     status.opened()
@@ -415,63 +359,10 @@ export function startConnection(
     return record
   }
 
-  /**
-   * Join the connection other instances already hold under the same
-   * configuration. Returns undefined when this composition has no pool or the
-   * configuration is no longer shared, leaving the caller to dial on its own.
-   * @param resolved - configuration after credential expansion.
-   * @param fetch - OAuth request wrapper bound to the active grant.
-   * @param authProvider - passive OAuth callbacks the shared transport answers with.
-   * @returns the shared generation, or undefined when this instance dials its own.
-   */
-  async function joinShared(
-    resolved: Config,
-    fetch: FetchLike | undefined,
-    authProvider: Required<AuthProvider> | undefined,
-  ): Promise<Generation | undefined> {
-    const pool = ctx.get('mcpPool')
-    if (pool === undefined) return undefined
-    let lease: McpLease | undefined
-    try {
-      lease = await pool.acquire(resolved, {
-        signal: lifetime.signal,
-        ...config.expandTemplates ? { redact: (text: string) => binding.redact(text) } : {},
-        ...fetch === undefined ? {} : { fetch },
-        ...authProvider === undefined ? {} : { authProvider },
-      })
-    } catch (error) {
-      // Disposal cancels the wait; a failed handshake was already reported by the pool.
-      if (lifetime.signal.aborted) throw error
-      return undefined
-    }
-    if (lease === undefined) return undefined
-    const watches = new ResourceWatchRegistry({
-      client: lease.client,
-      label,
-      requestTimeoutMs: config.toolCallTimeoutMs,
-      defaultWaitMs: watchLimits.timeoutMs,
-      maxWaitMs: watchLimits.maxTimeoutMs,
-      installHandler: false,
-    })
-    const record: Generation = {
-      wire: new McpGeneration(lease.client, config.closeTimeoutMs, error => diagnostic(error, 'cleanup')),
-      watches,
-    }
-    current = record
-    status.opened()
-    record.wire.adopt(lease)
-    lease.onClose(() => { if (record.connectedAt !== undefined) lost(record, 'connection closed') })
-    lease.onToolsChanged(() => { void refreshTools(record) })
-    lease.onResourceUpdated((uri) => { watches.notify(uri) })
-    return record
-  }
-
   async function connectGeneration(): Promise<void> {
     if (isStopped()) return
     status.update({ state: 'connecting', attempt: failedAttempts })
-    // A private generation exists from the first attempt, as upstream construction did; joining a
-    // shared connection retires it before it dials anything.
-    let record: Generation | undefined = openPrivate()
+    const record: Generation = openPrivate()
     try {
       const startedAt = Date.now()
       const remaining = (): number | undefined => config.startupTimeoutMs === undefined ? undefined
@@ -490,14 +381,7 @@ export function startConnection(
         ...auth.authProvider,
         token: async () => binding.remember(await auth.authProvider.token()),
       }
-      const shared = await joinShared(resolved, auth?.fetch, authProvider)
-      if (shared === undefined) {
-        await record.wire.connect(resolved, remaining(), auth?.fetch, authProvider)
-      } else {
-        const draft = record
-        record = shared
-        await draft.wire.close()
-      }
+      await record.wire.connect(resolved, remaining(), auth?.fetch, authProvider)
       if (!isCurrent(record)) return
       const text = record.wire.client.getInstructions()?.trimEnd() ?? ''
       const instructions = text ? `### MCP server: ${config.serverName}\n\n${text}` : ''
@@ -514,9 +398,9 @@ export function startConnection(
       readiness.resolve({})
       if (failedAttempts > 0) ctx.logger.info(`${label}: reconnected and re-synced tools (attempt ${failedAttempts}/${policy.maxAttempts})`)
     } catch (error) {
-      if (record !== undefined && current !== record) return
-      if (record !== undefined) current = undefined
-      const confirmed = record === undefined ? true : await close(record)
+      if (current !== record) return
+      current = undefined
+      const confirmed = await close(record)
       readiness.resolve({ error: binding.redacting ? new Error(diagnostic(error, 'startup')) : error })
       if (disposed || !confirmed) return
       if (error instanceof MissingTemplateValue) {
@@ -548,9 +432,6 @@ export function startConnection(
         if (record?.connectedAt === undefined) throw new McpToolError(`${label}: server is disconnected`, 'MCP_SERVER_UNAVAILABLE')
         try {
           return await record.wire.run(async (signal) => {
-            if (request.method === 'resources/watch') {
-              return await record.watches.watch(request.uri, request.timeoutMs, signal, exec.signal)
-            }
             const options = { signal: AbortSignal.any([signal, exec.signal]), timeout: config.toolCallTimeoutMs }
             const generation = record.wire.client
             // The SDK answers an unadvertised capability with the same empty page, but

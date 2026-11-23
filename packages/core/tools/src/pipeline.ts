@@ -8,7 +8,7 @@ import type { UserMessage } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { assertNever, deepFreeze, snapshotJsonValue, type JsonValue } from '@deepseek-ai/dsh-util-values'
 import { TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH, ToolNotFoundError, ToolOutputError } from './contracts.ts'
-import { APPROVAL_CANCELLED, APPROVAL_ERROR_NAME, APPROVAL_REJECTED, APPROVAL_TIMED_OUT, APPROVAL_UNAVAILABLE, type ApprovalErrorCode } from './error-codes.ts'
+import { APPROVAL_CANCELLED, APPROVAL_ERROR_NAME, APPROVAL_REJECTED, APPROVAL_UNAVAILABLE, type ApprovalErrorCode } from './error-codes.ts'
 import { validateJsonSchemaValue } from './json-schema.ts'
 import type { ToolsService } from './index.ts'
 import type { ResolvedToolSet, ToolDefinition, ToolExecutionInput, ToolExecutionMode, ToolExecution, ToolRunContext, ToolExecutionResult, ToolExecutionSuccess, ToolErrorInfo, ToolExecutionToken, PreToolDecision, PostToolDecision } from './contracts.ts'
@@ -439,28 +439,6 @@ export class ToolExecutionPipeline {
   }
 
   /**
-   * Read one call's approval classification from its visible definition.
-   * A throwing or malformed classifier falls back to the tool name with no
-   * resources, so an ask still happens and rules cannot be widened by a
-   * broken classifier.
-   * @param exec - the execution whose definition supplies the classifier.
-   * @returns the action and resource names a rule may match.
-   */
-  private classifyApprovalResources(exec: ToolExecution): {
-    readonly action: string
-    readonly resources: readonly string[]
-  } {
-    const fallback = { action: exec.name, resources: [] as readonly string[] }
-    const tool = this.get(exec.name, exec.agent, exec.toolSet)
-    if (tool?.approvalResources === undefined) return fallback
-    try {
-      return tool.approvalResources(exec.arguments)
-    } catch {
-      return fallback
-    }
-  }
-
-  /**
    * Resolve an `ask` decision to allow/deny through the approval seam. The
    * seam is consumed opportunistically with `ctx.get('approval')` — a
    * deployment that composes no ApprovalService keeps the historical degrade
@@ -489,24 +467,9 @@ export class ToolExecutionPipeline {
         approvalCancelled: false,
       }
     }
-    // A pre-approval listener may deny without prompting; it cannot grant, so
-    // a human-only request still reaches the answerers.
-    const preDecision = await this.ctx.waterfall(
-      scopeTarget(this.tools, exec.agent), 'tools/permission-request', exec,
-      () => Promise.resolve(undefined),
-    )
-    if (preDecision?.kind === 'deny') {
-      return {
-        decision: approvalDenial(preDecision.reason ?? `tool "${exec.name}" was denied before approval`, APPROVAL_REJECTED),
-        approvalCancelled: false,
-      }
-    }
-    const classified = this.classifyApprovalResources(exec)
     const outcome = await approval.request({
       agent: exec.agent,
       toolName: exec.name,
-      action: classified.action,
-      resources: classified.resources,
       callId: exec.callId,
       ...ask.reason !== undefined ? { reason: ask.reason } : {},
       ...ask.displayReason !== undefined ? { displayReason: ask.displayReason } : {},
@@ -514,17 +477,9 @@ export class ToolExecutionPipeline {
     })
     switch (outcome) {
       case 'allowed-once': return { decision: { kind: 'allow' }, approvalCancelled: false }
-      case 'rejected': {
-        // A correction recorded through `/correct` reaches the model as the
-        // rejection reason, so it retries with the user's arguments instead of
-        // guessing why the call was refused.
-        const correction = approval.takeCorrection(exec.agent, exec.callId)
-        return {
-          decision: approvalDenial(correction === undefined
-            ? `the user rejected tool "${exec.name}"`
-            : `the user rejected tool "${exec.name}" and asked you to retry with corrected arguments: ${correction}`, APPROVAL_REJECTED),
-          approvalCancelled: false,
-        }
+      case 'rejected': return {
+        decision: approvalDenial(`the user rejected tool "${exec.name}"`, APPROVAL_REJECTED),
+        approvalCancelled: false,
       }
       case 'cancelled': return {
         decision: approvalDenial(`approval for tool "${exec.name}" was cancelled`, APPROVAL_CANCELLED),
@@ -532,10 +487,6 @@ export class ToolExecutionPipeline {
       }
       case 'unavailable': return {
         decision: approvalDenial(`tool "${exec.name}" requires approval, but no approval channel is available`, APPROVAL_UNAVAILABLE),
-        approvalCancelled: false,
-      }
-      case 'timed-out': return {
-        decision: approvalDenial(`approval for tool "${exec.name}" timed out without a decision`, APPROVAL_TIMED_OUT),
         approvalCancelled: false,
       }
       default: return assertNever(outcome, 'ApprovalOutcome')

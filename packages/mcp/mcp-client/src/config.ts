@@ -7,7 +7,7 @@
 
 import z from '@deepseek-ai/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import { DEFAULT_MAX_INSTRUCTION_BYTES, DEFAULT_MAX_RESOURCE_WATCH_TIMEOUT_MS, DEFAULT_RESOURCE_WATCH_TIMEOUT_MS, RECONNECT_DEFAULTS } from './connection.ts'
+import { DEFAULT_MAX_INSTRUCTION_BYTES, RECONNECT_DEFAULTS } from './connection.ts'
 import type { ReconnectConfig } from './connection.ts'
 import { OAuthSchema } from './oauth-options.ts'
 import type { McpOAuthConfigInput } from './oauth-options.ts'
@@ -26,12 +26,12 @@ const DEFAULT_CATALOG_DESCRIPTION_MAX_LENGTH = 160
 export const SERVER_NAME_PATTERN = /^[A-Za-z0-9_-]{1,32}$/
 
 /** {@link StdioConfig} before defaults. */
-type StdioConfigInput = Omit<StdioConfig, 'args' | 'env' | 'cwd' | 'toolCallTimeoutMs' | 'startupTimeoutMs' | 'failOnStartupError' | 'closeTimeoutMs' | 'expandTemplates' | 'toolLoading' | 'catalogDescriptionMaxLength' | 'resourceWatchTimeoutMs' | 'maxResourceWatchTimeoutMs'>
-  & Partial<Pick<StdioConfig, 'args' | 'env' | 'cwd' | 'toolCallTimeoutMs' | 'startupTimeoutMs' | 'failOnStartupError' | 'closeTimeoutMs' | 'expandTemplates' | 'toolLoading' | 'catalogDescriptionMaxLength' | 'resourceWatchTimeoutMs' | 'maxResourceWatchTimeoutMs'>>
+type StdioConfigInput = Omit<StdioConfig, 'args' | 'env' | 'cwd' | 'toolCallTimeoutMs' | 'startupTimeoutMs' | 'failOnStartupError' | 'closeTimeoutMs' | 'expandTemplates' | 'toolLoading' | 'catalogDescriptionMaxLength'>
+  & Partial<Pick<StdioConfig, 'args' | 'env' | 'cwd' | 'toolCallTimeoutMs' | 'startupTimeoutMs' | 'failOnStartupError' | 'closeTimeoutMs' | 'expandTemplates' | 'toolLoading' | 'catalogDescriptionMaxLength'>>
 
 /** {@link StreamableHttpConfig} before defaults. */
-type StreamableHttpConfigInput = Omit<StreamableHttpConfig, 'oauth' | 'headers' | 'toolCallTimeoutMs' | 'startupTimeoutMs' | 'failOnStartupError' | 'closeTimeoutMs' | 'expandTemplates' | 'toolLoading' | 'catalogDescriptionMaxLength' | 'resourceWatchTimeoutMs' | 'maxResourceWatchTimeoutMs'>
-  & Partial<Pick<StreamableHttpConfig, 'headers' | 'toolCallTimeoutMs' | 'startupTimeoutMs' | 'failOnStartupError' | 'closeTimeoutMs' | 'expandTemplates' | 'toolLoading' | 'catalogDescriptionMaxLength' | 'resourceWatchTimeoutMs' | 'maxResourceWatchTimeoutMs'>>
+type StreamableHttpConfigInput = Omit<StreamableHttpConfig, 'oauth' | 'headers' | 'toolCallTimeoutMs' | 'startupTimeoutMs' | 'failOnStartupError' | 'closeTimeoutMs' | 'expandTemplates' | 'toolLoading' | 'catalogDescriptionMaxLength'>
+  & Partial<Pick<StreamableHttpConfig, 'headers' | 'toolCallTimeoutMs' | 'startupTimeoutMs' | 'failOnStartupError' | 'closeTimeoutMs' | 'expandTemplates' | 'toolLoading' | 'catalogDescriptionMaxLength'>>
   & { oauth?: McpOAuthConfigInput }
 
 /** One server's configuration before defaults. */
@@ -66,8 +66,6 @@ export const StdioSchema = z.object({
   reconnect: ReconnectSchema,
   toolLoading: z.union(['eager', 'on-demand']).default('eager'),
   catalogDescriptionMaxLength: z.natural().min(4).default(DEFAULT_CATALOG_DESCRIPTION_MAX_LENGTH),
-  resourceWatchTimeoutMs: z.natural().min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_RESOURCE_WATCH_TIMEOUT_MS),
-  maxResourceWatchTimeoutMs: z.natural().min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_MAX_RESOURCE_WATCH_TIMEOUT_MS),
 }) as z<StdioConfigInput, StdioConfig>
 
 /** Schema of {@link StreamableHttpConfig}. */
@@ -86,8 +84,6 @@ export const StreamableHttpSchema = z.object({
   reconnect: ReconnectSchema,
   toolLoading: z.union(['eager', 'on-demand']).default('eager'),
   catalogDescriptionMaxLength: z.natural().min(4).default(DEFAULT_CATALOG_DESCRIPTION_MAX_LENGTH),
-  resourceWatchTimeoutMs: z.natural().min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_RESOURCE_WATCH_TIMEOUT_MS),
-  maxResourceWatchTimeoutMs: z.natural().min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_MAX_RESOURCE_WATCH_TIMEOUT_MS),
 }) as z<StreamableHttpConfigInput, StreamableHttpConfig>
 /* jscpd:ignore-end */
 

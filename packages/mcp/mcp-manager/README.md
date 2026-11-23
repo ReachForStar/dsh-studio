@@ -122,8 +122,6 @@ With credentials, Authorization, and WebServer services loaded, `startAuthorizat
 
 Browser clients reach the manager as `ctx.remote.mcpManager` through [`dsh-api-remotes`](../../api/remotes/README.md). `watch(signal)` yields the complete server list on subscription and again after every status or entry change, coalescing changes the subscriber has not read yet; aborting the signal ends that stream, and manager disposal ends every stream. `restart(name)` and `probe(name, signal)` run the operations above. Authorization, cancellation, and sign-out stay on the Host: the Plugins page reaches them through [`dsh-mcp-account`](../mcp-account/README.md), so a browser never names a server to authorize. Configuration writes stay on the Settings Remote; the manager adds no write method, so a browser cannot define a server command.
 
-A settings surface also reaches authorization: `authorize(name)` starts an attempt and returns the browser URL the Host published, and `forgetAuthorization(name)` signs one entry out through the same cleanup path.
-
 -----
 
 <a id="understand-the-implementation"></a>
@@ -187,7 +185,7 @@ No direct invalidation; mounting, rebuilding, and unmounting instances changes t
 
 These limits describe what you cannot do with this manager today. They are current package constraints, not a task backlog.
 
-- **OAuth sign-in runs from the Settings page and plugin accounts** — [`dsh-mcp-account`](../mcp-account/README.md) shows the **Plugins** page account for servers that plugins register with it, while the MCP settings tab authorizes any configured entry over the `authorize` Remote.
+- **OAuth sign-in ships only for plugin accounts** — [`dsh-mcp-account`](../mcp-account/README.md) shows the **Plugins** page account for servers that plugins register with it; no browser surface authorizes any other server, because authorization runs only through Host callers.
 - **Global plane only** — instances mounted by agent presets or static `cordis.yml` rows are neither listed nor governed; a static instance shows up only as a `serverName` collision when a managed entry tries to reuse its name.
 - **A rebuild has a tool gap** — a changed entry is disposed and remounted, so its tools disappear from the model's set until the new instance finishes its initial sync; there is no keep-serving-until-replacement handover.
 - **Registered entries are fixed by their plugin** — Settings cannot override a registered entry's budgets; the registering plugin exposes any tunable it needs in its own configuration.

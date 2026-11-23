@@ -271,7 +271,6 @@ export function apply(ctx: Context, config: Config = {}): void {
   const approveBashEscalation = (
     mode: string,
     justification: string,
-    command: string,
     exec: ToolExecution,
     standingPolicy: SandboxExecutionPolicy | undefined,
   ): Promise<SandboxMode> => {
@@ -283,8 +282,6 @@ export function apply(ctx: Context, config: Config = {}): void {
         agent: exec.agent,
         callId: exec.callId,
         toolName: 'bash',
-        action: 'bash',
-        resources: [command],
         signal: exec.signal,
       },
     )
@@ -524,13 +521,12 @@ export function apply(ctx: Context, config: Config = {}): void {
         }],
         presentationMeta: (_args, value) => ({ cwd: value.cwd }),
       },
-      approvalResources: (args: BashToolArgs) => ({ action: 'bash', resources: [args.command] }),
       async execute(args: BashToolArgs, exec) {
         // Description is display metadata; workdir defaults to the caller's session.
         const standingPolicy = resolveSandboxPolicy(exec)
         validateBashArgs(args, standingPolicy?.mode, { escalation: escalationModes.length > 0, background: backgroundEnabled })
         const approvedMode = args.sandbox_permissions !== undefined && args.justification !== undefined
-          ? await approveBashEscalation(args.sandbox_permissions, args.justification, args.command, exec, standingPolicy)
+          ? await approveBashEscalation(args.sandbox_permissions, args.justification, exec, standingPolicy)
           : undefined
         const policy = approvedMode === undefined
           ? standingPolicy

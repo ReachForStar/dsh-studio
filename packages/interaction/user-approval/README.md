@@ -40,53 +40,17 @@ The effective policy is the one set for the session, falling back to the configu
 - name: '@deepseek-ai/dsh-user-approval'
   config:
     policy: ask
-    rules:
-      - action: write
-        resource: docs/**
-        effect: allow
-      - action: bash
-        resource: 'git *'
-        effect: allow
 ```
 
 | Field | Default | Meaning |
 |---|---|---|
 | `policy` | `ask` | Default for sessions without an `approval/policy` override |
-| `rules` | `[]` | Ordered `{action, resource, effect, match}` rules evaluated before the policy and the answerers |
-| `timeoutMs` | `0` | Milliseconds one request may wait for an answerer; `0` waits until an answer or cancellation |
-
-### Rules
-
-Rules decide a request before the session policy and before any answerer. Each rule names an action pattern, a resource, an effect (`allow`, `deny`, or `ask`), and a match mode. `*` matches any run of characters — including path separators — and `?` matches exactly one character. The last matching rule wins, so a narrow exception can follow a broad rule.
-
-`match: 'glob'` (the default) treats the resource as a pattern. `match: 'prefix'` treats it as a literal command prefix and compares whole command words, so `git status` grants `git status -s` but never `git statuspage`, another subcommand, or a command joined with `&&`. Quoting and backslash escapes are honored; control operators, redirection, command substitution, subshells, expansion, and unterminated quotes make the command ineligible, so it asks instead of matching.
-
-A rule matches when its action pattern matches the request's action and, for a request with declared resources, at least one resource matches; a request without resources matches only a `*` resource. A matching `allow` settles `allowed-once` without prompting, a matching `deny` settles `rejected`, and `ask` (or no match) continues to the policy and answerers. Rules never grant more than the request they matched, and a request marked `needsHuman` is never granted by a rule.
-
-Tools supply the action and resources through their definition: `write` and `edit` declare `write` with the target path, and `bash` declares `bash` with the command text. Any other tool, or a classifier that throws, falls back to its own tool name with no resources, so an unexpected classifier can only make a rule less specific, never wider. Because rules precede the `never` policy, an unattended run can permit exact actions while rejecting everything else.
-
-### Project and session rules and `/allow`
-
-When a storage domain is mounted, the service also keeps rules per project directory in the `approval_rules` domain. Stored rules are appended after the configured ones, so they can narrow or extend them. `--session` rules live only in memory for the live Session and are evaluated after project rules; ending the Session drops them and a restart cannot resurrect them. The `/allow` command edits the invoking Session's project rules, or its session rules with `--session`:
-
-| Input | Result |
-|---|---|
-| `/allow [--session] [--prefix] <action> <resource> [allow\|deny\|ask]` | Appends one rule; the effect defaults to `allow`, and `--prefix` stores a literal command prefix |
-| `/allow [--session] list` | Lists the scope's rules with 1-based positions |
-| `/allow [--session] remove <n>` | Removes the rule at position `n` |
-| `/correct <callId> <text>` | Records replacement arguments for a pending call |
-
-`/correct` records the text against the exact tool call; when the user then rejects that call, the model receives `the user rejected tool "…" and asked you to retry with corrected arguments: <text>` as the failure reason and can retry. Reading the correction consumes it, so a later rejection cannot reuse it.
-
-A Session without a recorded working directory refuses the `/allow` command. `addProjectRule(cwd, rule)`, `removeProjectRule(cwd, index)`, and `projectRulesFor(cwd)` are the same operations for Host callers. Without a mounted storage domain, project rules stay empty and the mutators reject.
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-user-approval) is the exhaustive source for every accepted field and its JSDoc. `setPolicy(agent, policy)` switches a live agent and queues the switch notice described under Model Experience for its next model step; `setApprovalPolicy(session, policy)` is the direct durable write path used by session initialization.
 
 ### Requesting a decision
 
-`request(req)` names the agent, tool, optional call id and reason, and an abort signal. It mints the request identity answerers receive as `requestId`; while a full-access applier is registered the dispatched request also carries `fullAccess: true`. Optional `displayReason` supplies localized presentation text without changing the logged reason. Set `needsHuman` when the decision must come from a person: rules cannot auto-allow such a request (a rule's `deny` still applies), and automated answerers must delegate with `next()` instead of deciding; sandbox escalation sets it. The configured `timeoutMs` may settle a request `timed-out` without a decision; a late answer is discarded. It requires an open turn: an idle or between-turn caller throws before auditing anything. Aborting withdraws the question — the request settles `cancelled` and a late answer is discarded. A failure that prevents either audit append from committing rejects instead of returning an unlogged decision.
-
-`registerFullAccess(handler)` installs the single applier of an explicit full-access commit and withdraws it with the returned disposer; `isPending(session, requestId)` reports whether a prompt still waits. `requestFullAccess(agent, requestId)` records that commit. It refuses a prompt that already settled (`FULL_ACCESS_STALE`), a second commit for the same session while the first is still settling (`FULL_ACCESS_BUSY`), and a composition without an applier (`FULL_ACCESS_UNAVAILABLE`). The first commit appends one `approval/full-access` receipt holding the input identities pending at that moment; a retry for the same request reuses the receipt instead of covering input queued later. The registered applier runs after the receipt commits, so a failing applier leaves a retryable grant with the same fixed targets.
+`request(req)` names the agent, tool, optional call id and reason, and an abort signal. Optional `displayReason` supplies localized presentation text without changing the logged reason. It requires an open turn: an idle or between-turn caller throws before auditing anything. Aborting withdraws the question — the request settles `cancelled` and a late answer is discarded. A failure that prevents either audit append from committing rejects instead of returning an unlogged decision.
 
 ### What the model and user see
 
@@ -123,7 +87,7 @@ The system-prompt contribution `approval:policy` states the complete current mea
 
 ### Audit
 
-`request()` appends `approval/asked` with the request identity and tool, then `approval/decided` with the closed outcome; the exact appended fields live in [`src/index.ts`](src/index.ts). `requestFullAccess()` appends one `approval/full-access` receipt for the same request identity. All three are log-only.
+`request()` appends `approval/asked` with the request identity and tool, then `approval/decided` with the closed outcome; the exact appended fields live in [`src/index.ts`](src/index.ts). Both are log-only.
 
 </details>
 
@@ -198,7 +162,7 @@ Append-only; newly visible content follows the reusable request prefix and does 
 These limits define when the seam is a poor fit or needs special composition care. They are current package constraints, not a general permission comparison.
 
 - **Requests are valid only inside an open turn** — an idle or between-turn caller throws before auditing; a durable out-of-turn approval workflow is deferred.
-- **No runtime grant store** — the outcome vocabulary has `allowed-once` but no `allow-always` outcome, revocation API, or grant store; `/allow` rules are explicit configuration and `--session` rules live only in memory. Session policy is only `ask` / `never`.
+- **Only one-shot grants exist** — the outcome vocabulary has `allowed-once` but no `allow-always`, remembered rule, revocation, or grant store; session policy is only `ask` / `never`.
 - **The request carries no tool arguments** — an answerer sees the tool name, reason, and optional call id; the ACP machine channel requires a call id and delegates requests without one.
 - **No built-in answerer** — headless or incompletely composed deployments resolve `unavailable` and fail closed; the service itself never prompts a human.
 - **Pending approvals are process-local** — checkpoints restore policy and turn state, not pending answerer promises or one-shot grants. Recovery does not resubmit questions or repeat runtime effects.

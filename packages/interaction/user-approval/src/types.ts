@@ -27,10 +27,9 @@ export function ApprovalRequestId(id: string): ApprovalRequestId {
 
 /**
  * Closed approval outcomes: a one-shot grant, explicit rejection, withdrawn
- * request, unavailable answerer, or an elapsed answer window. Callers fail
- * closed on everything except `allowed-once`.
+ * request, or unavailable answerer. Callers fail closed on `unavailable`.
  */
-export type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable' | 'timed-out'
+export type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'
 
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
@@ -64,33 +63,12 @@ declare module '@deepseek-ai/dsh-session/types' {
 export interface ApprovalRequestEvent {
   /** Agent identity projected to the corresponding Client Context in transit. */
   readonly agent: Agent
-  /**
-   * Durable identity of this pending request. A client cites it when it grants
-   * full access, so the grant binds to the exact prompt the user saw.
-   */
-  readonly requestId?: ApprovalRequestId
-  /**
-   * Whether the composition can grant full access from this prompt. Absent
-   * when no full-access handler is registered, so a client hides the action
-   * instead of offering a path the host cannot execute.
-   */
-  readonly fullAccess?: boolean
   /** Tool whose operation requires a decision. */
   readonly toolName: string
-  /** Action name the tool declared for approval rules; defaults to the tool name. */
-  readonly action?: string
-  /** Resource names the tool declared for approval rules. */
-  readonly resources?: readonly string[]
   /** Exact tool call being decided, when available. */
   readonly callId?: ToolCallId
   /** Human-readable reason supplied by the asker. */
   readonly reason?: string
-  /**
-   * The decision must come from a human. Rules cannot auto-allow the request,
-   * and every automated answerer (hook, reviewer, bridge) must call `next()`
-   * instead of deciding. Denying remains available to any answerer.
-   */
-  readonly needsHuman?: boolean
   /** Localized presentation only; never persisted in approval audit events. */
   readonly displayReason?: { readonly en: string; readonly [locale: string]: string }
   /** Cancellation lifetime of the pending request. */

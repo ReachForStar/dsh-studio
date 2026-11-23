@@ -29,16 +29,12 @@
           - id: tool-fs
             name: '@deepseek-ai/dsh-tool-fs'
             config:
-              # codex/zcode 文件面能力：edit 之外再给模型 freeform 补丁工具。
-              applyPatch: true
+              # Set false to drop the apply_patch tool beside edit.
+              applyPatch: false
           - id: tool-fs-search
             name: '@deepseek-ai/dsh-tool-fs-search'
             config:
               sampleOverCapGlobResults: false
-          # 远程 SSH/SFTP：provider 与 known-hosts 注册在宿主层（base），
-          # 这一行给模型提供该能力接缝上的工具。
-          - id: tool-ssh
-            name: '@reachforstar/dsh-tool-ssh'
           # Excalidraw whiteboard scene tools: read/write/draw/export the
           # workspace scene file that the web canvas tab renders
           # (`<workspace>/.dsh/excalidraw/`).
@@ -119,69 +115,12 @@
                 config:
                   provider: fork
                   toolName: subagent_fork
-              # 外部 provider 子代理席位：对应的 provider 包未安装时启用会加载失败，
-              # 因此默认停用，需要时在本预设的 profile 覆盖里按 id 打开。
-              - id: tool-subagent-codex
-                name: '@deepseek-ai/dsh-tool-subagent'
-                disabled: true
-                config:
-                  provider: codex
-                  toolName: subagent_codex
-                  maxDepth: provider-managed
-              - id: tool-subagent-claude-code
-                name: '@deepseek-ai/dsh-tool-subagent'
-                disabled: true
-                config:
-                  provider: claude-code
-                  toolName: subagent_claude_code
-                  maxDepth: provider-managed
               - id: workflow-ptc
                 name: '@deepseek-ai/dsh-workflow-ptc'
                 config:
                   provider: spawn
               - id: tool-workflow
                 name: '@deepseek-ai/dsh-tool-workflow'
-          # 从 qwen-code 吸收的智能体层能力：工具检索、记忆注入、工具批次
-          # 摘要与下一步建议。不写 provider/model 时沿用会话自己的路由，需要
-          # 指定时在 profile patch 里按 id 覆盖。
-          - id: tool-search
-            name: '@deepseek-ai/dsh-tool-search'
-          - id: memory-notes
-            name: '@deepseek-ai/dsh-memory-notes'
-          - id: tool-summary
-            name: '@deepseek-ai/dsh-step-summary'
-          - id: followup
-            name: '@deepseek-ai/dsh-followup'
-          # 提示缓存保活：空闲会话按间隔重放请求前缀，回复丢弃、不进日志。
-          - id: warming
-            name: '@deepseek-ai/dsh-warming'
-          # fork 归属提示：fork 子会话首步说明哪些后台工作属于原会话。
-          - id: fork-notice
-            name: '@deepseek-ai/dsh-fork-notice'
-          # 从 pi 吸收的能力：虚拟模型路由、输入事件 handled、会话标签、
-          # 上下文转移命令、提示模板（目录由部署补）、Git 检查点。
-          # 这三个插件各自 provide 服务，必须放在独立 isolate 域内，
-          # 否则预设的服务泄漏审计会拒绝挂载。
-          - id: pi-services
-            name: cordis:group
-            group: true
-            isolate:
-              virtualModels: true
-              inputHandling: true
-              gitCheckpoints: true
-            config:
-              - id: virtual-model
-                name: '@deepseek-ai/dsh-agent-virtual-model'
-              - id: input-handled
-                name: '@deepseek-ai/dsh-input-handled'
-              - id: git-checkpoint
-                name: '@deepseek-ai/dsh-git-checkpoint'
-          - id: command-label
-            name: '@deepseek-ai/dsh-command-label'
-          - id: handoff
-            name: '@deepseek-ai/dsh-handoff'
-          - id: prompt-templates
-            name: '@deepseek-ai/dsh-prompt-templates'
           - id: tool-ask-user
             name: '@deepseek-ai/dsh-tool-ask-user'
           - id: tool-todo

@@ -40,53 +40,17 @@ kind: "package-reference"
 - name: '@deepseek-ai/dsh-user-approval'
   config:
     policy: ask
-    rules:
-      - action: write
-        resource: docs/**
-        effect: allow
-      - action: bash
-        resource: 'git *'
-        effect: allow
 ```
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `policy` | `ask` | 没有 `approval/policy` 覆盖的会话的默认策略 |
-| `rules` | `[]` | 在策略与应答者之前求值的有序 `{action, resource, effect, match}` 规则 |
-| `timeoutMs` | `0` | 一个请求等待应答者的毫秒数；`0` 表示一直等待回答或取消 |
-
-### 规则
-
-规则在会话策略与任何应答者之前决定请求。每条规则给出动作模式、资源、效果（`allow`、`deny` 或 `ask`）与匹配模式。`*` 匹配任意长度字符（包括路径分隔符），`?` 匹配恰好一个字符。最后匹配的规则生效，因此可以在宽规则之后追加窄例外。
-
-`match: 'glob'`（默认）把资源当作模式。`match: 'prefix'` 把资源当作字面命令前缀，按完整命令词比较：`git status` 放行 `git status -s`，但绝不放行 `git statuspage`、其他子命令或用 `&&` 拼接的命令。引号与反斜杠转义会被识别；控制运算符、重定向、命令替换、子 shell、展开与未闭合引号会使命令不参与匹配，转为询问。
-
-当动作模式与请求动作匹配，且对声明了资源的请求至少有一个资源匹配时，规则命中；没有资源的请求只匹配 `*` 资源。命中的 `allow` 不询问任何人并结算为 `allowed-once`，命中的 `deny` 结算为 `rejected`，`ask`（或无命中）继续走策略与应答者。规则授予的范围不会超过命中的请求；标记 `needsHuman` 的请求不会被规则放行。
-
-工具通过定义提供动作与资源：`write` 与 `edit` 声明 `write` 与目标路径，`bash` 声明 `bash` 与命令文本。其他工具，以及会抛出的分类函数，回退到自身工具名且没有资源，因此异常分类只会让规则更窄，不会更宽。由于规则先于 `never` 策略，无人值守运行可以放行精确动作并拒绝其他一切。
-
-### 项目规则、会话规则与 `/allow`
-
-挂载存储域时，服务还会在 `approval_rules` 域中按项目目录保存规则。存储的规则排在配置规则之后，因此可以收窄或扩展它们。`--session` 规则只存在于当前会话的内存中，排在项目规则之后求值；会话结束即丢弃，重启不能复活。`/allow` 命令编辑发起会话所属项目的规则，加 `--session` 时编辑它的会话规则：
-
-| 输入 | 结果 |
-|---|---|
-| `/allow [--session] [--prefix] <action> <resource> [allow\|deny\|ask]` | 追加一条规则；效果默认为 `allow`，`--prefix` 存为字面命令前缀 |
-| `/allow [--session] list` | 按从 1 开始的位置列出该作用域的规则 |
-| `/allow [--session] remove <n>` | 删除位置 `n` 的规则 |
-| `/correct <callId> <text>` | 记录针对待处理调用的替换参数 |
-
-`/correct` 把文本记录到精确的工具调用；用户随后拒绝该调用时，模型会收到 `the user rejected tool "…" and asked you to retry with corrected arguments: <text>` 作为失败原因并可以重试。读取会消费掉纠正，后续拒绝不会复用。
-
-没有记录工作目录的会话会拒绝 `/allow` 命令。`addProjectRule(cwd, rule)`、`removeProjectRule(cwd, index)` 与 `projectRulesFor(cwd)` 是供 Host 调用方使用的同一组操作。未挂载存储域时项目规则为空，修改操作会拒绝。
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-user-approval)是每个受支持字段及其 JSDoc 的穷尽式真源。`setPolicy(agent, policy)` 切换运行中的 agent 的策略，并为它的下一个模型步骤排队一条模型体验一节所述的切换通知；`setApprovalPolicy(session, policy)` 是会话初始化使用的直接持久写入路径。
 
 ### 请求决定
 
-`request(req)` 指名 agent、工具、原因、可选的调用 id，以及一个中止信号。它生成请求身份并以 `requestId` 交给应答者；注册了完全访问执行器时，分发的请求还会带上 `fullAccess: true`。可选的 `displayReason` 提供本地化展示文案，不改写日志中的原因。决定必须由人做出时设置 `needsHuman`：规则不能自动放行这类请求（规则的 `deny` 仍然生效），自动应答者必须用 `next()` 委托而不是自行决定；沙箱升权会设置它。配置的 `timeoutMs` 可以在没有决定时把请求结算为 `timed-out`，迟到的回答会被丢弃。它要求当前处于尚未结束的轮次中：空闲或在轮次之间调用会在审计前抛出异常。中止会撤回问题——请求以 `cancelled` 结算，迟到的回答被丢弃。若任一审计事件在提交前失败，请求会被拒绝，而不会返回一项未记录的决定。
-
-`registerFullAccess(handler)` 注册唯一的完全访问提交执行器，返回的清理函数将其撤回；`isPending(session, requestId)` 报告某个提示是否仍在等待。`requestFullAccess(agent, requestId)` 记录这次提交：已结算的提示以 `FULL_ACCESS_STALE` 拒绝，同一会话上一个提交仍在结算时以 `FULL_ACCESS_BUSY` 拒绝，组合中没有执行器时以 `FULL_ACCESS_UNAVAILABLE` 拒绝。首次提交追加一条 `approval/full-access` 回执，记录当时仍在排队的输入身份；对同一请求的重试复用该回执，不会把之后排队的输入纳入授权。执行器在回执提交后运行，因此执行失败会留下可重试的授权，目标集合保持不变。
+`request(req)` 指名 agent、工具、原因、可选的调用 id，以及一个中止信号。可选的 `displayReason` 提供本地化展示文案，不改写日志中的原因。它要求当前处于尚未结束的轮次中：空闲或在轮次之间调用会在审计前抛出异常。中止会撤回问题——请求以 `cancelled` 结算，迟到的回答被丢弃。若任一审计事件在提交前失败，请求会被拒绝，而不会返回一项未记录的决定。
 
 ### 模型与用户看到什么
 
@@ -198,7 +162,7 @@ The user changed the approval policy from "ask the user for approval" to "never 
 这些限制说明该 seam 不适用的场景，以及组合时需要特别注意的场景。它们是当前包约束，不是通用权限对比。
 
 - **请求只在尚未结束的轮次内有效**：在空闲时或轮次之间发起调用，会在审计前抛出异常；持久化的轮次外审批工作流仍属延期工作。
-- **没有运行时授权存储**：结果词汇包含 `allowed-once`，但不含 `allow-always` 结果、撤销接口或授权存储；`/allow` 规则是显式配置，`--session` 规则只存在于内存。会话策略只有 `ask`／`never`。
+- **仅存在一次性授权**：结果词汇包含 `allowed-once`，但不含 `allow-always`、已记住的规则、撤销或授权存储；会话策略只有 `ask`／`never`。
 - **请求不携带工具参数**：应答者会看到工具名称、原因和可选调用 id；ACP（Agent Client Protocol）机器通道要求调用 id，并会委托不含 id 的请求。
 - **没有内置应答者**：无头或组合不完整的部署会返回 `unavailable` 并以拒绝方式关闭；服务自身绝不会提示人类。
 - **待处理审批仅在进程内有效**：检查点恢复策略和轮次状态，不恢复待处理应答的 Promise 或一次性授权。恢复不会重新提交问题或重复运行时副作用。

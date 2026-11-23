@@ -55,9 +55,6 @@ No runtime invariant companion is published because the tool retains no state in
 <a id="further-exploration"></a>
 ## Further Exploration
 
-`mirrorUncommitted` defaults to false and asks the service to copy the source checkout's uncommitted changes and untracked files into the new checkout; the service configuration caps one copied untracked file with `mirrorMaxFileBytes`.
-
-
 - [Worktree runtime](../worktree/README.md) — configuration, creation semantics, and write permissions.
 - [Working directory](../../session/working-directory/README.md) — Session context and exit operation.
 - [Tool authoring](../../../docs/cookbook/adding-a-tool.md) — canonical results and pure presentation.

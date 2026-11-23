@@ -499,112 +499,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['when no turn is open or either audit event fails before the session append commit point.'],
       },
       {
-        signature: 'registerFullAccess(handler: FullAccessHandler): () => void',
-        description: 'Record the one applier that grants full access from an approval prompt. A deployment registers at most one: the commit is a single explicit action, not a rule, and two independent appliers could widen the same session twice with different meanings. While a handler is registered, every dispatched request advertises `fullAccess`, so clients can offer the action only where the host can execute it.',
-        parameters: [{ name: 'handler', description: 'invoked after the receipt commits; owns the policy write.' }],
-        returns: 'the disposer that withdraws this handler.',
-        throws: ['when another handler is already registered.'],
-      },
-      {
-        signature: 'isPending(session: Session, requestId: ApprovalRequestId): boolean',
-        description: 'Whether one approval request is still waiting for its decision.',
-        parameters: [{ name: 'session', description: 'the session that owns the request.' }, { name: 'requestId', description: 'the request identity carried to the client.' }],
-        returns: 'whether an answerer chain is still awaiting this request.',
-      },
-      {
-        signature: 'async requestFullAccess(agent: Agent, requestId: ApprovalRequestId): Promise<FullAccessCommit>',
-        description: 'Commit full access for one pending prompt. This is a distinct action, not an allowed-once outcome: it records a durable receipt for the exact request, covers the input identities pending when it commits, and then hands the receipt to the registered applier, which writes the wider policy. The targets are fixed at the first commit; a retry for the same request reuses them, so input queued after the commit stays outside the grant. One commit per session may be in flight: a concurrent retry fails with `FULL_ACCESS_BUSY` instead of racing the policy write.',
-        parameters: [{ name: 'agent', description: 'the agent whose pending request is being granted.' }, { name: 'requestId', description: 'the exact pending request the user acted on.' }],
-        returns: 'the committed receipt: request identity and covered targets.',
-        throws: ['`FullAccessError` when the request is no longer pending, the composition has no applier, or another commit is still in flight.'],
-      },
-      {
-        signature: 'projectRulesFor(cwd: string | undefined): readonly ApprovalRule[]',
-        description: 'Read the rules stored for one project directory.',
-        parameters: [{ name: 'cwd', description: 'the session\'s recorded working directory.' }],
-        returns: 'the stored rules, or none without a directory or storage.',
-      },
-      {
-        signature: 'sessionRulesFor(session: Session): readonly ApprovalRule[]',
-        description: 'Read the rules added to one Session\'s memory for its lifetime.',
-        parameters: [{ name: 'session', description: 'the session whose rules apply.' }],
-        returns: 'the session\'s ordered rules.',
-      },
-      {
-        signature: 'addSessionRule(session: Session, rule: ApprovalRule): readonly ApprovalRule[]',
-        description: 'Append one in-memory rule to a Session. The rule is evaluated after project rules and disappears with the Session; nothing is persisted.',
-        parameters: [{ name: 'session', description: 'the session receiving the rule.' }, { name: 'rule', description: 'the rule to append.' }],
-        returns: 'the session\'s complete rule list after the write.',
-      },
-      {
-        signature: 'removeSessionRule(session: Session, index: number): ApprovalRule | undefined',
-        description: 'Remove one in-memory rule from a Session by position.',
-        parameters: [{ name: 'session', description: 'the session owning the rule.' }, { name: 'index', description: 'the rule\'s position in {@link sessionRulesFor}.' }],
-        returns: 'the removed rule, or `undefined` when the position does not exist.',
-      },
-      {
-        signature: 'async addProjectRule(cwd: string, rule: ApprovalRule): Promise<readonly ApprovalRule[]>',
-        description: 'Append one rule to a project\'s stored rules.',
-        parameters: [{ name: 'cwd', description: 'the project directory.' }, { name: 'rule', description: 'the rule to append.' }],
-        returns: 'the project\'s complete rule list after the write.',
-        throws: ['when the deployment mounts no storage domain for rules.'],
-      },
-      {
-        signature: 'async removeProjectRule(cwd: string, index: number): Promise<ApprovalRule | undefined>',
-        description: 'Remove one rule from a project by zero-based position.',
-        parameters: [{ name: 'cwd', description: 'the project directory.' }, { name: 'index', description: 'the rule\'s position in {@link projectRulesFor}.' }],
-        returns: 'the removed rule, or `undefined` when the position does not exist.',
-        throws: ['when the deployment mounts no storage domain for rules.'],
-      },
-      {
-        signature: 'recordCorrection(agent: Agent, callId: ToolCallId, text: string): void',
-        description: 'Record the user\'s replacement arguments for one pending call. The pipeline consumes the text when the answer is `rejected`, so the model receives it as the tool failure reason and can retry with the corrected arguments.',
-        parameters: [{ name: 'agent', description: 'the agent whose session owns the call.' }, { name: 'callId', description: 'the exact tool call the correction belongs to.' }, { name: 'text', description: 'the user\'s replacement arguments or instruction.' }],
-      },
-      {
-        signature: 'takeCorrection(agent: Agent, callId: ToolCallId): string | undefined',
-        description: 'Consume one recorded correction. Reading removes it, so a stale rejection reason cannot leak into a later call.',
-        parameters: [{ name: 'agent', description: 'the agent whose session owns the call.' }, { name: 'callId', description: 'the exact tool call being rejected.' }],
-        returns: 'the correction text, or `undefined` when none was recorded.',
-      },
-      {
         signature: 'overrideOf(session: Session): ApprovalPolicy | undefined',
         description: 'Read the session override without applying the configured default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
         returns: 'the last logged policy, or `undefined` without one.',
-      },
-    ],
-  },
-  {
-    key: 'arena',
-    summary: 'Compare several models on one prompt and return their outcomes.',
-    description: 'Compare several models on one prompt and return their outcomes.\n\nEach contender runs concurrently in its own checkout. The run never writes `workspaceRoot`: ArenaService.apply does that as an explicit, separate choice.',
-    methods: [
-      {
-        signature: 'async run(request: ArenaRunRequest, options: { readonly signal?: AbortSignal } = {}): Promise<ArenaRun>',
-        description: 'Run one prompt through every contender concurrently.',
-        parameters: [{ name: 'request', description: 'prompt, contenders, and optional base commit.' }, { name: 'options', description: 'cancellation for the whole comparison.' }],
-        returns: 'every contender\'s outcome, in request order.',
-        throws: ['{Error} when the request is malformed, the repository cannot be read, or the run is cancelled before settlement.'],
-      },
-      {
-        signature: 'async apply(runId: string, label: string, options: { readonly signal?: AbortSignal } = {}): Promise<string[]>',
-        description: 'Apply one contender\'s changes to the configured workspace root.',
-        parameters: [{ name: 'runId', description: 'run identity returned by {@link ArenaService.run}.' }, { name: 'label', description: 'contender whose checkout supplies the diff.' }, { name: 'options', description: 'cancellation for the git operations.' }],
-        returns: 'paths the applied diff touched.',
-        throws: ['{Error} when the run or contender is unknown, or the patch does not apply.'],
-      },
-      {
-        signature: 'async remove(runId: string, options: { readonly signal?: AbortSignal } = {}): Promise<void>',
-        description: 'Remove one run\'s checkouts and branches.',
-        parameters: [{ name: 'runId', description: 'run identity returned by {@link ArenaService.run}.' }, { name: 'options', description: 'cancellation for the git operations.' }],
-        throws: ['{Error} when the run is unknown.'],
-      },
-      {
-        signature: 'runs(): readonly ArenaRun[]',
-        description: 'List the runs this service still retains.',
-        parameters: [],
-        returns: 'the retained runs, oldest first.',
       },
     ],
   },
@@ -2315,35 +2213,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
-    key: 'gitCheckpoints',
-    summary: 'Git 检查点服务（`ctx.gitCheckpoints`）：在工作目录执行 git 并保存最近引用。',
-    description: 'Git 检查点服务（`ctx.gitCheckpoints`）：在工作目录执行 git 并保存最近引用。',
-    methods: [
-      {
-        signature: 'lastOf(session: Session): string | undefined',
-        description: '读取一个会话最近一次的检查点引用。',
-        parameters: [{ name: 'session', description: '会话。' }],
-        returns: 'stash 引用；无检查点时 undefined。',
-      },
-      {
-        signature: 'clear(session: Session): void',
-        description: '清除一个会话保存的检查点引用。',
-        parameters: [{ name: 'session', description: '会话。' }],
-      },
-      {
-        signature: 'async capture(session: Session, timeoutMs: number): Promise<string | undefined>',
-        description: '为会话工作目录创建检查点。',
-        parameters: [{ name: 'session', description: '会话。' }, { name: 'timeoutMs', description: '单条命令截止时间。' }],
-        returns: 'stash 引用；工作区无改动时 undefined。',
-      },
-      {
-        signature: 'async restore(session: Session, ref: string, timeoutMs: number): Promise<void>',
-        description: '把一个检查点引用恢复到会话工作目录。',
-        parameters: [{ name: 'session', description: '会话。' }, { name: 'ref', description: 'stash 引用。' }, { name: 'timeoutMs', description: '单条命令截止时间。' }],
-      },
-    ],
-  },
-  {
     key: 'goals',
     summary: 'Goal service (`ctx.goals`) backed exclusively by the owning session log.',
     description: 'Goal service (`ctx.goals`) backed exclusively by the owning session log.',
@@ -2488,25 +2357,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'requiredIds', description: 'Entry ids whose inactive state is reported as a failure even when it predates this call.' }],
         returns: 'Inactive-entry diagnostics, the changed modules that load after a restart, and a profile-wide restart reason.',
         throws: ['The patch read, publication, preparation, apply, or activation failure of the recomposition, including a replacement plugin that fails to load or start, whose previous code no longer runs.'],
-      },
-    ],
-  },
-  {
-    key: 'inputHandling',
-    summary: '输入拦截服务（`ctx.inputHandling`）：按注册顺序调用拦截器。',
-    description: '输入拦截服务（`ctx.inputHandling`）：按注册顺序调用拦截器。',
-    methods: [
-      {
-        signature: 'register(interceptor: InputInterceptor): () => void',
-        description: '注册一个拦截器。',
-        parameters: [{ name: 'interceptor', description: '拦截器。' }],
-        returns: '注销函数。',
-      },
-      {
-        signature: 'async handle(agent: Agent, text: string, signal: AbortSignal): Promise<InputDecision>',
-        description: '依次调用拦截器，返回第一个非 `continue` 的决策。',
-        parameters: [{ name: 'agent', description: '接收输入的代理。' }, { name: 'text', description: '输入文本。' }, { name: 'signal', description: '取消信号。' }],
-        returns: '生效的决策；无拦截器命中时为 `continue`。',
       },
     ],
   },
@@ -2775,24 +2625,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the same deterministic handle text used at adapter dispatch.',
       },
       {
-        signature: 'async listNonChatModels(provider: string, type: LlmNonChatModelType): Promise<LlmNonChatModelInfo[]>',
-        description: 'List non-chat models (classifiers or image models) advertised by one registered provider. The base adapter offers none.',
-        parameters: [{ name: 'provider', description: 'registered provider route.' }, { name: 'type', description: 'model category.' }],
-        returns: 'detached non-chat model metadata.',
-      },
-      {
-        signature: 'classify(request: LlmClassifyRequest): Promise<LlmClassifyResult>',
-        description: 'Run one classifier request through the provider\'s adapter.',
-        parameters: [{ name: 'request', description: 'classification request.' }],
-        returns: 'answers by question id.',
-      },
-      {
-        signature: 'generateImages(request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult>',
-        description: 'Run one image generation request through the provider\'s adapter.',
-        parameters: [{ name: 'request', description: 'image request.' }],
-        returns: 'generated text and image blocks.',
-      },
-      {
         signature: 'async listModels(provider: string): Promise<LlmModelInfo[]>',
         description: 'Discover models advertised by one registered provider. Catalog membership does not constrain core routing. Catalog-driven entry points may restrict selection and submission to the advertised models.',
         parameters: [{ name: 'provider', description: 'registered provider route to inspect.' }],
@@ -2940,17 +2772,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'current attempt progress; absent services, changing entries, or failed cleanup reject.',
       },
       {
-        signature: '@Remote(\'authorize\') async authorizeFromClient(name: string): Promise<string | undefined>',
-        description: 'Start an interactive authorization for a management surface.\n\nReturns as soon as the flow reports the page to open; the flow keeps running and its committed grant replaces the connection.',
-        parameters: [{ name: 'name', description: 'the configured or registered server key.' }],
-        returns: 'the authorization page, or undefined while the attempt is still starting.',
-      },
-      {
-        signature: '@Remote(\'forgetAuthorization\') forgetAuthorizationFromClient(name: string): Promise<void>',
-        description: 'Remove one server\'s stored grant for a management surface.',
-        parameters: [{ name: 'name', description: 'the configured or registered server key.' }],
-      },
-      {
         signature: 'async cancelAuthorization(name: string, id: McpOAuthAttemptId): Promise<void>',
         description: 'Cancel the selected attempt and drain its work; an admitted credential commit completes.',
         parameters: [{ name: 'name', description: 'managed entry.' }, { name: 'id', description: 'selected attempt; stale or absent attempts are ignored.' }],
@@ -2964,8 +2785,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   },
   {
     key: 'mcpResources',
-    summary: 'Scoped resource access plus four tools shared by configured MCP servers.',
-    description: 'Scoped resource access plus four tools shared by configured MCP servers.',
+    summary: 'Scoped resource access plus three tools shared by configured MCP servers.',
+    description: 'Scoped resource access plus three tools shared by configured MCP servers.',
     methods: [
       {
         signature: 'register(server: string, provider: McpResourceProvider): () => void',
@@ -5434,42 +5255,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
-    key: 'virtualModels',
-    summary: '虚拟模型服务（`ctx.virtualModels`）：注册虚拟模型并解析每次请求的物理选择。',
-    description: '虚拟模型服务（`ctx.virtualModels`）：注册虚拟模型并解析每次请求的物理选择。',
-    methods: [
-      {
-        signature: 'register(definition: VirtualModelDefinition): () => void',
-        description: '注册或替换一个虚拟模型。',
-        parameters: [{ name: 'definition', description: '虚拟模型定义。' }],
-        returns: '注销该定义的函数。',
-      },
-      {
-        signature: 'unregister(provider: string, id: string): void',
-        description: '注销一个虚拟模型。',
-        parameters: [{ name: 'provider', description: 'provider。' }, { name: 'id', description: '模型 id。' }],
-      },
-      {
-        signature: 'list(): readonly VirtualModelDefinition[]',
-        description: '列出已注册的虚拟模型定义。',
-        parameters: [],
-        returns: '注册顺序的定义列表。',
-      },
-      {
-        signature: 'async resolve(session: Session, selection: ModelSelection, request: ModelRouteRequest): Promise<ModelSelection>',
-        description: '解析一次选择：未注册为虚拟模型时原样返回。',
-        parameters: [{ name: 'session', description: '会话，用于读写路由状态。' }, { name: 'selection', description: '用户选择或路由 fallback。' }, { name: 'request', description: '请求上下文。' }],
-        returns: '本次请求使用的物理选择。',
-      },
-      {
-        signature: 'resolverFor(session: Session): ModelRouteResolver',
-        description: '绑定会话的解析器，供 `AgentModel` 使用。',
-        parameters: [{ name: 'session', description: '会话。' }],
-        returns: '解析器。',
-      },
-    ],
-  },
-  {
     key: 'web',
     summary: 'The web access service.',
     description: 'The web access service. Registered as `ctx.web` (one instance per context) and exposed to Clients as the `web` Remote namespace (`listProviders`).\n\nSelection semantics (resolved at execution time, never order-dependent):\n\n- A configured id that is registered and `available()` → that provider.\n- A configured id not registered → `WEB_PROVIDER_CONFIGURED_MISSING`.\n- A configured id registered but unavailable → `WEB_PROVIDER_CONFIGURED_UNAVAILABLE`.\n- No search id configured, and the provider assigned to the route of the model request the search serves is usable → that provider: `deepseek-official` (Messages search) on the `deepseek-official` and `deepseek-account` routes, `deepseek-search-api` on every other route and outside a model request.\n- No id configured, exactly one registered usable provider → that provider.\n- No id configured, multiple usable providers → `WEB_PROVIDER_AMBIGUOUS`.\n- No id configured, no usable provider → `WEB_PROVIDER_UNAVAILABLE`.',
@@ -5534,7 +5319,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'webhookRuntime',
     summary: 'Fire-and-forget rule runtime.',
-    description: 'Fire-and-forget rule runtime. Session creation and live-Session delivery are the built-in actions.',
+    description: 'Fire-and-forget rule runtime. Session creation is the built-in action.',
     methods: [
       {
         signature: 'register<K extends string>(rule: WebhookRule<K>): () => Promise<void>',
@@ -5674,12 +5459,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'sessionId', description: 'the Session that appended the event.' }, { name: 'seq', description: 'the event\'s sequence number.' }, { name: 'index', description: 'the file\'s index in the summary\'s `files`.' }, { name: 'signal', description: 'cancels the reads.' }],
         returns: 'the comparison, or undefined once its Session was disposed, when this Host never recorded it, or when no file has that index.',
         throws: ['when a snapshot read fails for a live Session.'],
-      },
-      {
-        signature: 'rewind(sessionId: SessionId, turn: number, signal: AbortSignal): Promise<WorkspaceRewindResult | undefined>',
-        description: 'Restore the files one recorded turn changed, skipping unsafe sides.',
-        parameters: [{ name: 'sessionId', description: 'the Session that owns the turn.' }, { name: 'turn', description: 'the recorded turn to revert.' }, { name: 'signal', description: 'cancels the preflight and writes.' }],
-        returns: 'what was restored and why each remaining file was skipped, or undefined when the Host holds no record for that turn.',
       },
     ],
   },
@@ -5918,7 +5697,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     methods: [
       {
         signature: 'async create( agent: Agent, request: CreateWorktreeRequest = {}, signal?: AbortSignal, onPhase?: (phase: CreateWorktreePhase) => void, ): Promise<CreatedWorktree>',
-        description: 'Create a fresh branch and checkout at a pinned local revision, then enter it. A request that asks to fetch first fetches its remote-tracking branch, only that branch and without tags, then pins the fetched commit. Existing branches or checkout paths fail. Uncommitted files stay in the source checkout unless the request asks to mirror them. Checkout disables configured clean, smudge, and process filters without changing Git config. Repository-local replacement refs still apply; baseCommit reports the resolved object name. The new checkout becomes current only after Git setup succeeds. Failures may retain newly allocated Git/filesystem artifacts; no branch or checkout is removed automatically.',
+        description: 'Create a fresh branch and checkout at a pinned local revision, then enter it. A request that asks to fetch first fetches its remote-tracking branch, only that branch and without tags, then pins the fetched commit. Existing branches or checkout paths fail. Uncommitted files stay in the source checkout. Checkout disables configured clean, smudge, and process filters without changing Git config. Repository-local replacement refs still apply; baseCommit reports the resolved object name. The new checkout becomes current only after Git setup succeeds. Failures may retain newly allocated Git/filesystem artifacts; no branch or checkout is removed automatically.',
         parameters: [{ name: 'agent', description: 'caller whose current directory selects the source repository and file policy.' }, { name: 'request', description: 'optional new name, local revision, and fetch switch; defaults are generated name, HEAD, and no fetch.' }, { name: 'signal', description: 'cancellation of lookup, creation, and working-directory publication.' }, { name: 'onPhase', description: 'receives each stage before it begins; it must not throw.' }],
         returns: 'canonical checkout path, branch name, pinned commit, and source repository root.',
         throws: ['{WorktreeError} for an invalid request, a fetch request whose `from` is not a remote-tracking branch of a configured remote, an existing branch or path, or a failed, oversized, or timed-out command, including the fetch; a failure after allocation keeps its `name` and `code` and adds retained-artifact context.'],
@@ -6602,14 +6381,6 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'exec', description: 'the allowed call about to dispatch (name, parsed arguments, caller agent, signal).' }],
   },
   {
-    name: 'tools/permission-request',
-    mode: 'waterfall',
-    signature: '\'tools/permission-request\'(this: Scoped<ToolsService>, exec: ToolExecution, next: () => Promise<PermissionRequestDecision | undefined>): Promise<PermissionRequestDecision | undefined>',
-    summary: 'Decide an `ask` call before the approval seam prompts anyone.',
-    description: 'Decide an `ask` call before the approval seam prompts anyone. A listener may deny; returning nothing or calling `next()` delegates. This point cannot grant: only the approval service\'s `allowed-once` runs the call, so a human-only request stays human-only. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent\'s calls.',
-    parameters: [{ name: 'exec', description: 'the pending call whose approval would otherwise be requested.' }, { name: 'next', description: 'delegates to the next listener; the default result is no decision.' }],
-  },
-  {
     name: 'tools/post-execute',
     mode: 'waterfall',
     signature: '\'tools/post-execute\'(this: Scoped<ToolsService>, exec: ToolExecution, result: Readonly<ToolExecutionResult>, next: () => Promise<PostToolDecision>): Promise<PostToolDecision>',
@@ -7091,7 +6862,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ApprovalOutcome',
-    declaration: 'export type ApprovalOutcome = \'allowed-once\' | \'rejected\' | \'cancelled\' | \'unavailable\' | \'timed-out\';',
+    declaration: 'export type ApprovalOutcome = \'allowed-once\' | \'rejected\' | \'cancelled\' | \'unavailable\';',
   },
   {
     name: 'ApprovalPolicy',
@@ -7103,39 +6874,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ApprovalRequestEvent',
-    declaration: 'export interface ApprovalRequestEvent {\n    readonly agent: Agent;\n    readonly requestId?: ApprovalRequestId;\n    readonly fullAccess?: boolean;\n    readonly toolName: string;\n    readonly action?: string;\n    readonly resources?: readonly string[];\n    readonly callId?: ToolCallId;\n    readonly reason?: string;\n    readonly needsHuman?: boolean;\n    readonly displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n    readonly signal?: AbortSignal;\n}',
-  },
-  {
-    name: 'ApprovalRule',
-    declaration: 'export interface ApprovalRule {\n    readonly action: string;\n    readonly resource: string;\n    readonly effect: ApprovalRuleEffect;\n    readonly match: ApprovalRuleMatch;\n}',
-  },
-  {
-    name: 'ApprovalRuleEffect',
-    declaration: 'export type ApprovalRuleEffect = \'allow\' | \'deny\' | \'ask\';',
-  },
-  {
-    name: 'ApprovalRuleMatch',
-    declaration: 'export type ApprovalRuleMatch = \'glob\' | \'prefix\';',
+    declaration: 'export interface ApprovalRequestEvent {\n    readonly agent: Agent;\n    readonly toolName: string;\n    readonly callId?: ToolCallId;\n    readonly reason?: string;\n    readonly displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n    readonly signal?: AbortSignal;\n}',
   },
   {
     name: 'ArchiveSessionOptions',
     declaration: 'export interface ArchiveSessionOptions {\n    readonly stopActivity?: boolean;\n}',
-  },
-  {
-    name: 'ArenaContender',
-    declaration: 'export interface ArenaContender {\n    readonly label: string;\n    readonly provider: string;\n    readonly model: string;\n    readonly maxTokens?: number;\n}',
-  },
-  {
-    name: 'ArenaContenderResult',
-    declaration: 'export interface ArenaContenderResult {\n    readonly label: string;\n    readonly provider: string;\n    readonly model: string;\n    readonly sessionId: SessionId;\n    readonly branch: string;\n    readonly worktree: string;\n    readonly status: \'completed\' | \'failed\' | \'cancelled\';\n    readonly failure?: string;\n    readonly reply: string;\n    readonly durationMs: number;\n    readonly turns: number;\n    readonly toolCalls: number;\n    readonly tokens: number;\n    readonly changedPaths: string[];\n}',
-  },
-  {
-    name: 'ArenaRun',
-    declaration: 'export interface ArenaRun {\n    readonly runId: string;\n    readonly baseCommit: string;\n    readonly prompt: string;\n    readonly startedAt: number;\n    readonly contenders: readonly ArenaContenderResult[];\n}',
-  },
-  {
-    name: 'ArenaRunRequest',
-    declaration: 'export interface ArenaRunRequest {\n    readonly prompt: string;\n    readonly contenders: readonly ArenaContender[];\n    readonly from?: string;\n}',
   },
   {
     name: 'AskOptions',
@@ -7554,6 +7297,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ComputerUseProviderName = Branded<\'ComputerUseProviderName\'>;',
   },
   {
+    name: 'ConfigInput',
+    declaration: 'export type ConfigInput = StdioConfigInput | StreamableHttpConfigInput;',
+  },
+  {
     name: 'ConfigureCall',
     declaration: 'export type ConfigureCall = (controls: Readonly<LlmCallControls>, model: Readonly<LlmResolvedModelInfo>) => LlmCallControls;',
   },
@@ -7819,7 +7566,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CreateWorktreeRequest',
-    declaration: 'export interface CreateWorktreeRequest {\n    name?: string;\n    from?: string;\n    fetch?: boolean;\n    mirrorUncommitted?: boolean;\n}',
+    declaration: 'export interface CreateWorktreeRequest {\n    name?: string;\n    from?: string;\n    fetch?: boolean;\n}',
   },
   {
     name: 'CredentialInfo',
@@ -8562,14 +8309,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FsWriteOutcome {\n    operation: \'create\' | \'update\';\n    version: FsVersion;\n    before: string | null;\n    after: string;\n}',
   },
   {
-    name: 'FullAccessCommit',
-    declaration: 'export interface FullAccessCommit {\n    readonly agent: Agent;\n    readonly requestId: ApprovalRequestId;\n    readonly targets: readonly string[];\n}',
-  },
-  {
-    name: 'FullAccessHandler',
-    declaration: 'export type FullAccessHandler = (commit: FullAccessCommit) => void | Promise<void>;',
-  },
-  {
     name: 'GenerateOptions',
     declaration: 'export interface GenerateOptions<Purpose extends string = LlmRequestPurpose> {\n    provider: string;\n    model: string;\n    reasoningEffort?: ReasoningEffortId;\n    messages: RequestMessage[];\n    system?: string;\n    tools?: ToolSchema[];\n    toolHistory?: ToolHistory;\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n    signal?: AbortSignal;\n    sessionId?: Branded<\'SessionId\'>;\n    purpose?: Purpose;\n}',
   },
@@ -8700,14 +8439,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'IndexInjectionPlacement',
     declaration: 'export type IndexInjectionPlacement = \'head\' | \'body\';',
-  },
-  {
-    name: 'InputDecision',
-    declaration: 'export type InputDecision = {\n    readonly action: \'continue\';\n} | {\n    readonly action: \'transform\';\n    readonly text: string;\n} | {\n    readonly action: \'handled\';\n};',
-  },
-  {
-    name: 'InputInterceptor',
-    declaration: 'export interface InputInterceptor {\n    intercept(agent: Agent, text: string, signal: AbortSignal): InputDecision | Promise<InputDecision>;\n}',
   },
   {
     name: 'InspectOptions',
@@ -8907,7 +8638,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'LlmAdapter',
-    declaration: 'export abstract class LlmAdapter {\n    providerInfo(provider: string): LlmProviderInfo;\n    providerRetryPolicy(_provider: string): ResolvedRetryPolicy | undefined;\n    imageRequestPricing(_provider: string, _model: string): LlmImageRequestPricing | undefined;\n    imageRequestTarget(_provider: string, _model: string, image: ImageAttachmentRef): ImageRequestTarget;\n    listModels(_provider: string): Promise<readonly LlmModelInfo[]>;\n    listNonChatModels(_provider: string, _type: LlmNonChatModelType): Promise<readonly LlmNonChatModelInfo[]>;\n    classify(_request: LlmClassifyRequest): Promise<LlmClassifyResult>;\n    generateImages(_request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult>;\n    resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;\n    async prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;\n    abstract stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
+    declaration: 'export abstract class LlmAdapter {\n    providerInfo(provider: string): LlmProviderInfo;\n    providerRetryPolicy(_provider: string): ResolvedRetryPolicy | undefined;\n    imageRequestPricing(_provider: string, _model: string): LlmImageRequestPricing | undefined;\n    imageRequestTarget(_provider: string, _model: string, image: ImageAttachmentRef): ImageRequestTarget;\n    listModels(_provider: string): Promise<readonly LlmModelInfo[]>;\n    resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;\n    async prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;\n    abstract stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
   },
   {
     name: 'LlmAttemptId',
@@ -8926,18 +8657,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface LlmCallControls {\n    reasoningEffort?: ReasoningEffortId;\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n}',
   },
   {
-    name: 'LlmClassifierQuestion',
-    declaration: 'export type LlmClassifierQuestion = {\n    readonly type: \'choice\';\n    readonly instructions: string;\n    readonly criteria: Readonly<Record<string, string>>;\n} | {\n    readonly type: \'score\';\n    readonly instructions: string;\n    readonly criteria: readonly string[];\n} | {\n    readonly type: \'bool\';\n    readonly instructions: string;\n    readonly criteria: {\n        readonly true: string;\n        readonly false: string;\n    };\n};',
-  },
-  {
-    name: 'LlmClassifyRequest',
-    declaration: 'export interface LlmClassifyRequest {\n    provider: string;\n    model: string;\n    state: Readonly<Record<string, unknown>>;\n    images?: readonly {\n        readonly data: string;\n        readonly mimeType: string;\n    }[];\n    questions: Readonly<Record<string, LlmClassifierQuestion>>;\n    signal?: AbortSignal;\n}',
-  },
-  {
-    name: 'LlmClassifyResult',
-    declaration: 'export interface LlmClassifyResult {\n    answers: Readonly<Record<string, unknown>>;\n    stopReason: \'stop\' | \'error\' | \'aborted\';\n    errorMessage?: string;\n}',
-  },
-  {
     name: 'LlmConfigurableProvider',
     declaration: 'export interface LlmConfigurableProvider {\n    provider: string;\n    displayName: string;\n    settingsNs: string;\n    settingsPath: readonly string[];\n    declared?: boolean;\n    defaultBaseURL?: string;\n    baseURLEnv?: readonly string[];\n    nativeAuth?: LlmNativeAuth;\n    error?: string;\n}',
   },
@@ -8950,28 +8669,12 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface LlmFailure {\n    readonly message: string;\n    readonly code: string;\n    readonly status?: number;\n    readonly providerRetryAfterMs?: number;\n    readonly requestId?: ProviderRequestId;\n    readonly offloadImages?: number;\n}',
   },
   {
-    name: 'LlmGenerateImagesRequest',
-    declaration: 'export interface LlmGenerateImagesRequest {\n    provider: string;\n    model: string;\n    input: readonly LlmImagesInput[];\n    signal?: AbortSignal;\n}',
-  },
-  {
-    name: 'LlmGenerateImagesResult',
-    declaration: 'export interface LlmGenerateImagesResult {\n    output: readonly LlmImagesOutput[];\n    stopReason: \'stop\' | \'error\' | \'aborted\';\n    errorMessage?: string;\n}',
-  },
-  {
     name: 'LlmImageRequestPrice',
     declaration: 'export interface LlmImageRequestPrice {\n    visualTokens: number;\n    text: string;\n}',
   },
   {
     name: 'LlmImageRequestPricing',
     declaration: 'export interface LlmImageRequestPricing {\n    priceImages(images: readonly ImageBlock[]): readonly LlmImageRequestPrice[];\n}',
-  },
-  {
-    name: 'LlmImagesInput',
-    declaration: 'export type LlmImagesInput = {\n    readonly type: \'text\';\n    readonly text: string;\n} | {\n    readonly type: \'image\';\n    readonly data: string;\n    readonly mimeType: string;\n};',
-  },
-  {
-    name: 'LlmImagesOutput',
-    declaration: 'export type LlmImagesOutput = {\n    readonly type: \'text\';\n    readonly text: string;\n} | {\n    readonly type: \'image\';\n    readonly data: string;\n    readonly mimeType: string;\n};',
   },
   {
     name: 'LlmModelBadge',
@@ -9002,14 +8705,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface LlmNativeAuth {\n    env: readonly string[];\n    oauth: boolean;\n}',
   },
   {
-    name: 'LlmNonChatModelInfo',
-    declaration: 'export interface LlmNonChatModelInfo {\n    provider: string;\n    id: string;\n    name: string;\n}',
-  },
-  {
-    name: 'LlmNonChatModelType',
-    declaration: 'export type LlmNonChatModelType = \'classifier\' | \'image\';',
-  },
-  {
     name: 'LlmProviderInfo',
     declaration: 'export interface LlmProviderInfo {\n    id: string;\n    name: string;\n}',
   },
@@ -9031,7 +8726,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'LlmRuntime',
-    declaration: 'export class LlmRuntime extends TypertRemoteService {\n    constructor(ctx: Context);\n    registerAdapter(providers: string[], adapter: LlmAdapter): AdapterRegistrationHandle;\n    @Remote\n    listProviders(): LlmProviderInfo[];\n    registerConfigurableProviders(entries: readonly LlmConfigurableProvider[]): DirectoryRegistrationHandle;\n    @Remote\n    listConfigurableProviders(): LlmConfigurableProvider[];\n    registerModelDiscovery(settingsNs: string, discover: (request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>): () => void;\n    async discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal): Promise<LlmDiscoveredModel[]>;\n    @Remote(\'discoverModels\')\n    async remoteDiscoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal: AbortSignal): Promise<LlmDiscoveredModel[]>;\n    providerRetryPolicy(provider: string): ResolvedRetryPolicy;\n    imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;\n    imageRequestTarget(provider: string, model: string, image: ImageAttachmentRef): ImageRequestTarget;\n    fileRequestText(ref: FileAttachmentRef): string;\n    async listNonChatModels(provider: string, type: LlmNonChatModelType): Promise<LlmNonChatModelInfo[]>;\n    classify(request: LlmClassifyRequest): Promise<LlmClassifyResult>;\n    generateImages(request: LlmGenerateImagesRequest): Promise<LlmGenerateImagesResult>;\n    async listModels(provider: string /* …truncated — full shape in source */',
+    declaration: 'export class LlmRuntime extends TypertRemoteService {\n    constructor(ctx: Context);\n    registerAdapter(providers: string[], adapter: LlmAdapter): AdapterRegistrationHandle;\n    @Remote\n    listProviders(): LlmProviderInfo[];\n    registerConfigurableProviders(entries: readonly LlmConfigurableProvider[]): DirectoryRegistrationHandle;\n    @Remote\n    listConfigurableProviders(): LlmConfigurableProvider[];\n    registerModelDiscovery(settingsNs: string, discover: (request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>): () => void;\n    async discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal): Promise<LlmDiscoveredModel[]>;\n    @Remote(\'discoverModels\')\n    async remoteDiscoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal: AbortSignal): Promise<LlmDiscoveredModel[]>;\n    providerRetryPolicy(provider: string): ResolvedRetryPolicy;\n    imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;\n    imageRequestTarget(provider: string, model: string, image: ImageAttachmentRef): ImageRequestTarget;\n    fileRequestText(ref: FileAttachmentRef): string;\n    async listModels(provider: string): Promise<LlmModelInfo[]>;\n    async resolveModelInfo(provider: string, model: string, signal?: AbortSignal): Promise<LlmResolvedModelInfo>;\n    async resolveCallConfig(config: LlmCallConfig, signal?: AbortSignal): Promise<LlmCallConfig>;\n    async prepareCall(conf /* …truncated — full shape in source */',
   },
   {
     name: 'LocalAtInput',
@@ -9207,7 +8902,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'McpManagedServerView',
-    declaration: 'export interface McpManagedServerView {\n    authorization?: McpOAuthAttemptView;\n    name: string;\n    configured: boolean;\n    oauth: boolean;\n    status: McpManagedServerStatus;\n}',
+    declaration: 'export interface McpManagedServerView {\n    authorization?: McpOAuthAttemptView;\n    name: string;\n    configured: boolean;\n    status: McpManagedServerStatus;\n}',
   },
   {
     name: 'McpOAuthAttemptId',
@@ -9251,7 +8946,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'McpResourceRequest',
-    declaration: 'export type McpResourceRequest = {\n    method: \'resources/list\' | \'resources/templates/list\';\n    cursor?: string;\n} | {\n    method: \'resources/read\';\n    uri: string;\n} | {\n    method: \'resources/watch\';\n    uri: string;\n    timeoutMs?: number;\n};',
+    declaration: 'export type McpResourceRequest = {\n    method: \'resources/list\' | \'resources/templates/list\';\n    cursor?: string;\n} | {\n    method: \'resources/read\';\n    uri: string;\n};',
   },
   {
     name: 'McpServerInstance',
@@ -9408,26 +9103,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ModelReasoningEffort',
     declaration: 'export interface ModelReasoningEffort {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
-  },
-  {
-    name: 'ModelRouter',
-    declaration: 'export type ModelRouter = (request: ModelRouteRequest) => ModelRouteResult | Promise<ModelRouteResult>;',
-  },
-  {
-    name: 'ModelRouteReason',
-    declaration: 'export type ModelRouteReason = \'user\' | \'continuation\' | \'retry\' | \'direct\';',
-  },
-  {
-    name: 'ModelRouteRequest',
-    declaration: 'export interface ModelRouteRequest {\n    readonly reason: ModelRouteReason;\n    readonly previous: ModelSelection | undefined;\n    readonly failed: ModelSelection | undefined;\n    readonly state: unknown;\n    readonly messages: readonly Message[];\n    readonly signal: AbortSignal;\n}',
-  },
-  {
-    name: 'ModelRouteResolver',
-    declaration: 'export interface ModelRouteResolver {\n    resolve(selection: ModelSelection, request: ModelRouteRequest): Promise<ModelSelection>;\n}',
-  },
-  {
-    name: 'ModelRouteResult',
-    declaration: 'export interface ModelRouteResult {\n    readonly selection: ModelSelection;\n    readonly state?: unknown;\n}',
   },
   {
     name: 'ModEvents',
@@ -9664,10 +9339,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PermissionPresetSetRequest',
     declaration: 'export interface PermissionPresetSetRequest {\n    readonly sessionId: SessionId;\n    readonly preset: string;\n}',
-  },
-  {
-    name: 'PermissionRequestDecision',
-    declaration: 'export type PermissionRequestDecision = {\n    kind: \'deny\';\n    reason?: string;\n};',
   },
   {
     name: 'PermissionSelection',
@@ -11479,7 +11150,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StreamableHttpConfig',
-    declaration: 'export interface StreamableHttpConfig {\n    oauth?: McpOAuthConfig;\n    transport: \'streamable-http\';\n    serverName: string;\n    url: string;\n    headers: Record<string, string>;\n    toolCallTimeoutMs: number;\n    startupTimeoutMs?: number;\n    closeTimeoutMs: number;\n    expandTemplates: boolean;\n    failOnStartupError: boolean;\n    maxInstructionBytes?: number;\n    reconnect?: ReconnectConfig;\n    toolLoading: \'eager\' | \'on-demand\';\n    catalogDescriptionMaxLength: number;\n    resourceWatchTimeoutMs?: number;\n    maxResourceWatchTimeoutMs?: number;\n}',
+    declaration: 'export interface StreamableHttpConfig {\n    oauth?: McpOAuthConfig;\n    transport: \'streamable-http\';\n    serverName: string;\n    url: string;\n    headers: Record<string, string>;\n    toolCallTimeoutMs: number;\n    startupTimeoutMs?: number;\n    closeTimeoutMs: number;\n    expandTemplates: boolean;\n    failOnStartupError: boolean;\n    maxInstructionBytes?: number;\n    reconnect?: ReconnectConfig;\n    toolLoading: \'eager\' | \'on-demand\';\n    catalogDescriptionMaxLength: number;\n}',
   },
   {
     name: 'StreamChunk',
@@ -11914,10 +11585,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ToolAdditionBlock {\n    type: \'tool-addition\';\n    toolName: string;\n    tool?: never;\n}',
   },
   {
-    name: 'ToolApprovalResources',
-    declaration: 'export interface ToolApprovalResources {\n    readonly action: string;\n    readonly resources: readonly string[];\n}',
-  },
-  {
     name: 'ToolBatchInput',
     declaration: 'export interface ToolBatchInput {\n    readonly calls: readonly ToolCallBlock[];\n    readonly signal: AbortSignal;\n    readonly maxParallelToolCalls?: number;\n    readonly agent?: Agent;\n    readonly toolSet?: ResolvedToolSet;\n    readonly log?: {\n        readonly turn: number;\n        readonly step: number;\n    };\n}',
   },
@@ -11947,7 +11614,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolDefinition',
-    declaration: 'export interface ToolDefinition extends ToolSchema {\n    readonly output: ToolOutputDefinition;\n    execute(args: unknown, exec: ToolRunContext): Promise<unknown>;\n    projectContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    finalizeContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    timeoutMs?: number;\n    isConcurrencySafe?(args: unknown): boolean;\n    approvalResources?(args: unknown): ToolApprovalResources;\n    presentCall?(args: unknown): ToolCallView | undefined;\n    presentResult?(args: unknown, result: ToolResult): ToolResultView | undefined;\n}',
+    declaration: 'export interface ToolDefinition extends ToolSchema {\n    readonly output: ToolOutputDefinition;\n    execute(args: unknown, exec: ToolRunContext): Promise<unknown>;\n    projectContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    finalizeContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    timeoutMs?: number;\n    isConcurrencySafe?(args: unknown): boolean;\n    presentCall?(args: unknown): ToolCallView | undefined;\n    presentResult?(args: unknown, result: ToolResult): ToolResultView | undefined;\n}',
   },
   {
     name: 'ToolDispatchExecution',
@@ -12330,10 +11997,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ViewerPluginPolicy {\n    readonly plugin: string;\n    readonly mode: \'all\' | \'none\' | \'selected\';\n    readonly endpoints?: readonly string[];\n}',
   },
   {
-    name: 'VirtualModelDefinition',
-    declaration: 'export interface VirtualModelDefinition {\n    readonly provider: string;\n    readonly id: string;\n    readonly name: string;\n    readonly thinkingLevels?: readonly string[];\n    readonly contextWindow?: number;\n    readonly maxTokens?: number;\n    readonly route: ModelRouter;\n}',
-  },
-  {
     name: 'WebAdmission',
     declaration: 'export type WebAdmission = {\n    kind: \'allow\';\n    peer?: PeerScope;\n} | {\n    kind: \'deny\';\n    status: 401 | 403 | 503;\n};',
   },
@@ -12399,7 +12062,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'WebhookAction',
-    declaration: 'export type WebhookAction = WebhookSessionRequest | WebhookMessageRequest;',
+    declaration: 'export type WebhookAction = WebhookSessionRequest;',
   },
   {
     name: 'WebhookDeliveryId',
@@ -12412,10 +12075,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WebhookEventOf',
     declaration: 'export type WebhookEventOf<K extends string> = K extends keyof WebhookEventMap ? WebhookEventMap[K] : JsonValue;',
-  },
-  {
-    name: 'WebhookMessageRequest',
-    declaration: 'export interface WebhookMessageRequest {\n    readonly kind: \'message\';\n    readonly sessionId: string;\n    readonly prompt: string;\n    readonly target: \'next-turn\' | \'next-step\';\n}',
   },
   {
     name: 'WebhookModelSelection',
@@ -12716,18 +12375,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WorkspaceRenameRequest',
     declaration: 'export interface WorkspaceRenameRequest {\n    readonly workspaceId: WorkspaceId;\n    readonly title: string;\n}',
-  },
-  {
-    name: 'WorkspaceRewindResult',
-    declaration: 'export interface WorkspaceRewindResult {\n    turn: number;\n    restored: string[];\n    skipped: WorkspaceRewindSkip[];\n}',
-  },
-  {
-    name: 'WorkspaceRewindSkip',
-    declaration: 'export interface WorkspaceRewindSkip {\n    path: string;\n    display: string;\n    reason: WorkspaceRewindSkipReason;\n}',
-  },
-  {
-    name: 'WorkspaceRewindSkipReason',
-    declaration: 'export type WorkspaceRewindSkipReason = \'binary\' | \'oversized\' | \'changed\' | \'unsupported\';',
   },
   {
     name: 'WorkspaceUnarchiveSessionRequest',

@@ -3,7 +3,6 @@
 import type { AuthProvider, Client, FetchLike, Transport } from '@modelcontextprotocol/client'
 import { withDeadline } from './deadline.ts'
 import { McpLocalError } from './diagnostic.ts'
-import type { McpLease } from './pool.ts'
 import { createTransport } from './transport.ts'
 import type { Config } from './index.ts'
 import type { McpCloseResult } from './types.ts'
@@ -18,10 +17,6 @@ export class McpGeneration {
   private started = false
   private closeObserved = false
   private closing: Promise<McpCloseResult> | undefined
-  /** Shared connection this generation holds instead of a transport of its own. */
-  private lease: McpLease | undefined
-  /** Removal of this generation's connection-closure observer. */
-  private unobserve: (() => void) | undefined
 
   constructor(
     readonly client: Client,
@@ -62,21 +57,6 @@ export class McpGeneration {
       })
       this.assertOpen()
     }, timeoutMs)
-  }
-
-  /**
-   * Take a lease on a shared connection instead of opening a transport. The
-   * shared owner reports the connection closing; closing this generation
-   * releases the lease, and only the last holder closes the transport.
-   * @param lease - the connection this generation works through.
-   */
-  adopt(lease: McpLease): void {
-    this.lease = lease
-    this.started = true
-    this.unobserve = lease.onClose(() => {
-      this.closeObserved = true
-      this.closed.resolve()
-    })
   }
 
   /** Reject when this generation was cancelled or its transport reported closure. */
@@ -120,15 +100,7 @@ export class McpGeneration {
   private async finish(reason: Error): Promise<McpCloseResult> {
     this.lifetime.abort(reason)
     let cleanupError: string | undefined
-    let released: McpCloseResult | undefined
     const work = async (): Promise<McpCloseResult> => {
-      const lease = this.lease
-      if (lease !== undefined) {
-        this.unobserve?.()
-        released = await lease.release()
-        await Promise.allSettled([...this.pending])
-        return released
-      }
       try {
         await (this.client.transport === undefined ? this.transport?.close() : this.client.close())
       } catch (error) {
@@ -141,9 +113,7 @@ export class McpGeneration {
     try {
       return await withDeadline(work(), this.closeTimeoutMs, 'MCP cleanup did not settle')
     } catch (error) {
-      const base = released ?? {
-        closeConfirmed: this.lease === undefined && (this.transport === undefined || this.closeObserved),
-      }
+      const base = { closeConfirmed: this.transport === undefined || this.closeObserved }
       return { ...base, cleanupError: cleanupError ?? this.diagnostic(error) }
     }
   }

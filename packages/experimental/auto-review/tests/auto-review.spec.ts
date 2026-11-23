@@ -1785,8 +1785,6 @@ describe('cancellation and integration teardown', () => {
     })
     invalid.provide('approval', {
       config: { policy: 'ask' },
-      registerFullAccess: () => () => {},
-      requestFullAccess() { throw new Error('auto-review tests do not grant full access') },
     })
     await invalid.plugin(PermissionPresetService, {})
     const auto = await invalid.plugin(AutoReview)

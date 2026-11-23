@@ -47,7 +47,6 @@
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.workingDirectory`、`ctx.tools`、`ctx.lsp`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，因此其模型可见 schema 在更换提供方时保持稳定。运行时要求已注册提供方，例如 `@deepseek-ai/dsh-lsp-stdio`；如果没有提供方，查询会返回结构化 `LSP_UNAVAILABLE` 错误，而不会改变 schema。 |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents every fresh round)` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 固定的前台工作流会在每个 Round 启动一个全新的结构化子级；模型只能选择不可变目标和可选的 Round 上限。 |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.workingDirectory`、`ctx.tools`、`ctx.agents`、`ctx.skills` | `tool/call`、`tool/result`、`user/message replacement catalogs via agent.inject()` | - | - |
-| `@deepseek-ai/dsh-tool-search` | `tool_search` | `ctx.tools` | `tool/call`、`tool/result` | - | tool_search 读取执行器解析的同一注册表，受限或作用域内的智能体只能搜到它能调用的工具。结果携带参数 schema；该工具从不代调用匹配到的工具。 |
 | `@deepseek-ai/dsh-tool-session-list` | `list_session`、`list_workspace` | `ctx.tools`、`ctx.sessions`、`ctx.sessionQuery`、`ctx.workspaceRegistry`、`ctx.sessionProjections` | `tool/call`、`tool/result` | - | 选择启用后，可读取已挂载运行时中全部 Workspace 和 Session 的列表元数据。冷会话的标题和活动时间使用可选的投影缓存；值缺失时，标题为 null，最近活动时间取创建时间。不会激活 Agent。 |
 | `@deepseek-ai/dsh-tool-session-query` | `session_event_read`、`session_event_search`、`session_event_trace`、`session_search`、`session_trace` | `ctx.tools`、`ctx.systemPrompt`、`ctx.sessionQuery`、`a calling Agent for workspace authority` | `tool/call`、`tool/result` | - | 这 5 个只读工具会隐藏提供方游标，并根据不可变的调用 agent 会话为每个结果授权。该包需要选择启用；需要强制截止时间或限制行内输出的组合还会挂载通用超时或 spill 策略。 |
 | `@deepseek-ai/dsh-experimental-tool-subagent-oar` | `subagent_oar` | `ctx.tools`, `ctx.subagents` | `tool/call`, `tool/result`, `parent subagent catalog and completion notices` | - | subagent_oar 工具在为外部提供方配置的别名之间选择。本目录展示 Codex 和 Claude Code 别名；每个部署自行选择提供方。原生模型和权限设置由所选提供方的配置决定。 |
@@ -56,7 +55,6 @@
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令与 PTY 发送 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
 | `@deepseek-ai/dsh-tool-agent-team` | `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `ctx.subagents`, `an exact live Team member Agent` | `tool/call`, `team/task`, `tool/result` | - | 四个任务板工具共享 subagent 树的根 Session。在根 Session 开启 Team 模式，会在标准 subagent 委派和控制工具之外增加任务板指导。标准 subagent 控制工具提供必需身份，不受 Team 模式影响；其结果汇报要求仅在 Team 模式关闭时出现。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
-| `@deepseek-ai/dsh-memory-notes` | `memory_write` | `ctx.tools`、`ctx.fs`、`ctx.workingDirectory` | `user/message` | - | 模型可把一条持久事实追加到项目或用户 MEMORY.md；写入按文件串行，拒绝疑似凭据，超长文本不写入。 |
 | `@deepseek-ai/dsh-experimental-tool-worktree` | `enter_worktree`, `exit_worktree` | `ctx.tools`, `ctx.worktrees`, `a calling Agent` | `tool/call`, `Git branch and checkout`, `workspace-root/change`, `tool/result` | - | 在 Web 和 Desktop 上通过变更请求与工作树组合包启用；其他 profile 可以选择独立组合包。`enter_worktree` 把 Session 移入名称在它所在检出的池中选中的工作树，没有同名工作树时在现有写权限下从固定的本地提交创建新分支与检出目录。`exit_worktree` 把 Session 送回它来自的检出目录；分支与检出目录保留。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -283,38 +281,6 @@ dsh-web-app bundle 以禁用行挂载本包；Web Session controller 负责激�
     "uri": {
       "type": "string",
       "description": "Resource URI to read."
-    }
-  },
-  "required": [
-    "server",
-    "uri"
-  ]
-}
-```
-
-来源： [`packages/mcp/mcp-resources/src/tools.ts`](../packages/mcp/mcp-resources/src/tools.ts)
-
-<a id="deepseek-aidsh-experimental-browser-use-stagehand-native"></a>
-
-### `watch_mcp_resource`
-
-等待 MCP 服务器报告某个资源发生变化。先订阅，等待结束后退订。收到首次变化后返回 updated: true；等待超时时返回 updated: false。需要内容时再次读取该资源。服务器必须支持资源订阅。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "server": {
-      "type": "string",
-      "description": "Configured MCP server name."
-    },
-    "uri": {
-      "type": "string",
-      "description": "Resource URI to watch."
-    },
-    "timeoutMs": {
-      "type": "integer",
-      "description": "Milliseconds to wait for the first change. Omit to use the default wait; larger values are capped."
     }
   },
   "required": [
@@ -2534,34 +2500,6 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 <a id="deepseek-aidsh-tool-session-list"></a>
 
-## `@deepseek-ai/dsh-tool-search`
-
-### `tool_search`
-
-当所需工具的 schema 不在视野里时，用它查找本会话可调用的工具。可按关键词搜索，或传入精确名称取回一个；答案列出每个匹配项及其参数 schema，随后直接调用该工具。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "query": {
-      "type": "string",
-      "description": "Keywords matched against tool names and descriptions."
-    },
-    "name": {
-      "type": "string",
-      "description": "Exact tool name; wins over query."
-    }
-  }
-}
-```
-
-来源：[`packages/core/tool-search/src/index.ts`](../packages/core/tool-search/src/index.ts)
-
-tool_search 读取执行器解析的同一注册表，受限或作用域内的智能体只能搜到它能调用的工具。结果携带参数 schema；该工具从不代调用匹配到的工具。
-
-<a id="deepseek-aidsh-tool-session-query"></a>
-
 ## `@deepseek-ai/dsh-tool-session-list`
 
 ### `list_session`
@@ -3342,36 +3280,6 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
 
 <a id="deepseek-aidsh-experimental-tool-worktree"></a>
 
-## `@deepseek-ai/dsh-memory-notes`
-
-### `memory_write`
-
-把一条持久笔记追加到 MEMORY.md，供后续会话回忆。项目作用域用于仓库事实，用户作用域用于跨项目保留的偏好。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "scope": {
-      "type": "string",
-      "description": "Which note file to append to: \"project\" for the nearest project root, \"user\" for the personal memory directory."
-    },
-    "text": {
-      "type": "string",
-      "description": "One self-contained fact or preference, at most a short paragraph. Do not include credentials."
-    }
-  },
-  "required": [
-    "scope",
-    "text"
-  ]
-}
-```
-
-Source: [`packages/context/memory-notes/src/write.ts`](../packages/context/memory-notes/src/write.ts)
-
-<a id="deepseek-aidsh-tool-working-directory"></a>
-
 ## `@deepseek-ai/dsh-experimental-tool-worktree`
 
 ### `enter_worktree`
@@ -3389,10 +3297,6 @@ Source: [`packages/context/memory-notes/src/write.ts`](../packages/context/memor
     "from": {
       "type": "string",
       "description": "Local commit, branch, or tag a new worktree starts from. Defaults to HEAD; no fetch is performed. Fails when the worktree already exists."
-    },
-    "mirrorUncommitted": {
-      "type": "boolean",
-      "description": "Copy the source checkout's uncommitted changes and untracked files into the new checkout. Defaults to false, leaving the new checkout at the pinned commit."
     }
   }
 }

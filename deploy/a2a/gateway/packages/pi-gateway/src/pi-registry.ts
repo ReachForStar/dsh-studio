@@ -63,11 +63,6 @@ export class PiSessionRegistry {
     this.entries.delete(contextId);
   }
 
-  /** Context ids with a live SDK session. */
-  contextIds(): string[] {
-    return [...this.entries.keys()];
-  }
-
   private sweep(): void {
     const now = Date.now();
     for (const [id, e] of this.entries) {

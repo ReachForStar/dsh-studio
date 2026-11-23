@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 66b074796f9c7388
-  zh: fbd035a69c7d83d8
+  en: 7894dc5eb0d8ebd8
+  zh: f97a099e15eb8c7a
 /tool-schema-catalog/deepseek-ai-dsh-tool-session-control:
   en: 79ab575ea6da86e2
   zh: 79ab575ea6da86e2
@@ -39,11 +39,8 @@
   en: bf4236607199d61e
   zh: 82f4f749dcabc89f
 /tool-schema-catalog/deepseek-ai-dsh-mcp-resources/read-mcp-resource:
-  en: fba8577910bfd3c0
+  en: 5d92c07fa062734f
   zh: 2d6f0cb8116cf567
-/tool-schema-catalog/deepseek-ai-dsh-mcp-resources/watch-mcp-resource:
-  en: 7db80b68ba2ad6c0
-  zh: 002ee641f25c174f
 /tool-schema-catalog/deepseek-ai-dsh-experimental-browser-use-stagehand-native:
   en: 19e7df8d692b4375
   zh: 19e7df8d692b4375
@@ -300,14 +297,8 @@
   en: 927a5ac0974b7642
   zh: 927a5ac0974b7642
 /tool-schema-catalog/deepseek-ai-dsh-tool-skill/skill:
-  en: 9c0624cc4bf789c1
+  en: c1124b6642c57712
   zh: ede0a9f1479b4ecd
-/tool-schema-catalog/deepseek-ai-dsh-tool-search:
-  en: b114723a8100e935
-  zh: b114723a8100e935
-/tool-schema-catalog/deepseek-ai-dsh-tool-search/tool-search:
-  en: 351c6432bb80955d
-  zh: 41aec6e62aa16196
 /tool-schema-catalog/deepseek-ai-dsh-tool-session-list:
   en: 6d68942100dd76e7
   zh: 6d68942100dd76e7
@@ -396,19 +387,13 @@
   en: dea62d26fb18ff68
   zh: dea62d26fb18ff68
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo/todo-write:
-  en: 0837c4b5d521ffdc
+  en: 2701ccace761fac3
   zh: 3740c4a584cde8a5
-/tool-schema-catalog/deepseek-ai-dsh-memory-notes:
-  en: 2afcb8731d9b0485
-  zh: 2afcb8731d9b0485
-/tool-schema-catalog/deepseek-ai-dsh-memory-notes/memory-write:
-  en: 71825fa770b82923
-  zh: 320871b95e112f73
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-worktree:
   en: d5f5679abe86e316
   zh: d5f5679abe86e316
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-worktree/enter-worktree:
-  en: 6544fbe5ae190931
+  en: fb9a393b6fe3523f
   zh: 02de205e99537ef2
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-worktree/exit-worktree:
   en: d0e4d70d5b5f607e

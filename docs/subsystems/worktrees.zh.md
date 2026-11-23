@@ -30,14 +30,6 @@ interface CreateWorktreeRequest {
    * branch, `refs/remotes/<remote>/<branch>`, of a configured remote; only that branch is fetched, without tags.
    */
   fetch?: boolean
-  /**
-   * Copy the source checkout's uncommitted changes and untracked files into the
-   * new checkout after it is created. Tracked changes are captured with
-   * `git stash create` (which leaves the source untouched) and applied in the
-   * new checkout; untracked files are copied. Omission leaves the new checkout
-   * at the pinned commit.
-   */
-  mirrorUncommitted?: boolean
 }
 ```
 
@@ -151,8 +143,7 @@ Creates retained Git worktrees under the mounted filesystem and sandbox provider
 /**
  * Create a fresh branch and checkout at a pinned local revision, then enter it. A request that asks to fetch
  * first fetches its remote-tracking branch, only that branch and without tags, then pins the fetched commit.
- * Existing branches or checkout paths fail. Uncommitted files stay in the source checkout unless the request
- * asks to mirror them.
+ * Existing branches or checkout paths fail. Uncommitted files stay in the source checkout.
  * Checkout disables configured clean, smudge, and process filters without changing Git config.
  * Repository-local replacement refs still apply; baseCommit reports the resolved object name.
  * The new checkout becomes current only after Git setup succeeds. Failures may retain newly

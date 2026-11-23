@@ -43,9 +43,6 @@
       "path": "../../../vendor/schemastery"
     },
     {
-      "path": "../../interaction/input-handled"
-    },
-    {
       "path": "../../core/agent"
     },
     {

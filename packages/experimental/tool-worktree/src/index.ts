@@ -44,17 +44,16 @@ const EXITED_SCHEMA = {
 export function apply(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'enter_worktree',
-    description: 'Change this session\'s working directory to a Git worktree of the checkout it is in. An existing worktree named name is entered as it is. Otherwise a new branch and worktree are created from a local commit, branch, or tag, and uncommitted files stay in the source checkout unless mirrorUncommitted asks to copy them. exit_worktree returns to the source checkout.',
+    description: 'Change this session\'s working directory to a Git worktree of the checkout it is in. An existing worktree named name is entered as it is. Otherwise a new branch and worktree are created from a local commit, branch, or tag, and uncommitted files stay in the source checkout. exit_worktree returns to the source checkout.',
     parameters: {
       name: { type: 'string', description: 'Worktree to enter, also the branch name and checkout directory of a new one: a few lowercase words joined by hyphens that describe the task, such as fix-login-retry. Omit to create a worktree with a generated name.' },
       from: { type: 'string', description: 'Local commit, branch, or tag a new worktree starts from. Defaults to HEAD; no fetch is performed. Fails when the worktree already exists.' },
-      mirrorUncommitted: { type: 'boolean', description: 'Copy the source checkout\'s uncommitted changes and untracked files into the new checkout. Defaults to false, leaving the new checkout at the pinned commit.' },
     },
     output: {
       schema: ENTERED_SCHEMA,
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
-    async execute({ name, from, mirrorUncommitted }, exec) {
+    async execute({ name, from }, exec) {
       if (exec.agent === undefined) throw new ToolContextUnavailableError('enter_worktree requires a calling agent')
       // A start revision asks for a new worktree, as does a call without a name.
       if (name !== undefined && from === undefined) {
@@ -68,7 +67,6 @@ export function apply(ctx: Context): void {
       const request = {
         ...name === undefined ? {} : { name },
         ...from === undefined ? {} : { from },
-        ...mirrorUncommitted === undefined ? {} : { mirrorUncommitted },
       }
       return { ...await ctx.worktrees.create(exec.agent, request, exec.signal), created: true }
     },

@@ -74,7 +74,6 @@ interface SetupOptions {
   mode?: 'native' | 'ptc'
   maxSubCallsPerMinute?: number
   maxParallelSubCalls?: number
-  sdkBudgetTokens?: number
   runtime?: false | { language?: string }
   toolOrder?: string[]
 }
@@ -88,7 +87,6 @@ async function setup(options: SetupOptions = {}) {
   const executor = options.mode === 'native' ? new NativeToolExecutor(ctx) : new PtcExecutor(ctx, {
     ...options.maxSubCallsPerMinute !== undefined ? { maxSubCallsPerMinute: options.maxSubCallsPerMinute } : {},
     ...options.maxParallelSubCalls !== undefined ? { maxParallelSubCalls: options.maxParallelSubCalls } : {},
-    ...options.sdkBudgetTokens !== undefined ? { sdkBudgetTokens: options.sdkBudgetTokens } : {},
   })
   ctx.tools.setExecutor(executor)
   let runtime: FakeRuntime | undefined
@@ -430,7 +428,7 @@ describe('mode-aware wire contribution', () => {
   })
 
   it('projects deeply nested output schemas into the PTC mode SDK without structured-clone recursion', async () => {
-    const { ctx, systemPrompt } = await setup({ mode: 'ptc', sdkBudgetTokens: 0 })
+    const { ctx, systemPrompt } = await setup({ mode: 'ptc' })
     let output: JsonSchemaNode = { type: 'string' }
     for (let depth = 0; depth < 5_000; depth++) {
       output = { oneOf: [output, { type: 'null' }] }
@@ -3129,40 +3127,6 @@ describe('per-program execution controls', () => {
       expect((await execute(args)).isError).toBe(true)
       expect(ask).not.toHaveBeenCalled()
       expect(runtime.lastRequest).toBeUndefined()
-    } finally { await ctx.fiber.dispose() }
-  })
-
-  it('classifies an escalation approval by the tools the program statically calls', async () => {
-    const { ctx, execute } = await controlledSetup()
-    const seen: ApprovalRequest[] = []
-    ctx.on('approval/request', (request) => {
-      seen.push(request)
-      return Promise.resolve<ApprovalOutcome>('allowed-once')
-    })
-    try {
-      await execute({
-        code: 'await tools.bash({ command: "ls" })\nawait tools.write({ file_path: "a.txt" })',
-        sandbox_permissions: 'workspace-write',
-        justification: 'Write generated source',
-      })
-      expect(seen[0]).toMatchObject({ toolName: RUN_CODE_NAME, action: RUN_CODE_NAME, resources: ['bash', 'write'] })
-    } finally { await ctx.fiber.dispose() }
-  })
-
-  it('declares no escalation resources for a program whose tools are dynamic', async () => {
-    const { ctx, execute } = await controlledSetup()
-    const seen: ApprovalRequest[] = []
-    ctx.on('approval/request', (request) => {
-      seen.push(request)
-      return Promise.resolve<ApprovalOutcome>('allowed-once')
-    })
-    try {
-      await execute({
-        code: 'const name = "bash"\nawait tools[name]({})',
-        sandbox_permissions: 'workspace-write',
-        justification: 'Write generated source',
-      })
-      expect(seen[0]).toMatchObject({ action: RUN_CODE_NAME, resources: [] })
     } finally { await ctx.fiber.dispose() }
   })
 

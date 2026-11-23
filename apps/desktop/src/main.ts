@@ -782,8 +782,8 @@ async function main(): Promise<void> {
   }
 
   const updatesDisabled = process.env.DSH_DESKTOP_DISABLE_UPDATES === '1'
-  const updateSchedule: Pick<DesktopUpdateSchedule, 'check' | 'dispose'> = updatesDisabled ?
-    { check: () => Promise.resolve(updates.state), dispose: () => {} } :
+  const updateSchedule = updatesDisabled ?
+    { check: (..._args: unknown[]) => Promise.resolve(undefined), dispose: () => {} } as unknown as DesktopUpdateSchedule :
     new DesktopUpdateSchedule(updates, resolveDesktopUpdateScheduleConfig(process.env))
 
   const downloadUpdate = async (version: string, revision = updates.revision): Promise<DesktopUpdateState> => {

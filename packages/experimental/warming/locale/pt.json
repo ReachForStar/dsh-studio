@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Aquecimento de cache",
-    "description": "Mantém o cache de prompts do provedor aquecido entre turnos."
-  }
-}

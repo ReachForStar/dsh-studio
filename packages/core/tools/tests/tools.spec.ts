@@ -1,10 +1,10 @@
 import { executeToolFixture } from '@deepseek-ai/dsh-tool-testkit'
 import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
-import { describe, expect, expectTypeOf, it, vi } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { brandString } from '@deepseek-ai/dsh-brand'
-import LlmRuntime, { createUserMessage, ToolCallId, HarnessError, type ContentBlock  } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, type ToolCallId, HarnessError, type ContentBlock  } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import SessionStore, { Session, type SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
@@ -924,107 +924,6 @@ describe('ToolRuntime', () => {
         agent, toolName: 'echo', callId: 'c1', reason: 'hook wants a human', displayReason: { en: 'Allow it?', zh: '允许吗？' },
       })
       expect(seen[0]?.signal).toBe(controller.signal)
-    })
-
-    it('denies before any answerer when the permission-request waterfall denies', async () => {
-      const ctx = await approvalSetup()
-      const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
-      ctx.on('approval/request', answerer)
-      ctx.on('tools/pre-execute', async (_exec, _next): Promise<PreToolDecision> => ({ kind: 'ask' }))
-      ctx.on('tools/permission-request', async (_exec, _next) => ({ kind: 'deny' as const, reason: 'blocked by policy hook' }))
-
-      const result = await executeToolFixture(ctx, {
-        signal: testToolSignal, callId: ToolCallId('c1'), name: 'echo', arguments: {}, agent: fakeAgent(),
-      })
-
-      expect(result.isError).toBe(true)
-      expect(result.content[0]).toMatchObject({ text: 'Error: blocked by policy hook' })
-      expect(result.error?.info).toEqual({ name: 'ApprovalError', code: 'APPROVAL_REJECTED' })
-      expect(answerer).not.toHaveBeenCalled()
-    })
-
-    it('delegates to the approval seam when the permission-request waterfall does not decide', async () => {
-      const ctx = await approvalSetup()
-      const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('allowed-once'))
-      ctx.on('approval/request', answerer)
-      ctx.on('tools/pre-execute', async (_exec, _next): Promise<PreToolDecision> => ({ kind: 'ask' }))
-      ctx.on('tools/permission-request', async (_exec, next) => next())
-
-      const result = await executeToolFixture(ctx, {
-        signal: testToolSignal, callId: ToolCallId('c1'), name: 'echo', arguments: { text: 'hi' }, agent: fakeAgent(),
-      })
-
-      expect(result.isError).toBe(false)
-      expect(answerer).toHaveBeenCalledOnce()
-    })
-
-    it('forwards the definition-declared action and resources to the approval seam', async () => {
-      const ctx = await approvalSetup()
-      const seen: ApprovalRequest[] = []
-      ctx.on('approval/request', (req) => {
-        seen.push(req)
-        return Promise.resolve<ApprovalOutcome>('allowed-once')
-      })
-      ctx.tools.register(defineTool({
-        name: 'classify',
-        description: 'classify approval resources',
-        parameters: { path: { type: 'string', required: true } },
-        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
-        approvalResources: args => ({ action: 'write', resources: [args.path] }),
-        execute: async args => args.path,
-      }))
-      ctx.on('tools/pre-execute', async (): Promise<PreToolDecision> => ({ kind: 'ask' }))
-
-      const result = await executeToolFixture(ctx, {
-        signal: testToolSignal, callId: ToolCallId('c1'), name: 'classify',
-        arguments: { path: 'notes/guide.txt' }, agent: fakeAgent(),
-      })
-
-      expect(result.isError).toBe(false)
-      expect(seen[0]).toMatchObject({ toolName: 'classify', action: 'write', resources: ['notes/guide.txt'] })
-    })
-
-    it('falls back to the tool name when the approval classifier throws', async () => {
-      const ctx = await approvalSetup()
-      const seen: ApprovalRequest[] = []
-      ctx.on('approval/request', (req) => {
-        seen.push(req)
-        return Promise.resolve<ApprovalOutcome>('allowed-once')
-      })
-      ctx.tools.register(defineTool({
-        name: 'broken-classifier',
-        description: 'throw from the classifier',
-        parameters: {},
-        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
-        approvalResources: () => { throw new Error('classifier failed') },
-        execute: async () => 'ok',
-      }))
-      ctx.on('tools/pre-execute', async (): Promise<PreToolDecision> => ({ kind: 'ask' }))
-
-      const result = await executeToolFixture(ctx, {
-        signal: testToolSignal, callId: ToolCallId('c2'), name: 'broken-classifier',
-        arguments: {}, agent: fakeAgent(),
-      })
-
-      expect(result.isError).toBe(false)
-      expect(seen[0]).toMatchObject({ toolName: 'broken-classifier', action: 'broken-classifier', resources: [] })
-    })
-
-    it('carries a recorded correction into the rejection reason', async () => {
-      const ctx = await approvalSetup()
-      ctx.on('approval/request', (req) => {
-        if (req.callId === undefined) throw new Error('approval request lost its call id')
-        ctx.approval.recordCorrection(req.agent, req.callId, 'use notes/guide.txt instead')
-        return Promise.resolve<ApprovalOutcome>('rejected')
-      })
-      ctx.on('tools/pre-execute', async (): Promise<PreToolDecision> => ({ kind: 'ask' }))
-
-      const result = await executeToolFixture(ctx, { signal: testToolSignal, callId: ToolCallId('c1'), name: 'echo', arguments: {}, agent: fakeAgent() })
-      expect(result.isError).toBe(true)
-      expect(result.content[0]).toMatchObject({
-        text: 'Error: the user rejected tool "echo" and asked you to retry with corrected arguments: use notes/guide.txt instead',
-      })
-      expect(result.error?.info).toEqual({ name: 'ApprovalError', code: 'APPROVAL_REJECTED' })
     })
 
     it('denies with the user-rejection reason on rejected', async () => {

@@ -23,14 +23,6 @@ export interface ToolOutputDefinition {
   presentationMeta?(args: unknown, value: JsonValue): JsonValue
 }
 
-/** Action and resource names one accepted call gates on, as approval rules receive them. */
-export interface ToolApprovalResources {
-  /** Action a `{ action, resource, effect }` rule matches, defaulting to the tool name. */
-  readonly action: string
-  /** Resource names the same rule may match; empty means the action alone decides. */
-  readonly resources: readonly string[]
-}
-
 /** A registered tool: its schema plus the execution function. */
 export interface ToolDefinition extends ToolSchema {
   /** Mandatory canonical output declaration. */
@@ -90,16 +82,6 @@ export interface ToolDefinition extends ToolSchema {
    * @returns Whether this call may join a parallel group.
    */
   isConcurrencySafe?(args: unknown): boolean
-  /**
-   * Classify one accepted call for approval rules: the action name and the
-   * resource names a `{action, resource, effect}` rule can match. Pure and
-   * synchronous; a throw or omission falls back to the tool name with no
-   * resources, so a failing classifier cannot widen a rule. Never
-   * model-visible.
-   * @param args - parsed arguments after the schema boundary.
-   * @returns the action and zero or more resource names.
-   */
-  approvalResources?(args: unknown): ToolApprovalResources
   /**
    * Optional: how to present the PENDING state of one call in a UI, derived from
    * the call's `args` (parsed arguments, `unknown` — the tool validates/narrows
@@ -395,14 +377,6 @@ export type PreToolDecision =
   | { kind: 'deny'; reason: string; info?: ToolErrorInfo }
   | { kind: 'cancel' }
   | { kind: 'ask'; reason?: string; displayReason?: { readonly en: string; readonly [locale: string]: string } }
-
-/**
- * Pre-approval decision for an `ask` call. A listener may deny before any
- * answerer sees the request; returning nothing (or calling `next()`) delegates
- * to the approval seam. This waterfall cannot grant: only `allowed-once` from
- * the approval service runs the call.
- */
-export type PermissionRequestDecision = { kind: 'deny'; reason?: string }
 
 /**
  * Post-dispatch decision: accept, replace one projection, attach context for the

@@ -33,7 +33,6 @@ import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import WorkingDirectory from '@deepseek-ai/dsh-working-directory'
 import * as ToolSessionControl from '@deepseek-ai/dsh-tool-session-control'
-import * as MemoryNotes from '@deepseek-ai/dsh-memory-notes'
 import * as ToolWorktree from '@deepseek-ai/dsh-experimental-tool-worktree'
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
@@ -73,7 +72,6 @@ import ScheduleService from '@deepseek-ai/dsh-schedule'
 import Lsp from '@deepseek-ai/dsh-lsp'
 import * as ToolLsp from '@deepseek-ai/dsh-tool-lsp'
 import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
-import * as ToolSearch from '@deepseek-ai/dsh-tool-search'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolSessionList from '@deepseek-ai/dsh-tool-session-list'
 import WorkspaceRegistry from '@deepseek-ai/dsh-workspace'
@@ -632,18 +630,6 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
   },
   {
-    pkg: '@deepseek-ai/dsh-tool-search',
-    dir: 'tool-search',
-    source: 'packages/core/tool-search/src/index.ts',
-    requires: ['ctx.tools'],
-    writes: ['tool/call', 'tool/result'],
-    async mount(ctx) {
-      await ctx.plugin(ToolSearch)
-    },
-    note:
-      'tool_search reads the same registry the executor resolves, so a restricted or scoped agent searches only the tools it can call. Results carry parameter schemas; the tool never calls a matched tool itself.',
-  },
-  {
     pkg: '@deepseek-ai/dsh-tool-session-list',
     dir: 'tool-session-list',
     source: 'packages/session-query/tool-session-list/src/index.ts',
@@ -782,17 +768,6 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task.',
-  },
-  {
-    pkg: '@deepseek-ai/dsh-memory-notes',
-    dir: 'memory-notes',
-    source: 'packages/context/memory-notes/src/write.ts',
-    requires: ['ctx.tools', 'ctx.fs', 'ctx.workingDirectory'],
-    writes: ['user/message'],
-    mount(ctx) {
-      MemoryNotes.apply(ctx, {})
-      return Promise.resolve()
-    },
   },
   {
     pkg: '@deepseek-ai/dsh-experimental-tool-worktree',

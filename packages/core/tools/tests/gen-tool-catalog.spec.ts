@@ -32,7 +32,7 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       'excalidraw_draw', 'excalidraw_export', 'excalidraw_read', 'excalidraw_write', 'exit_plan_mode', 'exit_worktree',
       'get_goal', 'glob', 'grep', 'interrupt_agent', 'job_kill', 'job_list',
       'job_output', 'list_agents', 'list_mcp_resource_templates', 'list_mcp_resources', 'list_session', 'list_subagent_models',
-      'list_workspace', 'load_workspace_dependencies', 'lsp', 'memory_write', 'office_convert', 'office_recalculate',
+      'list_workspace', 'load_workspace_dependencies', 'lsp', 'office_convert', 'office_recalculate',
       'office_render', 'plugin_manager', 'plugin_market', 'present', 'pwsh',
       'pwsh', 'ralph', 'read', 'read_image', 'read_mcp_resource', 'run_code',
       'schedule_create', 'schedule_edit', 'schedule_list', 'schedule_view', 'send_message', 'session_event_read',
@@ -42,8 +42,8 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       'stagehand_act', 'stagehand_extract', 'stagehand_navigate', 'stagehand_observe', 'stagehand_screenshot', 'stagehand_tabs',
       'str_replace_editor', 'subagent', 'subagent_oar', 'team_task_create', 'team_task_get', 'team_task_list',
       'team_task_update', 'terminal_close', 'terminal_list', 'terminal_open', 'terminal_read', 'terminal_send',
-      'terminal_signal', 'todo_write', 'tool_search', 'update_goal', 'user_terminal_list', 'user_terminal_read',
-      'wait_agent', 'watch_mcp_resource', 'web_fetch', 'web_search', 'workflow',
+      'terminal_signal', 'todo_write', 'update_goal', 'user_terminal_list', 'user_terminal_read',
+      'wait_agent', 'web_fetch', 'web_search', 'workflow',
       'write',
     ])
     // Every tool carries a JSON-Schema `parameters` object (what the model sees).

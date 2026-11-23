@@ -56,5 +56,5 @@ status: active
 
 - [合并上游策略（2026-09）](../decisions/2026-09-upstream-sync.md)
 - [上一轮合并（2026-11-15）](upstream-merge-2026-11-15.md)
-- [MCP 连接池与 OAuth 交接](mcp-pool-oauth-handoff.md)
+- [MCP 连接池与 OAuth 交接](opencode-capability.md)
 - [SSH/SFTP 能力接缝](../concepts/ssh-sftp-seam.md)

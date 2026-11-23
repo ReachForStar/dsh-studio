@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-11-23-retain-removed-fork-events.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-11-23-retain-removed-fork-events.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-11-23-retain-removed-fork-events:
+  en: effeca46f562c290
+  zh: bed809a7a28551d5
+/2026-11-23-retain-removed-fork-events/summary:
+  en: 1b9e17fa2c81d64e
+  zh: b275fa15659f6b12
+/2026-11-23-retain-removed-fork-events/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-11-23-retain-removed-fork-events/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-11-23-retain-removed-fork-events/compatibility:
+  en: c59baca1d40fbf97
+  zh: 109f39cfc7126253
+/2026-11-23-retain-removed-fork-events/verification:
+  en: 6e12c49098d59d0a
+  zh: 3f5a141f76cbaf74
+/2026-11-23-retain-removed-fork-events/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

@@ -40,7 +40,7 @@ changes:
 <a id="verification"></a>
 ## 验证
 
-`pnpm run verify-persistence-changes`：确认该转换后 67 个根与历史记录匹配。`pnpm exec vitest run packages/experimental/action-cards/tests`：4 个文件、28 项测试通过，覆盖产生新来源种类的生产者。`pnpm run verify-persistence-formats`：v0 至 v5 校验通过。
+`pnpm run verify-persistence-changes`：确认该转换后 67 个根与历史记录匹配。`pnpm exec vitest run packages/interaction/action-cards/tests`：4 个文件、28 项测试通过，覆盖产生新来源种类的生产者。`pnpm run verify-persistence-formats`：v0 至 v5 校验通过。
 
 <a id="dev-note"></a>
 ## 开发备注

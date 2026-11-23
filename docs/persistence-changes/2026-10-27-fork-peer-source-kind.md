@@ -40,7 +40,7 @@ The addition is additive for readers, so this root stays on the current Session 
 <a id="verification"></a>
 ## Verification
 
-pnpm run verify-persistence-changes: 67 roots match the history records with this transition acknowledged. pnpm exec vitest run packages/experimental/action-cards/tests: 4 files, 28 tests passed, covering the producer that emits the new source kind. pnpm run verify-persistence-formats: v0 through v5 verified.
+pnpm run verify-persistence-changes: 67 roots match the history records with this transition acknowledged. pnpm exec vitest run packages/interaction/action-cards/tests: 4 files, 28 tests passed, covering the producer that emits the new source kind. pnpm run verify-persistence-formats: v0 through v5 verified.
 
 <a id="dev-note"></a>
 ## Dev Note

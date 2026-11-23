@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-11-17
+updated: 2026-11-23
 ---
 
 # Wiki 索引
@@ -9,15 +9,6 @@ updated: 2026-11-17
 
 ## 实体 entities
 
-- [worktree 脏状态镜像（mirrorUncommitted）](entities/worktree-dirty-mirror.md) — `git stash create` 快照 + 未跟踪文件经 `ctx.fs` 逐文件复制，把源检出的未提交工作带进新检出；`mirrorMaxFileBytes` 限制单文件、沙箱策略随调用方、默认不镜像。
-- [Arena 模型对比（dsh-arena）](entities/arena.md) — 同一提示并行交给多个模型，各自 worktree 隔离；返回可比较结果，胜者 diff 由调用方显式应用。
-- [webhook 活跃会话投递（WebhookMessageRequest）](entities/webhook-channel-delivery.md) — 外部事件除新建会话外可投递到活跃会话（followup / steer），通道运行时三角色的落点与剩余差异。
-- [推测执行门控（dsh-speculation）](entities/speculation.md) — 输入前预执行的门控、overlay 代理与预测运行方：只读放行、写入按显式配置重定向到 overlay、越界与未知工具一律 boundary；runner 在轮次结束后预测下一次请求并预执行，用户确认才提交。
-- [下一步建议（dsh-followup）](entities/followup.md) — `turn/end` 后用辅助模型给出至多 N 条下一步动作，写 log-only 的 `followup/suggestions` 事件；按 `turn/start` 归属增量累积、空回复不写、UTF-8 安全截断。
-- [工具批次摘要（dsh-step-summary）](entities/step-summary.md) — `step/end` 时用辅助模型为工具批次生成一行摘要，以 log-only 的 `tool/batch-summary` 事件记录；增量累积事件不读历史、按 `turn:step` 幂等去重、失败只警告。
-- [记忆笔记（dsh-memory-notes）](entities/memory-notes.md) — 读取并注入 `MEMORY.md` 持久记忆：用户层（`<dsh home>/memory`）与项目层（最近根目录）共享 `maxChars` 预算，`agent/pre-step` 每次重读实现编辑更新与删除移除，attribution-only `memory-notes` 来源无需格式代际。
-- [工具检索（dsh-tool-search）](entities/tool-search.md) — `tool_search` 按关键词或精确名找回不可见工具的 schema：可见性来自 `ctx.tools.definitions(agent)`、名称命中优先排序、条数与描述长度上限、无匹配时的说明性结果。
-- [Agent Plugins v1 加载器（dsh-agent-plugins）](entities/agent-plugins.md) — 把可移植包的 `skills/*/SKILL.md` 与根 `mcp.json` 发布到 `ctx.skills`/`ctx.mcpManager`：manifest 与技能元数据规则、`realpath` 包含性校验、注册名规范化与哈希后缀、只读包文件与 `PLUGIN_DATA` 写入边界。
 - [pi 后端（pi-agent-loop）](entities/pi-backend.md) — Pi 运行时作为 dsh 第二后端：职责、关键文件、上下游依赖与合并上游后的 API 适配。
 - [llm-pi-ai（pi-ai 适配器与提供方路由）](entities/llm-pi-ai.md) — 提供方路由、模型目录解析链，以及无内置目录网关的运行期端点目录读取。
 - [统计浮层（StatsFloat）](entities/stats-float.md) — 费用卡片的口径（当前工作区全部会话及其子会话）、数据源与两条计价路径；总 token、会话数、月度预算对比、当前会话 token 时间线、各会话成本行与宿主进程/系统读数（2 秒轮询），以及预算双 store 同步的原因。
@@ -54,10 +45,11 @@ updated: 2026-11-17
 
 ## 查询沉淀 queries
 
-- [pi（earendil-works/pi）能力面与可融入清单](queries/pi-capability-comparison.md) — 基于本机 pi 1.5.2 安装副本（docs/examples/子包）：排除 20 项已覆盖能力后，按优先级给出虚拟模型路由、classifier/image 非 LLM 模型、codemode 工具注入式沙箱、提示模板、输入事件 handled 三态、会话标签、git 检查点与 fork 恢复、handoff 八项及落点；含不融入项（树/分支摘要、pi-tui、pi-telemetry、pi-schema、包分发、RPC 子进程）与待核验前提。
+- [qwen-code 能力采纳与回退](queries/qwen-code-capability.md) — 2026-11-11/12 落地的 11 项（Agent Plugins、工具检索、记忆、摘要、建议、推测、Arena、通道投递）与 2026-11-23 的回退方式；含保留事件声明与来源、未采纳项。
+- [pi 能力采纳与回退](queries/pi-capability.md) — 2026-11-17/18 落地的 8 项（虚拟模型、分类器/图像、codemode、提示模板、输入三态、标签、检查点、handoff）与回退；pi 后端与 llm-pi-ai 不在本轮范围。
+- [opencode 能力采纳与回退](queries/opencode-capability.md) — 17 项落点与回退：缓存保活、卡带、OpenAPI、尾部修复、Mermaid、输出续跑、fork 提示、参数修复、资源订阅、按轮来源、PTC 预算、日志导入、审批规则、连接池、侧问面板。
+- [codex 与 ZCode 能力采纳与回退](queries/codex-zcode-capability.md) — 审批、钩子、压缩、记忆、按轮回滚、网络允许清单与 apply_patch 的落点与回退；未落地项只停留交接。
 - [会话统计 Token 用量并入子会话与标题调用](queries/session-token-usage-subagents.md) — 胶囊、统计浮层与标题调用的用量口径：两路展开子会话，`session/title-llm-usage` 记录独立模型调用并进入 `tokenUsage`；含持久化确认与未覆盖边界。
-- [QwenLM/qwen-code 能力面与可融入清单](queries/qwen-code-capability-comparison.md) — 11 项候选按优先级排序：Agent Plugins v1 原生加载、自动记忆、通道运行时、上下文成本逐项 + `tool_search`、快模型三件套（推测执行 / 下一步建议 / 工具批次摘要）、Arena 与脏状态 worktree、文件历史、Advisor、文件变更钩子、`--json-schema`、托管运行时后端；含不融入项与逐条落点。
-- [qwen-code 采纳工作交接](queries/qwen-code-handoff.md) — 已完成与未完成项、出厂组合接线（星域预设 4 行 + 宿主层 4 行）、门禁与踩坑清单、临时文件授权状态。
 - [论文阅读器翻译与会话永久删除](queries/paper-reader-translation-and-session-delete.md) — 已实现：`dsh-llm/route` 候选路由与 NDJSON 翻译、按页全文翻译与译文卡片，翻译跟随会话 `modelSelection` 路由（缺省用部署默认模型），且阅读页头部可在模型目录中自行固定翻译模型（`/paper-reader/models`，选择存浏览器）；`SessionPersistence.delete` + `workspace/deleteSession` 的删除链、拒绝码、二次确认与 100% 覆盖率验证。
 - [回复延迟：codearts 上游排队导致每步等待](queries/session-command-followup-latency.md) — 慢时段首字 63–73 秒中排队 56–62 秒（`tries[].queued`），源自 `codearts` 提供方 `maxConcurrency: 1`；本地开销中位 18 毫秒，同账号兄弟模型同日首字 7.9 秒。
 - [本机经 SOCKS5 代理推送 GitHub](queries/github-push-via-socks-proxy.md) — 直连 SSH 与 HTTPS 都不通时，用 `127.0.0.1:7890` 的 SOCKS5 加 `GIT_SSH_COMMAND` 完成推送；含只读核对与失败阶段分辨。
@@ -100,10 +92,3 @@ updated: 2026-11-17
 - [发布 dsh 0.2.2-rc.4（上游 rc.3 之后的 fork 版本）](queries/release-dsh-0.2.2-rc.4.md) — 版本取上游之后的号避免 registry 同号混装；`release:dsh` 对齐 416 个成员、`build:official` + `pack` 产出 tarball zip 并发布为仓库 Latest；记录 Linux 桌面包改为本机打包上传（引擎缺失、asar 读不了非 ASCII 路径、pnpm 垫片、国内镜像与 pkexec 安装等本机前置）与 macOS x64 冒烟超时的重跑。
 - [发布 dsh 0.2.1-rc.3（含四平台桌面安装包）](queries/release-dsh-0.2.1-rc.3.md) — 家族版本对齐→`build:official`→`pack`→`tag -f`→`gh release create`（不带 `--target`）的完整流程，同名 tag 上移、手打路径被显示层掩码引发的误判与 `git add -u` 绕法、桌面工作流双触发。
 - [桌面未签名构建指向发布页的更新源（2026-10-27）](queries/desktop-github-release-update-feed.md) — `DSH_DESKTOP_UPDATE_RELEASES_URL` 让 unsigned 的 Windows/Linux 包带更新源、macOS 排除；含三种 GitHub 资产地址的实测状态（`releases/download` 404）、本地打包产出的 `nightly-linux.yml` 与应用内 `app-update.yml` 证据、以及「feed 依赖 Latest」的约束。
-- [opencode v2.2.7 能力面与可融入清单](queries/opencode-v2-capability-comparison.md) — 排除 12 项已覆盖能力后，按优先级给出 10 项候选：缓存保活、权限规则化与参数纠正、HTTP 卡带录制、MCP OAuth、代码模式按需目录/OpenAPI/静态扫描、跨重启终端、会话文件回滚、侧问面板、尾部 heal、聊天内 mermaid；含不融入项（Effect/Drizzle、Rust daemon、插件 bundle 沙箱）与待核验前提。
-- [opencode 能力落地交接（已完成）](queries/opencode-capability-handoff.md) — 17 项全部交付（含 PTC 预算目录、会话日志导入、权限规则求值与持久化、始终允许、修改后允许、侧问面板、MCP 连接池、OAuth 与 Settings 授权界面）。
-- [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md) — 连接池与 OAuth 的落地事实：`./pool` 服务与租约、握手失败回退、通知转发；`./oauth` 提供方、回环回调、凭据记录与自动刷新、`waiting-authorization`、管理器授权入口与验证结果。
-- [openai/codex 能力面与可融入清单](queries/codex-capability-comparison.md) — 排除 11 项已覆盖能力后，按优先级列出执行策略（Starlark 前缀规则与“批准并追加规则”）、审批结果词汇、世界状态增量注入、代码模式 exec/wait、apply_patch、钩子事件面、压缩矩阵、rollout-trace、消息板/代理图/树预算、记忆写管线、外部迁移、沙箱网络与拒绝反馈等 13 项及落点。
-- [codex 与 ZCode 能力落地交接（合并版）](queries/codex-zcode-capability-handoff.md) — 两份分析的合并交接：审批收尾、上下文缓存稳定、文件面、钩子信任与事件、压缩与低峰、动态工作流、多会话协作、记忆、迁移与分享、沙箱、Provider 与扩展授权、诊断实验；去掉重复主题，每项一个落点。
-- [codex 能力落地交接（已取代）](queries/codex-capability-handoff.md) — 单项细节保留，仅作合并版的 codex 侧参考。
-- [ZCode 能力面与可融入清单](queries/zcode-capability-comparison.md) — 排除 11 项已覆盖能力后，按优先级列出动态工作流日志化与类型化、权限四补强、跨会话控制的安全边界、提示快照与 meta_user、编辑匹配器、文件回滚、钩子信任准入、依赖拓扑调度、压缩熔断与 off-peak、按轮分享、记忆管线、客户端渲染与 provider 配置等 15 项及落点。

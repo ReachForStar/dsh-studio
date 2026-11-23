@@ -855,7 +855,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-11-12] feat | webhook 投递到活跃会话（通道运行时·投递角色）
 
-- `packages/api/webhook` 新增 `WebhookMessageRequest`（`sessionId` + `prompt` + `target`）与 `deliverWebhookMessage`：`next-turn` 走 `Agent.followup`，`next-step` 走 `Agent.steer`，沿用既有 `webhook` 来源种类，因此不需要新的持久化记录。
+- `packages/experimental/webhook` 新增 `WebhookMessageRequest`（`sessionId` + `prompt` + `target`）与 `deliverWebhookMessage`：`next-turn` 走 `Agent.followup`，`next-step` 走 `Agent.steer`，沿用既有 `webhook` 来源种类，因此不需要新的持久化记录。
 - 判别方式：`WebhookSessionRequest` 增加可选 `kind?: 'session'`，`run()` 返回值改为 `WebhookAction` 联合；`dispatch` 按 `kind === 'message'` 分流。
 - 设计取舍：不做去重（运行时本就无交付状态）、不等待目标轮次（即发即忘）、目标无活跃 Agent 时报错并记日志，规则可改返回会话请求兜底。
 - 验证：webhook 包 82 测试、src 逐文件 100%（语句 151、分支 94、函数 26、行 141）、lint、`doc-sync` 43 项。
@@ -871,7 +871,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 ## [2026-11-12] docs | qwen-code 交接收尾
 
 - 交接页改为「全部交付已落地」：新增通道投递与 Arena 两行，未完成项章节替换为与 qwen 的产品化差异（通道路由策略、Arena 摘要与视图、推测期只读结果复用）。
-- 新增 [Arena](entities/arena.md) 与 [webhook 活跃会话投递](entities/webhook-channel-delivery.md) 两个实体页并登记到 index；能力对比页同步现状与剩余差异。
+- 新增 [Arena](queries/qwen-code-capability.md) 与 [webhook 活跃会话投递](queries/qwen-code-capability.md) 两个实体页并登记到 index；能力对比页同步现状与剩余差异。
 
 ## [2026-11-12] feat | 合并上游 upstream/master（0.2.2-rc.2）
 
@@ -901,7 +901,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 在 `~/.dsh/profiles/web/cordis.patch.yml` 按 id 覆盖 `speculation`：`disabled: false`，`provider: magpie`、`model: officeace/deepseek-v4.1-flash`（与 `agent-default-model` 同值），`workspaceRoot: !!js process.cwd()`、`overlayRoot: !!js dshHomePath('speculation')`，写入保持关闭。
 - 验证：插件清单 `include:speculation` 为 `active`；真实会话一轮后日志出现 `speculation/proposal`，预测内容与步骤状态符合门控设计。
-- 记录于 [speculation](entities/speculation.md) 的启用小节。
+- 记录于 [speculation](queries/qwen-code-capability.md) 的启用小节。
 
 ## [2026-11-12] feat | speculation 改为按会话工作目录解析
 
@@ -909,13 +909,13 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 门控 schema 抽出 `SessionRootPolicy`（根可选）与共享字段表，`Config` 在其上加必填根；`executePlan`/`overlayWrite`/`runPrediction` 改用 `ScopedConfig`（根已解析）。
 - 运行期跳过（告警，不抛错）：无根、相对根、overlay 落在根内；加载期仍校验 overlay 绝对与固定根的放置。
 - 包内 60 项测试通过、src 逐文件 100%；`build:check`、`test:docs` 通过；实测 `/data/f/BDJ-Train` 会话记录到 `speculation/proposal`。
-- 记录于 [speculation](entities/speculation.md)。
+- 记录于 [speculation](queries/qwen-code-capability.md)。
 
 ## [2026-11-12] docs | 对比 opencode v2.2.7 能力面
 
 - 只读分析 `tmp/opencode`（`@opencode/cli` 2.2.7）与 `packages/`，先核实本 fork 已覆盖的 12 项（PTC、增量 Markdown、tool_search、worktree/Arena/推测执行、jobs/schedule/goal/subagent、会话导出、按轮变更快照、MCP 资源、客户端插件面、逐轮 effort、token-meter），避免重复。
 - 产出 10 项候选与落点：缓存保活、权限规则化与参数纠正、HTTP 卡带录制、MCP OAuth/池化、代码模式按需目录与 OpenAPI/静态扫描、跨重启终端、会话文件回滚、侧问面板、流式尾部 heal、聊天内 mermaid；另列 7 个小项与 5 项不融入。
-- 记录于 [opencode v2.2.7 能力面与可融入清单](queries/opencode-v2-capability-comparison.md)。
+- 记录于 [opencode v2.2.7 能力面与可融入清单](queries/opencode-capability.md)。
 
 ## [2026-11-12] feat | 聊天围栏注册 Mermaid 渲染层
 
@@ -923,7 +923,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `apply` 闭包持有唯一的渲染器与 id 序列并经槽位注入面下发；`mermaid` 只以动态 `import()` 进入浏览器私自分块，`initialize` 固定 `startOnLoad: false`、`securityLevel: 'strict'`、`suppressErrorRendering: true`（否则非法正文会画错误图而不抛错，回退失效）。
 - 接线三面 + `tsconfig`：`web-app/cordis.patch.yml`、`web-app/package.json`、`tsconfig.client.json` references、`tsconfig.base.json` paths；生成物同步 `references/packages.md`。
 - 验证：本包 8 项测试通过、逐文件 100% 覆盖；`bundle` 产物入口 4.8 kB、`lib/client.*.js` 100 个分块原始 5.1 MB / gzip 约 1.17 MB。
-- 记录于 [聊天内 Mermaid 渲染](entities/chat-mermaid-rendering.md)。
+- 记录于 [聊天内 Mermaid 渲染](queries/opencode-capability.md)。
 
 
 ## [2026-11-12] feat | 融入 opencode v2 能力
@@ -941,7 +941,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 前 10 项已完成并推送（`me/develop`，三次提交：能力落地、wiki 记录、MCP 收尾）。
 - 交接页给出余 5 项的现状、参考实现路径、落点、风险与验收：权限规则化、MCP OAuth 与连接池、PTC 按需目录与静态扫描、侧问面板、会话导入。
 - 附全局约束、门禁命令、前批遗留缺口（web 金样未刷新、openapi 覆盖率、warming TTL、mcp 等待配置未暴露）与待授权临时文件清单。
-- 记录于 [opencode 能力落地交接](queries/opencode-capability-handoff.md)。
+- 记录于 [opencode 能力落地交接](queries/opencode-capability.md)。
 
 
 ## [2026-11-13] docs | 对比 openai/codex 能力面
@@ -949,27 +949,27 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 只读分析 `tmp/codex`（codex-rs Rust monorepo）：核心循环、rollout、压缩、世界状态、code mode、execpolicy、沙箱、审批、钩子、多智能体、记忆、插件与外部迁移。
 - 排除 11 项本 fork 已覆盖能力（PTC、tool_search、技能目录、任务板、计划模式、auto-review、会话分叉、沙箱模式、warming、MCP、Mermaid）。
 - 产出 13 项候选与落点，最高优先是与待办“权限规则化”同源的 execpolicy 与“批准并追加规则”，其次为世界状态增量注入、代码模式 exec/wait、apply_patch 与钩子事件面。
-- 记录于 [codex 能力面与可融入清单](queries/codex-capability-comparison.md)。
+- 记录于 [codex 能力面与可融入清单](queries/codex-zcode-capability.md)。
 
 
 ## [2026-11-13] docs | codex 能力落地交接
 
 - 12 项候选逐项给出实施交接：执行策略与批准追加规则、审批词汇、世界状态增量注入、代码模式续取、apply_patch、钩子事件面、压缩矩阵、消息板/代理图/树预算、记忆写管线、外部迁移、沙箱网络、零散项。
 - 标注并行会话已完成的两项（PTC 预算目录、会话日志归档导入）不要重做；给出推荐批次与每批验证命令。
-- 记录于 [codex 能力落地交接](queries/codex-capability-handoff.md)。
+- 记录于 [codex 能力落地交接](queries/codex-zcode-capability.md)。
 
 ## [2026-11-13] feat | 完成 PTC 预算目录、会话导入与审批规则
 
 - PTC 生成 SDK 增加 `sdkBudgetTokens` 预算：超出后工具保留绑定，参数与返回值退化为无类型，并在声明后追加一行目录；两种运行时语言共用同一分区。
 - 会话日志新增 Host 侧导入与 `POST /api/session.import`：格式目录校验、跨代迁移、附件摘要校验、新 Session id、父链接重连与失败回滚。
 - 审批新增 `{action, resource, effect}` 规则求值与 `ToolDefinition.approvalResources`；fs `write`/`edit` 与 `bash` 提供动作与资源，规则先于 `never` 策略，支持无人值守精确放行。
-- 状态与剩余两项（MCP OAuth/连接池、侧问面板）记录于 [opencode 能力落地交接（余 2 项）](queries/opencode-capability-handoff.md)。
+- 状态与剩余两项（MCP OAuth/连接池、侧问面板）记录于 [opencode 能力落地交接（余 2 项）](queries/opencode-capability.md)。
 
 ## [2026-11-13] docs | 交接 MCP 连接池与 OAuth
 
 - 从 opencode 交接页拆出 MCP 项：记录 mcp-client 的 Client/transport 创建点、重连与凭据刷新路径、mcp-manager 的公开面、SDK OAuth 类型、凭据记录 API 与 InMemoryTransport 测试设施。
 - 给出池化键、持有者计数、握手失败回退与 OAuth 授权/回调/刷新的落点，以及分两步落地的顺序和验收命令。
-- 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。
+- 记录于 [MCP 连接池与 OAuth 交接](queries/opencode-capability.md)。
 
 ## [2026-11-13] feat | 实现 MCP 连接池
 
@@ -978,7 +978,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 监督器保留重连、工具同步、状态与资源等待；共享连接断开时通知每个持有者，各自重连并加入新槽位；资源更新由池统一转发。
 - base 组合挂载 `mcp-pool` 行；README 增「共享连接」与限制条目，双语配对已重录。
 - 验证：`pnpm exec vitest run packages/mcp` 312 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`。
-- 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。
+- 记录于 [MCP 连接池与 OAuth 交接](queries/opencode-capability.md)。
 
 
 ## [2026-11-13] docs | 对比 ZCode 能力面
@@ -986,7 +986,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 只读分析 `tmp/zcode`（v3.18.1）：Agent 循环与会话、上下文与压缩、工具面、权限、技能/记忆/MCP/插件、客户端 UI、服务端与平台设施。
 - 排除 11 项已覆盖能力（workflow 基础、子代理控制、压缩裁剪、流式渲染、插件市场、工作区快照、会话导出/导入、沙箱、MCP、技能、上下文分节）。
 - 产出 15 项候选与落点，最高优先是动态工作流的 journal/类型化、权限四补强、跨会话控制的安全边界与提示快照。
-- 记录于 [ZCode 能力面与可融入清单](queries/zcode-capability-comparison.md)。
+- 记录于 [ZCode 能力面与可融入清单](queries/codex-zcode-capability.md)。
 
 ## [2026-11-13] feat | 实现 MCP OAuth
 
@@ -995,14 +995,14 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 连接侧新增 `waiting-authorization` 状态：无凭据不发握手，刷新被拒也不进入重连翻腾；`mcpManager.authorize`/`forgetAuthorization` 提供 Remote 入口，授权完成后重建实例。
 - 池键加入 OAuth 客户端身份；`liveshare` 端点分类登记新入口；配置目录与子系统页已重新生成。
 - 验证：`pnpm exec vitest run packages/mcp` 337 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog`。
-- 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。
+- 记录于 [MCP 连接池与 OAuth 交接](queries/opencode-capability.md)。
 
 
 ## [2026-11-13] docs | 合并 codex 与 ZCode 交接
 
 - 新增合并版交接：重复主题（权限、上下文、压缩、钩子、记忆、文件编辑、多智能体）各保留一个落点，其余按 12 项统一优先级与 A–H 批次组织。
 - 标注并行会话已完成项（审批规则/项目允许/拒绝改写/静态扫描、侧问面板、MCP 连接池与 OAuth、PTC 预算、归档导入）不要重做；`codex-capability-handoff` 标 `superseded` 并链接合并版。
-- 记录于 [codex 与 ZCode 能力落地交接](queries/codex-zcode-capability-handoff.md)。
+- 记录于 [codex 与 ZCode 能力落地交接](queries/codex-zcode-capability.md)。
 
 ## [2026-11-13] feat | 新增 MCP 设置授权界面
 
@@ -1010,7 +1010,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 一条 `ctx.remote.$stream` 包住 `mcpManager.watch`；`McpManagedServerView` 新增 `oauth` 字段，授权按钮只对 OAuth 服务器出现；授权 URL 在新标签页打开。
 - web-app 组合挂载 `ui-settings-mcp` 行；模块图、能力接缝、事件表与 API 目录已重新生成。
 - 验证：`pnpm exec vitest run packages/mcp packages/client/ui-settings-mcp` 348 项、`pnpm run typecheck`、`pnpm run build`、`pnpm run test:docs`、`pnpm run verify-cordis-catalog`、`pnpm run verify-doc-graphs`。
-- 记录于 [MCP 连接池与 OAuth 交接](queries/mcp-pool-oauth-handoff.md)。
+- 记录于 [MCP 连接池与 OAuth 交接](queries/opencode-capability.md)。
 
 ## [2026-11-13] fix | 修复既有门禁红项
 
@@ -1024,7 +1024,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 ## [2026-11-13] fix | 审批收尾三项与 hygiene 四项债务
 
-- 审批：命令前缀规则（`match: prefix` + 保守词法匹配）、`needsHuman` 请求标志（规则不可自动放行，沙箱升权已标记）、会话级内存规则（`/allow --session`）。交接页进度见 [codex 与 ZCode 能力落地交接](queries/codex-zcode-capability-handoff.md#2026-11-13-落地进展)。
+- 审批：命令前缀规则（`match: prefix` + 保守词法匹配）、`needsHuman` 请求标志（规则不可自动放行，沙箱升权已标记）、会话级内存规则（`/allow --session`）。交接页进度见 [codex 与 ZCode 能力落地交接](queries/codex-zcode-capability.md)。
 - 门禁：`verify-no-unknown-casts`、`verify-plugin-entry-exports`、`verify-runtime-closure`、`verify-default-product-isolation` / `verify-product-use` 全部清偿；8 个默认开启的实验包提升为稳定包，`constraints` 与 `vendor rescope` 复绿。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-11-13-hygiene-四项-fork-债务清偿)。
 - 验证：`pnpm run typecheck`、`pnpm run test:docs`、`pnpm run constraints`、四项门禁；受影响包测试全过。
 
@@ -1079,7 +1079,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `user-approval` 新增 `approval/full-access` 回执与 `requestFullAccess`：提示身份固定、首次提交快照排队输入、重试复用回执、忙时与过期拒绝；`request()` 向应答者暴露 `requestId`，注册执行器时分发 `fullAccess`。
 - `permission-presets` 注册唯一执行器并通过 `fullAccessPreset`（默认 `danger-full-access`）应用；新增 `/full-access <requestId>` 命令。
 - `ui-approval` 在提示声明能力时提供「完全访问」，风险确认后提交；8 种语言补齐文案。
-- 持久化补 `docs/persistence-changes/2026-11-14-approval-full-access.md`，生成目录与已知事件清单刷新；决策见 [完全访问提交 Agent Note](../../.agents/notes/implemented/architecture/2026-11-14-approval-full-access-commit.md)。
+- 持久化补 `docs/persistence-changes/2026-11-14-approval-full-access.md`，生成目录与已知事件清单刷新；记录见 [持久化类型历史](../persistence-changes/2026-11-14-approval-full-access.md)。
 - 验证：`pnpm exec vitest run packages/interaction/user-approval/tests packages/interaction/permission-presets/tests packages/client/ui-approval/tests`（174 项）、`pnpm run typecheck`、`pnpm run test:docs`、持久化与目录门禁。
 
 ## [2026-11-14] feat | 项目级钩子信任
@@ -1181,7 +1181,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 事实来源：本机已安装 pi 1.5.2（`/home/asus/.pi/agent/install/releases/1.5.2/node_modules/@earendil-works/`）的 `docs/`、`examples/extensions/`、`schemas/` 与各子包 README；GitHub 网络被重置，未读 main。
 - 排除 20 项已覆盖能力（压缩矩阵、工具检索、技能、子代理、计划、自动审查、缓存保活、钩子、沙箱、MCP、fork、结构化输出、交互、SSH、遥测、Ajv+typert、插件分发、SDK/API、项目资源准入）。
 - 结论 8 项候选：虚拟模型路由（含 router state）、classifier/image 非 LLM 模型、codemode 工具注入式沙箱、提示模板、输入事件 handled 三态、会话标签、git 检查点与 fork 恢复、handoff；含落点、成本与不融入项。
-- 新增页面：[pi 能力面与可融入清单](queries/pi-capability-comparison.md)；与 [pi 后端](entities/pi-backend.md)、[llm-pi-ai](entities/llm-pi-ai.md)、[会话格式代际](concepts/session-format-generations.md) 及 codex/opencode 对比页交叉引用。- 桌面 profile 依赖修复：`@deepseek-ai/dsh-subagent-claude-code` 由 `0.2.1-rc.3` 升到 npm 最新的 `0.2.2-rc.3` 并重装；在 `~/.dsh/profiles/desktop/compatibility.json` 写入精确版本豁免（`0.2.2-rc.3` 对运行时 `0.2.2-rc.4`）。复制 profile 合成验证：该 bundle 不再被跳过（此前报 `is incompatible with dsh 0.2.2-rc.4`），仅剩 Linux 上 `cua-bundle` 的平台跳过。- 同日再补实验能力：`warming`、`fork-notice` 进入默认预设并在 `experimental-package-policy.ts` 登记产品角色；`openapi-tools` 因 `spec` 必填不入默认；`session-log-export` 的导入路由已在 web-app 宿主层无条件注册。
+- 新增页面：[pi 能力面与可融入清单](queries/pi-capability.md)；与 [pi 后端](entities/pi-backend.md)、[llm-pi-ai](entities/llm-pi-ai.md)、[会话格式代际](concepts/session-format-generations.md) 及 codex/opencode 对比页交叉引用。- 桌面 profile 依赖修复：`@deepseek-ai/dsh-subagent-claude-code` 由 `0.2.1-rc.3` 升到 npm 最新的 `0.2.2-rc.3` 并重装；在 `~/.dsh/profiles/desktop/compatibility.json` 写入精确版本豁免（`0.2.2-rc.3` 对运行时 `0.2.2-rc.4`）。复制 profile 合成验证：该 bundle 不再被跳过（此前报 `is incompatible with dsh 0.2.2-rc.4`），仅剩 Linux 上 `cua-bundle` 的平台跳过。- 同日再补实验能力：`warming`、`fork-notice` 进入默认预设并在 `experimental-package-policy.ts` 登记产品角色；`openapi-tools` 因 `spec` 必填不入默认；`session-log-export` 的导入路由已在 web-app 宿主层无条件注册。
 
 ## [2026-11-17] feat | pi 能力落地 handoff、提示模板、会话标签
 
@@ -1190,7 +1190,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 第 6 项会话标签：`packages/interaction/command-label`，`/label` 写 `session/label` log-only 事件，宿主投影 `sessionLabels` 折叠；不换代。
 - 附带清偿既有持久化分叉：`event:agent/inbox/spliced` 由 `--update 2026-11-05-timeline-priority-notice` 重算消除；`verify-persistence-changes` 转绿。
 - 验证：三包各自单测通过；`typecheck`、`lint`、`build:artifacts`、`build:check`、`doc-sync`（除三处既有红项）、`verify-translation-pairing`、`verify-package-readme-model-experience` 通过。
-- 进度与剩余项（5、1、2、7、3）见 [pi 能力面与可融入清单](queries/pi-capability-comparison.md)。- 文件面补齐：Web `standard` 预设的 `tool-fs.applyPatch` 由 `false` 改为 `true`，默认会话在 `edit` 之外提供 `apply_patch`（原先只有星域预设启用，且与 `tool-fs` README 的描述不一致）；`ptc`/`cordis` 预设保持 `false`。
+- 进度与剩余项（5、1、2、7、3）见 [pi 能力面与可融入清单](queries/pi-capability.md)。- 文件面补齐：Web `standard` 预设的 `tool-fs.applyPatch` 由 `false` 改为 `true`，默认会话在 `edit` 之外提供 `apply_patch`（原先只有星域预设启用，且与 `tool-fs` README 的描述不一致）；`ptc`/`cordis` 预设保持 `false`。
 
 ## [2026-11-18] feat | 虚拟模型路由落地
 
@@ -1240,7 +1240,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 修 `git-checkpoint` 的重复 provide：`GitCheckpointService` 的 `static provide` 已由 Service 基类登记，删掉 `apply` 里多余的 `ctx.provide`（重建 lib 后预设可挂载）。
 - `codemode` 仍不能挂：`run_code` 是 `tools.register` 的保留名，需在包里改名或改为 PTC runtime。
 - 验证：`packages/bundle/web-app` 92 项、`verify-cordis-config`、`verify-default-product-isolation`、`typecheck`、`lint`、`build:artifacts` + `build:check`、`test:docs`（21 门）通过；预设挂载 e2e 不再报服务注册错误。
-- 详见 [pi 能力面与可融入清单](queries/pi-capability-comparison.md)。
+- 详见 [pi 能力面与可融入清单](queries/pi-capability.md)。
 
 ## [2026-11-18] feat(merge) | 合并上游 upstream/master（0.2.3-alpha.2）
 
@@ -1250,3 +1250,17 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 门禁：`typecheck`、`build:artifacts`、`build:check`、`test:docs`（21 门）全过；全量单测 64276 通过、1 项既定期望失败。
 - 遗留：`test:snapshot` 7 个场景需带密钥重录（压缩摘要回退多发一次模型调用、MCP scope 失败文案），`test:web` 本机未跑完。
 - 详见 [合并上游（2026-11-18）](queries/upstream-merge-2026-11-18.md)。
+
+## [2026-11-23] feat | 回退四类外部来源采纳的能力
+
+- 按 `git revert` 逆序回退 qwen-code、pi、opencode、codex/ZCode 四类来源的落地提交：删除 21 个包（agent-plugins、tool-search、arena、memory-notes、step-summary、followup、speculation、codemode、agent-virtual-model、git-checkpoint、handoff、prompt-templates、input-handled、command-label、warming、fork-notice、openapi-tools、http-cassette、ui-markdown-mermaid、btw，以及 webhook 的消息投递动作），清理预设接线、tsconfig 路径、脚本清单与产品登记，重跑全部 `gen-*` 生成器与 `doc-sync` 43 项门禁。
+- 持久化兼容：7 个 log-only 事件与 9 种消息来源声明改由 `packages/core/session/src/retained-events.ts` 与 `packages/interaction/user-approval/src/retained-events.ts` 保留，发布版录制的会话仍可读；记录见 [持久化类型历史](../persistence-changes/2026-11-23-retain-removed-fork-events.md)。
+- wiki 合并为四页并按来源归档：[qwen-code 能力采纳与回退](queries/qwen-code-capability.md)、[pi 能力采纳与回退](queries/pi-capability.md)、[opencode 能力采纳与回退](queries/opencode-capability.md)、[codex 与 ZCode 能力采纳与回退](queries/codex-zcode-capability.md)；删除原 9 个对比/交接页与 6 个能力实体页，链接全部改指新页。
+- 升级指南：[`docs/upgrade-guide/v0.2.3-alpha.2/removed-adopted-capabilities`](../upgrade-guide/v0.2.3-alpha.2/removed-adopted-capabilities/guide.md) 记录被移除的包名、工具、命令与配置键。
+
+## [2026-11-23] fix | 回退残余：共享包内的能力代码
+
+- 全量 `test:coverage` 暴露的回退残余已按来源清理：`packages/experimental/worktree` 的 `mirrorUncommitted` 镜像、`packages/client/ui-settings-mcp`（设置页授权界面）、`user-approval` 的规则求值与项目允许、`hooks-claude-code` 的信任准入与审批前钩子点、`compaction-basic` 的窗口重置/熔断/摘要回退、`workspace-changes` 的 `/rewind`、`tool-executor-ptc` 的静态扫描、`core/tools` 的参数修复与 `approvalResources` 钩子。共享包内改动以恢复上游 merge（0.2.3-alpha.2）第二父提交的版本为准，只保留不属于这四类来源的部分。
+- 生成物重跑（`gen-*` 全套、`gen-persistence-catalog`、`gen-third-party-notices`）后 `pnpm run doc-sync` 43 项全绿、`pnpm run typecheck` 5 项全绿、`pnpm run lint` 0 错、`pnpm run build:check` 2 项全绿。
+- 本机慢用例预算：`persistence-schema`、`persistence-epoch-header`（90→240 秒）、`tools-catalog`、`gen-client-catalog`（30→120 秒）上调，原因见 [lint 红项清零与本机测试预算](queries/lint-debt-clearance-and-local-test-budget.md)。
+- `test:coverage` 现状：63,657 通过 / 1 既定期望失败 / 278 跳过；per-file 100% 阈值仍有 66 个文件不达标，其中 a2a、remote/*、cua、xingchen、pi-agent-loop、ui-paper-reader 等属于[本 fork 既有门禁红项](queries/fork-gate-debt.md)，与本次回退无关。

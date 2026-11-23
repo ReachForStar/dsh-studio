@@ -47,7 +47,7 @@ pnpm run verify-persistence-changes   # 67 roots match 19 history records
 pnpm run verify-persistence-catalog   # 生成物最新
 pnpm run verify-persistence-formats   # v0 through v5 verified (6 complete references)
 pnpm run verify-persistence-releases  # 26 records, 25 adjacent transitions verified
-pnpm exec vitest run packages/experimental/action-cards/tests   # 4 files, 28 tests passed
+pnpm exec vitest run packages/interaction/action-cards/tests   # 4 files, 28 tests passed
 pnpm run typecheck                    # 5 门全绿
 ```
 

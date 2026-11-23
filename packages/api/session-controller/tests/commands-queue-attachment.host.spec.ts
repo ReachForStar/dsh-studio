@@ -44,7 +44,7 @@ async function commandHarness(
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(TypertRegistry)
-  installSessionReadTestServices(ctx)
+  await installSessionReadTestServices(ctx)
   await ctx.sessionProjections.register(subagentIdentityProjectionDefinition)
   const sessionId = brandString<SessionId>('commands-session')
   const ancestor = Session.create(brandString<SessionId>('ancestor'))
@@ -145,8 +145,8 @@ describe('Session queue commands', () => {
 
   it('preserves the cold Agent resolver rejection', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SessionStore)
     await ctx.plugin(AgentRegistry)
     const error = new RemoteError('session/agent-busy', 'owned by a child', { reason: 'subagent-owned' })
     const controller = new SessionCommandController(ctx, {

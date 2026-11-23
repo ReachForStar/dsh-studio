@@ -17,6 +17,7 @@ import Include from '@deepseek-ai/cordis-plugin-include'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import LocalSshService from '@reachforstar/dsh-ssh-local'
@@ -47,6 +48,8 @@ describe('ssh tools through a real Loader composition', () => {
 
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
+      '- id: session-projection',
+      "  name: '@deepseek-ai/dsh-session-projection'",
       '- id: tools',
       "  name: '@deepseek-ai/dsh-tools'",
       '- id: system-prompt',
@@ -70,6 +73,7 @@ describe('ssh tools through a real Loader composition', () => {
     ctx.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
       ['@deepseek-ai/dsh-tools', ToolRuntime],
+      ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
       ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
       ['@deepseek-ai/dsh-tool-executor-native', NativeToolExecutor],
       ['@reachforstar/dsh-ssh-local', LocalSshService],

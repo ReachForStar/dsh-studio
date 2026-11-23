@@ -5,7 +5,7 @@
  * which keys exist, what each register call must pass, what the component
  * receives, who already occupies the seat, and when the seat exists at all —
  * is decided at compile time by the shipped web bundle. This generator reads
- * those facts lexically (no type-checker program) and emits them as a data
+ * those facts from source and emits them as a data
  * module inside `tool-cordis`, so the host-side toolset teaches the browser
  * surface without importing a single client runtime module.
  *
@@ -49,10 +49,11 @@ const MAX_DECL_CHARS = 1200
  * into a manual. Every report also lists one line per standard prop seat of its
  * scope, so the widest Session-scope slot (`tool.call.toolview`, with the
  * global and Session access seats and one occupant line per keyed tool view) sets the current 127.
- * This fork's shipped toolviews add three Excalidraw registrations and one owner member, which
- * raises the widest report to 131; the ceiling holds that measurement, not a round number.
+ * This fork's shipped toolviews add three Excalidraw registrations and two owner members (the
+ * inspect callback and the Conversation-view opener), which raises the widest report to 132;
+ * the ceiling holds that measurement, not a round number.
  */
-const MAX_ENTRY_LINES = 131
+const MAX_ENTRY_LINES = 132
 /** One register-call option as the catalog teaches it. */
 interface OptionDoc {
   readonly name: string

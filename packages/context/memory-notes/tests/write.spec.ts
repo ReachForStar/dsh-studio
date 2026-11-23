@@ -7,6 +7,7 @@ import { provideWorkingDirectoryFixture } from '@deepseek-ai/dsh-agent-loop-test
 import { LocalFileSystem } from '@deepseek-ai/dsh-fs-local'
 import { createAssistantMessage, createToolResultMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
@@ -29,6 +30,7 @@ async function boot(maxWriteChars = 4000) {
   await ctx.plugin(SessionStore)
   provideWorkingDirectoryFixture(ctx, root)
   await ctx.plugin(SystemPrompt)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(LocalFileSystem, { cwd: root })

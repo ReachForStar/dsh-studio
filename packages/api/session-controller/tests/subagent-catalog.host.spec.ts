@@ -59,7 +59,7 @@ async function bench() {
       sessionId === PARENT ? { meta: header, events } : undefined,
     ),
   }) as never)
-  installSessionReadTestServices(ctx)
+  await installSessionReadTestServices(ctx)
   provideWorkingDirectoryFixture(ctx)
   await ctx.plugin(SubagentRuntime)
   const controller = await createSessionTestController(ctx, defaults)
@@ -198,10 +198,10 @@ describe('SessionController subagent catalog', () => {
   it('reads registered projections without a subagent provider or catalog key', async () => {
     const ctx = new Context()
     contexts.push(ctx)
-    await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SessionStore)
     await ctx.plugin(AgentRegistry)
-    installSessionReadTestServices(ctx)
+    await installSessionReadTestServices(ctx)
     const controller = await createSessionTestController(ctx, defaults)
     const session = ctx.sessions.create(PARENT, { meta: { cwd: '/workspace' } })
     const expected = ctx.sessionProjections.snapshot(session)

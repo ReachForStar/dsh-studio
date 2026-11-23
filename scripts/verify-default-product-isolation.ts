@@ -225,7 +225,7 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
           failures.push(`${display(filename)}: included composition must contain an entry array`)
           return
         }
-        const entries = applyEntryPatches(content as EntryOptions[], entry.config.patches as PatchOptions[] | undefined, () => {})
+        const entries = applyEntryPatches(content as EntryOptions[], entry.config.patches as PatchOptions[] | undefined, () => {}).data
         scanEntries(entries, filename, true, nestedStack)
       }
     }
@@ -323,7 +323,8 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
   }
   for (const [name, reason] of Object.entries(DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES)) {
     if (reason.trim() === '') failures.push(`${name}: default-product experimental exception requires a reason`)
-    if (!defaultExperimental.has(name)) {
+    // A root that does not contain the package cannot judge its reach; only the real tree reports staleness.
+    if (packages.has(name) && !defaultExperimental.has(name)) {
       failures.push(`${name}: stale default-product experimental exception; remove it or restore default reach`)
     }
   }

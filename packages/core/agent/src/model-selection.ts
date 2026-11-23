@@ -124,7 +124,7 @@ export class AgentModel implements Model {
    */
   async resolve(request: ModelRouteRequest): Promise<ModelSelection> {
     const selection = this.current()
-    if (selection === undefined) throw new Error('agent has no provider/model')
+    if (selection === undefined) throw new Error('agent has no provider/model: record a model selection before sending a turn')
     if (this.resolver === undefined) return selection
     return this.resolver.resolve(selection, request)
   }

@@ -67,7 +67,7 @@ async function bench() {
 function declare(slots: SlotRegistry): () => void {
   return slots.register({
     name: 'root',
-    children: { 'settings.plugins.tab': { kind: 'list', scope: 'root' } },
+    children: { 'settings.section': { kind: 'single', scope: 'root' } },
   } as never, () => null)
 }
 
@@ -85,7 +85,7 @@ describe('ui-settings-mcp browser plugin', () => {
     declare(b.ctx.get('slots') as SlotRegistry)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
 
-    const entry = (b.ctx.get('slots') as SlotRegistry).entries('settings.plugins.tab')[0]!
+    const entry = (b.ctx.get('slots') as SlotRegistry).entries('settings.section')[0]!
     expect(entry.component).toBe(McpSettingsTab)
     expect(entry.options).toMatchObject({ id: 'mcp', order: 20 })
     expect(entry.locale).toBe(NS)
@@ -111,7 +111,7 @@ describe('ui-settings-mcp browser plugin', () => {
     const b = await bench()
     declare(b.ctx.get('slots') as SlotRegistry)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
-    const injected = ((b.ctx.get('slots') as SlotRegistry).entries('settings.plugins.tab')[0]!.inject as unknown as () => McpSettingsTabInjected)()
+    const injected = ((b.ctx.get('slots') as SlotRegistry).entries('settings.section')[0]!.inject as unknown as () => McpSettingsTabInjected)()
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     onTestFinished(() => { open.mockRestore() })
 
@@ -140,7 +140,7 @@ describe('ui-settings-mcp browser plugin', () => {
     const declared = declare(b.ctx.get('slots') as SlotRegistry)
     onTestFinished(declared)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
-    const injected = ((b.ctx.get('slots') as SlotRegistry).entries('settings.plugins.tab')[0]!.inject as unknown as () => McpSettingsTabInjected)()
+    const injected = ((b.ctx.get('slots') as SlotRegistry).entries('settings.section')[0]!.inject as unknown as () => McpSettingsTabInjected)()
     const unsubscribe = injected.subscribe(() => {})
     onTestFinished(unsubscribe)
     const options = b.$stream.mock.calls[0]![0] as unknown as { carrierFailed: () => void }

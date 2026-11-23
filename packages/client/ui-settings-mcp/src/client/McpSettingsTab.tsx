@@ -33,7 +33,7 @@ export interface McpSettingsTabInjected {
 
 /** Full component props assembled by the Settings slot renderer. */
 export type McpSettingsTabProps =
-  PropsRuntime<'settings.plugins.tab'>
+  PropsRuntime<'settings.section'>
   & PropsLocale<'settings.mcp'>
   & InjectFace<McpSettingsTabInjected>
 

@@ -26,7 +26,7 @@ function maxContentWidth(columnWidth: number): number {
 /** Resolve the width displayed for one measured Conversation column. */
 function resolveContentWidth(columnWidth: number, preference: number | null): number {
   if (preference !== null) return Math.min(Math.max(preference, CONTENT_MIN), maxContentWidth(columnWidth))
-  return Math.max(680, Math.min(columnWidth * 0.64, 920))
+  return Math.max(680, Math.min(columnWidth * 0.64, 880))
 }
 
 /** The content-width range and value one rendered column offers. */
@@ -42,7 +42,8 @@ interface WidthAxis {
  * own length is the width it sets, and every step publishes and stores the
  * chosen width (a range input has no press-without-change state to protect the
  * stored preference from). The written variables live on the Conversation
- * root, so the choice sizes this panel only.
+ * body, the element that declares the non-inheriting width axis, so the
+ * choice sizes this panel only.
  * @param props - Mounted Conversation body, its presentation phase, and the localized labels.
  * @returns the width slider while a transcript is on screen, otherwise no control.
  */
@@ -61,28 +62,29 @@ export function ConversationWidthControls({ container, phase, widthLabel, widthV
 
   useLayoutEffect(() => {
     if (container === null) return
-    const target = container.parentElement ?? container
-    const publish = (): void => {
-      const column = container.offsetWidth
-      target.style.setProperty('--dsh-conversation-column-width', `${column}px`)
+    const publishWidths = (column: number): void => {
+      container.style.setProperty('--dsh-conversation-column-width', `${column}px`)
       const preference = readWidthPreference()
-      if (preference === null) target.style.removeProperty('--dsh-chat-user-width')
-      else target.style.setProperty('--dsh-chat-user-width', `${resolveContentWidth(column, preference)}px`)
+      if (preference === null) container.style.removeProperty('--dsh-chat-user-width')
+      else container.style.setProperty('--dsh-chat-user-width', `${resolveContentWidth(column, preference)}px`)
       apply(column, preference)
     }
-    const observer = new ResizeObserver(publish)
-    observer.observe(container)
-    publish()
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        for (const size of entry.borderBoxSize) publishWidths(Math.round(size.inlineSize))
+      }
+    })
+    observer.observe(container, { box: 'border-box' })
+    publishWidths(container.offsetWidth)
     return () => { observer.disconnect() }
   }, [container, apply])
 
   const onChange = useCallback((width: number): void => {
     if (container === null) return
-    const target = container.parentElement ?? container
     const column = container.offsetWidth
     const resolved = resolveContentWidth(column, width)
     localStorage.setItem(WIDTH_PREF_KEY, `${resolved}`)
-    target.style.setProperty('--dsh-chat-user-width', `${resolved}px`)
+    container.style.setProperty('--dsh-chat-user-width', `${resolved}px`)
     apply(column, width)
   }, [container, apply])
 

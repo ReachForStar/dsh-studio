@@ -19,7 +19,10 @@ import pluginManagerRemote from '@deepseek-ai/dsh-plugin-manager/remote'
 import mcpManagerRemote from '@deepseek-ai/dsh-mcp-manager/remote'
 import toolResultsRemote from '@deepseek-ai/dsh-client-ui-trajectory/remote'
 import pluginRegistryProbeRemote from '@deepseek-ai/dsh-client-ui-plugin-manager/remote'
+import connectorAccountsRemote from '@deepseek-ai/dsh-client-ui-connector-account/remote'
 import pluginMarketRemote from '@deepseek-ai/dsh-plugin-market/remote'
+import actionCardsRemote from '@deepseek-ai/dsh-action-cards/remote'
+import pluginRecommendationsRemote from '@deepseek-ai/dsh-plugin-recommendations/remote'
 import pluginInventoryRemote from '@deepseek-ai/dsh-host-plugin-inventory/remote'
 import messageFeedbackRemote from '@deepseek-ai/dsh-message-feedback/remote'
 import permissionPresetsRemote from '@deepseek-ai/dsh-permission-presets/remote'
@@ -52,8 +55,11 @@ export type { McpManagedServerStatus, McpManagedServerView } from '@deepseek-ai/
 export type {} from '@deepseek-ai/dsh-plugin-manager/remote'
 export type {} from '@deepseek-ai/dsh-mcp-manager/remote'
 export type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/remote'
+export type {} from '@deepseek-ai/dsh-client-ui-connector-account/remote'
 export type {} from '@deepseek-ai/dsh-client-ui-trajectory/remote'
 export type {} from '@deepseek-ai/dsh-plugin-market/remote'
+export type {} from '@deepseek-ai/dsh-action-cards/remote'
+export type {} from '@deepseek-ai/dsh-plugin-recommendations/remote'
 export type {
   MarketCompatibility, MarketIndexSummary, MarketInstallation, MarketInstallationStatus, MarketListingEntry, MarketListingVersion,
   MarketQuery, MarketSearchResult, MarketSort, PluginDetail, PluginDetailDocumentId, PluginDetailOrigin,
@@ -208,12 +214,13 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       productAnalyticsRemote, agentPresetsRemote, commandsRemote, agentTeamsRemote, settingsControllerRemote, accountRemote,
       goalsRemote, llmRemote, dynamicRemote, scheduleRemote,
       pluginInventoryRemote, pluginManagerRemote, mcpManagerRemote, pluginMarketRemote, pluginRegistryProbeRemote,
+      connectorAccountsRemote,
       toolResultsRemote,
       messageFeedbackRemote, sessionFeedbackRemote,
       fileUploadsRemote, sessionReferencesRemote,
       permissionPresetsRemote, subagentsRemote, sessionRemote, sessionStatusRemote, jobRemote,
       workspaceRemote, workspaceFilesRemote, terminalRemote,
-      sshRemote, a2aStatusRemote, officeKitRemote, userQuestionsRemote, webRemote,
+      sshRemote, a2aStatusRemote, officeKitRemote, userQuestionsRemote, webRemote, actionCardsRemote, pluginRecommendationsRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }

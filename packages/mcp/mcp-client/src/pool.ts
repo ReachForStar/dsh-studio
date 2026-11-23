@@ -17,7 +17,7 @@
  */
 
 import { Service, type Context } from '@deepseek-ai/cordis'
-import type { Client, OAuthClientProvider } from '@modelcontextprotocol/client'
+import type { AuthProvider, Client, FetchLike } from '@modelcontextprotocol/client'
 import { createMcpClient } from './client.ts'
 import { describeError } from './diagnostic.ts'
 import { McpGeneration } from './generation.ts'
@@ -68,8 +68,10 @@ export interface McpAcquireOptions {
   signal: AbortSignal
   /** Replaces expanded credential values in diagnostics. Defaults to identity. */
   redact?: (text: string) => string
-  /** OAuth client the shared transport presents and refreshes tokens with. */
-  authProvider?: OAuthClientProvider
+  /** OAuth request wrapper bound to the active grant; absent without a stored grant. */
+  fetch?: FetchLike
+  /** Passive OAuth callbacks the shared transport answers with. */
+  authProvider?: Required<AuthProvider>
 }
 
 /** Removal of one connection from the pool's table. */
@@ -114,14 +116,16 @@ class SharedConnection {
    * @param key - sharing key computed by {@link poolKey}.
    * @param config - resolved configuration the connection dials.
    * @param redact - diagnostic filter for expanded credential values.
-   * @param authProvider - OAuth client the transport presents and refreshes tokens with.
+   * @param fetch - OAuth request wrapper bound to the active grant.
+   * @param authProvider - passive OAuth callbacks the transport answers with.
    */
   constructor(
     private readonly registry: ConnectionRegistry,
     readonly key: string,
     config: Config,
     redact: (text: string) => string,
-    authProvider?: OAuthClientProvider,
+    fetch?: FetchLike,
+    authProvider?: Required<AuthProvider>,
   ) {
     this.client = createMcpClient(() => { this.toolsChanged() })
     this.client.onclose = () => { this.drop() }
@@ -131,7 +135,7 @@ class SharedConnection {
       }
     })
     this.wire = new McpGeneration(this.client, config.closeTimeoutMs, error => redact(describeError(error)))
-    this.settled = this.wire.connect(config, config.startupTimeoutMs, authProvider)
+    this.settled = this.wire.connect(config, config.startupTimeoutMs, fetch, authProvider)
   }
 
   /**
@@ -203,7 +207,7 @@ export default class McpPool extends Service {
     let connection = this.connections.get(key)
     if (connection === undefined) {
       try {
-        connection = new SharedConnection(this.registry, key, config, options.redact ?? (text => text), options.authProvider)
+        connection = new SharedConnection(this.registry, key, config, options.redact ?? (text => text), options.fetch, options.authProvider)
       } catch (error) {
         this.unpoolable.add(key)
         this.logFailure(config.serverName, error, options.redact)

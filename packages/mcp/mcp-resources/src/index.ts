@@ -79,6 +79,7 @@ export class McpResourceRuntime extends Service {
             + `as the server argument: ${JSON.stringify(names)}. `
             + 'Call watch_mcp_resource with the same server name and a resource URI to wait for that resource\'s next update.'
         },
+        retirement: 'The instructions for mcp-resource-servers no longer apply.',
       })
     })
   }

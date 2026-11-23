@@ -6,6 +6,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, it, onTestFinished } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { resolveReconnectPolicy, startConnection } from '../src/connection.ts'
@@ -32,11 +34,14 @@ it('reuses one handshake and process set for two instances of one configuration'
     toolCallTimeoutMs: 15_000, resourceWatchTimeoutMs: 30_000, maxResourceWatchTimeoutMs: 300_000,
     startupTimeoutMs: 30_000, closeTimeoutMs: 5_000,
     expandTemplates: false, failOnStartupError: false,
+    toolLoading: 'eager', catalogDescriptionMaxLength: 160,
   }
   const ctx = new Context()
   onTestFinished(() => { void ctx.fiber.dispose() })
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(McpPool)
   const policy = resolveReconnectPolicy({ enabled: false }, 'fixture')
   const alpha = startConnection(ctx, { ...config, serverName: 'alpha' }, policy, new McpStatusCell(() => {}))

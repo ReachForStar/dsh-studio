@@ -8,7 +8,7 @@
  */
 export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
   '@deepseek-ai/dsh-acp-app': ['ACP_APP_STARTUP_SERVICE'],
-  '@deepseek-ai/dsh-action-cards': ['Config', 'isPluginStopping'],
+  '@deepseek-ai/dsh-action-cards': ['isPluginStopping'],
   '@deepseek-ai/dsh-agent': [
     'AgentModel',
     'agentCarrier',
@@ -62,7 +62,6 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'serverResponseSchema',
     'transportError',
   ],
-  '@deepseek-ai/dsh-client-hmr': ['EVENTS_ENDPOINT'],
   '@deepseek-ai/dsh-client-locale': ['LOCALE_IDS', 'LOCALE_PREFERENCE_FIELD', 'LOCALE_SETTINGS_NAMESPACE'],
   '@deepseek-ai/dsh-client-modules': ['bootInjections', 'orderByModuleGraph', 'stripClientSuffix', 'syncChunkClosure'],
   '@deepseek-ai/dsh-client-ui-chat': [
@@ -171,6 +170,7 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'createAssistantMessage',
     'createDeveloperMessage',
     'createMessage',
+    'createPeerAssistantMessage',
     'createSystemMessage',
     'createToolResultMessage',
     'createUserMessage',
@@ -201,10 +201,7 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'runFirstVisibleTime',
     'textOnlyImageText',
     'userAgent',
-    'createPeerAssistantMessage',
   ],
-  '@deepseek-ai/dsh-llm-deepseek-account': ['plainAccountOptions', 'resolveAccountOptions'],
-  '@deepseek-ai/dsh-llm-deepseek-api-key': ['plainOptions', 'resolveAdapterOptions'],
   '@deepseek-ai/dsh-llm-pi-ai': ['PiAiAdapter', 'supportedProtocols'],
   '@deepseek-ai/dsh-llm-replay': [
     'deriveReplayScript',
@@ -230,7 +227,7 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
   '@deepseek-ai/dsh-memory-notes': [
     'findProjectRoot',
     'loadMemoryFiles',
-    'resolveConfig',
+    'resolveMemoryConfig',
     'userMemoryDirectory',
     'isMemoryNoteMessage',
     'renderMemoryNote',
@@ -307,6 +304,10 @@ export const EXISTING_PLUGIN_ENTRY_EXPORTS = {
     'isSurfaceEvent',
     'pluginRecordOf',
     'snapshotSessionEvent',
+    // SessionData v2 transition: temporary exemption until these values move to a subpath export.
+    'buildSessionHeader',
+    'needsInheritedSeedMarker',
+    'validateSessionLog',
   ],
   '@deepseek-ai/dsh-session-log-deepseek': ['acceptedThrough'],
   '@deepseek-ai/dsh-session-log-export': [

@@ -10,13 +10,13 @@ import type {
 import type { MessageImageLoader, MessageImageSource } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { AskUserQuestionAnswerItem, AskUserQuestionItem } from '@deepseek-ai/dsh-user-questions/types'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type { ToolFileInjected } from './file-menu.ts'
+import type { ToolFileInjected } from '../tool/file-menu.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /**
-     * Key by wire name, including custom tools. `key: '<tool name>'`; a typo never renders.
-     * Occupied keys replace the view; unclaimed keys use the generic row.
+     * Key by wire name, including custom tools; a typo never renders. Unclaimed keys use the generic row.
+     * Use `key: '<tool name>'` to replace the view; phase data has `name` and lazy, possibly partial `args`.
      */
     'tool.call.toolview': {
       kind: 'keyed'
@@ -68,7 +68,7 @@ export interface ToolCallCommonProps {
   loadImage: MessageImageLoader
   /** Inspect this call in the trajectory view when available. */
   inspect?: (() => void) | undefined
-  /** Activate a conversation view tab by id, focusing an element (empty for none). */
+  /** Open one Conversation view of this Session; absent where no view host is composed. */
   openView?: ((view: string, focus: string) => void) | undefined
 }
 

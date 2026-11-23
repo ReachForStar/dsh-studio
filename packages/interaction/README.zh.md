@@ -32,6 +32,7 @@ kind: "package-group"
 | [`user-questions/`](user-questions/README.zh.md) | 定义经过校验的问题 schema 与作用域 answerer waterfall，agent 可暂停等待 | `ctx.userQuestions` |
 | [`tool-ask-user/`](tool-ask-user/README.zh.md) | 暴露 `ask_user_question` 工具，让模型可以向用户提问并请求其作出决定 | 注册到 `ctx.tools` |
 | [`btw/`](btw/README.zh.md) | 从已完成历史回答会话侧问，不向主对话追加回合 | — |
+| [`action-cards/`](action-cards/README.zh.md) | 在回答下方提供可选操作卡片：`action-card` 代码块、卡片状态、用户操作与状态通知 | `ctx.actionCards` |
 
 -----
 

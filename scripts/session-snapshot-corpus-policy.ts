@@ -22,8 +22,12 @@ export interface SnapshotCorpusGenerationSummary {
 }
 
 const RETAINED_BASELINE_VERSION = 3
-// Includes native and PTC Office recordings that retain removed tools.
-const MAX_RETAINED_ROLES = 13
+// The fork's writer is V5 while the upstream line it merges still records V4 scenarios, so both
+// released generations count as retained history until a keyed re-record pass replaces them.
+const RETAINED_HISTORICAL_VERSIONS: ReadonlySet<number> = new Set([RETAINED_BASELINE_VERSION, 4])
+// Includes native and PTC Office recordings that retain removed tools, plus the V4 scenarios the
+// upstream merge still carries.
+const MAX_RETAINED_ROLES = 40
 const REQUIRED_V0_COVERAGE = new Set([
   'multi-hop',
   'packed-row',
@@ -57,9 +61,11 @@ export function assertSnapshotCorpusPolicy(
           baselineRoles += 1
         } else if (version === SESSION_FORMAT_VERSION) {
           currentRoles += 1
+        } else if (RETAINED_HISTORICAL_VERSIONS.has(version)) {
+          retainedRoles += 1
         } else {
           throw new Error(
-            `${scenario.key}: selected Session generation v${version} must be retained baseline v${RETAINED_BASELINE_VERSION} or current v${SESSION_FORMAT_VERSION}`,
+            `${scenario.key}: selected Session generation v${version} must be a retained historical generation (v3 or v4) or current v${SESSION_FORMAT_VERSION}`,
           )
         }
       }

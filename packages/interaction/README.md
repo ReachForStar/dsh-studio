@@ -32,6 +32,7 @@ Each package README and its subsystem reference own the exhaustive contracts.
 | [`user-questions/`](user-questions/README.md) | Defines the validated question schema and scoped answerer waterfall an agent pauses on | `ctx.userQuestions` |
 | [`tool-ask-user/`](tool-ask-user/README.md) | Exposes the `ask_user_question` tool so the model can ask the human for a decision | registers on `ctx.tools` |
 | [`btw/`](btw/README.md) | Session side questions answered from the completed history without adding a turn | — |
+| [`action-cards/`](action-cards/README.md) | Offers optional action cards below answers: `action-card` blocks, card state, user actions and status notices | `ctx.actionCards` |
 
 -----
 

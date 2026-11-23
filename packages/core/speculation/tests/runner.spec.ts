@@ -8,6 +8,7 @@ import { createAssistantMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ToolSchema } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolBatchResult } from '@deepseek-ai/dsh-tools'
@@ -400,6 +401,7 @@ describe('apply', () => {
     ctx.provide('llm', options.llm ?? stubLlm(JSON.stringify(options.plan ?? PLAN)))
     if (options.outcomes === undefined) {
       await ctx.plugin(SystemPrompt)
+      await ctx.plugin(SessionProjectionRegistry)
       await ctx.plugin(ToolRuntime)
       await ctx.plugin(NativeToolExecutor)
       registerTools(ctx)
@@ -605,6 +607,7 @@ describe('apply', () => {
       }),
     })
     await ctx.plugin(SystemPrompt)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(NativeToolExecutor)
     registerTools(ctx)

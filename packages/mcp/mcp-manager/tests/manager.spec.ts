@@ -6,6 +6,7 @@
  * child instance.
  * Isolated file so vi.mock of the MCP SDK doesn't pollute other test suites.
  */
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Context, FiberState, type Fiber } from '@deepseek-ai/cordis'
 import type { Transport } from '@modelcontextprotocol/client'
@@ -75,15 +76,8 @@ vi.mock('@modelcontextprotocol/client', async importOriginal => ({
   }),
 }))
 
-const oauthMocks = vi.hoisted(() => ({ beginAuthorization: vi.fn(), clearAuthorization: vi.fn() }))
-vi.mock('@deepseek-ai/dsh-mcp-client/oauth', async importOriginal => ({
-  ...await importOriginal<typeof import('@deepseek-ai/dsh-mcp-client/oauth')>(),
-  beginAuthorization: oauthMocks.beginAuthorization,
-  clearAuthorization: oauthMocks.clearAuthorization,
-}))
-
-import { apply as applyMcpClient, Config as ClientConfig, connectionStatusOf } from '@deepseek-ai/dsh-mcp-client'
-import type { StreamableHttpConfig } from '@deepseek-ai/dsh-mcp-client'
+import { apply as applyMcpClient, Config as ClientConfig } from '@deepseek-ai/dsh-mcp-client'
+import { connectionStatusIn as connectionStatusOf } from '@deepseek-ai/dsh-mcp-client/src/status.ts'
 import McpServerManager from '@deepseek-ai/dsh-mcp-manager/src/index.ts'
 import type { Config, McpManagedServerStatus } from '@deepseek-ai/dsh-mcp-manager/src/index.ts'
 import { managerProfile } from './profile-fixture.ts'
@@ -139,10 +133,6 @@ function stdioEntry(overrides?: Record<string, unknown>): Record<string, unknown
   return { transport: 'stdio', command: 'echo', ...overrides }
 }
 
-function remoteEntry(overrides?: Record<string, unknown>): Record<string, unknown> {
-  return { transport: 'streamable-http', url: 'http://localhost:1/mcp', oauth: { clientId: 'client-1', scope: 'read' }, ...overrides }
-}
-
 function listing(...names: string[]): { tools: { name: string; inputSchema: { type: string } }[]; nextCursor: undefined } {
   return { tools: names.map(name => ({ name, inputSchema: { type: 'object' } })), nextCursor: undefined }
 }
@@ -161,6 +151,7 @@ async function mountWorld(options?: {
   managerFiber: Fiber
 }> {
   const ctx = new Context()
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   let credentials: MemoryCredentials | undefined
@@ -202,8 +193,16 @@ describe('mcp-manager', () => {
       await this.transport?.close()
     })
     mockListTools.mockResolvedValue(listing('remote'))
-    oauthMocks.beginAuthorization.mockReset()
-    oauthMocks.clearAuthorization.mockReset()
+  })
+
+  it('requires OAuth configuration and a credential provider for explicit operations', async () => {
+    const { manager } = await mountWorld({ managerConfig: { servers: {
+      off: stdioEntry({ enabled: false }),
+      oauth: { transport: 'streamable-http', url: 'https://example.invalid', enabled: false, oauth: { credentialKey: 'mcp-client/oauth' } },
+    } } })
+    await expect(manager.startAuthorization('off')).rejects.toThrow('OAuth is not configured')
+    await expect(manager.signOut('off')).rejects.toThrow('OAuth is not configured')
+    await expect(manager.signOut('oauth')).rejects.toThrow('credentials provider')
   })
 
   it('mounts composition-base servers without any settings provider', async () => {
@@ -248,6 +247,17 @@ describe('mcp-manager', () => {
     // Exactly one new client generation: beta was not rebuilt.
     expect(instances.length).toBe(clientsBefore + 1)
     expect(transportConfigs.at(-1)).toMatchObject({ command: 'echo', args: ['--fast'] })
+  })
+
+  it('passes on-demand tool loading to the managed instance', async () => {
+    mockListTools.mockResolvedValue(listing('remote'))
+    const { ctx, manager } = await mountWorld({
+      settingsDoc: { mcp: { servers: { lazy: stdioEntry({ toolLoading: 'on-demand' }) } } },
+    })
+    await waitForState(manager, 'lazy', 'connected')
+
+    expect(ctx.tools.get('mcp__lazy__load_tools')).toBeDefined()
+    expect(ctx.tools.get('mcp__lazy__remote')).toBeUndefined()
   })
 
   it('disable unmounts the instance and keeps the entry listed; re-enable remounts it', async () => {
@@ -322,55 +332,8 @@ describe('mcp-manager', () => {
     // sibling referencing the same credential never mounted.
     await credentials!.set(credentialRef('MCP_SPEC_UNRELATED'), 'noise')
     await manager.restart('remote')
-    // Restart remounts without awaiting activation, so the replacement client
-    // appears once the new instance resolves its credential and dials.
-    await vi.waitFor(() => { expect(instances.length).toBe(clientsBefore + 2) })
+    expect(instances.length).toBe(clientsBefore + 2)
     expect(manager.list().find(view => view.name === 'dormant')!.status).toEqual({ state: 'disabled' })
-  })
-
-  it('authorizes a remote entry and rebuilds it once the grant lands', async () => {
-    const { manager } = await mountWorld({
-      withCredentials: true,
-      settingsDoc: { mcp: { servers: { remote: remoteEntry() } } },
-    })
-    await waitForState(manager, 'remote', 'waiting-authorization')
-    const completed: PromiseWithResolvers<void> = Promise.withResolvers()
-    oauthMocks.beginAuthorization.mockResolvedValue({ url: 'http://auth.example/authorize', completed: completed.promise })
-
-    await expect(manager.authorize('remote')).resolves.toBe('http://auth.example/authorize')
-    const authorized = oauthMocks.beginAuthorization.mock.calls[0]?.[1] as StreamableHttpConfig | undefined
-    expect(authorized?.serverName).toBe('remote')
-    expect(authorized?.url).toBe('http://localhost:1/mcp')
-    expect(authorized?.oauth?.clientId).toBe('client-1')
-    expect(authorized?.oauth?.scope).toBe('read')
-
-    completed.resolve()
-    await waitForState(manager, 'remote', 'waiting-authorization')
-  })
-
-  it('refuses authorization for unknown, local, or disposed servers', async () => {
-    const { manager, managerFiber } = await mountWorld({
-      withCredentials: true,
-      settingsDoc: { mcp: { servers: { remote: remoteEntry(), local: stdioEntry() } } },
-    })
-    await expect(manager.authorize('ghost')).rejects.toThrow(/unknown server "ghost"/)
-    await expect(manager.authorize('local')).rejects.toThrow(/not configured for OAuth/)
-    oauthMocks.beginAuthorization.mockRejectedValue(new Error('no listener'))
-    await expect(manager.authorize('remote')).rejects.toThrow(/no listener/)
-    await managerFiber.dispose()
-    await expect(manager.authorize('remote')).rejects.toThrow(/disposed/)
-  })
-
-  it('clears a stored grant and rebuilds the instance', async () => {
-    const { manager } = await mountWorld({
-      withCredentials: true,
-      settingsDoc: { mcp: { servers: { remote: remoteEntry() } } },
-    })
-    await waitForState(manager, 'remote', 'waiting-authorization')
-    oauthMocks.clearAuthorization.mockResolvedValue(undefined)
-    await manager.forgetAuthorization('remote')
-    expect(oauthMocks.clearAuthorization).toHaveBeenCalledWith(expect.anything(), 'http://localhost:1/mcp')
-    await waitForState(manager, 'remote', 'waiting-authorization')
   })
 
   it('preserves an exhausted retry budget for same-value credential notifications', async () => {

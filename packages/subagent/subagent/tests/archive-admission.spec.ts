@@ -257,8 +257,8 @@ describe('Subagent archive admission: lifetime', () => {
   it('removes archive listeners on disposal and restores them on replacement', async () => {
     const ctx = new Context()
     onTestFinished(() => ctx.fiber.dispose())
-    await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SessionStore)
     await ctx.plugin(AgentRegistry)
     await mountWorkingDirectoryFixture(ctx)
     const fiber = await ctx.plugin(SubagentRuntime)

@@ -10,7 +10,6 @@
 
 import { createHash } from 'node:crypto'
 import type { Config } from './index.ts'
-import { oauthSettings } from './oauth.ts'
 
 /**
  * Fingerprint a set of transport values so no resolved secret sits in a map
@@ -47,15 +46,14 @@ export function poolKey(config: Config): string {
   if (config.transport === 'stdio') {
     return JSON.stringify(['stdio', config.command, config.args, config.cwd, fingerprint(config.env), ...budgets])
   }
-  // The OAuth client decides which account a shared connection acts as, so two
+  // The OAuth grant decides which account a shared connection acts as, so two
   // configurations that authorize differently must not share one connection.
-  const settings = oauthSettings(config)
-  const oauth = settings === undefined
+  const oauth = config.oauth === undefined
     ? null
     : {
-      clientId: settings.clientId ?? null,
-      clientSecret: settings.clientSecret === undefined ? null : fingerprintText(settings.clientSecret),
-      scope: settings.scope ?? null,
+      credentialKey: config.oauth.credentialKey,
+      clientId: config.oauth.clientId ?? null,
+      scope: config.oauth.scope ?? null,
     }
   return JSON.stringify(['streamable-http', config.url, fingerprint(config.headers), oauth, ...budgets])
 }

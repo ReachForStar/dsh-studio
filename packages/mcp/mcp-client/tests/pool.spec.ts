@@ -6,6 +6,8 @@ import { Context } from '@deepseek-ai/cordis'
 import { InMemoryTransport, type Transport } from '@modelcontextprotocol/client'
 import { McpServer } from '@modelcontextprotocol/server'
 import { serveStdio } from '@modelcontextprotocol/server/stdio'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { createMcpClient } from '../src/client.ts'
@@ -24,6 +26,7 @@ const baseConfig: StdioConfig = {
   toolCallTimeoutMs: 60_000, resourceWatchTimeoutMs: 30_000, maxResourceWatchTimeoutMs: 300_000,
   startupTimeoutMs: 30_000, closeTimeoutMs: 5_000,
   expandTemplates: false, failOnStartupError: false,
+  toolLoading: 'eager', catalogDescriptionMaxLength: 160,
 }
 
 beforeEach(() => { mockTransport.mockReset() })
@@ -41,8 +44,10 @@ function start(ctx: Context, overrides: Partial<StdioConfig> = {}) {
 async function mountPool(): Promise<Context> {
   const ctx = new Context()
   onTestFinished(() => ctx.fiber.dispose())
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(McpPool)
   return ctx
 }
@@ -285,6 +290,7 @@ describe('shared connections', () => {
   it('closes every shared connection when the service is disposed', async () => {
     const ctx = new Context()
     onTestFinished(() => ctx.fiber.dispose())
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(SystemPrompt)
     const toolRuntime = await ctx.plugin(ToolRuntime)
     const pool = await ctx.plugin(McpPool)

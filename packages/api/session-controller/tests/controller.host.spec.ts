@@ -39,7 +39,7 @@ describe('SessionController facade', () => {
     const original = ctx.sessionProjections.register.bind(ctx.sessionProjections)
     let first = true
     vi.spyOn(ctx.sessionProjections, 'register').mockImplementation(async (...args: Parameters<typeof original>) => {
-      if (first) {
+      if (first && args[0].key === 'imageLimits') {
         first = false
         entered.resolve(undefined)
         await gate.promise
@@ -260,8 +260,8 @@ describe('SessionController facade', () => {
 
   it('waits for an admitted background promotion during teardown', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SessionStore)
     await ctx.plugin(AgentRegistry)
     const sessionId = brandString<SessionId>('background-disposal')
     const header: SessionHeader = {

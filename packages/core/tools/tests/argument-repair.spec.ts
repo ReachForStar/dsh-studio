@@ -7,6 +7,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
@@ -21,6 +22,7 @@ async function setup() {
   const ctx = new Context()
   contexts.push(ctx)
   await ctx.plugin(SystemPrompt)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(NativeToolExecutor)
   const agent = { id: SessionId('repair') } as Agent

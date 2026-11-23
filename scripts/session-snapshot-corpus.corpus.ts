@@ -27,6 +27,7 @@ const snapshotAdapters = [
   'apps/web/tests/message-feedback-protocol.snapshot.ts',
   'apps/web/tests/minimal-preset.snapshot.ts',
   'apps/web/tests/preset-migration.snapshot.ts',
+  'apps/web/tests/session-send-message.snapshot.ts',
   'apps/web/tests/subagent-fork-schedule.snapshot.ts',
   'snapshots/acp/acp.snapshot.ts',
   'snapshots/sdk/sdk.snapshot.ts',
@@ -210,7 +211,9 @@ it('keeps V3 replay input plus bounded declared historical migration coverage', 
   const summary = assertSnapshotCorpusPolicy(inventory)
   expect(summary.baselineRoles).toBeGreaterThan(0)
   expect(summary).toMatchObject({
-    retainedRoles: 13,
-    retainedScenarios: 10,
+    // The upstream V4 line the fork merges still owns recorded scenarios, so more roles are retained
+    // until a keyed re-record pass replaces them with V5 recordings.
+    retainedRoles: 35,
+    retainedScenarios: 11,
   })
 })

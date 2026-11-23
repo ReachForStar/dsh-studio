@@ -1,3 +1,4 @@
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { executeToolFixture } from '@deepseek-ai/dsh-tool-testkit'
 import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -38,6 +39,7 @@ async function setup(): Promise<Context> {
   contexts.push(ctx)
   await ctx.plugin(SessionStore)
   await ctx.plugin(LlmRuntime)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(NativeToolExecutor)
@@ -244,6 +246,7 @@ describe('session-checkpoint-policy lifecycle', () => {
     contexts.push(ctx)
     await ctx.plugin(SessionStore)
     await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(NativeToolExecutor)

@@ -15,25 +15,27 @@
  * @module
  */
 
-import { UnauthorizedError, type OAuthClientProvider } from '@modelcontextprotocol/client'
+import { Client } from '@modelcontextprotocol/client'
+import type { AuthProvider, FetchLike } from '@modelcontextprotocol/client'
 import type { Context } from '@deepseek-ai/cordis'
+import type { ScopeKey } from '@deepseek-ai/dsh-scope'
 import { assertNever, deepEqualJson, type JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { ServerContext } from './server-context.ts'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { withDeadline } from './deadline.ts'
-import { McpLocalError, mcpRequestError, McpToolError } from './diagnostic.ts'
+import { McpAuthorizationRequired, McpLocalError, mcpRequestError, McpToolError, oauthFailure } from './diagnostic.ts'
+import type { McpOAuthCredentials, McpOAuthGrant } from './oauth-credentials.ts'
 import type { McpStatusCell } from './status.ts'
 import type { McpCloseResult } from './types.ts'
-import { createMcpClient } from './client.ts'
-import { createOAuthProvider, hasStoredTokens, isOAuthServer, storedRedirectUri } from './oauth.ts'
 import { McpGeneration } from './generation.ts'
-import type { McpLease } from './pool.ts'
 import { McpTemplateBinding } from './credentials.ts'
 import { MissingTemplateValue } from './templates.ts'
-import { ResourceWatchRegistry } from './resource-watch.ts'
 import { McpToolRegistrationError, syncTools } from './tools.ts'
+import { McpToolLoader } from './tool-loading.ts'
 import type { ToolDisposers } from './tools.ts'
 import type { Config } from './index.ts'
+import type { McpLease } from './pool.ts'
+import { ResourceWatchRegistry } from './resource-watch.ts'
 
 /** Automatic reconnect policy for one MCP server connection. */
 export interface ReconnectConfig {
@@ -173,21 +175,25 @@ export interface ConnectionHandle extends ServerContext {
  * @param config - Resolved plugin config selecting the transport and server identity.
  * @param policy - Resolved reconnect policy from {@link resolveReconnectPolicy}.
  * @param status - Instance status cell this supervisor publishes transitions to.
+ * @param oauth - optional passive grant and refresh provider.
  * @returns Handle with a `ready` promise for startup-await and a `dispose` for teardown.
  */
-export function startConnection(ctx: Context, config: Config, policy: ResolvedReconnectPolicy, status: McpStatusCell): ConnectionHandle {
+export function startConnection(
+  ctx: Context, config: Config, policy: ResolvedReconnectPolicy, status: McpStatusCell, oauth?: McpOAuthCredentials,
+): ConnectionHandle {
   const label = `mcp-client(${config.serverName})`
-  if (isOAuthServer(config) && ctx.get('credentials') === undefined) {
-    throw new McpLocalError(`${label}: OAuth requires a credentials provider`, 'MCP_CREDENTIALS_UNAVAILABLE')
-  }
   const binding = new McpTemplateBinding(ctx, config)
   const diagnostic = (error: unknown, operation: string): string => binding.diagnostic(error, operation)
-  const watchLimits = resolveResourceWatchLimits(config, label)
   const lifetime = new AbortController()
   const readiness = Promise.withResolvers<ConnectionOutcome>()
+  const loader = config.toolLoading === 'on-demand'
+    ? new McpToolLoader(ctx, config.serverName, config.catalogDescriptionMaxLength)
+    : undefined
+  const watchLimits = resolveResourceWatchLimits(config, label)
+
   type Generation = { wire: McpGeneration; watches: ResourceWatchRegistry; connectedAt?: number }
   let current: Generation | undefined
-  let bindingValue: { config?: Config } | undefined
+  let bindingValue: { config?: Config; grantId?: string } | undefined
   let disposed = false
   let serverInstructions = ''
   let disposers: ToolDisposers = new Map()
@@ -199,6 +205,28 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   let checkingCredentials: Promise<void> | undefined
   let credentialsDirty = false
   const isCurrent = (record: Generation): boolean => !disposed && current === record && !record.wire.lifetime.signal.aborted
+
+  async function resolveBinding(signal: AbortSignal): Promise<{ config: Config; grant?: McpOAuthGrant }> {
+    const resolved = await binding.resolve(signal)
+    const grant = oauth !== undefined && resolved.transport === 'streamable-http'
+      ? await oauth.read(new URL(resolved.url).href, signal) : undefined
+    if (grant !== undefined) binding.remember(grant.tokens.access_token)
+    return { config: resolved, ...grant === undefined ? {} : { grant } }
+  }
+
+  function authorizationFailed(record: Generation, error: McpAuthorizationRequired): void {
+    if (!isCurrent(record)) return
+    current = undefined
+    stopTimers()
+    clearTools()
+    // In-flight calls fail with the authorization reason instead of a closed connection.
+    settling = close(record, error).then(async () => {
+      await syncChain
+      clearTools()
+      readiness.resolve({ error })
+      if (!isStopped()) status.update({ state: 'waiting-authorization', reason: error.reason, lastError: error.message })
+    })
+  }
 
   function stopTimers(): void {
     clearTimeout(reconnectTimer)
@@ -218,8 +246,8 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     serverInstructions = ''
   }
 
-  async function close(record: Generation): Promise<boolean> {
-    const result = await record.wire.close()
+  async function close(record: Generation, reason?: Error): Promise<boolean> {
+    const result = await record.wire.close(reason)
     if (!result.closeConfirmed || result.cleanupError !== undefined) closureFailure ??= result
     status.recordClosure(closureFailure ?? result)
     if (closureFailure !== undefined && !disposed) {
@@ -239,7 +267,8 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
           serverName: config.serverName,
           toolCallTimeoutMs: config.toolCallTimeoutMs,
           signal,
-          ...config.expandTemplates ? { redact: (text: string) => binding.redact(text) } : {},
+          ...binding.redacting ? { redact: (text: string) => binding.redact(text) } : {},
+          ...loader === undefined ? {} : { loader },
         }, disposers, () => isCurrent(record))
       })
     })
@@ -294,12 +323,13 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     checkingCredentials ??= (async () => {
       while (credentialsDirty && !isStopped()) {
         credentialsDirty = false
-        let next: Config | undefined
-        try { next = await binding.resolve(lifetime.signal) }
+        let next: { config: Config; grant?: McpOAuthGrant } | undefined
+        try { next = await resolveBinding(lifetime.signal) }
         catch (error) {
-          if (!(error instanceof MissingTemplateValue)) throw error
+          if (!(error instanceof MissingTemplateValue) && !(error instanceof McpAuthorizationRequired)) throw error
         }
-        if (disposed || bindingValue !== undefined && deepEqualJson(next, bindingValue.config)) continue
+        const nextValue = next === undefined ? {} : { config: next.config, ...next.grant === undefined ? {} : { grantId: next.grant.id } }
+        if (disposed || bindingValue !== undefined && deepEqualJson(nextValue, bindingValue)) continue
         stopTimers()
         const record = current
         const attempt = settling
@@ -314,7 +344,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
           return
         }
         failedAttempts = 0
-        bindingValue = next === undefined ? {} : { config: next }
+        bindingValue = nextValue
         settling = connectGeneration()
       }
     })().catch((error: unknown) => {
@@ -330,14 +360,20 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       if (binding.refs.has(String(ref))) requestCredentialRefresh()
     })
   }
+  if (oauth !== undefined) {
+    ctx.on('credentials/record-updated', (key) => {
+      if (key === oauth.key) requestCredentialRefresh()
+    })
+  }
 
+  /** Re-sync one generation's tools after its server announces a tool-list change. */
   async function refreshTools(record: Generation): Promise<void> {
     if (!isCurrent(record)) return
     ctx.logger.info(`${label}: tool list changed, re-syncing`)
     try {
       await enqueueSync(record)
       if (isCurrent(record) && record.connectedAt !== undefined) {
-        status.update({ state: 'connected', toolCount: disposers.size, connectedAt: record.connectedAt })
+        status.update({ state: 'connected', toolCount: loader?.size ?? disposers.size, connectedAt: record.connectedAt })
       }
     } catch (error) {
       if (error instanceof McpToolRegistrationError) lost(record, diagnostic(error, 'tool synchronization'))
@@ -345,18 +381,12 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     }
   }
 
-  /** OAuth client for one resolved configuration, when the server requires authorization. */
-  async function oauthProvider(resolved: Config): Promise<OAuthClientProvider | undefined> {
-    if (!isOAuthServer(resolved)) return undefined
-    // The persisted redirect URI lets the SDK refresh tokens on the transport's
-    // own 401 path instead of treating the provider as non-interactive.
-    const redirectUri = await storedRedirectUri(ctx, resolved.url)
-    return createOAuthProvider(ctx, resolved, redirectUri === undefined ? {} : { redirectUri })
-  }
-
   /** Create this instance's own generation; the caller dials it. */
   function openPrivate(): Generation {
-    const client = createMcpClient(onToolListChanged)
+    const client = new Client({ name: 'dsh-mcp-client', version: '0.0.1' }, {
+      capabilities: {}, versionNegotiation: { mode: 'auto' },
+      listChanged: { tools: { autoRefresh: false, debounceMs: 0, onChanged: onToolListChanged } },
+    })
     const watches = new ResourceWatchRegistry({
       client,
       label,
@@ -373,6 +403,14 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     client.onclose = () => {
       if (record.connectedAt !== undefined) lost(record, 'connection closed')
     }
+    if (oauth !== undefined) client.onerror = (error) => {
+      const failure = oauthFailure(error)
+      if (failure === undefined) return
+      // A committed grant replacement fails this generation's later requests with `binding` before the
+      // pending credential check replaces the generation; that check owns recovery.
+      if (failure.reason === 'binding' && (credentialsDirty || checkingCredentials !== undefined)) return
+      authorizationFailed(record, failure)
+    }
     function onToolListChanged(): void { void refreshTools(record) }
     return record
   }
@@ -381,8 +419,16 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
    * Join the connection other instances already hold under the same
    * configuration. Returns undefined when this composition has no pool or the
    * configuration is no longer shared, leaving the caller to dial on its own.
+   * @param resolved - configuration after credential expansion.
+   * @param fetch - OAuth request wrapper bound to the active grant.
+   * @param authProvider - passive OAuth callbacks the shared transport answers with.
+   * @returns the shared generation, or undefined when this instance dials its own.
    */
-  async function joinShared(resolved: Config, authProvider?: OAuthClientProvider): Promise<Generation | undefined> {
+  async function joinShared(
+    resolved: Config,
+    fetch: FetchLike | undefined,
+    authProvider: Required<AuthProvider> | undefined,
+  ): Promise<Generation | undefined> {
     const pool = ctx.get('mcpPool')
     if (pool === undefined) return undefined
     let lease: McpLease | undefined
@@ -390,6 +436,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       lease = await pool.acquire(resolved, {
         signal: lifetime.signal,
         ...config.expandTemplates ? { redact: (text: string) => binding.redact(text) } : {},
+        ...fetch === undefined ? {} : { fetch },
         ...authProvider === undefined ? {} : { authProvider },
       })
     } catch (error) {
@@ -421,30 +468,36 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
 
   async function connectGeneration(): Promise<void> {
     if (isStopped()) return
-    const startedAt = Date.now()
-    const remaining = (): number | undefined => config.startupTimeoutMs === undefined ? undefined
-      : config.startupTimeoutMs - (Date.now() - startedAt)
     status.update({ state: 'connecting', attempt: failedAttempts })
-    let record: Generation | undefined
+    // A private generation exists from the first attempt, as upstream construction did; joining a
+    // shared connection retires it before it dials anything.
+    let record: Generation | undefined = openPrivate()
     try {
-      // A server that needs OAuth cannot connect before a grant exists; asking
-      // it would only produce an authorization error on every attempt.
-      if (isOAuthServer(config) && !await hasStoredTokens(ctx, config.url)) {
-        const error = new McpLocalError(`${label}: this server requires authorization`, 'MCP_AUTHORIZATION_REQUIRED')
-        readiness.resolve({ error })
-        status.update({ state: 'waiting-authorization', lastError: error.message })
-        return
-      }
-      const resolution = binding.resolve(lifetime.signal)
+      const startedAt = Date.now()
+      const remaining = (): number | undefined => config.startupTimeoutMs === undefined ? undefined
+        : config.startupTimeoutMs - (Date.now() - startedAt)
+      const resolution = resolveBinding(lifetime.signal)
       const resolveBudget = remaining()
-      const resolved = await (resolveBudget === undefined ? resolution : withDeadline(resolution, resolveBudget, `${label}: startup timed out`))
-      bindingValue = { config: resolved }
-      const authProvider = await oauthProvider(resolved)
-      const shared = await joinShared(resolved, authProvider)
+      const next = await (resolveBudget === undefined
+        ? resolution
+        : withDeadline(resolution, resolveBudget, `${label}: startup timed out`))
+      const resolved = next.config
+      bindingValue = { config: resolved, ...next.grant === undefined ? {} : { grantId: next.grant.id } }
+      const auth = oauth !== undefined && next.grant !== undefined
+        ? oauth.transport(next.grant, lifetime.signal, (url, init) => globalThis.fetch(url, init))
+        : undefined
+      const authProvider = auth === undefined ? undefined : {
+        ...auth.authProvider,
+        token: async () => binding.remember(await auth.authProvider.token()),
+      }
+      const shared = await joinShared(resolved, auth?.fetch, authProvider)
       if (shared === undefined) {
-        record = openPrivate()
-        await record.wire.connect(resolved, remaining(), authProvider)
-      } else record = shared
+        await record.wire.connect(resolved, remaining(), auth?.fetch, authProvider)
+      } else {
+        const draft = record
+        record = shared
+        await draft.wire.close()
+      }
       if (!isCurrent(record)) return
       const text = record.wire.client.getInstructions()?.trimEnd() ?? ''
       const instructions = text ? `### MCP server: ${config.serverName}\n\n${text}` : ''
@@ -457,24 +510,25 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       record.wire.assertOpen()
       serverInstructions = instructions
       record.connectedAt = Date.now()
-      status.update({ state: 'connected', toolCount: disposers.size, connectedAt: record.connectedAt })
+      status.update({ state: 'connected', toolCount: loader?.size ?? disposers.size, connectedAt: record.connectedAt })
       readiness.resolve({})
       if (failedAttempts > 0) ctx.logger.info(`${label}: reconnected and re-synced tools (attempt ${failedAttempts}/${policy.maxAttempts})`)
     } catch (error) {
       if (record !== undefined && current !== record) return
       if (record !== undefined) current = undefined
       const confirmed = record === undefined ? true : await close(record)
-      readiness.resolve({ error: config.expandTemplates ? new Error(diagnostic(error, 'startup')) : error })
+      readiness.resolve({ error: binding.redacting ? new Error(diagnostic(error, 'startup')) : error })
       if (disposed || !confirmed) return
       if (error instanceof MissingTemplateValue) {
         bindingValue = {}
         status.update({ state: 'waiting-credentials', lastError: diagnostic(error, 'credential resolution') })
         return
       }
-      // Retrying cannot grant access: the user must authorize, and the manager
-      // restarts this instance once the grant is stored.
-      if (error instanceof UnauthorizedError) {
-        status.update({ state: 'waiting-authorization', lastError: diagnostic(error, 'authorization') })
+      const failure = oauth === undefined ? undefined : oauthFailure(error)
+      if (failure !== undefined) {
+        bindingValue = {}
+        clearTools()
+        status.update({ state: 'waiting-authorization', reason: failure.reason, lastError: failure.message })
         return
       }
       ctx.logger.warn(`${label}: connection attempt failed: ${diagnostic(error, 'startup')}`)
@@ -487,6 +541,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   return {
     ready: readiness.promise,
     instructions: () => serverInstructions,
+    ...loader === undefined ? {} : { catalog: (scope: ScopeKey | undefined) => loader.catalog(scope) },
     resources: {
       async request(request, exec): Promise<JsonValue> {
         const record = current
@@ -521,7 +576,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
           })
         } catch (error) {
           exec.signal.throwIfAborted()
-          throw mcpRequestError(error, request.method, config.expandTemplates ? text => binding.redact(text) : undefined)
+          throw mcpRequestError(error, request.method, binding.redacting ? text => binding.redact(text) : undefined)
         }
       },
     },

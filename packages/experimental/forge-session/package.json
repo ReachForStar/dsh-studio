@@ -1,8 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-forge-session",
   "description": "Binds change requests to the Session that created, pushed, or tracked them",
-  "version": "0.2.2-rc.4",
-  "publishConfig": {
+  "version": "0.2.3-alpha.2",  "publishConfig": {
     "access": "public"
   },
   "type": "module",
@@ -62,6 +61,7 @@
     "@deepseek-ai/dsh-bash-local": "workspace:*",
     "@deepseek-ai/dsh-experimental-forge": "workspace:*",
     "@deepseek-ai/dsh-experimental-forge-github": "workspace:*",
+    "@deepseek-ai/dsh-forge-gitlab": "workspace:*",
     "@deepseek-ai/dsh-fs-local": "workspace:*",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*",

@@ -93,7 +93,7 @@
       "path": "../../host/ssh-remotes"
     },
     {
-      "path": "../../credentials/deepseek-account"
+      "path": "../../account/deepseek-account"
     },
     {
       "path": "../../web/web"

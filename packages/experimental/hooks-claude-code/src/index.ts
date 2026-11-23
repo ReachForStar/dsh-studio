@@ -17,6 +17,7 @@ import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
+import { extractTextContent } from '@deepseek-ai/dsh-llm/message'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 declare module '@deepseek-ai/dsh-llm' {
@@ -526,11 +527,6 @@ function lastTurn(ctx: Context, agent: Agent | undefined): number {
   return ctx.agents.turnBoundaryOf(agent.session).lastTurn
 }
 
-/** Flatten content blocks to the text a hook payload carries (the common case). */
-function blocksToText(content: ContentBlock[]): string {
-  return content.filter((b): b is Extract<ContentBlock, { type: 'text' }> => b.type === 'text').map(b => b.text).join('')
-}
-
 function base(agent: Agent | undefined, event: string): Record<string, unknown> {
   return {
     session_id: agent?.session.header.id ?? '',
@@ -545,13 +541,13 @@ function sessionStartPayload(agent: Agent, source: string): Record<string, unkno
   return { ...base(agent, 'SessionStart'), source }
 }
 function promptPayload(agent: Agent, content: ContentBlock[]): Record<string, unknown> {
-  return { ...base(agent, 'UserPromptSubmit'), prompt: blocksToText(content) }
+  return { ...base(agent, 'UserPromptSubmit'), prompt: extractTextContent(content) }
 }
 function preToolPayload(exec: ToolExecution): Record<string, unknown> {
   return { ...base(exec.agent, 'PreToolUse'), tool_name: exec.name, tool_input: exec.arguments, tool_use_id: exec.callId }
 }
 function postToolPayload(exec: ToolExecution, result: ToolExecutionResult): Record<string, unknown> {
-  return { ...base(exec.agent, 'PostToolUse'), tool_name: exec.name, tool_input: exec.arguments, tool_use_id: exec.callId, tool_response: blocksToText(result.content) }
+  return { ...base(exec.agent, 'PostToolUse'), tool_name: exec.name, tool_input: exec.arguments, tool_use_id: exec.callId, tool_response: extractTextContent(result.content) }
 }
 function modelPayload(agent: Agent | undefined, event: string, provider: string, model: string): Record<string, unknown> {
   return { ...base(agent, event), provider, model }

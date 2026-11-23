@@ -35,7 +35,7 @@ const CONNECTED: McpManagedServerView = {
   name: 'docs', configured: true, oauth: true, status: { state: 'connected', toolCount: 3, connectedAt: 1 },
 }
 const WAITING: McpManagedServerView = {
-  name: 'docs', configured: true, oauth: true, status: { state: 'waiting-authorization', lastError: 'server requires authorization' },
+  name: 'docs', configured: true, oauth: true, status: { state: 'waiting-authorization', reason: 'missing', lastError: 'server requires authorization' },
 }
 const PLAIN: McpManagedServerView = {
   name: 'local', configured: true, oauth: false, status: { state: 'failed', reason: 'reconnect-disabled', lastError: 'no route' },

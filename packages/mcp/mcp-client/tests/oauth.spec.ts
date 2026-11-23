@@ -1,514 +1,597 @@
-/** OAuth against a local authorization server: discovery, registration, PKCE, exchange, refresh. */
-
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { expect, it, onTestFinished, vi } from 'vitest'
-import { executeToolFixture } from '@deepseek-ai/dsh-tool-testkit'
-import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+/** OAuth lifecycle regressions against the real SDK, callback server, and file-backed store. */
+import { IncomingMessage, ServerResponse } from 'node:http'
+import { Socket } from 'node:net'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { Client, UnauthorizedError } from '@modelcontextprotocol/client'
+import * as Connection from '@deepseek-ai/dsh-client-connection'
+import { parseCredentialKey } from '@deepseek-ai/dsh-credentials'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import { z } from 'zod'
-import { Context } from '@deepseek-ai/cordis'
-import { createMcpHandler, McpServer } from '@modelcontextprotocol/server'
-import { toNodeHandler, type NodeIncomingMessageLike } from '@modelcontextprotocol/node'
-import { CredentialProvider } from '@deepseek-ai/dsh-credentials'
-import type { CredentialRecord, CredentialRecordEntry, CredentialRecordInfo } from '@deepseek-ai/dsh-credentials'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import { resolveReconnectPolicy, startConnection } from '../src/connection.ts'
-import type { StreamableHttpConfig } from '../src/index.ts'
-import { authorizationKey, beginAuthorization, clearAuthorization, createOAuthProvider, hasStoredTokens } from '../src/oauth.ts'
-import { McpStatusCell } from '../src/status.ts'
+import { executeToolFixture } from '@deepseek-ai/dsh-tool-testkit'
+import { apply, type Config } from '../src/index.ts'
+import { probeServer } from '../src/probe.ts'
+import { connectionStatusIn as connectionStatusOf } from '../src/status.ts'
+import { McpTemplateBinding } from '../src/credentials.ts'
+import { McpOAuthCredentials, oauthRecord } from '../src/oauth-credentials.ts'
+import { authorize, callback, captureLogs, oauthWorld, phase } from './oauth-fixture.ts'
 
-/** In-memory credential records, the shape an OAuth grant is stored in. */
-class MemoryCredentials extends CredentialProvider {
-  readonly records = new Map<string, CredentialRecord>()
-  resolve(): Promise<undefined> { return Promise.resolve(undefined) }
-  describe(): Promise<never> { throw new Error('unexpected reference read') }
-  set(): Promise<never> { throw new Error('unexpected reference write') }
-  unset(): Promise<never> { throw new Error('unexpected reference removal') }
-  readRecord(key: string): Promise<CredentialRecord | undefined> { return Promise.resolve(this.records.get(key)) }
-  describeRecord(key: string): Promise<CredentialRecordInfo> {
-    const record = this.records.get(key)
-    return Promise.resolve({
-      configured: record !== undefined,
-      ...record === undefined ? {} : { kind: record.kind },
-      writable: true,
+// The HTTP request deadline is 10 s; no test relies on waiting for that deadline.
+describe('MCP OAuth', () => {
+  it('requires interactive services only for explicit authorization and rejects mixed Authorization configuration', async () => {
+    const world = await oauthWorld(false)
+    const owner = world.owner()
+    expect(owner.current()).toBeUndefined()
+    await expect(owner.start()).rejects.toThrow('authorization and WebServer')
+    expect(await probeServer(world.ctx, world.config)).toMatchObject({ ok: false, closeConfirmed: true })
+    const conflicting = { ...world.config, headers: { aUtHoRiZaTiOn: 'private' } }
+    await expect(apply(world.ctx, conflicting)).rejects.toThrow('cannot be configured together')
+    expect(world.requests).toHaveLength(0)
+    await owner.dispose()
+    await expect(owner.start()).rejects.toThrow('owner is closed')
+  })
+
+  it('shares concurrent starts and ignores cancellation from an older attempt', async () => {
+    const world = await oauthWorld()
+    const owner = world.owner()
+    const first = await owner.start()
+    expect((await owner.start()).id).toBe(first.id)
+    await owner.cancel(first.id)
+    const [next, same] = await Promise.all([owner.start(), owner.start()])
+    expect(next.id).not.toBe(first.id)
+    expect(same.id).toBe(next.id)
+    await owner.cancel(first.id)
+    await phase(() => owner.current(), 'waiting-browser')
+    await owner.cancel(next.id)
+    expect(owner.current()?.phase).toBe('cancelled')
+  })
+
+  it('uses the SDK fallback endpoints without metadata, issuer response, or token expiry', async () => {
+    const world = await oauthWorld()
+    world.behavior.metadata = false
+    world.behavior.token = async ({ response }) => {
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ access_token: 'fallback', token_type: 'Bearer' }))
+    }
+    const owner = world.owner()
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    const authorization = new URL(waiting.authorizationUrl!)
+    expect(authorization.searchParams.has('scope')).toBe(false)
+    const url = new URL(authorization.searchParams.get('redirect_uri')!)
+    url.searchParams.set('state', authorization.searchParams.get('state')!)
+    url.searchParams.set('code', 'fixture-code')
+    expect((await fetch(url)).status).toBe(200)
+    await phase(() => owner.current(), 'authorized')
+    const store = new McpOAuthCredentials(world.ctx, world.config.oauth)
+    const grant = await store.read(world.config.url, new AbortController().signal)
+    expect(grant).not.toHaveProperty('metadata')
+    expect(grant).not.toHaveProperty('resource')
+    expect(grant).not.toHaveProperty('expiresAt')
+  })
+
+  it('receives the callback at the Web server origin when it listens on IPv6 loopback', async () => {
+    const world = await oauthWorld(true, '::1')
+    const owner = world.owner()
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    const authorization = new URL(waiting.authorizationUrl!)
+    const url = new URL(authorization.searchParams.get('redirect_uri')!)
+    expect(url.origin).toBe(world.ctx.webServer.getOrigin())
+    expect(url.hostname).toBe('[::1]')
+    url.searchParams.set('state', authorization.searchParams.get('state')!)
+    url.searchParams.set('iss', authorization.origin)
+    url.searchParams.set('code', 'fixture-code')
+    expect((await fetch(url)).status).toBe(200)
+    await phase(() => owner.current(), 'authorized')
+  })
+
+  it('fails before publishing a plaintext authorization page outside loopback', async () => {
+    const world = await oauthWorld()
+    world.behavior.authorizationEndpoint = 'http://auth.example.invalid/authorize'
+    const phases: string[] = []
+    const owner = world.owner()
+    await owner.start()
+    await vi.waitFor(() => {
+      const view = owner.current()
+      if (view !== undefined) phases.push(view.phase)
+      expect(view?.phase).toBe('failed')
     })
-  }
-  listRecords(): Promise<readonly CredentialRecordEntry[]> {
-    return Promise.resolve([...this.records].map(([key, record]) => ({ key: key as CredentialRecordEntry['key'], kind: record.kind })))
-  }
-  async modifyRecord(
-    key: string,
-    mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>,
-  ): Promise<CredentialRecord | undefined> {
-    const next = await mutate(this.records.get(key))
-    if (next !== undefined) this.records.set(key, next)
-    return next
-  }
-  async deleteRecord(key: string): Promise<void> { this.records.delete(key) }
-}
-
-/** Local authorization server plus the MCP endpoint it protects. */
-interface AuthorizationFixture {
-  url: string
-  /** Access token the MCP endpoint accepts right now. */
-  accept(token: string): void
-  /** Make the next access token expire, so a request must refresh. */
-  expire(): void
-  /** Token requests seen, by grant type. */
-  readonly grants: string[]
-  /** Client registrations seen. */
-  readonly registrations: number
-  /** Delay each token response, so a test can observe concurrent callbacks. */
-  setTokenDelay(ms: number): void
-  close: () => Promise<void>
-}
-
-/**
- * Start a protected MCP endpoint whose authorization server supports
- * discovery, dynamic registration, PKCE, the code exchange, and refresh.
- */
-async function startAuthorizationFixture(): Promise<AuthorizationFixture> {
-  let access = ''
-  let refresh = 'refresh-1'
-  let issued = 0
-  let tokenDelayMs = 0
-  const grants: string[] = []
-  let registrations = 0
-  const codes = new Map<string, { challenge: string; redirect: string }>()
-  const mcp = createMcpHandler(() => {
-    const server = new McpServer({ name: 'guarded', version: '1' }, { capabilities: { tools: {} } })
-    server.registerTool('ping', { inputSchema: z.object({}) }, async () => ({ content: [{ type: 'text', text: 'pong' }] }))
-    return server
+    expect(owner.current()).toMatchObject({ lastError: 'MCP OAuth requires HTTPS except for loopback HTTP' })
+    expect(owner.current()).not.toHaveProperty('authorizationUrl')
+    expect(phases).not.toContain('waiting-browser')
+    expect(world.tokens()).toBe(0)
   })
-  const handleMcp = toNodeHandler(mcp)
-  const server: Server = createServer((request, response) => {
-    route(request, response).catch((error: unknown) => { response.writeHead(500).end(String(error)) })
-  })
-  const origin = async (): Promise<string> => {
-    await new Promise<void>((resolve) => { server.listen(0, '127.0.0.1', resolve) })
-    const address = server.address()
-    if (address === null || typeof address === 'string') throw new Error('authorization fixture has no address')
-    return `http://127.0.0.1:${String(address.port)}`
-  }
-  const base = await origin()
-  const metadata = {
-    issuer: base,
-    authorization_endpoint: `${base}/authorize`,
-    token_endpoint: `${base}/token`,
-    registration_endpoint: `${base}/register`,
-    response_types_supported: ['code'],
-    grant_types_supported: ['authorization_code', 'refresh_token'],
-    token_endpoint_auth_methods_supported: ['none'],
-    code_challenge_methods_supported: ['S256'],
-  }
 
-  async function route(request: IncomingMessage, response: ServerResponse): Promise<void> {
-    const url = new URL(request.url ?? '/', base)
-    if (url.pathname === '/.well-known/oauth-protected-resource') {
-      response.writeHead(200, { 'content-type': 'application/json' })
-        .end(JSON.stringify({ resource: `${base}/mcp`, authorization_servers: [base] }))
-      return
+  it('answers the browser with a static completion page that never echoes the callback', async () => {
+    const world = await oauthWorld()
+    const owner = world.owner()
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    const authorization = new URL(waiting.authorizationUrl!)
+    const url = new URL(authorization.searchParams.get('redirect_uri')!)
+    url.searchParams.set('state', 'fixture-wrong-state')
+    url.searchParams.set('code', 'fixture-code')
+    const rejected = await fetch(url)
+    expect(rejected.status).toBe(400)
+    expect(rejected.headers.get('content-type')).toBe('text/html; charset=utf-8')
+    expect(rejected.headers.get('content-security-policy')).toBe("default-src 'none'; style-src 'unsafe-inline'")
+    const rejectedPage = await rejected.text()
+    expect(rejectedPage).toContain('Authorization was not completed.')
+    expect(rejectedPage).not.toContain('fixture-')
+    url.searchParams.set('state', authorization.searchParams.get('state')!)
+    url.searchParams.set('iss', authorization.origin)
+    const received = await fetch(url)
+    expect(received.status).toBe(200)
+    expect(await received.text()).toContain('Authorization received.')
+    await phase(() => owner.current(), 'authorized')
+  })
+
+  it('accepts the cross-site return from the authorization server while Connection refuses other cross-site requests', async () => {
+    const world = await oauthWorld()
+    await world.ctx.plugin(Connection)
+    const stop = world.ctx.webServer.register({ kind: 'exact', path: '/public', auth: 'anonymous', handler: (_req, res) => { res.end('public') } })
+    onTestFinished(stop)
+    const headers = { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document' }
+    const owner = world.owner()
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    const authorization = new URL(waiting.authorizationUrl!)
+    const url = new URL(authorization.searchParams.get('redirect_uri')!)
+    expect((await fetch(new URL('/public', url), { headers })).status).toBe(403)
+    url.searchParams.set('state', 'wrong-state')
+    url.searchParams.set('iss', authorization.origin)
+    url.searchParams.set('code', 'fixture-code')
+    expect((await fetch(url, { headers })).status).toBe(400)
+    expect(world.tokens()).toBe(0)
+    url.searchParams.set('state', authorization.searchParams.get('state')!)
+    expect((await fetch(url, { headers })).status).toBe(200)
+    await phase(() => owner.current(), 'authorized')
+    expect(world.tokens()).toBe(1)
+  })
+
+  it('leaves requests for another authority or path, and malformed targets, to the Web server', async () => {
+    const world = await oauthWorld()
+    const owner = world.owner()
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    const authorization = new URL(waiting.authorizationUrl!)
+    const redirect = new URL(authorization.searchParams.get('redirect_uri')!)
+    redirect.searchParams.set('state', authorization.searchParams.get('state')!)
+    redirect.searchParams.set('iss', authorization.origin)
+    redirect.searchParams.set('code', 'fixture-code')
+    const target = redirect.pathname + redirect.search
+    for (const input of [
+      { url: target, host: undefined },
+      { url: target, host: '[' },
+      { url: target, host: 'untrusted.invalid' },
+      { url: 'http://untrusted.invalid' + target },
+      { url: '/mcp/oauth/callback/other' + redirect.search },
+      { url: undefined },
+    ]) {
+      const socket = new Socket()
+      const req = new IncomingMessage(socket)
+      req.method = 'GET'
+      req.url = input.url
+      req.headers.host = 'host' in input ? input.host : redirect.host
+      const res = new ServerResponse(req)
+      const next = vi.fn(async () => {})
+      try {
+        await world.ctx.waterfall(world.ctx.webServer, 'webserver/request', req, res, next)
+        expect(next).toHaveBeenCalledOnce()
+        expect(res.writableEnded).toBe(false)
+      } finally { res.destroy(); socket.destroy() }
     }
-    if (url.pathname === '/.well-known/oauth-authorization-server') {
-      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(metadata))
-      return
+    expect(owner.current()?.phase).toBe('waiting-browser')
+    expect(await callback(waiting)).toBe(200)
+    await phase(() => owner.current(), 'authorized')
+  })
+
+  it('uses configured scope and accepts only one callback while its exchange is pending', async () => {
+    const world = await oauthWorld()
+    const gate = world.barrier()
+    const entered = world.barrier()
+    world.behavior.token = async ({ response }) => {
+      entered.resolve()
+      await gate.promise
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ access_token: 'one', token_type: 'Bearer' }))
     }
-    if (url.pathname === '/register' && request.method === 'POST') {
-      registrations++
-      // RFC 7591 responses repeat the registered metadata with a client id.
-      const submitted = JSON.parse(await text(request)) as Record<string, unknown>
-      response.writeHead(201, { 'content-type': 'application/json' })
-        .end(JSON.stringify({ ...submitted, client_id: `client-${String(registrations)}` }))
-      return
+    const owner = world.owner({ ...world.config, oauth: { ...world.config.oauth, scope: 'configured' } })
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    expect(new URL(waiting.authorizationUrl!).searchParams.get('scope')).toBe('configured')
+    expect(await callback(waiting)).toBe(200)
+    await entered.promise
+    expect(await callback(waiting)).toBe(410)
+    gate.resolve()
+    await phase(() => owner.current(), 'authorized')
+    expect(world.tokens()).toBe(1)
+  })
+
+  it.each([undefined, 'static-client'])('selects compatible registrations when configured scope changes (clientId=%s)', async (clientId) => {
+    const world = await oauthWorld()
+    const signal = new AbortController().signal
+    for (const [index, scope] of ['tools', 'tools more', 'tools'].entries()) {
+      const config = { ...world.config, oauth: { ...world.config.oauth, scope, ...clientId === undefined ? {} : { clientId } } }
+      const owner = world.owner(config)
+      await owner.start()
+      const waiting = await phase(() => owner.current(), 'waiting-browser')
+      expect(await callback(waiting)).toBe(200)
+      await phase(() => owner.current(), 'authorized')
+      const store = new McpOAuthCredentials(world.ctx, config.oauth)
+      const grant = await store.read(config.url, signal)
+      const client = await store.client(parseCredentialKey(grant.clientKey), grant.issuer)
+      const expectedClientId = clientId ?? (index === 1 ? 'client-2' : 'client-1')
+      expect(grant.clientId).toBe(expectedClientId)
+      expect(client).toMatchObject({ client_id: expectedClientId, ...clientId === undefined ? { scope } : {} })
+      expect(world.registrations()).toBe(clientId === undefined ? Math.min(index + 1, 2) : 0)
+      const authorization = new URL(waiting.authorizationUrl!)
+      expect(authorization.searchParams.get('scope')).toBe(scope)
+      expect(authorization.searchParams.get('client_id')).toBe(expectedClientId)
+      await owner.dispose()
     }
-    if (url.pathname === '/authorize') {
-      const redirect = url.searchParams.get('redirect_uri') ?? ''
-      const state = url.searchParams.get('state') ?? ''
-      const challenge = url.searchParams.get('code_challenge') ?? ''
-      const code = `code-${String(codes.size + 1)}`
-      codes.set(code, { challenge, redirect })
-      response.writeHead(302, { location: `${redirect}?code=${code}&state=${encodeURIComponent(state)}` }).end()
-      return
+  })
+
+  it('expires a browser attempt and removes its callback without committing a grant', async () => {
+    const world = await oauthWorld()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    onTestFinished(() => { vi.useRealTimers() })
+    const owner = world.owner()
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    await vi.advanceTimersByTimeAsync(world.config.oauth.authorizationTimeoutMs)
+    vi.useRealTimers()
+    await phase(() => owner.current(), 'failed')
+    await owner.dispose()
+    expect(owner.current()?.lastError).toContain('timed out')
+    expect(await callback(waiting)).toBe(404)
+    expect(world.tokens()).toBe(0)
+  })
+
+  it('retires an owner while a retry waits for cancelled work to settle', async () => {
+    const world = await oauthWorld()
+    const { ctx, config, barrier } = world
+    const gate = barrier()
+    const entered = barrier()
+    const read = ctx.credentials.readRecord.bind(ctx.credentials)
+    const spy = vi.spyOn(ctx.credentials, 'readRecord').mockImplementation(async (key) => {
+      if (String(key).includes('-client-')) { entered.resolve(); await gate.promise }
+      return read(key)
+    })
+    const register = vi.spyOn(ctx.authorization, 'registerFlow')
+    onTestFinished(() => { spy.mockRestore(); register.mockRestore() })
+    const owner = world.owner()
+    const attempt = await owner.start()
+    await entered.promise
+    const cancellation = owner.cancel(attempt.id)
+    await phase(() => owner.current(), 'cancelled')
+    const retry = owner.start()
+    const rejected = expect(retry).rejects.toThrow('owner is closed')
+    owner.retire()
+    gate.resolve()
+    await rejected
+    await cancellation
+    expect(register).toHaveBeenCalledTimes(1)
+    expect(world.registrations()).toBe(0)
+    expect(await ctx.credentials.readRecord(new McpOAuthCredentials(ctx, config.oauth).key)).toBeUndefined()
+  })
+
+  it('bounds retries after cancellation times out behind another grant refresh, then recovers after cleanup', async () => {
+    const world = await oauthWorld()
+    const store = new McpOAuthCredentials(world.ctx, world.config.oauth)
+    await authorize(world.owner())
+    const signal = new AbortController().signal
+    const grant = await store.read(world.config.url, signal)
+    await world.ctx.credentials.modifyRecord(store.key, async () => oauthRecord({ ...grant, expiresAt: 0 }))
+    const refreshing = world.barrier()
+    const release = world.barrier()
+    world.behavior.token = async ({ response }) => {
+      refreshing.resolve()
+      await release.promise
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({
+        access_token: 'renewed', refresh_token: 'renewed-refresh', token_type: 'Bearer', expires_in: 3600,
+      }))
     }
-    if (url.pathname === '/token' && request.method === 'POST') {
-      const body = new URLSearchParams(await text(request))
-      if (tokenDelayMs > 0) await new Promise<void>((resolve) => { setTimeout(resolve, tokenDelayMs) })
-      const grant = body.get('grant_type') ?? ''
-      grants.push(grant)
-      if (grant === 'authorization_code' && !codes.has(body.get('code') ?? '')) {
-        response.writeHead(400, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'invalid_grant' }))
-        return
+    const refresh = store.transport(grant, signal, fetch).authProvider.token()
+    await refreshing.promise
+    const queued = world.barrier()
+    const modify = world.ctx.credentials.modifyRecord.bind(world.ctx.credentials)
+    const spy = vi.spyOn(world.ctx.credentials, 'modifyRecord').mockImplementation((key, mutate) => {
+      const result = modify(key, mutate)
+      if (String(key).startsWith('mcp-client/pending-client-')) queued.resolve()
+      return result
+    })
+    onTestFinished(() => { spy.mockRestore(); vi.useRealTimers() })
+    const owner = world.owner({ ...world.config, oauth: { ...world.config.oauth, credentialKey: 'mcp-client/pending' } })
+    let retry: Promise<void> | undefined
+    let retryError: unknown
+    try {
+      const attempt = await owner.start()
+      await queued.promise
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      const cancelled = expect(owner.cancel(attempt.id)).rejects.toThrow('cleanup did not settle')
+      await vi.advanceTimersByTimeAsync(world.config.closeTimeoutMs + 1)
+      await cancelled
+      expect(owner.current()?.phase).toBe('cancelled')
+      retry = owner.start().then(() => undefined, (error: unknown) => { retryError = error })
+      await vi.advanceTimersByTimeAsync(world.config.closeTimeoutMs + 1)
+      expect(retryError).toBeInstanceOf(Error)
+      expect(String(retryError)).toContain('cleanup did not settle')
+      vi.useRealTimers()
+      release.resolve()
+      await refresh
+      await owner.cancel(attempt.id)
+      delete world.behavior.token
+      await authorize(owner)
+      expect(owner.current()?.id).not.toBe(attempt.id)
+    } finally {
+      owner.retire()
+      vi.useRealTimers()
+      release.resolve()
+      await Promise.allSettled([refresh, retry])
+    }
+  })
+
+  it('keeps the old grant on cancellation and failure, then replaces it only after a successful retry', async () => {
+    const world = await oauthWorld()
+    const owner = world.owner()
+    const store = new McpOAuthCredentials(world.ctx, world.config.oauth)
+    await authorize(owner)
+    const old = await store.read(world.config.url, new AbortController().signal)
+    for (const result of [{ error: 'access_denied' }, { error: 'server_error' }]) {
+      await owner.start()
+      const waiting = await phase(() => owner.current(), 'waiting-browser')
+      expect(await callback(waiting, result)).toBe(200)
+      await phase(() => owner.current(), result.error === 'access_denied' ? 'cancelled' : 'failed')
+      expect(await store.read(world.config.url, new AbortController().signal)).toEqual(old)
+    }
+    await authorize(owner)
+    const next = await store.read(world.config.url, new AbortController().signal)
+    expect(next.id).not.toBe(old.id)
+    expect(world.registrations()).toBe(1)
+    const oldTransport = store.transport(old, new AbortController().signal, fetch)
+    await expect(oldTransport.authProvider.token()).rejects.toThrow('binding')
+    const authRequests = world.requests.filter(request => request.path !== '/mcp')
+    expect(authRequests.every(request => request.headers['x-resource-only'] === undefined && request.headers.authorization === undefined)).toBe(true)
+    const exchange = world.requests.find(request => request.path === '/token')!
+    expect(exchange.form.get('client_secret')).toBe('fixture-client-secret')
+  })
+
+  it.each(['callback', 'token'] as const)('re-registers an invalid dynamic client on the next explicit attempt (%s)', async (source) => {
+    const world = await oauthWorld()
+    const owner = world.owner()
+    await authorize(owner)
+    const store = new McpOAuthCredentials(world.ctx, world.config.oauth)
+    const old = await world.ctx.credentials.readRecord(store.key)
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    if (source === 'token') world.behavior.token = async ({ response }) => {
+      response.writeHead(400, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'invalid_client', error_description: 'private-upstream-text' }))
+    }
+    await callback(waiting, source === 'callback' ? { error: 'invalid_client' } : { code: 'fixture-code' })
+    await phase(() => owner.current(), 'failed')
+    expect(owner.current()?.lastError).not.toContain('private-upstream-text')
+    expect(await world.ctx.credentials.readRecord(store.key)).toEqual(old)
+    expect(world.registrations()).toBe(1)
+    delete world.behavior.token
+    await authorize(owner)
+    expect(world.registrations()).toBe(2)
+  })
+
+  it('logs the network failure behind a failed token exchange', async () => {
+    const world = await oauthWorld()
+    const logs = captureLogs(world.ctx)
+    world.behavior.token = async ({ response }) => { response.socket?.destroy() }
+    const owner = world.owner()
+    await owner.start()
+    await callback(await phase(() => owner.current(), 'waiting-browser'))
+    expect((await phase(() => owner.current(), 'failed')).lastError).toBe('MCP OAuth request failed')
+    expect(logs.join('\n')).toContain('mcp-client(oauth): explicit authorization: TypeError: fetch failed')
+  })
+
+  it('logs an authorization-server error without the authorization code, client secret, or verifier it echoes', async () => {
+    const world = await oauthWorld()
+    const logs = captureLogs(world.ctx)
+    const echoed: string[] = []
+    world.behavior.token = async ({ form, response }) => {
+      echoed.push(...['code', 'client_secret', 'code_verifier'].map(name => form.get(name) ?? 'missing'))
+      response.writeHead(400, { 'content-type': 'application/json' }).end(JSON.stringify({
+        error: 'invalid_request',
+        error_description: `unexpected ${echoed.join(' ')} from ${world.origin}/token?code=${encodeURIComponent(echoed[0]!)}`,
+      }))
+    }
+    const owner = world.owner()
+    await owner.start()
+    await callback(await phase(() => owner.current(), 'waiting-browser'), { code: 'private-authorization-code' })
+    expect((await phase(() => owner.current(), 'failed')).lastError).toBe('MCP OAuth request failed')
+    const output = logs.join('\n')
+    expect(output).toContain(`OAuthError: unexpected [redacted] [redacted] [redacted] from ${world.origin}/token?code=[redacted]`)
+    expect(echoed).toEqual(['private-authorization-code', 'fixture-client-secret', expect.any(String)])
+    for (const secret of echoed) expect(output).not.toContain(secret)
+  })
+
+  it('logs a failed grant commit without the issued tokens', async () => {
+    const world = await oauthWorld()
+    const logs = captureLogs(world.ctx)
+    world.behavior.token = async ({ response }) => {
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({
+        access_token: 'private-access-token', refresh_token: 'private-refresh-token', token_type: 'Bearer',
+      }))
+    }
+    const modify = world.ctx.credentials.modifyRecord.bind(world.ctx.credentials)
+    const spy = vi.spyOn(world.ctx.credentials, 'modifyRecord').mockImplementation(async (key, mutate) => {
+      if (key !== world.config.oauth.credentialKey) return modify(key, mutate)
+      throw new Error(`cannot store ${JSON.stringify(await mutate(undefined))}`)
+    })
+    onTestFinished(() => { spy.mockRestore() })
+    const owner = world.owner()
+    await owner.start()
+    await callback(await phase(() => owner.current(), 'waiting-browser'))
+    expect((await phase(() => owner.current(), 'failed')).lastError).toBe('MCP OAuth request failed')
+    const output = logs.join('\n')
+    expect(output).toContain('"access_token":"[redacted]"')
+    expect(output).toContain('"refresh_token":"[redacted]"')
+    expect(output).not.toMatch(/private-(access|refresh)-token/)
+  })
+
+  it('retains static client identity after invalid_client', async () => {
+    const world = await oauthWorld()
+    const owner = world.owner({ ...world.config, oauth: { ...world.config.oauth, clientId: 'static-client' } })
+    await owner.start()
+    await callback(await phase(() => owner.current(), 'waiting-browser'), { error: 'invalid_client' })
+    await phase(() => owner.current(), 'failed')
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    expect(new URL(waiting.authorizationUrl!).searchParams.get('client_id')).toBe('static-client')
+    expect(world.registrations()).toBe(0)
+    expect((await world.ctx.credentials.listRecords()).length).toBe(1)
+  })
+
+  it('serializes concurrent refreshes and preserves the grant identity and client authentication method', async () => {
+    const world = await oauthWorld()
+    const owner = world.owner()
+    await authorize(owner)
+    const store = new McpOAuthCredentials(world.ctx, world.config.oauth)
+    const signal = new AbortController().signal
+    const old = await store.read(world.config.url, signal)
+    await world.ctx.credentials.modifyRecord(store.key, async (record) => {
+      if (record?.kind !== 'grant') throw new Error('Missing grant')
+      return { ...record, payload: { ...old, expiresAt: 0 } }
+    })
+    const transport = store.transport(old, signal, fetch)
+    expect(await Promise.all([transport.authProvider.token(), transport.authProvider.token()])).toEqual(['access-2', 'access-2'])
+    expect(world.tokens()).toBe(2)
+    expect((await store.read(world.config.url, signal)).id).toBe(old.id)
+    const refresh = world.requests.find(request => request.form.get('grant_type') === 'refresh_token')!
+    expect(refresh.form.get('client_secret')).toBe('fixture-client-secret')
+    expect(refresh.headers.authorization).toBeUndefined()
+  })
+
+  it('sends an advertised resource without a path verbatim in authorization, exchange, and refresh', async () => {
+    const world = await oauthWorld()
+    world.behavior.resource = world.origin
+    const owner = world.owner()
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    expect(new URL(waiting.authorizationUrl!).searchParams.get('resource')).toBe(world.origin)
+    expect(await callback(waiting)).toBe(200)
+    await phase(() => owner.current(), 'authorized')
+    const store = new McpOAuthCredentials(world.ctx, world.config.oauth)
+    const signal = new AbortController().signal
+    const grant = await store.read(world.config.url, signal)
+    await world.ctx.credentials.modifyRecord(store.key, async () => oauthRecord({ ...grant, expiresAt: 0 }))
+    expect(await store.transport(grant, signal, fetch).authProvider.token()).toBe('access-2')
+    expect(world.requests.filter(request => request.path === '/token').map(request => request.form.get('resource')))
+      .toEqual([world.origin, world.origin])
+  })
+
+  it('keeps passive probes noninteractive and connects with a committed grant', async () => {
+    const world = await oauthWorld()
+    const missing = await probeServer(world.ctx, world.config)
+    expect(missing).toMatchObject({ ok: false, stage: 'connect', closeConfirmed: true })
+    if (missing.ok) throw new Error('Expected a missing authorization failure')
+    expect(missing.message).toContain('authorization: missing')
+    expect(world.requests).toHaveLength(0)
+    const owner = world.owner()
+    await authorize(owner)
+    expect(await probeServer(world.ctx, world.config)).toMatchObject({ ok: true, closeConfirmed: true })
+    const passive = await oauthWorld(false)
+    const store = new McpOAuthCredentials(world.ctx, world.config.oauth)
+    const grant = await store.read(world.config.url, new AbortController().signal)
+    await passive.ctx.credentials.modifyRecord(store.key, async () => oauthRecord(grant))
+    expect(await probeServer(passive.ctx, world.config)).toMatchObject({ ok: true, closeConfirmed: true })
+    expect(passive.ctx.get('authorization')).toBeUndefined()
+    expect(passive.ctx.get('webServer')).toBeUndefined()
+    expect(world.registrations()).toBe(1)
+  })
+
+  it.each([false, true])('settles an asynchronous probe error according to its authorization classification (%s)', async (unauthorized) => {
+    const world = await oauthWorld()
+    await authorize(world.owner())
+    const caps = vi.spyOn(Client.prototype, 'getServerCapabilities').mockReturnValue(undefined)
+    const spy = vi.spyOn(Client.prototype, 'getServerVersion').mockImplementation(function (this: Client) {
+      this.onerror?.(unauthorized ? new UnauthorizedError() : new Error('private-transport-error'))
+      return { name: 'oauth-fixture', version: '1.0.0' }
+    })
+    onTestFinished(() => { caps.mockRestore(); spy.mockRestore() })
+    const result = await probeServer(world.ctx, world.config)
+    expect(result).toMatchObject({ ok: !unauthorized, closeConfirmed: true })
+    if (!result.ok) expect(result.message).toContain('authorization')
+  })
+
+  it('withholds observer error details for OAuth connections', async () => {
+    const world = await oauthWorld()
+    await authorize(world.owner())
+    await apply(world.ctx, world.config)
+    const warnings = vi.spyOn(world.ctx.logger, 'warn').mockImplementation(() => undefined)
+    onTestFinished(() => { warnings.mockRestore() })
+    connectionStatusOf(world.ctx.fiber)!.onChange(() => { throw new Error('private-observer-error') })
+    const store = new McpOAuthCredentials(world.ctx, world.config.oauth)
+    await world.ctx.credentials.deleteRecord(store.key)
+    await vi.waitFor(() => { expect(warnings).toHaveBeenCalled() })
+    expect(JSON.stringify(warnings.mock.calls)).not.toContain('private-observer-error')
+  })
+
+  it('replaces a connected generation after reauthorization without publishing waiting-authorization', async () => {
+    const world = await oauthWorld()
+    const owner = world.owner()
+    await authorize(owner)
+    await apply(world.ctx, world.config)
+    const cell = connectionStatusOf(world.ctx.fiber)!
+    const states: string[] = [cell.current().state]
+    const reconnected = world.barrier()
+    cell.onChange((status) => {
+      states.push(status.state === 'waiting-authorization' ? `waiting-authorization:${status.reason}` : status.state)
+      if (status.state === 'connected') reconnected.resolve()
+    })
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    // The commit's credential refresh is the next template resolution; holding it keeps the old generation current.
+    const entered = world.barrier()
+    const release = world.barrier()
+    let held = false
+    // oxlint-disable-next-line typescript/unbound-method -- Invoked with the intercepted binding as receiver.
+    const resolve: (this: McpTemplateBinding, signal: AbortSignal) => Promise<Config> = McpTemplateBinding.prototype.resolve
+    const spy = vi.spyOn(McpTemplateBinding.prototype, 'resolve').mockImplementation(async function (this: McpTemplateBinding, signal) {
+      if (!held) {
+        held = true
+        entered.resolve()
+        await release.promise
       }
-      if (grant === 'refresh_token' && body.get('refresh_token') !== refresh) {
-        response.writeHead(400, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'invalid_grant' }))
-        return
-      }
-      access = `access-${String(++issued)}`
-      refresh = `refresh-${String(issued)}`
-      response.writeHead(200, { 'content-type': 'application/json' })
-        .end(JSON.stringify({ access_token: access, token_type: 'Bearer', expires_in: 3_600, refresh_token: refresh }))
-      return
-    }
-    if (url.pathname === '/mcp') {
-      if (request.headers.authorization !== `Bearer ${access}`) {
-        response.writeHead(401, {
-          'www-authenticate': `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
-        }).end()
-        return
-      }
-      await handleMcp(request as NodeIncomingMessageLike, response)
-      return
-    }
-    response.writeHead(404).end()
-  }
-
-  return {
-    url: `${base}/mcp`,
-    accept: (token) => { access = token },
-    expire: () => { access = 'expired' },
-    grants,
-    get registrations() { return registrations },
-    setTokenDelay: (ms) => { tokenDelayMs = ms },
-    close: () => new Promise<void>((resolve) => { server.close(() => { resolve() }) }),
-  }
-}
-
-/** Read a request body as text. */
-function text(request: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = []
-    request.on('data', (chunk: Buffer) => { chunks.push(chunk) })
-    request.on('end', () => { resolve(Buffer.concat(chunks).toString('utf8')) })
-    request.on('error', reject)
+      return resolve.call(this, signal)
+    })
+    onTestFinished(() => { spy.mockRestore() })
+    expect(await callback(waiting)).toBe(200)
+    await entered.promise
+    const call = await executeToolFixture(world.ctx, { callId: ToolCallId('stale-grant'), name: 'mcp__oauth__ping', arguments: {}, signal: new AbortController().signal })
+    expect(call).toMatchObject({ isError: true })
+    release.resolve()
+    await reconnected.promise
+    expect(states).toEqual(['connected', 'connecting', 'connected'])
+    expect(await executeToolFixture(world.ctx, { callId: ToolCallId('fresh-grant'), name: 'mcp__oauth__ping', arguments: {}, signal: new AbortController().signal }))
+      .toMatchObject({ isError: false })
   })
-}
 
-/** Mount the tool registry and an in-memory credentials provider. */
-async function mountContext(): Promise<{ ctx: Context; credentials: MemoryCredentials }> {
-  const ctx = new Context()
-  onTestFinished(() => ctx.fiber.dispose())
-  await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
-  await ctx.plugin(NativeToolExecutor)
-  await ctx.plugin(MemoryCredentials)
-  return { ctx, credentials: ctx.credentials as MemoryCredentials }
-}
-
-/** OAuth-configured remote server pointing at the fixture. */
-function oauthConfig(url: string): StreamableHttpConfig {
-  return {
-    transport: 'streamable-http', serverName: 'guarded', url, headers: {},
-    toolCallTimeoutMs: 15_000, resourceWatchTimeoutMs: 30_000, maxResourceWatchTimeoutMs: 300_000,
-    startupTimeoutMs: 30_000, closeTimeoutMs: 5_000,
-    expandTemplates: false, failOnStartupError: false,
-    oauth: { scope: 'mcp.read' },
-  }
-}
-
-/** Drive the browser: follow the authorization redirect into the loopback callback. */
-async function driveBrowser(url: string): Promise<void> {
-  const authorize = await fetch(url, { redirect: 'manual' })
-  const location = authorize.headers.get('location')
-  if (location === null) throw new Error('the authorization server did not redirect')
-  const callback = await fetch(location)
-  if (!callback.ok) throw new Error(`the callback refused the grant: ${String(callback.status)}`)
-}
-
-it('authorizes against discovery, dynamic registration, and PKCE, then connects', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx, credentials } = await mountContext()
-  const config = oauthConfig(fixture.url)
-  const flow = await beginAuthorization(ctx, config, new AbortController().signal)
-  expect(flow.url).toContain('/authorize')
-  await driveBrowser(flow.url ?? '')
-  await flow.completed
-
-  const record = credentials.records.get(authorizationKey(config.url))
-  expect(record?.kind).toBe('grant')
-  const stored = z.object({ tokens: z.object({ access_token: z.string() }).optional() })
-    .parse(record?.kind === 'grant' ? record.payload : undefined)
-  expect(stored.tokens?.access_token).toBe('access-1')
-  expect(fixture.registrations).toBe(1)
-
-  fixture.accept('access-1')
-  const connection = startConnection(ctx, config, resolveReconnectPolicy({ enabled: false }, 'fixture'), new McpStatusCell(() => {}))
-  onTestFinished(() => connection.dispose())
-  await connection.ready
-  expect(ctx.tools.get('mcp__guarded__ping')).toBeDefined()
-}, 30_000)
-
-it('refreshes an expired access token without another interactive flow', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx } = await mountContext()
-  const config = oauthConfig(fixture.url)
-  const flow = await beginAuthorization(ctx, config, new AbortController().signal)
-  await driveBrowser(flow.url ?? '')
-  await flow.completed
-
-  fixture.accept('access-1')
-  const connection = startConnection(ctx, config, resolveReconnectPolicy({ enabled: false }, 'fixture'), new McpStatusCell(() => {}))
-  onTestFinished(() => connection.dispose())
-  await connection.ready
-
-  // The server stops accepting the presented token; the transport refreshes it.
-  fixture.expire()
-  expect(ctx.tools.get('mcp__guarded__ping')).toBeDefined()
-  await expect(executePing(ctx)).resolves.toBe('pong')
-  expect(fixture.grants).toContain('refresh_token')
-}, 30_000)
-
-it('reports waiting-authorization instead of retrying when no grant is stored', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx } = await mountContext()
-  const status = new McpStatusCell(() => {})
-  const connection = startConnection(ctx, oauthConfig(fixture.url), resolveReconnectPolicy(undefined, 'fixture'), status)
-  onTestFinished(() => connection.dispose())
-  await connection.ready
-  await vi.waitFor(() => { expect(status.current()).toMatchObject({ state: 'waiting-authorization' }) })
-}, 30_000)
-
-it('rejects a callback whose state does not match', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx, credentials } = await mountContext()
-  const config = oauthConfig(fixture.url)
-  const flow = await beginAuthorization(ctx, config, new AbortController().signal)
-  const redirect = new URL(flow.url ?? '')
-  const state = redirect.searchParams.get('state') ?? ''
-  const callback = new URL(redirect.searchParams.get('redirect_uri') ?? '')
-  callback.searchParams.set('code', 'code-1')
-  callback.searchParams.set('state', `${state}-tampered`)
-  const response = await fetch(callback)
-  expect(response.status).toBe(400)
-  await expect(flow.completed).rejects.toThrow(/state mismatch/)
-  const record = credentials.records.get(authorizationKey(config.url))
-  const stored = z.object({ tokens: z.unknown().optional() }).parse(record?.kind === 'grant' ? record.payload : undefined)
-  expect(stored.tokens).toBeUndefined()
-}, 30_000)
-
-/** Execute the guarded ping tool through the native executor. */
-async function executePing(ctx: Context): Promise<string> {
-  const result = await executeToolFixture(ctx, {
-    signal: new AbortController().signal,
-    callId: ToolCallId('oauth-call'),
-    name: 'mcp__guarded__ping',
-    arguments: {},
+  it('rejects mismatched or duplicate callback state and issuer before accepting a single valid callback', async () => {
+    const world = await oauthWorld()
+    const owner = world.owner()
+    await owner.start()
+    const waiting = await phase(() => owner.current(), 'waiting-browser')
+    const authorization = new URL(waiting.authorizationUrl!)
+    const url = new URL(authorization.searchParams.get('redirect_uri')!)
+    url.searchParams.set('code', 'fixture-code')
+    expect((await fetch(url)).status).toBe(400)
+    url.searchParams.set('state', 'wrong-state')
+    url.searchParams.set('iss', world.origin)
+    expect((await fetch(url)).status).toBe(400)
+    url.searchParams.set('state', authorization.searchParams.get('state')!)
+    url.searchParams.append('state', authorization.searchParams.get('state')!)
+    expect((await fetch(url)).status).toBe(400)
+    url.searchParams.delete('state')
+    url.searchParams.set('state', authorization.searchParams.get('state')!)
+    url.searchParams.set('iss', 'https://wrong-issuer.invalid')
+    expect((await fetch(url)).status).toBe(400)
+    expect(world.tokens()).toBe(0)
+    expect(await callback(waiting)).toBe(200)
+    await phase(() => owner.current(), 'authorized')
+    expect(await callback(waiting)).not.toBe(200)
+    expect(world.tokens()).toBe(1)
   })
-  const block = result.content[0]
-  return block?.type === 'text' ? block.text : ''
-}
-
-it('refuses OAuth configuration without a credentials provider', async () => {
-  const ctx = new Context()
-  onTestFinished(() => ctx.fiber.dispose())
-  await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
-  expect(() => startConnection(ctx, oauthConfig('http://127.0.0.1:1/mcp'), resolveReconnectPolicy(undefined, 'fixture'), new McpStatusCell(() => {})))
-    .toThrow(/OAuth requires a credentials provider/)
-})
-
-it('rejects a flow for a server without OAuth settings', async () => {
-  const { ctx } = await mountContext()
-  const { oauth: _oauth, ...config } = oauthConfig('http://127.0.0.1:1/mcp')
-  await expect(beginAuthorization(ctx, config, new AbortController().signal)).rejects.toThrow(/OAuth is not configured for this server/)
-})
-
-it('exposes the provider contract the SDK drives', async () => {
-  const { ctx, credentials } = await mountContext()
-  const config = oauthConfig('http://127.0.0.1:1/mcp')
-  const provider = createOAuthProvider(ctx, config, { redirectUri: 'http://127.0.0.1:9/callback' })
-  expect(provider.clientMetadata).toMatchObject({
-    redirect_uris: ['http://127.0.0.1:9/callback'],
-    token_endpoint_auth_method: 'none',
-    scope: 'mcp.read',
-  })
-  expect(await provider.clientInformation?.()).toBeUndefined()
-  await provider.saveTokens?.({ access_token: 'a', token_type: 'Bearer', refresh_token: 'r' })
-  expect(await provider.tokens?.()).toMatchObject({ access_token: 'a' })
-  await expect(provider.codeVerifier?.()).rejects.toThrow(/PKCE verifier/)
-  const state = await provider.state?.()
-  expect(state).toMatch(/^[A-Za-z0-9_-]{43}$/)
-  expect(await provider.state?.()).not.toBe(state)
-  expect(() => { void provider.redirectToAuthorization?.(new URL('http://127.0.0.1/authorize')) })
-    .toThrow(/needs user authorization/)
-  expect(credentials.records.size).toBe(1)
-})
-
-it('uses a pre-registered confidential client when configured', async () => {
-  const { ctx } = await mountContext()
-  const provider = createOAuthProvider(ctx, { ...oauthConfig('http://127.0.0.1:1/mcp'), oauth: { clientId: 'client-9', clientSecret: 'shh' } })
-  expect(provider.clientMetadata.token_endpoint_auth_method).toBe('client_secret_post')
-  expect(provider.clientMetadata.scope).toBeUndefined()
-  expect(await provider.clientInformation?.()).toEqual({ client_id: 'client-9', client_secret: 'shh' })
-})
-
-it('refuses to read a grant record written by another owner', async () => {
-  const { ctx, credentials } = await mountContext()
-  const url = 'http://127.0.0.1:1/mcp'
-  credentials.records.set(authorizationKey(url), { kind: 'api-key', key: 'x' })
-  await expect(hasStoredTokens(ctx, url)).rejects.toThrow(/unreadable/)
-  credentials.records.set(authorizationKey(url), { kind: 'grant', payload: { version: 2 } })
-  await expect(hasStoredTokens(ctx, url)).rejects.toThrow(/unreadable/)
-})
-
-it('clears a stored grant', async () => {
-  const { ctx, credentials } = await mountContext()
-  const url = 'http://127.0.0.1:1/mcp'
-  credentials.records.set(authorizationKey(url), { kind: 'grant', payload: { version: 1, tokens: { access_token: 'a', token_type: 'Bearer' } } })
-  expect(await hasStoredTokens(ctx, url)).toBe(true)
-  await clearAuthorization(ctx, url)
-  expect(await hasStoredTokens(ctx, url)).toBe(false)
-})
-
-it('fails a flow whose authorization server reports an error', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx } = await mountContext()
-  const flow = await beginAuthorization(ctx, oauthConfig(fixture.url), new AbortController().signal)
-  const redirect = new URL(flow.url ?? '')
-  const callback = new URL(redirect.searchParams.get('redirect_uri') ?? '')
-  callback.searchParams.set('error', 'access_denied')
-  callback.searchParams.set('error_description', 'user <denied>')
-  const response = await fetch(callback)
-  expect(response.status).toBe(400)
-  expect(await response.text()).toContain('user &lt;denied&gt;')
-  await expect(flow.completed).rejects.toThrow(/authorization failed: user <denied>/)
-})
-
-it('fails a flow that is cancelled or times out', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx } = await mountContext()
-  const cancelled = new AbortController()
-  const flow = await beginAuthorization(ctx, oauthConfig(fixture.url), cancelled.signal)
-  cancelled.abort(new Error('user closed the tab'))
-  await expect(flow.completed).rejects.toThrow(/authorization cancelled/)
-
-  const timed = await beginAuthorization(
-    ctx, { ...oauthConfig(fixture.url), oauth: { authorizationTimeoutMs: 20 } }, new AbortController().signal,
-  )
-  await expect(timed.completed).rejects.toThrow(/timed out/)
-
-  const already = new AbortController()
-  already.abort(new Error('gone'))
-  await expect(beginAuthorization(ctx, oauthConfig(fixture.url), already.signal)).rejects.toThrow(/authorization cancelled/)
-})
-
-it('reports an occupied callback port instead of starting a second listener', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx } = await mountContext()
-  const blocker = createServer()
-  await new Promise<void>((resolve) => { blocker.listen(0, '127.0.0.1', resolve) })
-  onTestFinished(() => { blocker.close() })
-  const address = blocker.address()
-  if (address === null || typeof address === 'string') throw new Error('blocker has no port')
-  await expect(beginAuthorization(
-    ctx, { ...oauthConfig(fixture.url), oauth: { callbackPort: address.port } }, new AbortController().signal,
-  )).rejects.toThrow(/EADDRINUSE/)
-})
-
-it('reuses stored tokens without a second interactive flow', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx } = await mountContext()
-  const config = oauthConfig(fixture.url)
-  const flow = await beginAuthorization(ctx, config, new AbortController().signal)
-  await driveBrowser(flow.url ?? '')
-  await flow.completed
-  const again = await beginAuthorization(ctx, config, new AbortController().signal)
-  expect(again.url).toBeUndefined()
-  await expect(again.completed).resolves.toBeUndefined()
-})
-
-/** Credentials that accept writes and store nothing. */
-class DroppingCredentials extends MemoryCredentials {
-  override modifyRecord(): Promise<undefined> { return Promise.resolve(undefined) }
-}
-
-/** Credentials that store whatever the caller wrote. */
-class CorruptingCredentials extends MemoryCredentials {
-  override modifyRecord(): Promise<CredentialRecord> {
-    return Promise.resolve({ kind: 'grant', payload: { version: 99 } })
-  }
-}
-
-it('refuses OAuth helpers without a credentials provider', async () => {
-  const ctx = new Context()
-  onTestFinished(() => ctx.fiber.dispose())
-  await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
-  await expect(hasStoredTokens(ctx, 'http://127.0.0.1:1/mcp')).rejects.toThrow(/credentials provider/)
-  await expect(clearAuthorization(ctx, 'http://127.0.0.1:1/mcp')).rejects.toThrow(/credentials provider/)
-  expect(() => createOAuthProvider(ctx, oauthConfig('http://127.0.0.1:1/mcp')))
-    .toThrow(/credentials provider/)
-  const { oauth: _oauth, ...unconfigured } = oauthConfig('http://127.0.0.1:1/mcp')
-  expect(() => createOAuthProvider(ctx, unconfigured)).toThrow(/OAuth is not configured for this server/)
-})
-
-it('keeps a pre-registered public client without a secret', async () => {
-  const { ctx } = await mountContext()
-  const provider = createOAuthProvider(ctx, { ...oauthConfig('http://127.0.0.1:1/mcp'), oauth: { clientId: 'client-9' } })
-  expect(await provider.clientInformation?.()).toEqual({ client_id: 'client-9' })
-  expect(provider.clientMetadata.token_endpoint_auth_method).toBe('none')
-})
-
-it('refuses to overwrite a grant record written by another owner', async () => {
-  const { ctx, credentials } = await mountContext()
-  const url = 'http://127.0.0.1:1/mcp'
-  credentials.records.set(authorizationKey(url), { kind: 'api-key', key: 'x' })
-  const provider = createOAuthProvider(ctx, oauthConfig(url))
-  await expect(provider.saveTokens?.({ access_token: 'a', token_type: 'Bearer' })).rejects.toThrow(/unreadable/)
-})
-
-it('refuses a credentials provider that does not store the grant', async () => {
-  const ctx = new Context()
-  onTestFinished(() => ctx.fiber.dispose())
-  await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
-  await ctx.plugin(DroppingCredentials)
-  const provider = createOAuthProvider(ctx, oauthConfig('http://127.0.0.1:1/mcp'))
-  await expect(provider.saveTokens?.({ access_token: 'a', token_type: 'Bearer' })).rejects.toThrow(/did not store/)
-})
-
-it('refuses a stored grant it cannot read back', async () => {
-  const ctx = new Context()
-  onTestFinished(() => ctx.fiber.dispose())
-  await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
-  await ctx.plugin(CorruptingCredentials)
-  const provider = createOAuthProvider(ctx, oauthConfig('http://127.0.0.1:1/mcp'))
-  await expect(provider.saveTokens?.({ access_token: 'a', token_type: 'Bearer' })).rejects.toThrow(/unreadable/)
-})
-
-it('serves only the callback path and rejects a callback without a code', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx } = await mountContext()
-  const flow = await beginAuthorization(ctx, oauthConfig(fixture.url), new AbortController().signal)
-  const redirect = new URL(flow.url ?? '')
-  const callback = new URL(redirect.searchParams.get('redirect_uri') ?? '')
-  expect((await fetch(new URL('/other', callback))).status).toBe(404)
-  const stateOnly = new URL(callback)
-  stateOnly.searchParams.set('state', redirect.searchParams.get('state') ?? '')
-  expect((await fetch(stateOnly)).status).toBe(400)
-  await expect(flow.completed).rejects.toThrow(/state mismatch/)
-})
-
-it('accepts one callback and refuses a duplicate', async () => {
-  const fixture = await startAuthorizationFixture()
-  onTestFinished(fixture.close)
-  const { ctx } = await mountContext()
-  const flow = await beginAuthorization(ctx, oauthConfig(fixture.url), new AbortController().signal)
-  const authorize = await fetch(flow.url ?? '', { redirect: 'manual' })
-  const issued = new URL(authorize.headers.get('location') ?? '')
-  // Hold the exchange open so the second callback arrives while one is pending.
-  fixture.setTokenDelay(100)
-  const responses = await Promise.all([fetch(issued), fetch(issued)])
-  expect(responses.map(response => response.status)).toContain(409)
-  await flow.completed
 })

@@ -110,8 +110,8 @@ describe('Archived-session gate', () => {
 describe('Archived-session gate: lifetime', () => {
   it('stops rejecting once the plugin fiber is disposed', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SessionStore)
     await ctx.plugin(AgentRegistry)
     const archived: SessionId[] = []
     ctx.provide('workspaceRegistry', { get archivedSessionIds() { return archived } } as never)

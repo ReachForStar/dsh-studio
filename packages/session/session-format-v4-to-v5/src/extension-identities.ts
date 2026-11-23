@@ -75,7 +75,11 @@ export const RELEASED_V3_EVENT_TYPES: ReadonlySet<string> = new Set([
 export const RELEASED_V4_EVENT_TYPES: ReadonlySet<string> = new Set([
   ...RELEASED_V3_EVENT_TYPES,
   'developer/message',
+  // The released generation keeps the historical name; upstream renamed the record within the
+  // same generation, so a V4 log may carry either.
   'working-directory/change',
+  'workspace-root/change',
+  'action-cards/decision',
   'job/registered',
   'job/settled',
   'team/mode',

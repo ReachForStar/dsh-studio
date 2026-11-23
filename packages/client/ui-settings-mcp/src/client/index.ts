@@ -105,8 +105,8 @@ export function apply(ctx: ClientContext): void {
     restart: async (name) => { unwrap(await ctx.remote.mcpManager.restart(name)) },
   })
 
-  ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({
-    name: 'settings.plugins.tab',
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
     id: 'mcp',
     order: 20,
     label: () => t('tab'),

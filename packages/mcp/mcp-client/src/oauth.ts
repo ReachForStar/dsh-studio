@@ -1,418 +1,337 @@
-/**
- * OAuth for remote MCP servers: the client provider the SDK transport drives,
- * the interactive loopback authorization flow, and the durable grant.
- *
- * The grant lives in one `credentials` record keyed by the server URL, so a
- * rotated credential reaches the next connection without a restart, and two
- * processes refresh the same refresh token under one lock. The transport keeps
- * the stored tokens and asks the SDK to refresh them; this module never reads
- * a token for display and never logs one.
- *
- * @module
- */
-
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import { createServer, type Server, type ServerResponse } from 'node:http'
-import {
-  auth,
-  type OAuthClientProvider,
-  type OAuthDiscoveryState,
-  type StoredOAuthClientInformation,
-} from '@modelcontextprotocol/client'
+/** Explicit browser authorization whose callback, flow, and in-flight work share one owner. */
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import { credentialKey, type CredentialKey, type CredentialProvider } from '@deepseek-ai/dsh-credentials'
-import { z } from 'zod'
-import Schema from '@deepseek-ai/schemastery'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type { AuthorizationSession } from '@deepseek-ai/dsh-authorization'
+import type { CredentialKey } from '@deepseek-ai/dsh-credentials'
+import type WebServer from '@deepseek-ai/dsh-host-webserver'
+import { auth, exchangeAuthorization, extractWWWAuthenticateParams, OAuthError, OAuthErrorCode, validateAuthorizationResponseIssuer } from '@modelcontextprotocol/client'
+import type { OAuthClientProvider, OAuthDiscoveryState, StoredOAuthClientInformation } from '@modelcontextprotocol/client'
+import { McpTemplateBinding } from './credentials.ts'
+import { withDeadline } from './deadline.ts'
 import { McpLocalError } from './diagnostic.ts'
-import type { Config, OAuthConfig, StreamableHttpConfig } from './index.ts'
+import { assertOAuthUrl, McpOAuthCredentials, oauthFetch, oauthRecord, safeOAuthError } from './oauth-credentials.ts'
+import type { McpOAuthGrant } from './oauth-credentials.ts'
+import type { StreamableHttpConfig } from './index.ts'
+import type { McpOAuthConfig } from './oauth-options.ts'
+import type { McpCloseResult, McpOAuthAttemptId, McpOAuthAttemptView } from './types.ts'
 
-/** Default budget for one interactive authorization, in milliseconds. */
-export const DEFAULT_AUTHORIZATION_TIMEOUT_MS = 600_000
+const CLEANUP_FAILED = 'MCP OAuth cleanup failed'
+const CLEANUP_UNSETTLED = 'MCP OAuth cleanup did not settle'
 
-/** OAuth section schema shared by the client config and the manager's entry schema. */
-export const OAuthSchema: Schema<OAuthConfig> = Schema.object({
-  clientId: Schema.string(),
-  clientSecret: Schema.string(),
-  scope: Schema.string(),
-  callbackPort: Schema.number().step(1).min(1).max(65_535),
-  authorizationTimeoutMs: Schema.number().step(1).min(1).max(MAX_TIMER_DELAY_MS),
-})
-
-/** Path the authorization server redirects the browser back to. */
-const CALLBACK_PATH = '/callback'
-
-/**
- * Read the OAuth settings of one resolved configuration. The configuration
- * schema materializes an absent section as an empty object, which states the
- * same thing as an omitted one.
- * @param config - resolved configuration.
- * @returns the settings, or undefined when the server does not authorize.
- */
-export function oauthSettings(config: Config): OAuthConfig | undefined {
-  if (config.transport !== 'streamable-http') return undefined
-  const oauth = config.oauth
-  return oauth === undefined || Object.keys(oauth).length === 0 ? undefined : oauth
+const CALLBACK_PAGE = (lines: readonly string[]): string => '<!doctype html><html><head><meta charset="utf-8">'
+  + '<meta name="viewport" content="width=device-width"><title>DSH</title>'
+  + '<style>body{font:15px/1.6 system-ui,sans-serif;max-width:32em;margin:20vh auto;padding:0 1em}</style></head><body>'
+  + lines.map(line => '<p>' + line + '</p>').join('') + '</body></html>'
+const CALLBACK_PAGES = {
+  received: CALLBACK_PAGE([
+    '已收到授权。可以关闭此页，回到 DSH 查看连接结果。',
+    'Authorization received. You can close this page and check the connection in DSH.',
+  ]),
+  incomplete: CALLBACK_PAGE([
+    '授权未完成。请回到 DSH 重试。',
+    'Authorization was not completed. Return to DSH to try again.',
+  ]),
 }
 
-/**
- * Narrow one resolved configuration to a server that authorizes.
- * @param config - resolved configuration.
- * @returns whether the server carries OAuth settings.
- */
-export function isOAuthServer(config: Config): config is StreamableHttpConfig {
-  return oauthSettings(config) !== undefined
+interface Attempt {
+  view: McpOAuthAttemptView
+  controller: AbortController
+  running: Promise<void>
+  done: Promise<void>
+  removeCallback?: () => Promise<void>
 }
 
-/** Persisted shape of one server's authorization grant. */
-const grantSchema = z.object({
-  version: z.literal(1),
-  clientInformation: z.object({
-    client_id: z.string(),
-    client_secret: z.string().optional(),
-    client_id_issued_at: z.number().optional(),
-    client_secret_expires_at: z.number().optional(),
-    issuer: z.string().optional(),
-  }).optional(),
-  tokens: z.object({
-    access_token: z.string(),
-    id_token: z.string().optional(),
-    token_type: z.string(),
-    expires_in: z.number().optional(),
-    scope: z.string().optional(),
-    refresh_token: z.string().optional(),
-    issuer: z.string().optional(),
-  }).optional(),
-  codeVerifier: z.string().optional(),
-  state: z.string().optional(),
-  redirectUri: z.string().optional(),
-})
+/** Reuses registration, retains the active grant until commit, and drains cancelled attempts before retry. */
+export class McpOAuthAuthorization {
+  private readonly credentials: McpOAuthCredentials
+  /** Resolves templates and redacts every resolved or received secret from failure logs for the owner lifetime. */
+  private readonly binding: McpTemplateBinding<StreamableHttpConfig & { oauth: McpOAuthConfig }>
+  private attempt: Attempt | undefined
+  private closed = false
 
-/** One server's stored authorization grant. */
-type Grant = z.infer<typeof grantSchema>
-
-/** One started authorization: the URL a user opens, and its settlement. */
-export interface McpAuthorization {
-  /** URL the user opens to grant access; absent when stored tokens already authorized. */
-  readonly url?: string
-  /** Settles when the grant is stored; rejects on cancellation, timeout, or a refused callback. */
-  readonly completed: Promise<void>
-}
-
-/** Optional flow context a provider needs beyond the server configuration. */
-export interface OAuthProviderOptions {
-  /** Loopback URL for an interactive flow. */
-  redirectUri?: string
-  /** Receives the authorization URL an interactive flow must show the user. */
-  onAuthorizationUrl?: (url: URL) => void
-  /** State this flow already persisted and will validate on the callback. */
-  state?: string
-}
-
-/**
- * Credential-record key for one server's grant. The id derives from the
- * server URL so every instance pointed at the same server shares the grant,
- * while the credentials grammar keeps the two key spaces apart.
- * @param url - the MCP endpoint URL from the resolved configuration.
- * @returns the record key.
- */
-export function authorizationKey(url: string): CredentialKey {
-  return credentialKey('mcp-client', `server-${createHash('sha256').update(url).digest('hex').slice(0, 16)}`)
-}
-
-/** Durable grant access through the credentials seam. */
-class GrantStore {
-  /**
-   * @param ctx - context providing the credentials provider.
-   * @param key - the server's grant record key.
-   */
-  constructor(private readonly ctx: Context, readonly key: CredentialKey) {}
-
-  /**
-   * Read the stored grant, or an empty one.
-   * @returns the parsed grant.
-   * @throws when the record is not a grant this module can read.
-   */
-  async read(): Promise<Grant> {
-    const record = await this.provider().readRecord(this.key)
-    if (record === undefined) return { version: 1 }
-    if (record.kind !== 'grant') throw this.unreadable()
-    const parsed = grantSchema.safeParse(record.payload)
-    if (!parsed.success) throw this.unreadable()
-    return parsed.data
+  constructor(
+    private readonly ctx: Context,
+    private readonly config: StreamableHttpConfig & { oauth: McpOAuthConfig },
+    private readonly changed: () => void,
+  ) {
+    this.credentials = new McpOAuthCredentials(ctx, config.oauth)
+    this.binding = new McpTemplateBinding(ctx, config)
   }
 
   /**
-   * Replace the grant under the seam's exclusive write.
-   * @param mutate - receives the current grant and returns its replacement.
-   * @returns the stored grant.
+   * Read authorization progress without starting a flow.
+   * @returns a detached view, or undefined before the first attempt.
    */
-  async update(mutate: (grant: Grant) => Grant): Promise<Grant> {
-    const next = await this.provider().modifyRecord(this.key, (current) => {
-      const parsed = current === undefined
-        ? undefined
-        : current.kind === 'grant' ? grantSchema.safeParse(current.payload) : null
-      if (parsed === null || parsed?.success === false) throw this.unreadable()
-      return Promise.resolve({ kind: 'grant', payload: mutate(parsed?.data ?? { version: 1 }) })
+  current(): McpOAuthAttemptView | undefined {
+    return this.attempt === undefined ? undefined : { ...this.attempt.view }
+  }
+
+  /**
+   * Start explicit authorization or return the active attempt, requiring Authorization and WebServer.
+   * Waiting for previous cleanup is bounded by closeTimeoutMs.
+   * @returns the attempt view; retired owners reject, and previous cleanup rejects with `MCP OAuth cleanup failed`
+   * when it fails or `MCP OAuth cleanup did not settle` when closeTimeoutMs elapses first.
+   */
+  async start(): Promise<McpOAuthAttemptView> {
+    if (this.closed) throw new McpLocalError('MCP OAuth authorization owner is closed', 'MCP_OAUTH_FAILED')
+    const previous = this.attempt
+    if (previous !== undefined) {
+      if (['starting', 'waiting-browser', 'exchanging', 'committing'].includes(previous.view.phase)) return { ...previous.view }
+      await withDeadline(previous.done, this.config.closeTimeoutMs, CLEANUP_UNSETTLED)
+        .catch((error: unknown) => { throw safeOAuthError(error) })
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- Retirement can occur while previous cleanup is awaited.
+      if (this.closed) throw new McpLocalError('MCP OAuth authorization owner is closed', 'MCP_OAUTH_FAILED')
+      if (this.attempt !== undefined && this.attempt !== previous) return { ...this.attempt.view }
+    }
+    const authorization = this.ctx.get('authorization')
+    const webServer = this.ctx.get('webServer')
+    if (authorization === undefined || webServer === undefined) {
+      throw new McpLocalError('Starting MCP OAuth requires authorization and WebServer services', 'MCP_OAUTH_FAILED')
+    }
+    const attempt: Attempt = {
+      view: { id: brandString<McpOAuthAttemptId>(randomUUID()), phase: 'starting' },
+      controller: new AbortController(), running: Promise.resolve(), done: Promise.resolve(),
+    }
+    const unregister = authorization.registerFlow({
+      key: this.credentials.key, label: this.config.serverName,
+      methods: [{ id: 'oauth', label: 'OAuth' }],
+      run: session => attempt.running = this.run(attempt, session, webServer),
     })
-    if (next?.kind !== 'grant') throw new McpLocalError('mcp-client: the credentials provider did not store the MCP authorization grant', 'MCP_AUTHORIZATION_FAILED')
-    const parsed = grantSchema.safeParse(next.payload)
-    if (!parsed.success) throw this.unreadable()
-    return parsed.data
+    this.attempt = attempt
+    attempt.done = authorization.begin({
+      key: this.credentials.key, signal: attempt.controller.signal,
+      interaction: { notify: () => undefined, prompt: () => Promise.reject(new McpLocalError('MCP OAuth does not request text input', 'MCP_OAUTH_FAILED')) },
+    }).then(
+      (outcome) => { this.update(attempt, { phase: outcome.status }) },
+      (error: unknown) => { this.update(attempt, { phase: 'failed', lastError: this.safeFailure(error).message }) },
+    ).then(async () => {
+      await attempt.running.catch(() => undefined)
+      try { await attempt.removeCallback?.() }
+      finally { unregister() }
+    }).catch(() => { throw new McpLocalError(CLEANUP_FAILED, 'MCP_OAUTH_FAILED') })
+    void attempt.done.catch(() => { this.update(attempt, { phase: 'failed', lastError: CLEANUP_FAILED }) })
+    this.changed()
+    return { ...attempt.view }
   }
 
-  private provider(): CredentialProvider {
-    const provider = this.ctx.get('credentials')
-    if (provider === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider', 'MCP_CREDENTIALS_UNAVAILABLE')
-    return provider
+  /** Reject new starts immediately, including retries waiting for previous cleanup, and withdraw active work. */
+  retire(): void {
+    this.closed = true
+    this.attempt?.controller.abort()
   }
 
-  private unreadable(): McpLocalError {
-    return new McpLocalError(`mcp-client: stored authorization for this server is unreadable; clear the "${String(this.key)}" credential record`, 'MCP_AUTHORIZATION_FAILED')
+  /**
+   * Cancel a matching attempt and await cleanup; a commit already admitted by Authorization completes.
+   * Cleanup rejects with `MCP OAuth cleanup failed` when it fails or `MCP OAuth cleanup did not settle` when closeTimeoutMs elapses first.
+   * @param id - selected attempt; stale ids have no effect on later attempts.
+   */
+  async cancel(id: McpOAuthAttemptId): Promise<void> {
+    const attempt = this.attempt
+    if (attempt?.view.id !== id) return
+    attempt.controller.abort()
+    await withDeadline(attempt.done, this.config.closeTimeoutMs, CLEANUP_UNSETTLED)
+      .catch((error: unknown) => { throw safeOAuthError(error) })
   }
-}
 
-/**
- * Whether an authorization grant with tokens is stored for one server.
- * @param ctx - context providing the credentials provider.
- * @param url - the MCP endpoint URL.
- * @returns true when the stored grant can present a token.
- */
-export async function hasStoredTokens(ctx: Context, url: string): Promise<boolean> {
-  return (await new GrantStore(ctx, authorizationKey(url)).read()).tokens !== undefined
-}
+  /**
+   * Retire the owner and await its callback, flow, and request cleanup within closeTimeoutMs.
+   * @returns confirmed closure, since the owner holds no transport, with `cleanupError` set to
+   * `MCP OAuth cleanup failed` when cleanup settles with a failure or to `MCP OAuth cleanup did not settle`
+   * when closeTimeoutMs elapses first.
+   */
+  async dispose(): Promise<McpCloseResult> {
+    this.retire()
+    const attempt = this.attempt
+    if (attempt === undefined) return { closeConfirmed: true }
+    const cleanup = attempt.done.then(
+      (): McpCloseResult => ({ closeConfirmed: true }),
+      (): McpCloseResult => ({ closeConfirmed: true, cleanupError: CLEANUP_FAILED }),
+    )
+    return withDeadline(cleanup, this.config.closeTimeoutMs, CLEANUP_UNSETTLED)
+      .catch((): McpCloseResult => ({ closeConfirmed: true, cleanupError: CLEANUP_UNSETTLED }))
+  }
 
-/**
- * Read the loopback redirect URI an earlier authorization registered, so a
- * refresh can run without another interactive flow.
- * @param ctx - context providing the credentials provider.
- * @param url - the MCP endpoint URL.
- * @returns the stored redirect URI, or undefined before the first authorization.
- */
-export async function storedRedirectUri(ctx: Context, url: string): Promise<string | undefined> {
-  return (await new GrantStore(ctx, authorizationKey(url)).read()).redirectUri
-}
+  private update(attempt: Attempt, view: Omit<McpOAuthAttemptView, 'id'>): void {
+    attempt.view = { id: attempt.view.id, ...view }
+    if (!this.closed) this.changed()
+  }
 
-/**
- * Create the OAuth client provider one connection uses.
- *
- * Without a stored grant the transport cannot present a token and the
- * handshake fails with the SDK's `UnauthorizedError`, which the supervisor
- * reports as `waiting-authorization` instead of retrying.
- * @param ctx - context providing the credentials provider.
- * @param config - resolved Streamable HTTP configuration; `oauth` must be set.
- * @param options - loopback redirect, authorization-URL sink, and the flow's persisted state.
- * @returns the provider the SDK transport drives.
- * @throws when the credentials provider is missing.
- */
-export function createOAuthProvider(
-  ctx: Context,
-  config: StreamableHttpConfig,
-  options: OAuthProviderOptions = {},
-): OAuthClientProvider {
-  const oauth = oauthSettings(config)
-  if (oauth === undefined) throw new McpLocalError('mcp-client: OAuth is not configured for this server', 'MCP_AUTHORIZATION_REQUIRED')
-  if (ctx.get('credentials') === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider', 'MCP_CREDENTIALS_UNAVAILABLE')
-  const store = new GrantStore(ctx, authorizationKey(config.url))
-  const staticClient: StoredOAuthClientInformation | undefined = oauth.clientId === undefined
-    ? undefined
-    : { client_id: oauth.clientId, ...oauth.clientSecret === undefined ? {} : { client_secret: oauth.clientSecret } }
-  // Both legs of one interactive flow share this instance, so the SDK's
-  // discovery state and its issuer check stay consistent without persistence.
-  let discovery: OAuthDiscoveryState | undefined
-  return {
-    redirectUrl: options.redirectUri,
-    clientMetadata: {
-      client_name: 'DeepSeek Harness',
-      redirect_uris: options.redirectUri === undefined ? [] : [options.redirectUri],
-      grant_types: ['authorization_code', 'refresh_token'],
-      response_types: ['code'],
-      token_endpoint_auth_method: oauth.clientSecret === undefined ? 'none' : 'client_secret_post',
-      ...oauth.scope === undefined ? {} : { scope: oauth.scope },
-    },
-    clientInformation: async () => staticClient ?? (await store.read()).clientInformation,
-    saveClientInformation: async (information) => { await store.update(grant => ({ ...grant, clientInformation: information })) },
-    tokens: async () => (await store.read()).tokens,
-    saveTokens: async (tokens) => { await store.update(grant => ({ ...grant, tokens })) },
-    saveCodeVerifier: async (verifier) => { await store.update(grant => ({ ...grant, codeVerifier: verifier })) },
-    codeVerifier: async () => {
-      const verifier = (await store.read()).codeVerifier
-      if (verifier === undefined) throw new McpLocalError('mcp-client: the authorization callback arrived without a stored PKCE verifier', 'MCP_AUTHORIZATION_FAILED')
-      return verifier
-    },
-    state: async () => {
-      if (options.state !== undefined) return options.state
-      const state = randomBytes(32).toString('base64url')
-      await store.update(grant => ({ ...grant, state }))
-      return state
-    },
-    redirectToAuthorization: (url) => {
-      if (options.onAuthorizationUrl === undefined) {
-        throw new McpLocalError('mcp-client: this server needs user authorization; run the authorize command for it', 'MCP_AUTHORIZATION_REQUIRED')
+  /**
+   * Replace a failure with its safe attempt text, logging the redacted cause whenever that text omits it.
+   * @param error - attempt failure from the flow or the Authorization service.
+   * @returns the fixed or local message the attempt view may expose.
+   */
+  private safeFailure(error: unknown): McpLocalError {
+    const safe = safeOAuthError(error)
+    if (safe !== error) this.ctx.logger.warn(this.binding.diagnostic(error, 'explicit authorization'))
+    return safe
+  }
+
+  private async run(attempt: Attempt, session: AuthorizationSession, webServer: WebServer): Promise<void> {
+    const deadline = new AbortController()
+    const signal = AbortSignal.any([session.signal, deadline.signal])
+    const timeout = setTimeout(() => { deadline.abort() }, this.config.oauth.authorizationTimeoutMs)
+    const code = Promise.withResolvers<{ code: string; iss: string | undefined }>()
+    void code.promise.catch(() => undefined)
+    const abort = (): void => { code.reject(new McpLocalError('MCP OAuth authorization ended before callback', 'MCP_OAUTH_FAILED')) }
+    signal.addEventListener('abort', abort, { once: true })
+    if (signal.aborted) abort()
+    let clientKey: CredentialKey | undefined
+    let discovery: OAuthDiscoveryState | undefined
+    let information: StoredOAuthClientInformation | undefined
+    let resource: string | undefined
+    let verifier: string | undefined
+    let consumed = false
+    const state = randomBytes(32).toString('base64url')
+    const path = '/mcp/oauth/callback/' + createHash('sha256').update(this.credentials.key).digest('hex')
+    try {
+      const redirectUri = webServer.getOrigin() + path
+      const redirect = new URL(redirectUri)
+      attempt.removeCallback = this.ctx.effect(() => {
+        // The authorization server's redirect is a cross-site navigation, which route admission refuses,
+        // so the callback answers before route selection and only for the redirect URI's own authority and path.
+        const remove = this.ctx.on('webserver/request', async (req, res, next) => {
+          let received: URL
+          try { received = new URL(req.url ?? '/', `${redirect.protocol}//${req.headers.host ?? ''}`) }
+          catch { await next(); return }
+          if (received.origin !== redirect.origin || received.pathname !== redirect.pathname) { await next(); return }
+          const reply = (status: number, page: keyof typeof CALLBACK_PAGES = 'incomplete'): void => {
+            res.writeHead(status, {
+              'cache-control': 'no-store',
+              'content-type': 'text/html; charset=utf-8',
+              'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'",
+            }).end(CALLBACK_PAGES[page])
+          }
+          const parameters = received.searchParams
+          const receivedState = parameters.get('state') ?? ''
+          const validState = Buffer.byteLength(receivedState) === Buffer.byteLength(state)
+            && timingSafeEqual(Buffer.from(receivedState), Buffer.from(state))
+          if (req.method !== 'GET' || !validState || parameters.getAll('state').length !== 1
+            || parameters.getAll('iss').length > 1 || parameters.getAll('code').length > 1
+            || parameters.getAll('error').length > 1 || parameters.has('code') === parameters.has('error')
+            || parameters.get('code') === '' || parameters.get('error') === '') {
+            reply(400); return
+          }
+          if (signal.aborted || consumed || attempt.view.phase !== 'waiting-browser') { reply(410); return }
+          try {
+            validateAuthorizationResponseIssuer({
+              iss: parameters.get('iss') ?? undefined,
+              expectedIssuer: discovery?.authorizationServerMetadata?.issuer,
+              issParameterSupported: discovery?.authorizationServerMetadata?.authorization_response_iss_parameter_supported === true,
+            })
+          } catch { reply(400); return }
+          consumed = true
+          const authorizationCode = parameters.get('code')
+          if (authorizationCode === null) {
+            if (parameters.get('error') === 'access_denied') attempt.controller.abort()
+            else if (parameters.get('error') === OAuthErrorCode.InvalidClient) code.reject(new OAuthError(OAuthErrorCode.InvalidClient, 'MCP OAuth client registration was rejected'))
+            else code.reject(new McpLocalError('MCP OAuth authorization was rejected', 'MCP_OAUTH_FAILED'))
+            reply(200)
+            return
+          }
+          code.resolve({ code: authorizationCode, iss: parameters.get('iss') ?? undefined })
+          reply(200, 'received')
+        })
+        return async () => {
+          attempt.controller.abort()
+          try { await withDeadline(attempt.running.catch(() => undefined), this.config.closeTimeoutMs, 'MCP OAuth callback cleanup did not settle') }
+          finally { remove() }
+        }
+      }, 'mcp-oauth.callback')
+      const resolved = await this.binding.resolve(signal)
+      const serverUrl = new URL(resolved.url).href
+      const fetch = oauthFetch(signal, this.config.oauth.requestTimeoutMs)
+      const challengeResponse = await fetch(serverUrl, { headers: { ...resolved.headers, Accept: 'application/json, text/event-stream' } })
+      const challenge = extractWWWAuthenticateParams(challengeResponse)
+      await challengeResponse.body?.cancel()
+      const issuerKey = (issuer: string) => this.credentials.clientKey(serverUrl, issuer, redirectUri)
+      const provider: OAuthClientProvider = {
+        redirectUrl: redirectUri,
+        clientMetadata: { client_name: 'DeepSeek Harness', redirect_uris: [redirectUri],
+          grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], token_endpoint_auth_method: 'none',
+          ...this.config.oauth.scope === undefined ? {} : { scope: this.config.oauth.scope },
+        },
+        state: () => state,
+        clientInformation: async (context) => {
+          if (context === undefined) throw new McpLocalError('MCP OAuth issuer is unavailable', 'MCP_OAUTH_FAILED')
+          clientKey = issuerKey(context.issuer)
+          information = await this.credentials.client(clientKey, context.issuer)
+          this.binding.remember(information?.client_secret)
+          if (information === undefined && this.config.oauth.clientId !== undefined) {
+            information = { client_id: this.config.oauth.clientId, issuer: context.issuer }
+            await this.credentials.saveClient(clientKey, context.issuer, information, signal)
+          }
+          return information
+        },
+        saveClientInformation: async (value, context) => {
+          if (context === undefined) throw new McpLocalError('MCP OAuth issuer is unavailable', 'MCP_OAUTH_FAILED')
+          this.binding.remember(value.client_secret)
+          await this.credentials.saveClient(issuerKey(context.issuer), context.issuer, value, signal)
+          information = value
+        },
+        tokens: () => undefined,
+        saveTokens: () => { throw new McpLocalError('MCP OAuth requires an authorization callback before committing', 'MCP_OAUTH_FAILED') },
+        saveDiscoveryState: (value) => { discovery = value },
+        discoveryState: () => discovery,
+        saveResourceUrl: (value) => { resource = value },
+        saveCodeVerifier: (value) => { verifier = this.binding.remember(value) },
+        codeVerifier: () => {
+          if (verifier === undefined) throw new McpLocalError('MCP OAuth verifier is unavailable', 'MCP_OAUTH_FAILED')
+          return verifier
+        },
+        redirectToAuthorization: (url) => {
+          signal.throwIfAborted()
+          assertOAuthUrl(url)
+          this.update(attempt, { phase: 'waiting-browser', authorizationUrl: url.href })
+        },
       }
-      options.onAuthorizationUrl(url)
-    },
-    discoveryState: () => discovery,
-    saveDiscoveryState: (state) => { discovery = state },
+      const scope = this.config.oauth.scope ?? challenge.scope
+      await auth(provider, { serverUrl, fetchFn: fetch,
+        ...challenge.resourceMetadataUrl === undefined ? {} : { resourceMetadataUrl: challenge.resourceMetadataUrl },
+        ...scope === undefined ? {} : { scope },
+      })
+      const callback = await code.promise
+      this.binding.remember(callback.code)
+      signal.throwIfAborted()
+      this.update(attempt, { phase: 'exchanging' })
+      if (discovery === undefined || information === undefined || verifier === undefined) {
+        throw new McpLocalError('MCP OAuth authorization context is incomplete', 'MCP_OAUTH_FAILED')
+      }
+      const issuer = discovery.authorizationServerMetadata?.issuer ?? discovery.authorizationServerUrl
+      const tokens = await exchangeAuthorization(issuer, {
+        ...discovery.authorizationServerMetadata === undefined ? {} : { metadata: discovery.authorizationServerMetadata },
+        clientInformation: information, authorizationCode: callback.code,
+        ...callback.iss === undefined ? {} : { iss: callback.iss },
+        codeVerifier: verifier, redirectUri,
+        ...resource === undefined ? {} : { resource },
+        fetchFn: fetch,
+      })
+      this.binding.remember(tokens.access_token)
+      this.binding.remember(tokens.refresh_token)
+      signal.throwIfAborted()
+      const grant: McpOAuthGrant = {
+        version: 1, type: 'mcp-oauth-grant', id: randomUUID(), serverUrl, issuer,
+        clientKey: issuerKey(issuer), clientId: information.client_id,
+        configuredClientId: this.config.oauth.clientId, configuredScope: this.config.oauth.scope,
+        resource, metadata: discovery.authorizationServerMetadata, tokens,
+        ...tokens.expires_in === undefined ? {} : { expiresAt: Date.now() + tokens.expires_in * 1000 },
+      }
+      clearTimeout(timeout)
+      this.update(attempt, { phase: 'committing' })
+      await session.commit(oauthRecord(grant))
+    } catch (error) {
+      if (deadline.signal.aborted) throw new McpLocalError('MCP OAuth authorization timed out', 'MCP_TIMEOUT')
+      // A withdrawn attempt settles as cancelled, so its interrupted work is not a failure to log.
+      if (signal.aborted) throw safeOAuthError(error)
+      const failure = this.safeFailure(error)
+      if (error instanceof OAuthError && error.toResponseObject().error === 'invalid_client' && clientKey !== undefined) {
+        await this.credentials.invalidateClient(clientKey)
+      }
+      throw failure
+    } finally {
+      clearTimeout(timeout)
+      signal.removeEventListener('abort', abort)
+    }
   }
-}
-
-/**
- * Start an interactive authorization for one server.
- *
- * The loopback listener accepts exactly one redirect on `/callback`; a wrong
- * state, a missing code, or an expired budget fails the flow and closes it.
- * @param ctx - context providing the credentials provider.
- * @param config - resolved Streamable HTTP configuration; `oauth` must be set.
- * @param signal - cancels the flow and closes the listener.
- * @returns the URL to show the user and the flow's settlement.
- * @throws when the server is not configured for OAuth, the credentials provider is missing, or the listener cannot bind.
- */
-export async function beginAuthorization(
-  ctx: Context,
-  config: StreamableHttpConfig,
-  signal: AbortSignal,
-): Promise<McpAuthorization> {
-  const oauth = oauthSettings(config)
-  if (oauth === undefined) throw new McpLocalError(`mcp-client(${config.serverName}): OAuth is not configured for this server`, 'MCP_AUTHORIZATION_REQUIRED')
-  const store = new GrantStore(ctx, authorizationKey(config.url))
-  const server = createServer()
-  const cancelled = Promise.withResolvers<never>()
-  // The rejection is observed by whichever leg is waiting; guard the case where none is.
-  void cancelled.promise.catch(() => undefined)
-  const onAbort = (): void => { cancelled.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization cancelled`, 'MCP_AUTHORIZATION_CANCELLED')) }
-  signal.addEventListener('abort', onAbort, { once: true })
-  if (signal.aborted) onAbort()
-  const state = randomBytes(32).toString('base64url')
-  const received = Promise.withResolvers<string>()
-  void received.promise.catch(() => undefined)
-  let pending: ServerResponse | undefined
-  let authorizationUrl: URL | undefined
-  server.on('request', (request, response) => {
-    /* v8 ignore next -- Node sets request.url for every HTTP/1.1 request */
-    const url = new URL(request.url ?? '/', 'http://127.0.0.1')
-    if (request.method !== 'GET' || url.pathname !== CALLBACK_PATH) {
-      response.writeHead(404, { 'cache-control': 'no-store' }).end()
-      return
-    }
-    const failure = url.searchParams.get('error_description') ?? url.searchParams.get('error')
-    if (failure !== null) {
-      response.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'text/html; charset=utf-8' })
-        .end(page('Authorization failed', failure))
-      received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization failed: ${failure}`, 'MCP_AUTHORIZATION_FAILED'))
-      return
-    }
-    const states = url.searchParams.getAll('state')
-    const codes = url.searchParams.getAll('code')
-    if (states.length !== 1 || codes.length !== 1 || !sameSecret(states[0] ?? '', state)) {
-      response.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'text/html; charset=utf-8' })
-        .end(page('Authorization failed', 'The callback did not match this request.'))
-      received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization state mismatch`, 'MCP_AUTHORIZATION_FAILED'))
-      return
-    }
-    if (pending !== undefined) {
-      response.writeHead(409, { 'cache-control': 'no-store' }).end()
-      return
-    }
-    pending = response
-    /* v8 ignore next -- the length check above guarantees one code */
-    received.resolve(codes[0] ?? '')
-  })
-  const timeoutMs = oauth.authorizationTimeoutMs ?? DEFAULT_AUTHORIZATION_TIMEOUT_MS
-  const timer = setTimeout(() => {
-    received.reject(new McpLocalError(`mcp-client(${config.serverName}): authorization timed out after ${String(timeoutMs)}ms`, 'MCP_TIMEOUT'))
-  }, timeoutMs)
-  timer.unref()
-  // The listener and timer live for the whole flow, including the wait for the
-  // browser, and are released only when it settles.
-  const cleanup = (): void => {
-    clearTimeout(timer)
-    signal.removeEventListener('abort', onAbort)
-  }
-  try {
-    const port = await listen(server, oauth.callbackPort)
-    const redirectUri = `http://127.0.0.1:${String(port)}${CALLBACK_PATH}`
-    await store.update(grant => ({ ...grant, redirectUri, state }))
-    const provider = createOAuthProvider(ctx, config, {
-      redirectUri,
-      state,
-      onAuthorizationUrl: (url) => { authorizationUrl = url },
-    })
-    const outcome = await Promise.race([
-      auth(provider, { serverUrl: config.url, ...oauth.scope === undefined ? {} : { scope: oauth.scope } }),
-      cancelled.promise,
-    ])
-    if (outcome === 'AUTHORIZED') {
-      cleanup()
-      server.close()
-      return { completed: Promise.resolve() }
-    }
-    /* v8 ignore next 2 -- the SDK returns REDIRECT only after calling redirectToAuthorization */
-    if (authorizationUrl === undefined) {
-      throw new McpLocalError(`mcp-client(${config.serverName}): the authorization server returned no authorization URL`, 'MCP_AUTHORIZATION_FAILED')
-    }
-    const completed = (async () => {
-      const code = await Promise.race([received.promise, cancelled.promise])
-      const result = await auth(provider, { serverUrl: config.url, authorizationCode: code })
-      /* v8 ignore next -- an authorization-code exchange either stores tokens or throws */
-      if (result !== 'AUTHORIZED') throw new McpLocalError(`mcp-client(${config.serverName}): the authorization server did not grant access`, 'MCP_AUTHORIZATION_FAILED')
-      pending?.writeHead(200, { 'cache-control': 'no-store', 'content-type': 'text/html; charset=utf-8' })
-        .end(page('Authorization complete', 'You can close this window.'))
-    })().catch((error: unknown) => {
-      pending?.writeHead(400, { 'cache-control': 'no-store', 'content-type': 'text/html; charset=utf-8' })
-        .end(page('Authorization failed', 'The harness could not complete the exchange.'))
-      throw error
-    }).finally(() => {
-      cleanup()
-      server.close()
-    })
-    // The caller observes the rejection; this keeps a late observer from
-    // turning it into an unhandled rejection.
-    void completed.catch(() => undefined)
-    return { url: authorizationUrl.toString(), completed }
-  } catch (error) {
-    cleanup()
-    server.close()
-    throw error
-  }
-}
-
-/**
- * Clear one server's stored grant, forcing the next connection to authorize again.
- * @param ctx - context providing the credentials provider.
- * @param url - the MCP endpoint URL.
- * @throws when the credentials provider is missing.
- */
-export async function clearAuthorization(ctx: Context, url: string): Promise<void> {
-  const provider = ctx.get('credentials')
-  if (provider === undefined) throw new McpLocalError('MCP OAuth requires a credentials provider', 'MCP_CREDENTIALS_UNAVAILABLE')
-  await provider.deleteRecord(authorizationKey(url))
-}
-
-/**
- * Compare two short secrets without leaking their common prefix length.
- * @param left - received value.
- * @param right - expected value.
- * @returns whether they are byte-identical.
- */
-function sameSecret(left: string, right: string): boolean {
-  return Buffer.byteLength(left) === Buffer.byteLength(right) && timingSafeEqual(Buffer.from(left), Buffer.from(right))
-}
-
-/** Bind the loopback listener and report its port. */
-async function listen(server: Server, port: number | undefined): Promise<number> {
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject)
-    server.listen(port ?? 0, '127.0.0.1', resolve)
-  })
-  const address = server.address()
-  /* v8 ignore next -- a bound TCP listener always reports an AddressInfo */
-  if (address === null || typeof address === 'string') throw new McpLocalError('mcp-client: the authorization listener has no TCP address', 'MCP_AUTHORIZATION_FAILED')
-  return address.port
-}
-
-/** Minimal completion page; it carries only fixed text and the server's error code. */
-function page(title: string, detail: string): string {
-  const escape = (text: string): string => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-  return `<!doctype html><meta charset="utf-8"><title>${escape(title)}</title><h1>${escape(title)}</h1><p>${escape(detail)}</p>`
 }

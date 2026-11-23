@@ -1,5 +1,6 @@
 /** Real SDK cancellation and caller-owned connection budgets. */
 
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { z } from 'zod'
 import { expect, it, onTestFinished, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -19,14 +20,14 @@ vi.mock('../src/transport.ts', () => ({ createTransport: mockTransport }))
 
 const config: Config = {
   transport: 'stdio', serverName: 'fixture', command: 'fixture', args: [], env: {}, cwd: '',
-  toolCallTimeoutMs: 60_000, resourceWatchTimeoutMs: 30_000, maxResourceWatchTimeoutMs: 300_000,
-  startupTimeoutMs: 30, closeTimeoutMs: 5_000,
-  expandTemplates: false, failOnStartupError: true,
+  toolCallTimeoutMs: 60_000, startupTimeoutMs: 30, closeTimeoutMs: 5_000,
+  expandTemplates: false, failOnStartupError: true, toolLoading: 'eager', catalogDescriptionMaxLength: 160,
 }
 
 it('unregisters tools when disposal interrupts the registration result', async () => {
   const ctx = new Context()
   onTestFinished(() => ctx.fiber.dispose())
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   const server = new McpServer({ name: 'fixture', version: '1' })

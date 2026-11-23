@@ -260,8 +260,8 @@ describe('DeepSeek plugin package inventory', () => {
   it('supports a direct embedding whose context has no base URL', async () => {
     const ctx = new Context()
     contexts.push(ctx)
-    await ctx.plugin(Loader)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(Loader)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(DeepSeekLlmApiExtensionRegistry)
     await ctx.plugin(PluginInventory)

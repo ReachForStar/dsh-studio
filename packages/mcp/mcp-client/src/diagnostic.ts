@@ -3,8 +3,11 @@
  * secrets replace every known secret value before text leaves the instance.
  */
 
-import { ProtocolError, SdkError, SdkErrorCode } from '@modelcontextprotocol/client'
+import {
+  InsufficientScopeError, OAuthError, OAuthErrorCode, ProtocolError, SdkError, SdkErrorCode, SdkHttpError, UnauthorizedError,
+} from '@modelcontextprotocol/client'
 import { HarnessError } from '@deepseek-ai/dsh-error'
+import type { McpAuthorizationReason } from './types.ts'
 
 /**
  * Every {@link McpLocalError} code:
@@ -14,6 +17,10 @@ import { HarnessError } from '@deepseek-ai/dsh-error'
  * - `MCP_CREDENTIAL_NOT_FOUND`: a referenced credential has no configured value.
  * - `MCP_INSTRUCTIONS_TOO_LARGE`: server instructions exceed `maxInstructionBytes`.
  * - `MCP_TOOL_REGISTRATION_FAILED`: a foreign registration occupies the server's tool namespace.
+ * - `MCP_AUTHORIZATION_REQUIRED`: the server needs an OAuth authorization that no saved grant satisfies; `reason` names why.
+ * - `MCP_OAUTH_FAILED`: an OAuth step failed locally, such as an unavailable issuer or a rejected callback.
+ * - `MCP_RESOURCE_UNSUPPORTED`: the server does not advertise the resource capability a request needs.
+ * - `MCP_RESOURCE_SUBSCRIPTION_FAILED`: subscribing to a resource the server advertises failed.
  */
 export const MCP_LOCAL_ERROR_CODES = [
   'MCP_CONNECTION_CLOSED',
@@ -23,8 +30,7 @@ export const MCP_LOCAL_ERROR_CODES = [
   'MCP_INSTRUCTIONS_TOO_LARGE',
   'MCP_TOOL_REGISTRATION_FAILED',
   'MCP_AUTHORIZATION_REQUIRED',
-  'MCP_AUTHORIZATION_FAILED',
-  'MCP_AUTHORIZATION_CANCELLED',
+  'MCP_OAUTH_FAILED',
   'MCP_RESOURCE_UNSUPPORTED',
   'MCP_RESOURCE_SUBSCRIPTION_FAILED',
 ] as const
@@ -122,6 +128,32 @@ export function mcpRequestError(
     ? new McpToolError(message, code, { cause: error })
     : new McpToolError(redact(message), code)
 }
+
+/** Safe authorization failure with no upstream messages or token values (`MCP_AUTHORIZATION_REQUIRED`). */
+export class McpAuthorizationRequired extends McpLocalError {
+  constructor(readonly reason: McpAuthorizationReason) {
+    super('MCP OAuth requires authorization: ' + reason, 'MCP_AUTHORIZATION_REQUIRED')
+  }
+}
+
+/**
+ * Classify SDK authentication failures without treating ordinary forbidden responses as missing authorization.
+ * @param error - local or SDK error from a connection, probe, or token request.
+ * @returns an authorization reason, or undefined for other errors.
+ */
+export function oauthFailure(error: unknown): McpAuthorizationRequired | undefined {
+  if (error instanceof McpAuthorizationRequired) return error
+  if (error instanceof InsufficientScopeError) return new McpAuthorizationRequired('scope')
+  if (error instanceof UnauthorizedError || error instanceof SdkHttpError && error.code === SdkErrorCode.ClientHttpAuthentication) {
+    return new McpAuthorizationRequired('rejected')
+  }
+  if (error instanceof OAuthError && reauthorizationCodes.has(error.code)) {
+    return new McpAuthorizationRequired('rejected')
+  }
+  return undefined
+}
+
+const reauthorizationCodes = new Set<string>([OAuthErrorCode.InvalidGrant, OAuthErrorCode.InvalidClient, OAuthErrorCode.UnauthorizedClient])
 
 /** Placeholder written in place of a known secret value. */
 const REDACTED = '[redacted]'

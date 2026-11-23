@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { A2APeerInfo, A2APeerReply, A2ABridgeConfig } from '@reachforstar/dsh-a2a'
@@ -26,6 +27,7 @@ interface PeerStub {
 async function setup(stub: PeerStub): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(NativeToolExecutor)
   // 桥未配置的桩也要能回答 skills；未配置的 agent 没有 skill。

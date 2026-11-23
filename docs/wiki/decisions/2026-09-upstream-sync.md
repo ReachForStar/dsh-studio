@@ -3,7 +3,7 @@ title: 合并上游 upstream/master（2026-09）
 type: decision
 tags: [upstream-sync, merge, cordis, ssh, session-format]
 created: 2026-09-17
-updated: 2026-11-12
+updated: 2026-11-18
 sources: []
 status: active
 ---
@@ -104,6 +104,17 @@ fork 此前的逐日任务报告位于 `doc/`（11 份，2026-09-03 ~ 09-05）�
 4. **构建插件里认死的第三方内部名字会随依赖升级失效**。`asyncChunkRequirePlugin` 原先只匹配 `__toESM(require(...).default, 1)`；新 rolldown 改成 `require_rolldown_runtime.a(...)` 后构建失败。改为只匹配被助手包住的 `require("<chunk>")` 本身，不认助手名。
 
 本轮细节见 [合并上游（2026-11-12）](../queries/upstream-merge-2026-11-12.md)。
+
+## 后续轮次：2026-11-18 合并上游（0.2.3-alpha.2）
+
+策略不变（全量合并、按来源逐文件取舍、生成物一律重生成），新增四条可复用判定：
+
+1. **上游重构客户端域时，fork 自研客户端包的槽位要跟着换**。上游把设置页拆成 `settings.section` 与会话面板后，fork 的 MCP 设置从 `settings.plugins.tab` 改为独立分区；判断依据是同批删除的 `ui-settings-plugins`、`ui-settings-plugin-inventory` 与新 `settings.section` 用法。
+2. **上游重写含 fork 插件的包时取上游再重接**。MCP 客户端整包取上游后，再把 fork 的 `pool.ts`、`resource-watch.ts`、`generation.adopt(lease)` 接回新监管器；fork 的 OAuth 实现随上游 `McpOAuthCredentials` 退役。
+3. **上游新增的后端要移植到 fork 的格式代际**。SQLite 持久化按 v5 重编码（版本号、`backend` 头字段、V5 准入/关系校验），并补 `SessionPersistence.delete` 的 SQL 实现。
+4. **合并提交的中途重排不能丢 `MERGE_HEAD`**。用 `git commit-tree` + `git update-ref` 重建双亲提交，不要先 `git reset` 再 `git commit`，否则合并关系断开、下一轮要重做全量合并。
+
+本轮细节见 [合并上游（2026-11-18）](../queries/upstream-merge-2026-11-18.md)。
 
 ## 后续轮次：2026-10-15 合并上游
 

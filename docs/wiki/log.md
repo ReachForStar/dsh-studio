@@ -1241,3 +1241,12 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `codemode` 仍不能挂：`run_code` 是 `tools.register` 的保留名，需在包里改名或改为 PTC runtime。
 - 验证：`packages/bundle/web-app` 92 项、`verify-cordis-config`、`verify-default-product-isolation`、`typecheck`、`lint`、`build:artifacts` + `build:check`、`test:docs`（21 门）通过；预设挂载 e2e 不再报服务注册错误。
 - 详见 [pi 能力面与可融入清单](queries/pi-capability-comparison.md)。
+
+## [2026-11-18] feat(merge) | 合并上游 upstream/master（0.2.3-alpha.2）
+
+- 全量合并 1753 个上游提交、630 个冲突文件；生成物一律取上游后重跑 `gen-*`，CI 工作流保持 fork 的删除。
+- 客户端设置页随上游重构改登记为独立 `settings.section` 分区；MCP 客户端整包取上游后重接 fork 的 `pool.ts`、`resource-watch.ts` 与 `generation.adopt(lease)`，OAuth 统一走上游 `McpOAuthCredentials`。
+- 上游重新引入的 SQLite 持久化移植到 v5（版本号、`backend` 头字段、V5 准入与关系校验）并实现 `SessionPersistence.delete`；v4 冻结词表补 `workspace-root/change`、`action-cards/decision`。
+- 门禁：`typecheck`、`build:artifacts`、`build:check`、`test:docs`（21 门）全过；全量单测 64276 通过、1 项既定期望失败。
+- 遗留：`test:snapshot` 7 个场景需带密钥重录（压缩摘要回退多发一次模型调用、MCP scope 失败文案），`test:web` 本机未跑完。
+- 详见 [合并上游（2026-11-18）](queries/upstream-merge-2026-11-18.md)。

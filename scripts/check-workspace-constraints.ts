@@ -23,6 +23,7 @@ import type { DshBundleManifest } from '../packages/util/package-manifest/src/ty
 import { detailPath } from '../packages/util/plugin-detail/src/document.ts'
 import { bundlePatchFiles } from '../packages/boot/app-boot/src/profile.ts'
 import { OPTIONAL_BUNDLES } from '../packages/util/official-bundles/src/bundles.ts'
+import { DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES } from './experimental-package-policy.ts'
 import {
   PACKAGE_ASSET_EXPORT,
   PACKAGE_ASSET_EXPORT_TARGET,
@@ -701,6 +702,8 @@ export function checkExperimentalDependencyIsolation(
         if (!experimental) continue
         if (section === 'dependencies' && offered.has(name)) continue
         if (optionalBundle && section !== 'peerDependencies') continue
+        // The fork ships recorded experimental capabilities on purpose; one registry states the product role.
+        if (DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES[name] !== undefined) continue
         errors.push(`${manifest.name ?? dir}: ${section}.${name} must not reference an experimental package`)
       }
     }

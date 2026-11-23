@@ -26,7 +26,6 @@
   },
   "packages/client/ui-conversation/src/client/skeleton/ConversationRoot.module.css": {
     "has-outside-subject": {
-      ".root:has([data-conversation-composer-overlay]) .widthHandle": 1,
       ".scrollBody:has([data-conversation-composer-overlay]) > :global([data-slot=\"conversation.session\"]) > .viewArea": 1,
       ".scrollBody:has([data-conversation-composer-overlay]) > .composerSeat": 1
     }

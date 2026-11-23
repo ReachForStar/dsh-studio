@@ -53,8 +53,6 @@ const DUPLICATE_SAFE_PACKAGES: readonly string[] = [
  */
 const SAFE_HOST_DEPENDENCY_EXPORTS = {
   '@deepseek-ai/dsh-atomic-write': ['withFileLock', 'writeFileAtomic'],
-  '@deepseek-ai/dsh-computer-use/brand': ['ComputerUseProviderName'],
-  '@deepseek-ai/dsh-credentials': ['credentialKey'],
   // A plain format catalog; it is stateless over caller-owned values.
   '@deepseek-ai/dsh-session-format-catalog': ['sessionFormatCatalog'],
   '@deepseek-ai/dsh-deque': ['Deque'],
@@ -71,10 +69,10 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
   // The shipped profile templates are plain data; a consumer reads their bundle names only.
   '@deepseek-ai/dsh-official-bundles': ['PROFILE_TEMPLATES'],
   // Messages and assembled blocks are plain data. Each caller owns its assembler.
-  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createUserMessage'],
+  '@deepseek-ai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createAssistantMessage', 'createUserMessage'],
   // Stateless provider/model routing over the LLM catalog; callers own their streams.
   '@deepseek-ai/dsh-llm/route': ['listLlmModels', 'llmRouteCandidates', 'llmRouteKey'],
-  '@deepseek-ai/dsh-session': ['SessionId', 'adoptSessionEvent'],
+  '@deepseek-ai/dsh-session': ['adoptSessionEvent'],
   '@deepseek-ai/dsh-session-format': ['sessionFormatLogFilename'],
   '@deepseek-ai/dsh-storage-domain': ['defineDomain'],
   '@deepseek-ai/dsh-timeout': ['MAX_TIMER_DELAY_MS'],

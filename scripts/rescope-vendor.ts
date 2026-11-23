@@ -85,6 +85,13 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   // Native schema detection and its fixture share the vendored runtime's Symbol.for identifier.
   { file: 'packages/boot/app-boot/src/config-schema/native.ts', upstream: ['schemastery'] },
   { file: 'packages/boot/app-boot/tests/config-schema.spec.ts', upstream: ['schemastery'] },
+  // These end-to-end fixtures install a copy of the vendored schema compiler into a scaffolded
+  // profile's node_modules, so the bare directory name is a filesystem path, not a specifier.
+  { file: 'apps/web/tests/client-config-sync.e2e.ts', upstream: ['schemastery'] },
+  { file: 'apps/web/tests/input-plugin-extensions.e2e.ts', upstream: ['schemastery'] },
+  // The knowledge base names the shipped `cordis` agent preset, which is product data rather than a package reference.
+  { file: 'docs/wiki/log.md', upstream: ['cordis'] },
+  { file: 'docs/wiki/queries/codex-zcode-capability-handoff.md', upstream: ['cordis'] },
   // The codemod's positive and negative fixtures contain both package spellings.
   { file: 'scripts/rescope-vendor.spec.ts', upstream: RENAMES.map(rename => rename.upstream), fixture: true },
   // Asserts the vendored-manifest table, which gains an upstream-name column.

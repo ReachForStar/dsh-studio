@@ -27,6 +27,8 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/openapi-tools': '@deepseek-ai/dsh-openapi-tools',
   'packages/experimental/forge-gitlab': '@deepseek-ai/dsh-forge-gitlab',
   'packages/experimental/deepseek-chat-import': '@deepseek-ai/dsh-deepseek-chat-import',
+  'packages/experimental/codemode': '@deepseek-ai/dsh-codemode',
+  'packages/experimental/git-checkpoint': '@deepseek-ai/dsh-git-checkpoint',
 } satisfies Record<`packages/experimental/${string}`, `@deepseek-ai/dsh-${string}`>
 
 /** Legacy npm namespace, allowed only in `LEGACY_PREFIXED_EXPERIMENTAL_PACKAGE_DIRECTORIES`. */

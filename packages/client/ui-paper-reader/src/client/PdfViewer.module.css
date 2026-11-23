@@ -184,6 +184,7 @@
   user-select: text;
 }
 
+/* css-selector-gate: pdf.js owns the text-layer markup inside a rendered page, so the highlighted spans cannot carry a class this component sets */
 .text :global(.textLayer) > :not(:global(.markedContent)),
 .text :global(.markedContent) span:not(:global(.markedContent)) {
   z-index: 1;

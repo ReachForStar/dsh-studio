@@ -22106,6 +22106,9 @@ importers:
       '@deepseek-ai/dsh-agent-tool-presentation':
         specifier: workspace:*
         version: link:../../packages/core/agent-tool-presentation
+      '@deepseek-ai/dsh-agent-virtual-model':
+        specifier: workspace:*
+        version: link:../../packages/core/agent-virtual-model
       '@deepseek-ai/dsh-anonymous-user-id':
         specifier: workspace:*
         version: link:../../packages/identity/anonymous-user-id
@@ -22154,6 +22157,9 @@ importers:
       '@deepseek-ai/dsh-command-goal':
         specifier: workspace:*
         version: link:../../packages/goal/command-goal
+      '@deepseek-ai/dsh-command-label':
+        specifier: workspace:*
+        version: link:../../packages/interaction/command-label
       '@deepseek-ai/dsh-commands':
         specifier: workspace:*
         version: link:../../packages/interaction/commands
@@ -22196,6 +22202,9 @@ importers:
       '@deepseek-ai/dsh-followup':
         specifier: workspace:*
         version: link:../../packages/context/followup
+      '@deepseek-ai/dsh-fork-notice':
+        specifier: workspace:*
+        version: link:../../packages/experimental/fork-notice
       '@deepseek-ai/dsh-fs':
         specifier: workspace:*
         version: link:../../packages/fs/fs
@@ -22208,12 +22217,18 @@ importers:
       '@deepseek-ai/dsh-fs-sandbox':
         specifier: workspace:*
         version: link:../../packages/fs/fs-sandbox
+      '@deepseek-ai/dsh-git-checkpoint':
+        specifier: workspace:*
+        version: link:../../packages/experimental/git-checkpoint
       '@deepseek-ai/dsh-goal':
         specifier: workspace:*
         version: link:../../packages/goal/goal
       '@deepseek-ai/dsh-goal-round-driver':
         specifier: workspace:*
         version: link:../../packages/goal/goal-round-driver
+      '@deepseek-ai/dsh-handoff':
+        specifier: workspace:*
+        version: link:../../packages/context/handoff
       '@deepseek-ai/dsh-home-paths':
         specifier: workspace:*
         version: link:../../packages/util/home-paths
@@ -22226,6 +22241,9 @@ importers:
       '@deepseek-ai/dsh-http-proxy':
         specifier: workspace:*
         version: link:../../packages/util/http-proxy
+      '@deepseek-ai/dsh-input-handled':
+        specifier: workspace:*
+        version: link:../../packages/interaction/input-handled
       '@deepseek-ai/dsh-jobs':
         specifier: workspace:*
         version: link:../../packages/jobs/jobs
@@ -22292,6 +22310,9 @@ importers:
       '@deepseek-ai/dsh-plugin-package-inventory-deepseek':
         specifier: workspace:*
         version: link:../../packages/llm/plugin-package-inventory-deepseek
+      '@deepseek-ai/dsh-prompt-templates':
+        specifier: workspace:*
+        version: link:../../packages/interaction/prompt-templates
       '@deepseek-ai/dsh-ptc-runtime':
         specifier: workspace:*
         version: link:../../packages/ptc-runtime/ptc-runtime
@@ -22526,6 +22547,9 @@ importers:
       '@deepseek-ai/dsh-util-workspace-path':
         specifier: workspace:*
         version: link:../../packages/util/workspace-path
+      '@deepseek-ai/dsh-warming':
+        specifier: workspace:*
+        version: link:../../packages/experimental/warming
       '@deepseek-ai/dsh-web':
         specifier: workspace:*
         version: link:../../packages/web/web

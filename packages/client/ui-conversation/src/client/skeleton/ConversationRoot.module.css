@@ -344,6 +344,7 @@
 
 /* Views that elect a composer overlay (trajectory etc.) own their full-bleed
    scrollers; the strip would sit over their content and steal clicks. */
+/* css-selector-gate: the composer-overlay marker belongs to a view mounted inside the body, so no class on an ancestor distinguishes it before that view is elected */
 .root:has([data-conversation-composer-overlay]) .widthSlider {
   display: none;
 }

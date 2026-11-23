@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-codemode",
   "description": "Sandboxed JavaScript execution where the only capability is calling injected tools",
-  "version": "0.2.2-rc.4",
+  "version": "0.2.3-alpha.2",
   "publishConfig": {
     "access": "public"
   },

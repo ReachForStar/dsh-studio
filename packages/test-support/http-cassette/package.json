@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-test-support-http-cassette",
   "description": "Record real HTTP traffic into JSON cassettes and replay it in tests, with ordered consumption and credential redaction",
-  "version": "0.2.2-rc.4",
+  "version": "0.2.3-alpha.2",
   "publishConfig": {
     "access": "public"
   },

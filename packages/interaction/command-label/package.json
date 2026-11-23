@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-command-label",
   "description": "Human-facing slash command that labels a session entry for navigation",
-  "version": "0.2.2-rc.4",
+  "version": "0.2.3-alpha.2",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-openapi-tools",
   "description": "Expose OpenAPI 3.x operations as model-visible tools with host-side authentication",
-  "version": "0.2.2-rc.4",
+  "version": "0.2.3-alpha.2",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-markdown-mermaid",
   "description": "Chat Markdown Mermaid fences for the dsh web client: the settled diagram in place of the code block, the source while streaming or after a drawing failure",
-  "version": "0.2.2-rc.4",
+  "version": "0.2.3-alpha.2",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-git-checkpoint",
   "description": "Human-facing slash command that creates and restores Git checkpoints",
-  "version": "0.2.2-rc.4",
+  "version": "0.2.3-alpha.2",
   "publishConfig": {
     "access": "public"
   },

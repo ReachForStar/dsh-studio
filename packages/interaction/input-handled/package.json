@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-input-handled",
   "description": "Intercept user input before it enters the model",
-  "version": "0.2.2-rc.4",
+  "version": "0.2.3-alpha.2",
   "publishConfig": {
     "access": "public"
   },

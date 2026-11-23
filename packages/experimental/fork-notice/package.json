@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-fork-notice",
   "description": "Tells a forked Session's model which background work belongs to the original conversation",
-  "version": "0.2.2-rc.4",
+  "version": "0.2.3-alpha.2",
   "publishConfig": {
     "access": "public"
   },

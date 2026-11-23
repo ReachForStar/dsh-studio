@@ -33,7 +33,7 @@
 - [x] 里程碑：wiki 沉淀完成（本轮合并 query 页 + 既有决策页续轮 + `index.md` + `log.md`），相对链接有效
 - [x] 里程碑：`develop` 合入 `master`，推送到 `me` 远端（本地与远端一致）
   - 完成：`master` 与 `develop` 同指 `chore(gates)` 提交，`me/develop`、`me/master` 已推送
-- [ ] 里程碑：`test:snapshot` 与 `test:web` 复核
+- [ ] 阻塞：`test:snapshot` 与 `test:web` 复核（7 个场景缺 `DEEPSEEK_API_KEY` 无法重录；Web 快照本机 40 分钟超时未跑完）
   - [x] `test:snapshot` 回放/刷新两轮：语料策略、孤儿场景与 v4 词表修完，剩 7 个场景
   - [ ] 阻塞：7 个快照场景需带 `DEEPSEEK_API_KEY` 的重录（压缩摘要回退多发一次模型调用、MCP scope 失败文案）；本机无密钥，无法录制
   - [ ] 阻塞：`pnpm run test:web` 本机 40 分钟超时未跑完；本机 `DSH_HOME` 落在工作区内时 `arena` 报 `worktreeRoot must live outside workspaceRoot`，属本机前置；合并已修掉 `mcp-client/pool` 子路径导出缺失

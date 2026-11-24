@@ -4,7 +4,7 @@
 
 - [ ] 批次 A 第二批：`session-format-v3-to-v4/relationships.ts`、`session-persistence-sqlite/{persistence,sqlite}.ts`
 - [x] 批次 B 第一批：`fs/index.ts` 与 `fs/text.ts` 补用例并删除豁免（条目整体移除，2 个文件转为强制）
-- [ ] 批次 B 第二批：`tool-excalidraw/src/index.ts`（约 47 语句 / 90 分支）未开始；`fs-local/src/fsio.ts` 已补宽容匹配分支，剩权限/通用 errno 分支（`removePath`）与两处 NIA 守卫
+- [ ] 批次 B 第二批：`tool-excalidraw/src/index.ts`（约 47 语句 / 90 分支）未开始；`fs-local/src/fsio.ts` 已补宽容匹配分支与 `removePath` 的权限分支，剩通用 errno 分支与两处 NIA 守卫
 - [x] 批次 C：`xingchen/clear.ts` 与 `skills.ts` 补齐分支用例并转为强制（条目收窄到 `index.ts`）；`index.ts` 本轮再补终止原因、投影线面、空答复、失败释放用例，剩工具无 agent、holdRole、派发抛错与超时释放四处
 - [x] 顺带：`session-format-v3-to-v4` 的条目收窄到 `relationships.ts`，`facts.ts` 转为强制
 - [x] 批次 D：4/5 完成 —— `workspace`、`api/session-controller`、`client/modules`、`client-runtime` 补用例并删除豁免

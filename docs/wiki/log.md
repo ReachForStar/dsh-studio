@@ -1319,3 +1319,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - `fs-local/src/fsio.ts`：补宽容匹配五个阶段的歧义上报与双反斜杠转义；剩 `removePath` 的权限/通用 errno 分支与两处 NIA 守卫。
 - `xingchen/src/index.ts`：补 `turnReasonOf` 各终止原因、投影线面恒等、空答复不落会话、子运行释放失败；剩工具无 agent、`holdRole`、派发抛错、超时释放。豁免清单仍为 41 个文件。
+
+## [2026-11-24] test(fs): `removePath` 失败分支与宽容匹配补用例
+
+- `packages/fs/fs-local/tests/fsio.spec.ts`：新增 `removePath` 的缺失/非空/权限分支（`chmod 000` 探针失败、只读目录内删除 `EACCES`，沿既有目录权限用例的 root 容错写法）、宽容匹配阶段的 `replaceAll` 首候选行为、回车转义；`fsio.ts` 剩通用 errno 兜底与四处 NIA 守卫。

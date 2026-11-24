@@ -5,7 +5,7 @@
 - [x] 批次 A 第二批：`session-format-v3-to-v4/relationships.ts` 的用例原本走错代际（v5 编解码器），改走 `restoreReleasedV4Artifact` 后达标；`session-persistence-sqlite/{persistence,sqlite}.ts` 补删除分叉与独占分段用例
 - [x] 批次 B 第一批：`fs/index.ts` 与 `fs/text.ts` 补用例并删除豁免（条目整体移除，2 个文件转为强制）
 - [x] 批次 B 第二批（`fs-local/src/fsio.ts`）：补宽容匹配与 `removePath` 的失败分支，删除 `removePath` 里与 `fsErrorFromErrno` 重复的错误映射，文件达 100% 并删除豁免
-- [ ] 批次 B 第三批：`tool-excalidraw/src/index.ts`（约 47 语句 / 90 分支）
+- [x] 批次 B 第三批：`tool-excalidraw/src/index.ts` 补展示面与退化输入用例后转为强制，删除三处 schema 挡住的死分支
 - [x] 批次 C：`xingchen/clear.ts` 与 `skills.ts` 补齐分支用例并转为强制（条目收窄到 `index.ts`）；`index.ts` 再补终止原因、投影线面、空答复、失败释放、命令面派发失败用例，剩工具无 agent、holdRole 与超时释放三处
 - [x] 顺带：`session-format-v3-to-v4` 的条目收窄到 `relationships.ts`，`facts.ts` 转为强制
 - [x] 批次 D：4/5 完成 —— `workspace`、`api/session-controller`、`client/modules`、`client-runtime` 补用例并删除豁免

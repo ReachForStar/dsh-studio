@@ -355,3 +355,11 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 **SQLite 删除路径**：补两条例程级用例（`structure.spec.ts`）——删除一个分叉 Trace（父与后代仍引用它的分段）与删除独占分段；分叉用例再分出孙代，才能让「其它 Trace 的祖先」查询返回行。`persistence.ts` 的 `if (!removed) return false` 是跨进程竞态守卫（路由记录仍在、Trace 行已被外部删除），进程内不可复现，加 `v8 ignore` 并注明原因。
 
 **教训**：名字里带版本号的用例可能根本没走命名的那一代。判定方法是先看覆盖率是否落到目标文件——整份用例跑下来目标文件 0 覆盖，说明它被上游校验器或另一代编解码器挡在了前面。
+
+### 2026-11-24 Excalidraw 场景工具达标（20 → 19）
+
+`packages/fs/tool-excalidraw/src/index.ts` 转为强制。用例补齐三类：四个工具的 `presentCall`／`render`／`presentationMeta`（原用例只调用 `execute`）、工作区注册表解析路径、以及 `sanitizeScene`／`sceneToSvg` 的退化输入（标量场景、非法元素、无 points 的 line/arrow、零长度箭头、超大预览被省略）。
+
+顺带删掉三处被工具 schema 挡住的死分支：`shapeNumber` 的类型校验、draw 循环里「元素不是对象」的跳过、写场景时 `appState` 的兜底；`elementFromShape` 也不再返回 `null`——调用方已按 `DRAWABLE_TYPES` 过滤，再判一次只会留下不可达分支，`draw` 里的 `if (element === null)` 随之删除。三处无法经工具触达的守卫改用 `v8 ignore` 并注明「工具 schema 已保证」。
+
+`presentCall` 的参数先经工具 schema 校验：传不合规的参数会得到 `undefined` 而不是卡片，写用例时要按 schema 造参数。

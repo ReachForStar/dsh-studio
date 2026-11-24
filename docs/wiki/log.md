@@ -1358,3 +1358,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `session-format-v3-to-v4/src/relationships.ts`、`session-persistence-sqlite/src/{persistence,sqlite}.ts` 转为强制，三个豁免行删除。
 - `relationships.spec.ts` 原用当前（v5）编解码器构造会话，关系校验器根本未执行；改为直接构造 V4 工件走 `restoreReleasedV4Artifact` 后，61 条用例才真正覆盖目标文件。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-11-24-会话格式关系与-sqlite-持久化达标23--20)。
 - SQLite 补「删除分叉 Trace 保共享分段」与「删除独占分段」两条；`persistence.ts` 的跨进程竞态守卫加 `v8 ignore`。
+
+## [2026-11-24] test(excalidraw): 场景工具达标，豁免 20 → 19
+
+- `tool-excalidraw/src/index.ts` 补展示面（`presentCall`/`render`/`presentationMeta`）、工作区注册表路径与退化输入用例后转为强制。
+- 删除被工具 schema 挡住的三处死分支（`shapeNumber` 类型校验、draw 的元素对象守卫、写场景的 `appState` 兜底），`elementFromShape` 不再返回 `null`。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-11-24-excalidraw-场景工具达标20--19)。

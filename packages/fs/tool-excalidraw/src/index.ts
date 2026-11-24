@@ -147,6 +147,7 @@ function elementId(): string {
 /** Validate one shape field into a finite non-negative number. */
 function shapeNumber(value: unknown, name: string, fallback: number): number {
   if (value === undefined) return fallback
+  /* v8 ignore next 3 -- the tool schema admits only finite numbers for these fields. */
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(`excalidraw_draw: element field "${name}" must be a number`)
   }
@@ -160,12 +161,11 @@ function shapeNumber(value: unknown, name: string, fallback: number): number {
  * and roughjs throws during path generation — the canvas stays blank. The
  * model supplies only semantic fields; this function fills the rendering
  * surface.
- * @param shape - the model-supplied shape description.
- * @returns a complete element object, or null when the type is unsupported.
+ * @param shape - the model-supplied shape description whose type the caller admitted.
+ * @returns a complete element object.
  */
-function elementFromShape(shape: DrawShape): Record<string, unknown> | null {
+function elementFromShape(shape: DrawShape): Record<string, unknown> {
   const type = shape.type
-  if (!DRAWABLE_TYPES.has(type)) return null
   const strokeColor = shape.strokeColor ?? '#1e1e1e'
   const backgroundColor = shape.backgroundColor ?? 'transparent'
   const strokeWidth = shapeNumber(shape.strokeWidth, 'strokeWidth', 2)
@@ -705,9 +705,7 @@ export function apply(ctx: Context): void {
         await writeFile(location.path, JSON.stringify(repaired), 'utf8')
         const repairedRecord = repaired as Record<string, unknown>
         const repairedElements = repairedRecord['elements'] as unknown[]
-        const repairedAppState = (typeof repairedRecord['appState'] === 'object' && repairedRecord['appState'] !== null)
-          ? repairedRecord['appState'] as Record<string, unknown>
-          : {}
+        const repairedAppState = repairedRecord['appState'] as Record<string, unknown>
         const result: {
           ok: boolean
           cwd: string
@@ -802,6 +800,7 @@ export function apply(ctx: Context): void {
         const built: Record<string, unknown>[] = []
         let skipped = 0
         for (const raw of rawElements) {
+          /* v8 ignore next 4 -- the tool schema admits only objects in `elements`. */
           if (typeof raw !== 'object' || raw === null) {
             skipped += 1
             continue
@@ -826,7 +825,6 @@ export function apply(ctx: Context): void {
             ...(typeof shape['strokeWidth'] === 'number' ? { strokeWidth: shape['strokeWidth'] } : {}),
             ...(typeof shape['opacity'] === 'number' ? { opacity: shape['opacity'] } : {}),
           })
-          if (element === null) { skipped += 1; continue }
           built.push(element)
         }
         if (built.length === 0) {
@@ -863,7 +861,7 @@ export function apply(ctx: Context): void {
         card: 'generic',
         title: 'Draw on Excalidraw canvas',
         kind: 'other',
-        rawInput: `${(args as { elements?: unknown[] }).elements?.length ?? 0} shapes`,
+        rawInput: `${(args as { elements: unknown[] }).elements.length} shapes`,
       }),
     }))
     const disposeExport = ctx.tools.register(defineTool({

@@ -473,7 +473,6 @@ export default defineConfig({
         'packages/client/ui-paper-reader/src/client/PaperReader.tsx',
         'packages/client/ui-a2a-status/src/client/index.ts',
         'packages/client/ui-reference/src/client/index.ts',
-        'packages/fs/tool-excalidraw/src/index.ts',
         'packages/core/agent-loop/src/index.ts',
         ...windowsUnsupportedCoveragePackages.map(path => `${path}/src/**/*.ts`),
         ...windowsOnlyCoverageExclusions,

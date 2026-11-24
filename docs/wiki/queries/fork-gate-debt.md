@@ -271,3 +271,14 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `session-format-v3-to-v4/src/facts.ts` | 已在早前的描述符用例中补齐（非法 mode 与 v1 描述符），条目收窄后转为强制 |
 
 `xingchen/src/index.ts` 仍豁免（15 语句、20 分支：`turnReasonOf` 的其余终止原因、投影 wire、子代理失败分类、`xingchen_route` 的守卫）。`session-format-v3-to-v4/src/relationships.ts` 仍是最大缺口（约 40 语句，v3→v4 关系迁移的逐分支）。
+
+### 2026-11-24 文件系统文本 seam 达标（43 → 41）
+
+`packages/fs/fs/src/{index,text}.ts` 整体转为强制，新增两个测试文件：
+
+- `tests/text.spec.ts`（22 项）：换行归一化/检测/还原，`applyLiteralEdit` 的严格与七个宽容阶段（引号归一、行号前缀、转义、trim、缩进无关、首尾块锚点 0.8 相似度）、歧义与未命中错误码、`applyPatchOrThrow` 的成功与 `FS_PATCH_MISMATCH`、`decodeUtf8`／流式解码的 `FS_NOT_TEXT`、二进制采样边界。
+- `tests/binary-write.spec.ts`：文本型后端基类的 `writeBytes` 拒绝（`FS_UNSUPPORTED_BINARY_WRITE`）。
+
+`text.ts` 顺带做了三处代码清理：删掉 `String.split` 不可能为空的长度判断、删掉 `lineSimilarity` 的 `total === 0` 分支；三处 `noUncheckedIndexedAccess` 必需的 undefined 守卫（窗口首尾、锚点首尾行）标注 `v8 ignore` 并写明「循环上界保证存在」的理由。
+
+剩余：`tool-excalidraw/src/index.ts`（约 47 语句 / 90 分支）与 `fs-local/src/fsio.ts`（约 23 语句）。

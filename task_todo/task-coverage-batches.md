@@ -1,9 +1,10 @@
 # 覆盖率豁免收敛：其余批次（2026-11-24）
 
-游标：豁免清单 50 → 46 → 43 个文件。
+游标：豁免清单 50 → 46 → 43 → 41 个文件。
 
 - [ ] 批次 A 第二批：`session-format-v3-to-v4/relationships.ts`、`session-persistence-sqlite/{persistence,sqlite}.ts`
-- [ ] 批次 B：文件系统 seam 4 个文件（`tool-excalidraw`、`fs/{index,text}`、`fs-local/fsio`）
+- [x] 批次 B 第一批：`fs/index.ts` 与 `fs/text.ts` 补用例并删除豁免（条目整体移除，2 个文件转为强制）
+- [ ] 批次 B 第二批：`tool-excalidraw/src/index.ts`（约 47 语句 / 90 分支）与 `fs-local/src/fsio.ts`（约 23 语句）
 - [x] 批次 C：`xingchen/clear.ts` 与 `skills.ts` 补齐分支用例并转为强制（条目收窄到 `index.ts`）；`index.ts` 仍豁免
 - [x] 顺带：`session-format-v3-to-v4` 的条目收窄到 `relationships.ts`，`facts.ts` 转为强制
 - [x] 批次 D：4/5 完成 —— `workspace`、`api/session-controller`、`client/modules`、`client-runtime` 补用例并删除豁免

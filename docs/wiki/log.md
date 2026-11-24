@@ -1309,3 +1309,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 补齐 `xingchen/clear.ts`（取消/上抛）、`xingchen/skills.ts`（三种装配拒绝）、`session-format-v3-to-v4/facts.ts` 的分支用例，三者达 100% 后转为强制；`vitest.config.ts` 的两条豁免从花括号多文件收窄到 `xingchen/src/index.ts` 与 `session-format-v3-to-v4/src/relationships.ts`。
 - 现状：豁免 43 个文件；`xingchen/src/index.ts`（15 语句 / 20 分支）与 `session-format-v3-to-v4/src/relationships.ts`（约 40 语句）仍是同批最大缺口。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)。
+
+## [2026-11-24] test(fs): 文件系统文本 seam 补齐，豁免 43 → 41
+
+- 新增 `packages/fs/fs/tests/text.spec.ts`（22 项）与 `tests/binary-write.spec.ts`，覆盖换行机制、七个宽容匹配阶段、补丁失败码、严格解码与二进制采样、文本后端的 `writeBytes` 拒绝；`fs/src/{index,text}.ts` 达 100% 后豁免条目整体移除。
+- `text.ts` 清理三处不可能成立的分支，另三处 `noUncheckedIndexedAccess` 必需的 undefined 守卫标注 `v8 ignore` 并写明理由。

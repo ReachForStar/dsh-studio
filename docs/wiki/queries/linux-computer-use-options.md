@@ -43,3 +43,26 @@ fork 的 `cua-bundle` 只给 macOS 与 Windows 装了 provider，Linux 上完全
 - 判断 Linux 能否用时，先看 `node_modules/.pnpm/@trycua+cua-driver-linux-*` 是否存在，再跑上面那条自检；不要从包内有没有 `native/` 目录推断。
 - 只在 X11 会话下验证过；Wayland 合成器下窗口是否可见尚未验证（待核验：先看 `echo $XDG_SESSION_TYPE`，再用 `list_windows` 观察是否只列到 XWayland 应用）。
 - 覆盖率豁免里 CUA 那 4 个文件与本条无关：平台包已就位，缺的是面板分支的浏览器车道用例。
+## 落地：`cua-bundle` 已接入 Linux（2026-11-24）
+
+方案 A 已进入 shipped bundle，Linux 用户不必自备 overlay。
+
+| 位置 | 改动 |
+| --- | --- |
+| `packages/experimental/cua-bundle/cordis.patch.yml` | 新增 `cua-native` 条目（`@deepseek-ai/dsh-experimental-computer-use-cua-driver-native`，`disabled: process.platform !== 'linux'`）；`ui-cua` 仍在非 macOS／Windows 平台禁用，注释改为「权限页依赖 `cuaAccess`，只有 macOS 与 Windows 原生通道提供」 |
+| `packages/experimental/cua-bundle/package.json` | `dsh.bundle.platforms` 加 `linux`；`optionalDependencies` 声明 native provider；`devDependencies` 补 e2e 需要的 tools／system-prompt／tool-executor-native／session-projection |
+| `packages/experimental/cua-bundle/tests/platform.spec.ts` | 三平台断言：Linux 只导入 registry 与 native provider，不导入 `dsh-cua` 与两个 helper 应用 |
+| `packages/experimental/cua-bundle/tests/native-linux.e2e.ts` | 新增 opt-in 用例：用导出的真实 patch 经 Loader 挂载，断言 `computerUse.providerName === 'cua-driver-native'` 与 `cua_driver_native__*` 工具集 |
+| `scripts/optional-bundles.spec.ts` | 平台准入断言改为 `['darwin', 'win32', 'linux']` |
+
+复现：
+
+```sh
+env -u NODE_USE_ENV_PROXY DSH_CUA_LINUX_E2E=1 node node_modules/vitest/vitest.mjs run --config vitest.e2e.config.ts packages/experimental/cua-bundle/tests/native-linux.e2e.ts
+```
+
+验证结果：上述 e2e 通过（真实 SDK 加载、工具注册、卸载）；`platform.spec.ts` 3 项通过；`verify-cordis-config`（426 文件）、`verify-runtime-closure`、`verify-default-product-isolation`、`constraints`、`verify-package-dependencies`（107 包）、`test:docs` 21 项、`typecheck` 5 项全绿。
+
+**踩坑：不要把该 native provider 登记进 `DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES`。** 尝试登记后 `verify-default-product-isolation` 直接报 `stale default-product experimental exception`：可选 bundle 的 patch 不计入默认产品面的可达性，登记反而制造一条无法自证的例外。同理，只有默认组合真正挂载的实验包才登记。
+
+仍缺：Linux 无权限页与 `cua`／`cua_run_code` 绑定，模型只得到驱动自带工具；截图要 image 模型路由与 attachment store；覆盖率豁免里 CUA 那 4 个文件仍需浏览器车道用例。

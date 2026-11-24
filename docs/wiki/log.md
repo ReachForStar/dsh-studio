@@ -1293,3 +1293,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 新增 [Linux 上的 computer use 方案](queries/linux-computer-use-options.md)：对比原生 Cua Driver SDK、已装驱动的 MCP 桥、浏览器车道三条路径；本机 X11（`DISPLAY=:0`）实测原生 provider 自检通过，工具目录 42 个，`get_screen_size` 读到 4480x1440、`list_windows` 列出 10 个窗口。
 - 记录缺口：`cua-bundle` 只挂 `cua-macos`／`cua-windows` 并在非这两平台禁用权限面板，Linux 需自备 overlay；截图依赖 image 能力的模型路由与 attachment store；Wayland 场景待核验。
+
+## [2026-11-24] feat(cua): `cua-bundle` 接入 Linux 原生 provider
+
+- `packages/experimental/cua-bundle`：`cordis.patch.yml` 新增 `cua-native`（`@deepseek-ai/dsh-experimental-computer-use-cua-driver-native`，仅 Linux 启用），`dsh.bundle.platforms` 加 `linux`，`optionalDependencies` 声明该包，`ui-cua` 在 Linux 仍禁用并改注释写明原因是缺少 `cuaAccess`。
+- 新增 `tests/native-linux.e2e.ts`（opt-in）：用导出的真实 patch 经 Loader 挂载真实 SDK，断言 provider 与工具集；`tests/platform.spec.ts` 与 `scripts/optional-bundles.spec.ts` 同步三平台断言。
+- 踩坑：把 native provider 登记进 `DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES` 会让隔离门禁报 `stale default-product experimental exception`，可选 bundle 的 patch 不计入默认产品面。详见 [Linux 上的 computer use 方案](queries/linux-computer-use-options.md)。

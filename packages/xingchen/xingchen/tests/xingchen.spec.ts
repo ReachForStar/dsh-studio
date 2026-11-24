@@ -589,6 +589,22 @@ describe('@reachforstar/dsh-xingchen/clear', () => {
     expect(test.compactNow).toHaveBeenCalledTimes(1)
   })
 
+  it('取消与未知错误分别落定与上抛', async () => {
+    const controller = new AbortController()
+    const cancelled = await clearHarness(vi.fn(() => {
+      controller.abort()
+      return Promise.reject(new Error('transport lost'))
+    }))
+    // The handler reports the cancellation; the runtime then rejects with its own abort.
+    await expect(cancelled.ctx.commands.execute(cancelled.agent, '/clear', [], controller.signal))
+      .rejects.toThrow(/abort/i)
+
+    // Outside the compaction taxonomy the failure is not swallowed.
+    const unknown = await clearHarness(vi.fn(() => Promise.reject(new Error('transport lost'))))
+    await expect(unknown.ctx.commands.execute(unknown.agent, '/clear', [], signal))
+      .rejects.toThrow('transport lost')
+  })
+
   it('压缩域错误落定为错误结果', async () => {
     const test = await clearHarness(vi.fn(() => Promise.reject(new ManualCompactionError('busy', 'busy'))))
     const execution = await test.ctx.commands.execute(test.agent, '/clear', [], signal)

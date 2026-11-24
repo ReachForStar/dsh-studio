@@ -1,15 +1,31 @@
 // Bundled star-domain skills: the provider lists `git`/`run`/`log` from the
 // package's own assets, loads each body, and refuses a missing asset root.
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { SkillCandidate, SkillLookupOptions, SkillProvider } from '@deepseek-ai/dsh-skill'
 import * as xingchenSkills from '../src/skills.ts'
 
 const disposers: (() => Promise<void>)[] = []
+const roots: string[] = []
 
 afterEach(async () => {
   while (disposers.length > 0) await disposers.pop()?.()
+  for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true })
 })
+
+/** Write one skill tree under a fresh asset root. */
+async function assetRoot(files: Record<string, string>): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), 'xingchen-skills-'))
+  roots.push(root)
+  for (const [path, body] of Object.entries(files)) {
+    await mkdir(join(root, path, '..'), { recursive: true })
+    await writeFile(join(root, path), body)
+  }
+  return root
+}
 
 /** The bundled provider always answers the complete array shorthand, not an observation. */
 interface BundledProvider extends Omit<SkillProvider, 'list'> {
@@ -64,6 +80,17 @@ describe('@reachforstar/dsh-xingchen/skills', () => {
     const definition = await provider.get(first, {})
     expect(definition?.content).toContain('# Git history reading')
     expect(definition?.content).not.toContain('---\nname:')
+  })
+
+  it('拒绝缺少 frontmatter、缺少描述或 SKILL.md 不是文件的资源', async () => {
+    await expect(harness({ assetRoot: await assetRoot({ 'git/SKILL.md': 'no frontmatter\n' }) }))
+      .rejects.toThrow('has no YAML frontmatter')
+    await expect(harness({ assetRoot: await assetRoot({ 'git/SKILL.md': '---\nname: git\n---\nbody\n' }) }))
+      .rejects.toThrow('has no description')
+    const notFile = await mkdtemp(join(tmpdir(), 'xingchen-skills-'))
+    roots.push(notFile)
+    await mkdir(join(notFile, 'git', 'SKILL.md'), { recursive: true })
+    await expect(harness({ assetRoot: notFile })).rejects.toThrow('is missing')
   })
 
   it('缺少资源文件或传入相对 assetRoot 时拒绝装配', async () => {

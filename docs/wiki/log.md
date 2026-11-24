@@ -1282,3 +1282,9 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - 逐项实测宿主资源并更正记录：Kafka 三节点 9092–9094 可连、`ssh.service` 监听 22、Playwright Chromium 已装、CUA 原生面由 `@trycua/cua-driver-linux-x64-gnu@0.28.0` 提供（上一轮「`native/bin` 未构建」的说法作废）、Pi 网关 `/v1/models` 声明 `context_length` 1048576 且支持图像输入。
 - 两个 Pi e2e 的模型描述符由 `contextWindow: 128_000` 改为 `1_048_576`，用该网关实跑通过；覆盖率豁免的 56 个文件中 22 个一直只缺单元用例（会话格式与持久化 10、文件系统 seam 4、星域 3、其他 5）。
 - 覆盖率之外的实测红项记入 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)：`constraints` 与 `verify-default-product-isolation` 的 webhook／tool-ralph 归属、11 个构建残渣目录、`verify-product-use` 四条维护角色缺失、`verify-package-dependencies` 两条未使用登记、`verify-no-unknown-casts` 基线滞后、`publint` 的 `xingchen` 导出悬空、`duplication` 88 处克隆。同轮 `lint`、`verify-config-catalog`、`verify-config-source-ownership`、`verify-runtime-closure`、`verify-cordis-config` 实测为绿。
+
+## [2026-11-24] fix | 清偿实验包归属与导出登记红项，覆盖率豁免降到 50
+
+- `constraints`、`verify-default-product-isolation`、`verify-product-use`、`verify-package-dependencies`、`publint` 五门转绿：删 11 个构建残渣目录；webhook 与 `tool-ralph` 登记进 `EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS` 与 `DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES`；四个 fork 包登记 `optional` 维护角色；删两条未使用的 safe-host 导出登记；`xingchen` 的 `files` 补 `lib/client.js` 与 `src`。
+- 覆盖率豁免 56 → 50：补齐 `session-format-v2-to-v3`、`session-format-v4-to-v5`、`session-persistence-jsonl/format.ts` 的分支用例。
+- 发现并记录缺陷：V5 物理首行不能携带 `backend`（编码经冻结 V2 校验拒收），读侧那条还原分支不可达，已删除并补现状用例；持久化 `backend` 需一次格式变更决策。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)。

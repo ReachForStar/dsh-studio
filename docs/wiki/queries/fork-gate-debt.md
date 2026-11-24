@@ -219,3 +219,24 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 同轮实测为绿：`pnpm run lint`（exit 0）、`verify-config-catalog`、`verify-config-source-ownership`、`verify-runtime-closure`、`verify-cordis-config`。`verify-config-catalog` 转绿说明先前记在 `pi-agent-loop` 名下的约 16 处 `Config` 字段散文已补齐。
 
 修复顺序建议：先清残留目录与两条依赖登记（机械且低风险），再决定 webhook 是提回稳定包还是从 Web 组合摘除（改动产品面，需单独确认），随后补 `verify-product-use` 的维护角色登记，最后按文件补覆盖率用例。
+
+### 2026-11-24 清偿结果
+
+本轮把上一节的机械红项全部转绿，并发现一处真实的持久化缺陷。
+
+| 红项 | 修法 | 结果 |
+| --- | --- | --- |
+| `constraints` 的 11 个残渣目录 | 逐目录核实无 git 跟踪文件、只剩 `lib`／`node_modules` 后删除 | 消失 |
+| webhook 归属 | webhook 是 Web 组合与 `apps/cli` 默认挂载的投递原语，登记进 `EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS` 与 `DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES`（理由：默认组合的投递原语，由 `webhook-github` 注册规则） | `constraints` 与 `verify-default-product-isolation` 的 webhook 项转绿 |
+| `tool-ralph` | 同上登记为可选 bundle `ralph-bundle` 的唯一工具 | 转绿 |
+| `verify-product-use` 四条 | 在 `scripts/product-package-policy.ts` 登记 `optional` 角色（Pi 循环、两个 SFTP provider、Pi 子代理） | 转绿（319 默认 / 50 optional） |
+| `verify-package-dependencies` 两条 | 删除 `dsh-session#adoptSessionEvent` 与 `dsh-session-format-catalog#sessionFormatCatalog`：两者只在非入口模块使用，且都是纯函数，不构成重复安装风险 | 转绿（107 包） |
+| `publint` 的 `xingchen` | `files` 补 `lib/client.js` 与 `src` | exit 0 |
+
+`check-workspace-constraints.spec.ts` 同步改为跳过已登记的默认产品实验包，并新增一条「允许登记过的依赖」用例。
+
+覆盖率豁免从 56 降到 50：`session-format-v2-to-v3`、`session-format-v4-to-v5`、`session-persistence-jsonl/format.ts` 补齐分支用例后删除豁免。剩余 50 个按批次推进，见 `task_todo/task-gate-and-coverage-repair.md`。
+
+**发现的缺陷：V5 物理行不能携带 `backend`。** `SessionHeader.backend` 是逻辑字段，`format.ts#toHeaderLine` 会把它写进首行，但 V5 编码器把首行交给冻结的 V2 编码器，V2 校验拒收未知键，于是 `toHeaderLine` 抛 `format v2 header has unexpected field backend`。读侧同样拒收。该分支一直不可达，正是覆盖率豁免掩盖的真实问题。本轮只删掉读侧那条不可达的 `backend` 还原分支并补用例记录现状（写成首行会被拒），**持久化 `backend` 需要一次格式变更决策**：或在 V5 物理行上按 V3 的做法剥离再挂回（会改变已发布 V5 首行键集，需补持久化变更记录），或明确不持久化、由调用方在 resume 时指定。
+
+**仍欠**：`verify-no-unknown-casts` 156 处（ADR 禁止扩基线，需逐点重写夹具）、`duplication` 88 处（跨包重构），两者都要先定范围。

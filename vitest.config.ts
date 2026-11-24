@@ -483,7 +483,6 @@ export default defineConfig({
         'packages/client/ui-sidebar-files/src/client/{face,paths,store}.ts',
         'packages/experimental/client-ui-stats/src/client/StatsTable.tsx',
         'packages/fs/tool-excalidraw/src/index.ts',
-        'packages/fs/fs/src/{index,text}.ts',
         'packages/fs/fs-local/src/fsio.ts',
         'packages/core/agent-loop/src/index.ts',
         'packages/session/session-format-v3-to-v4/src/relationships.ts',

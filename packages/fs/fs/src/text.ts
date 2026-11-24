@@ -115,7 +115,6 @@ function contentLines(content: string): ContentLine[] {
 /** Line-window matches whose trimmed lines equal the search lines' trimmed forms. */
 function indentFlexibleMatches(content: string, oldString: string): TextMatch[] {
   const search = oldString.split('\n')
-  if (search.length === 0) return []
   const expected = search.map(line => line.trim())
   if (expected.every(line => line.length === 0)) return []
   const lines = contentLines(content)
@@ -125,6 +124,7 @@ function indentFlexibleMatches(content: string, oldString: string): TextMatch[] 
     if (window.every((line, offset) => line.text.trim() === expected[offset])) {
       const first = window[0]
       const last = window.at(-1)
+      /* v8 ignore next 2 -- the loop keeps the window as long as the search, so both ends exist. */
       if (first !== undefined && last !== undefined) matches.push({ start: first.start, end: last.end })
     }
   }
@@ -134,7 +134,6 @@ function indentFlexibleMatches(content: string, oldString: string): TextMatch[] 
 /** How many lines of two equally sized windows carry the same trimmed text. */
 function lineSimilarity(left: readonly string[], right: readonly string[]): number {
   const total = Math.max(left.length, right.length)
-  if (total === 0) return 1
   let equal = 0
   for (let index = 0; index < total; index += 1) {
     if (left[index]?.trim() === right[index]?.trim()) equal += 1
@@ -154,6 +153,7 @@ function anchorMatches(content: string, oldString: string): TextMatch[] {
   if (firstIndex === lastIndex) return []
   const first = search[firstIndex]?.trim()
   const last = search[lastIndex]?.trim()
+  /* v8 ignore next -- both indices come from a successful findIndex/findLastIndex over the same array. */
   if (first === undefined || last === undefined) return []
   const lines = contentLines(content)
   const matches: TextMatch[] = []
@@ -165,6 +165,7 @@ function anchorMatches(content: string, oldString: string): TextMatch[] {
     if (similarity < 0.8) continue
     const start = window[0]
     const end = window.at(-1)
+    /* v8 ignore next 2 -- the loop keeps the window as long as the search, so both ends exist. */
     if (start !== undefined && end !== undefined) matches.push({ start: start.start, end: end.end })
   }
   return matches

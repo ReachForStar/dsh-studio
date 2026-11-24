@@ -1270,3 +1270,15 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `pnpm run test:coverage` 全量通过：63,659 通过 / 1 既定期望失败 / 278 跳过，per-file 100% 无失败。此前 61 个文件不达标，缺口全部来自 fork 自研能力（A2A 总线、远端 provider、CUA、Pi 循环、客户端面板等需要外部服务或密钥的套件）。
 - 这些文件按文件/精确分支登记进 `vitest.config.ts` 的 `Fork capability debt` 豁免块，理由与清单规则见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)；决策记入 [Agent Note](../../.agents/notes/implemented/process/2026-11-23-fork-coverage-exemptions.md)。
 - 同时删除回退残留：`hooks-claude-code` 的 PreCompact/PostCompact 观测块与 PermissionRequest 文案、`sandbox` 的 `timed-out` 升权结果；补一条升权转交 action/resources 的用例，使 `escalation.ts` 分支达到 100%。
+
+## [2026-11-23] fix | 覆盖率豁免首轮收敛与 Pi e2e 修复
+
+- 补 5 个文件的用例并删除对应豁免：`core/session` 头校验的非法 `backend`、`llm` 跨适配器的无 replayState 消息、`llm-pi-ai` 的外部助手来源、`agent-preset-registry` 的 `backend` 字段、`session-persistence-sqlite` 的 `backend` 头解码。豁免清单从 61 个文件降到 56 个。
+- 修 `pi-agent-loop` 的两个 e2e：补挂 `SessionProjectionRegistry`（`AgentRegistry` 依赖 `sessionProjections`），并用本机 AMAX 网关（`qwen3.8-flash-next-iq3_s`）实跑通过；两个 e2e 覆盖真实 Pi 回合折叠与 Pi 会话行为。
+- 本机可用资源已核实并记入 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)：Kafka 三节点 9092–9094 运行中、`ssh.service` 运行中、Playwright Chromium 已装、Pi 网关可用；`computer-use-cua-driver-native` 的 `native/bin` 未构建。
+
+## [2026-11-24] docs(wiki) | 宿主资源更正与非覆盖率债务盘点
+
+- 逐项实测宿主资源并更正记录：Kafka 三节点 9092–9094 可连、`ssh.service` 监听 22、Playwright Chromium 已装、CUA 原生面由 `@trycua/cua-driver-linux-x64-gnu@0.28.0` 提供（上一轮「`native/bin` 未构建」的说法作废）、Pi 网关 `/v1/models` 声明 `context_length` 1048576 且支持图像输入。
+- 两个 Pi e2e 的模型描述符由 `contextWindow: 128_000` 改为 `1_048_576`，用该网关实跑通过；覆盖率豁免的 56 个文件中 22 个一直只缺单元用例（会话格式与持久化 10、文件系统 seam 4、星域 3、其他 5）。
+- 覆盖率之外的实测红项记入 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)：`constraints` 与 `verify-default-product-isolation` 的 webhook／tool-ralph 归属、11 个构建残渣目录、`verify-product-use` 四条维护角色缺失、`verify-package-dependencies` 两条未使用登记、`verify-no-unknown-casts` 基线滞后、`publint` 的 `xingchen` 导出悬空、`duplication` 88 处克隆。同轮 `lint`、`verify-config-catalog`、`verify-config-source-ownership`、`verify-runtime-closure`、`verify-cordis-config` 实测为绿。

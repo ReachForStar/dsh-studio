@@ -8,6 +8,7 @@ import {
   isPublicExperimentalPackageDirectory,
   PRIVATE_EXPERIMENTAL_PACKAGE_DIRECTORIES,
   EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS,
+  DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES,
   LEGACY_PREFIXED_EXPERIMENTAL_PACKAGE_DIRECTORIES,
 } from './experimental-package-policy.ts'
 import {
@@ -169,12 +170,21 @@ describe('experimental workspace constraints', () => {
     }
   })
 
-  it.each(Object.values(EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS))('rejects retained runtime names and aliases: %s', (name) => {
+  it.each(Object.values(EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS)
+    .filter(name => DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES[name] === undefined))('rejects retained runtime names and aliases: %s', (name) => {
     for (const dependencies of [{ [name]: 'workspace:*' }, { alias: `npm:${name}@1.0.0` }, { alias: `workspace:${name}@*` }]) {
       expect(checkExperimentalDependencyIsolation([{
         dir: 'apps/cli', manifest: { name: '@deepseek-ai/dsh', dependencies },
       }], [])).toEqual([expect.stringContaining('must not reference an experimental package')])
     }
+  })
+
+  it('accepts an experimental dependency the default-product record allows', () => {
+    const [name] = Object.keys(DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES)
+    if (name === undefined) throw new Error('the default-product record declares no experimental package')
+    expect(checkExperimentalDependencyIsolation([{
+      dir: 'apps/cli', manifest: { name: '@deepseek-ai/dsh', dependencies: { [name]: 'workspace:*' } },
+    }], [])).toEqual([])
   })
 
   it('requires public metadata for unlisted experimental packages', () => {

@@ -22,6 +22,7 @@ export const EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS: Readonly<Record<string, strin
   'packages/experimental/hooks-claude-code': '@deepseek-ai/dsh-hooks-claude-code',
   'packages/experimental/hooks-codex': '@deepseek-ai/dsh-hooks-codex',
   'packages/experimental/webhook-github': '@deepseek-ai/dsh-webhook-github',
+  'packages/experimental/webhook': '@deepseek-ai/dsh-webhook',
   'packages/experimental/forge-gitlab': '@deepseek-ai/dsh-forge-gitlab',
   'packages/experimental/deepseek-chat-import': '@deepseek-ai/dsh-deepseek-chat-import',
 } satisfies Record<`packages/experimental/${string}`, `@deepseek-ai/dsh-${string}`>
@@ -129,6 +130,10 @@ export function isPublicExperimentalPackageDirectory(
  * default reach requires updating this record.
  */
 export const DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES: Readonly<Record<string, string>> = {
+  // 投递原语：Web 组合与 apps/cli 默认挂载，规则包（webhook-github）另有选择性接入。
+  '@deepseek-ai/dsh-webhook': '默认组合的投递原语，由 webhook-github 注册规则',
+  // Ralph 循环工具：随可选 bundle `ralph-bundle` 提供。
+  '@deepseek-ai/dsh-tool-ralph': '可选 bundle ralph-bundle 的唯一工具',
   // Browser Use 后端：随可选 bundle `dsh-browser-use` 提供，只有安装该 bundle 才接入。
   '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp': '可选 bundle dsh-browser-use 的唯一后端',
   '@deepseek-ai/dsh-experimental-browser-use-runtime': '可选 bundle dsh-browser-use 的后端运行时',

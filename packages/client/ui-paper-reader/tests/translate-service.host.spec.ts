@@ -1,9 +1,9 @@
 /** Host half of paper translation: request validation, NDJSON framing, and route walking. */
-import type { Context } from '@deepseek-ai/cordis'
+import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { PAPER_READER_ROUTE } from '../src/route.ts'
 import {
-  createPaperTranslator, handleTranslateRequest, type PaperTranslator,
+  createPaperTranslator, handleModelsRequest, handleTranslateRequest, type PaperTranslator,
 } from '../src/translate-service.ts'
 
 const ENDPOINT = `${PAPER_READER_ROUTE}/translate`
@@ -189,6 +189,39 @@ describe('handleTranslateRequest framing', () => {
     await pending
     expect(response.ended).toBe(true)
     expect(events(response.text())).toEqual([{ type: 'delta', text: '部分' }])
+  })
+})
+
+describe('handleModelsRequest', () => {
+  const url = `${PAPER_READER_ROUTE}/models`
+
+  it('lists the catalog models for a GET', async () => {
+    const ctx = new Context()
+    ctx.provide('llm', {
+      listProviders: () => [{ id: 'gateway' }],
+      listModels: () => Promise.resolve([{ id: 'flash', name: 'Flash' }]),
+    } as never)
+    const response = responseDouble()
+    await handleModelsRequest(ctx, { url, method: 'GET' } as never, response.res as never)
+    expect(response.status).toBe(200)
+    expect(JSON.parse(response.text())).toEqual({ models: [{ provider: 'gateway', model: 'flash', name: 'Flash' }] })
+  })
+
+  it('rejects a non-GET and reports a catalog failure as 500', async () => {
+    const ctx = new Context()
+    ctx.provide('llm', {
+      listProviders: () => [{ id: 'gateway' }],
+      listModels: () => Promise.reject(new Error('catalog down')),
+    } as never)
+    const rejected = responseDouble()
+    await handleModelsRequest(ctx, { url, method: 'POST' } as never, rejected.res as never)
+    expect(rejected.status).toBe(405)
+    expect(errorOf(rejected.text())).toContain('models route rejects POST')
+
+    const failed = responseDouble()
+    await handleModelsRequest(ctx, { url, method: 'GET' } as never, failed.res as never)
+    expect(failed.status).toBe(500)
+    expect(errorOf(failed.text())).toBe('paper: model catalog could not be read')
   })
 })
 

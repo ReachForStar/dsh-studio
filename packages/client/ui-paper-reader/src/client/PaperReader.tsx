@@ -232,8 +232,11 @@ function PaperView(props: {
 
   // A fixed choice wins when the catalog still offers it; a stale or unreadable
   // catalog falls back to the conversation's route rather than naming a dead model.
-  const fixed = models.some(option => `${option.provider}/${option.model}` === fixedModel)
-    ? parseStoredModel(fixedModel)
+  // Parse the stored pair before matching: a malformed value names no model at all.
+  const parsedFixed = parseStoredModel(fixedModel)
+  const fixed = parsedFixed !== undefined
+    && models.some(option => option.provider === parsedFixed.provider && option.model === parsedFixed.model)
+    ? parsedFixed
     : undefined
   const effectiveRoute = fixed ?? translateRoute
   const pickModel = (value: string): void => {

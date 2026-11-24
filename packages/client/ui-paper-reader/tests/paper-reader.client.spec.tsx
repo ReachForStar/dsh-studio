@@ -154,6 +154,63 @@ describe('paper library', () => {
     expect(screen.getByTestId('translate-route').textContent).toBe('gateway/flash')
   })
 
+  it('clears a fixed model back to the session route', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    api.listTranslateModels.mockResolvedValue([{ provider: 'gateway', model: 'flash', name: 'Flash' }])
+    window.localStorage.setItem('dsh-paper-translate-model', 'gateway/flash')
+    renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(document.querySelector('select')?.value).toBe('gateway/flash') })
+
+    fireEvent.change(document.querySelector('select')!, { target: { value: '' } })
+    expect(window.localStorage.getItem('dsh-paper-translate-model')).toBeNull()
+    expect(screen.getByTestId('translate-route').textContent).toBe('session-provider/session-model')
+  })
+
+  it('ignores a malformed stored model and a storage that refuses reads', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    window.localStorage.setItem('dsh-paper-translate-model', 'no-separator')
+    const denied = vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => { throw new Error('denied') })
+    renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
+    await libraryReady()
+    denied.mockRestore()
+    // Storage refuses reads, so the malformed stored value never reached the parser.
+    window.localStorage.setItem('dsh-paper-translate-model', 'trailing/')
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(screen.getByTestId('translate-route').textContent).toBe('session-provider/session-model') })
+  })
+
+  it('falls back to the session route when the catalog read fails', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    api.listTranslateModels.mockRejectedValueOnce(new Error('catalog down'))
+    renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(screen.getByTestId('viewer')).toBeDefined() })
+    expect(document.querySelector('select')?.options.length).toBe(1)
+    expect(screen.getByTestId('translate-route').textContent).toBe('session-provider/session-model')
+  })
+
+  it('leaves a settled catalog write out of an unmounted reader', async () => {
+    const pending = Promise.withResolvers<readonly { provider: string; model: string; name: string }[]>()
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    api.listTranslateModels.mockReturnValueOnce(pending.promise)
+    renderTab()
+    // The reader closes before the catalog arrives; the late value is dropped.
+    cleanup()
+    pending.resolve([{ provider: 'gateway', model: 'flash', name: 'Flash' }])
+    await act(async () => { await pending.promise })
+  })
+
   it('ignores a stored model the catalog no longer offers', async () => {
     api.listPapers.mockResolvedValue([SUMMARY])
     api.readPaper.mockResolvedValue(RECORD)

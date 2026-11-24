@@ -473,7 +473,6 @@ export default defineConfig({
         'packages/experimental/computer-use-cua-driver-mcp/src/{index,installer}.ts',
         'packages/client/ui-plugin-manager/src/client/CuaDriverInstall.tsx',
         'packages/client/ui-paper-reader/src/client/PaperReader.tsx',
-        'packages/client/ui-paper-reader/src/translate-service.ts',
         'packages/client/ui-a2a-status/src/client/index.ts',
         'packages/client/ui-reference/src/client/index.ts',
         'packages/fs/tool-excalidraw/src/index.ts',

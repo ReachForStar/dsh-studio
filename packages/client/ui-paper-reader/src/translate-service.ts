@@ -240,7 +240,7 @@ export async function handleModelsRequest(
   res: ServerResponse,
 ): Promise<void> {
   try {
-    if (req.method !== 'GET') throw new PaperRequestError(405, `paper: models route rejects ${req.method ?? 'GET'}`)
+    if (req.method !== 'GET') throw new PaperRequestError(405, `paper: models route rejects ${String(req.method)}`)
     const models: readonly PaperTranslateModel[] = (await listLlmModels(ctx))
       .map(option => ({ provider: option.provider, model: option.model, name: option.name }))
     sendJson(res, 200, { models })

@@ -30,6 +30,18 @@ function fixture() {
   return { actions, controller, windowsProvider, face: controller.face(), setLocale: (value: string) => { locale = value } }
 }
 
+it('reports an absent Service from a management action as the same composition fact', async () => {
+  const f = fixture()
+  const unavailable = new RemoteError('gateway/service-unavailable',
+    'typert gateway: cuaAccess/openSettings: active Service "cuaAccess" is unavailable',
+    { endpoint: 'cuaAccess/openSettings' })
+  f.actions.openSettings.mockResolvedValueOnce({ ok: false, error: unavailable })
+  f.face.openSettings('accessibility')
+  await vi.waitFor(() => { expect(f.controller.state.getSnapshot().serviceUnavailable).toBe(true) })
+  expect(f.controller.state.getSnapshot().toast).toBeNull()
+  await f.controller.dispose()
+})
+
 it('reports an absent cuaAccess Service as one composition fact', async () => {
   const f = fixture()
   const unavailable = new RemoteError('gateway/service-unavailable',

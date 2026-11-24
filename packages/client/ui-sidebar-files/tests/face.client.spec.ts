@@ -4,7 +4,7 @@ import type { Mock } from 'vitest'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceDirectoryListing } from '@deepseek-ai/dsh-api-workspace-files/types'
-import { canOpenOf, createList, filesFace } from '../src/client/face.ts'
+import { canOpenOf, createDelete, createList, filesFace } from '../src/client/face.ts'
 import type { FilesInjected, TabTypeRegistry, WorkspaceFilesListRemote } from '../src/client/face.ts'
 import { childPath } from '../src/client/paths.ts'
 import { createFilesStore } from '../src/client/store.ts'
@@ -647,6 +647,21 @@ describe('createList', () => {
       .mockResolvedValue({ ok: false, error })
     const result = await createList({ workspaceFiles: { list } })(SESSION, `${ROOT}/x`, new AbortController().signal)
     expect(result).toEqual({ ok: false, error })
+  })
+})
+
+describe('createDelete', () => {
+  it('passes the directory flag through to the endpoint', async () => {
+    const remote = {
+      workspaceFiles: {
+        list: vi.fn(),
+        delete: vi.fn().mockResolvedValue({ ok: true, value: { kind: 'directory' } }),
+      },
+    }
+    const signal = new AbortController().signal
+    const result = await createDelete(remote)(SESSION, `${ROOT}/src`, true, signal)
+    expect(result).toEqual({ ok: true, value: { kind: 'directory' } })
+    expect(remote.workspaceFiles.delete).toHaveBeenCalledWith(SESSION, `${ROOT}/src`, { recursive: true }, signal)
   })
 })
 

@@ -158,6 +158,22 @@ describe('createFilesStore', () => {
     expect(state.levels[sibling]).toEqual({ kind: 'ready', level: LEVEL })
   })
 
+  it('forgets a removed entry without touching a level that is not loaded', () => {
+    const store = createFilesStore().create()
+    const { actions } = store
+    actions.start(PANE, ROOT)
+    // Nothing is cached for the root yet, so the removal only drops descendant paths.
+    actions.removed(PANE, ROOT, 'ghost.txt')
+    expect(store.getSnapshot().byPane[PANE]!.tree!.levels).toEqual({})
+
+    actions.loaded(PANE, ROOT, LEVEL)
+    actions.removed(PANE, ROOT, 'ghost.txt')
+    expect(store.getSnapshot().byPane[PANE]!.tree!.levels[ROOT]).toEqual({
+      kind: 'ready',
+      level: { ...LEVEL, entries: LEVEL.entries.filter(entry => entry.name !== 'ghost.txt') },
+    })
+  })
+
   it('keeps the navigator\'s choices before and across a tree started at a new root', () => {
     const store = createFilesStore().create()
     const { actions } = store

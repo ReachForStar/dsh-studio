@@ -992,6 +992,7 @@ describe('turn rows', () => {
         statsEvent({ time: BASE + 1_020, kind: 'approval', status: 'rejected', label: 'bash' }),
         statsEvent({ time: BASE + 1_030, kind: 'approval', status: 'cancelled', label: 'bash' }),
         statsEvent({ time: BASE + 1_040, kind: 'approval', status: 'unavailable', label: 'bash' }),
+        statsEvent({ time: BASE + 1_045, kind: 'approval', status: 'timed-out', label: 'bash' }),
         statsEvent({ time: BASE + 1_050, kind: 'approval', status: null, label: null }),
         statsEvent({ time: BASE + 1_055, kind: 'approval', status: 'asked', label: null, error: null }),
         statsEvent({ time: BASE + 1_060, kind: 'context-prune', shadowedTokens: 4_000 }),
@@ -1027,8 +1028,8 @@ describe('turn rows', () => {
     }))).toBeTruthy()
     const scope = screen.getAllByText(say('event.system-prompt'))[0]?.closest('td')
     expect(scope?.querySelector('[class*="rowTagWhen"]')?.textContent).toContain(say('event.system-prompt'))
-    expect(screen.getAllByText(say('event.approval'))).toHaveLength(7)
-    for (const status of ['asked', 'allowed', 'rejected', 'cancelled', 'unavailable'] as const) {
+    expect(screen.getAllByText(say('event.approval'))).toHaveLength(8)
+    for (const status of ['asked', 'allowed', 'rejected', 'cancelled', 'unavailable', 'timed-out'] as const) {
       expect(screen.getAllByText(say(`event.approval.${status}`)).length).toBeGreaterThan(0)
     }
   })

@@ -888,6 +888,17 @@ describe('Removing a listed entry', () => {
     expect(h.view.container.querySelector(`[data-files-path="${ROOT}/src"]`)).toBeNull()
   })
 
+  it('closes the delete dialog from its close control', async () => {
+    const h = mountNavigator(A)
+    await revealSrc(h)
+    act(() => { fireEvent.click(removeButton(h, 'src')) })
+    const asked = within(document.body).getByRole('dialog')
+    // The header's close control shares the cancel label and is the first one.
+    act(() => { fireEvent.click(within(asked).getAllByRole('button', { name: zh['delete.cancel'] })[0]!) })
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+    expect(h.removal.remove).not.toHaveBeenCalled()
+  })
+
   it('asks for no contents when the row is a file', async () => {
     const h = mountNavigator(A)
     await revealSrc(h)

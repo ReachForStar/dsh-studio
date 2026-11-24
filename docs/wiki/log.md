@@ -1341,3 +1341,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 ## [2026-11-24] test(coverage): A2A 工具与 Pi 子代理达标，豁免 33 → 30
 
 - `a2a/tool-a2a/src/index.ts`、`subagent-pi/src/{index,run}.ts` 补用例后转为强制；`a2a-host/executor.ts` 余一条不可构造帧的分支，仍与 `index.ts` 同组豁免。
+
+## [2026-11-24] test(coverage): 论文翻译路由达标，豁免 30 → 29
+
+- `ui-paper-reader/src/translate-service.ts` 补 models 路由三条用例后转为强制；`PaperReader.tsx` 先解析后匹配固定模型，使其空值/残缺守卫可达，并补清空、目录失败、卸载后到达三条用例，仍余三处。

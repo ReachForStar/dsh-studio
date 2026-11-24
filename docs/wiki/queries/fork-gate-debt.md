@@ -319,3 +319,9 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `subagent-pi/src/index.ts` | 请求已中止且 cwd 不可用时优先报告中止；请求仍存活时保留 cwd 诊断 | 转强制 |
 
 `a2a-host/executor.ts` 只差一条「非事件帧跳过」的分支：这一帧类型不在 `SessionFollowFrame` 的可构造成员里，现有测试靠被禁止的 `as unknown` 伪造，因此仍随 `index.ts` 留在豁免中。
+
+### 2026-11-24 论文翻译路由达标（30 → 29）
+
+`ui-paper-reader/src/translate-service.ts` 转为强制：补 `/paper-reader/models` 的 GET 列表、非 GET 的 405、目录读取失败的 500 三条用例；同时把 405 文案里的 `req.method ?? 'GET'` 改为 `String(req.method)`（非 GET 判定已经排除了 `undefined`，另一侧永不执行）。
+
+同批还补了 `PaperReader.tsx` 的「清空固定模型」「目录读取失败回落到会话路由」「卸载后到达的目录不写状态」用例，并把固定模型的解析提前到目录匹配之前——原来先比较 `provider/model` 字符串再解析，导致 `parseStoredModel` 的空值与残缺分隔符守卫不可达。该文件仍差三处（localStorage 读取失败的 catch、两处已卸载分支），留在豁免中。

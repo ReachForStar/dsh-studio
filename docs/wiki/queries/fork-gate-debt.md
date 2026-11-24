@@ -259,3 +259,15 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 - `.catch` 里的启动失败报告需要 peer 循环创建失败才会执行。
 
 结论：`agent-loop` 的处理顺序是先删死分支、再由真实 peer 后端用例补齐，而不是继续在夹具里绕。
+
+### 2026-11-24 豁免条目收窄（46 → 43）
+
+补齐分支用例后，三个文件达到 100% 并被转为强制；对应豁免条目从多文件花括号收窄到仍不达标的那个文件（符合「每条只写一个文件」）：
+
+| 文件 | 补的用例 |
+| --- | --- |
+| `xingchen/src/clear.ts` | 取消路径（压缩抛错时信号已中止，落定「清理已取消」由运行时再抛 abort）与非压缩域错误上抛 |
+| `xingchen/src/skills.ts` | 缺 frontmatter、缺 description、`SKILL.md` 不是文件三种装配拒绝 |
+| `session-format-v3-to-v4/src/facts.ts` | 已在早前的描述符用例中补齐（非法 mode 与 v1 描述符），条目收窄后转为强制 |
+
+`xingchen/src/index.ts` 仍豁免（15 语句、20 分支：`turnReasonOf` 的其余终止原因、投影 wire、子代理失败分类、`xingchen_route` 的守卫）。`session-format-v3-to-v4/src/relationships.ts` 仍是最大缺口（约 40 语句，v3→v4 关系迁移的逐分支）。

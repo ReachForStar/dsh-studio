@@ -1304,3 +1304,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 补真实分支用例并删除 4 个文件的豁免：`client/modules` 的兄弟 chunk 缓存返回、`test-support/client-runtime` 的 `deleteSession` 两条路、`api/session-controller` 的预设 `backend` 四处展开、`workspace` 的 `deleteSession` 整段（活动/存活/成功/缺失日志）。
 - `core/agent-loop` 仍豁免：`delegateToRegistry` 的字段缺省分支是死分支（唯一调用点必传 `backend`），委派成功路径需要一个真实 `Agent` 句柄，现有夹具只能用被禁止的 `as unknown` 伪造，应改由真实 peer 后端覆盖。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)。
+
+## [2026-11-24] test(coverage): 覆盖率豁免 46 → 43（入口收窄）
+
+- 补齐 `xingchen/clear.ts`（取消/上抛）、`xingchen/skills.ts`（三种装配拒绝）、`session-format-v3-to-v4/facts.ts` 的分支用例，三者达 100% 后转为强制；`vitest.config.ts` 的两条豁免从花括号多文件收窄到 `xingchen/src/index.ts` 与 `session-format-v3-to-v4/src/relationships.ts`。
+- 现状：豁免 43 个文件；`xingchen/src/index.ts`（15 语句 / 20 分支）与 `session-format-v3-to-v4/src/relationships.ts`（约 40 语句）仍是同批最大缺口。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)。

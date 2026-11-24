@@ -82,6 +82,37 @@ describe('config-driven session id', () => {
     await ctx.fiber.dispose()
   })
 
+  it('rejects a configured backend outside the supported loops', async () => {
+    const ctx = await makeCoreContext()
+    // The config schema admits any string, so the runtime check owns this refusal.
+    const config = { agents: [{ id: 'main', backend: 'oc', model: 'mock' }] } as never
+    await expect(ctx.plugin(AgentLoop, config)).rejects.toThrow('backend must be "dsh" or "pi"')
+    await ctx.fiber.dispose()
+  })
+
+  it('records the default backend on a configured dsh agent', async () => {
+    const ctx = await makeCoreContext()
+    await ctx.plugin(AgentLoop, {
+      agents: [{ id: 'main', sessionId: brandString<SessionId>('config-dsh'), backend: 'dsh', model: 'mock' }],
+    })
+    await expect.poll(() => ctx.agents.get(brandString<SessionId>('config-dsh'))).toBeDefined()
+    await ctx.fiber.dispose()
+  })
+
+  it('delegates a configured peer backend to that loop factory', async () => {
+    const ctx = await makeCoreContext()
+    // A peer loop owns its runtime; this factory hands the configured session to
+    // the default factory so the handle stays a real Agent rather than a stub.
+    ctx.agents.setFactory({
+      createAgent: async (_ownerCtx, options) => await ctx.agents.create({ ...options, meta: {} }),
+      resume: () => Promise.reject(new Error('the configured peer agent starts fresh')),
+    }, 'pi')
+    await ctx.plugin(AgentLoop, { agents: [{ id: 'peer', backend: 'pi', model: 'mock' }] })
+    await expect.poll(() => ctx.agents.list()).toHaveLength(1)
+    expect(ctx.agents.list()[0]?.id).toMatch(/^peer-session-/u)
+    await ctx.fiber.dispose()
+  })
+
   it('rejects an empty exact id before publishing an agent', async () => {
     const ctx = await makeCoreContext()
     await expect(ctx.plugin(AgentLoop, {

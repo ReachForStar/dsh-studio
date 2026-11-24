@@ -891,9 +891,22 @@ describe('workspaces action face', () => {
     // Default unarchive mirrors it: the id leaves the same set.
     await ws.unarchiveSession('s0' as SessionId)
     expect(ws.list.getSnapshot().archivedSessionIds).toEqual(['s1'])
+    // The default delete mirrors the production effect on the list state: the id
+    // leaves every workspace account, the archive set, and the pin set.
+    await ws.update((draft) => {
+      draft.items = [{
+        workspaceId: brandString<WorkspaceId>('w1'), title: 'w', path: '/w',
+        sessionIds: [brandString<SessionId>('s0')], createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      }]
+      draft.pinnedSessionIds = [brandString<SessionId>('s0')]
+    })
+    await ws.deleteSession('s0' as SessionId)
+    expect(ws.list.getSnapshot().items[0]?.sessionIds).toEqual([])
+    expect(ws.list.getSnapshot().pinnedSessionIds).toEqual([])
+    expect(ws.list.getSnapshot().archivedSessionIds).toEqual(['s1'])
     expect(ws.calls.map(c => c.method)).toEqual(
       ['create', 'create', 'rename', 'delete', 'insertBefore', 'insertSessionBefore',
-        'archiveSession', 'archiveSession', 'unarchiveSession'])
+        'archiveSession', 'archiveSession', 'unarchiveSession', 'deleteSession'])
 
     ws.stub('create', () => Promise.resolve({ workspaceId: 'ws-x', title: 'X', path: '/x', sessionIds: [] } as never))
     ws.stub('rename', () => Promise.resolve({ workspaceId: 'w1', title: 'S', path: '/s', sessionIds: [] } as never))
@@ -914,6 +927,10 @@ describe('workspaces action face', () => {
     expect(ws.list.getSnapshot().archivedSessionIds).toEqual(['s1'])
     await ws.unarchiveSession('s1' as SessionId)
     expect(ws.list.getSnapshot().archivedSessionIds).toEqual(['s1'])
+    const deleteSession = vi.fn(() => Promise.resolve())
+    ws.stub('deleteSession', deleteSession)
+    await ws.deleteSession('s1' as SessionId)
+    expect(deleteSession).toHaveBeenCalledWith('s1')
     await runtime.dispose()
   })
 })

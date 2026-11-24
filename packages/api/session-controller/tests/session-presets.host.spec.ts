@@ -54,6 +54,8 @@ interface HarnessOptions {
   readonly broken?: ReadonlySet<string>
   /** Requested presets whose resolution waits for the paired promise. */
   readonly resolving?: ReadonlyMap<string, Promise<void>>
+  /** Presets that resolve with a loop backend, keyed by preset id. */
+  readonly backendOf?: ReadonlyMap<string, string>
   /** Workspace placement served to `workspaceId` requests. */
   readonly workspace?: { readonly members: readonly SessionId[]; readonly archived: readonly SessionId[] }
 }
@@ -72,6 +74,7 @@ async function harness(options: HarnessOptions = {}) {
   const presets = options.presets
   const selections: { sessionId: SessionId; agentPreset: string }[] = []
   const resumed: SessionId[] = []
+  const resumedBackends: (string | undefined)[] = []
   if (presets !== undefined) {
     const known = (id?: string): string => {
       const wanted = id ?? presets[0] ?? ''
@@ -93,7 +96,10 @@ async function harness(options: HarnessOptions = {}) {
       defaultId: presets[0],
       presetForSession: (session: Session) => preset.stateOf(session),
       resolve: (id?: string) => Promise.resolve(id === undefined ? undefined : options.resolving?.get(id))
-        .then(() => ({ id: known(id) })),
+        .then(() => {
+          const backend = options.backendOf?.get(known(id))
+          return { id: known(id), ...(backend === undefined ? {} : { backend }) }
+        }),
       mount: (_ctx: Context, id?: string) => Promise.resolve().then(() => ({ id: usable(id) })),
       select: async (agent: Agent, agentPreset: string) => {
         usable(agentPreset)
@@ -162,6 +168,7 @@ async function harness(options: HarnessOptions = {}) {
         throw Object.assign(new Error(`session "${id}" is written by this process`), { name: 'SessionAlreadyOwnedError' })
       }
       resumed.push(id)
+      resumedBackends.push(resume.backend)
       const session = ctx.sessions.prepare(id, {
         meta: record.header,
         seed: [...record.events, ...options.writtenSinceObservation?.get(id) ?? []],
@@ -170,6 +177,8 @@ async function harness(options: HarnessOptions = {}) {
     },
   }
   ctx.agents.setFactory(factory)
+  // A backend-specific preset needs its own registered factory; `pi` mirrors the Pi backend.
+  ctx.agents.setFactory(factory, 'pi')
   const remote = await createSessionTestRemote(ctx, {
     defaultModelSelection: () => ({ provider: 'test', model: 'test-model' }),
     cwd,
@@ -184,7 +193,7 @@ async function harness(options: HarnessOptions = {}) {
       .filter(event => event.type === 'agent-preset/selected')
       .map(event => event.data)
   }
-  return { ctx, remote, cwd, selections, resumed, presetOf, selectedEvents }
+  return { ctx, remote, cwd, selections, resumed, resumedBackends, presetOf, selectedEvents }
 }
 
 function storedHeader(id: SessionId, cwd: string, extra: Partial<SessionHeader> = {}): SessionHeader {
@@ -256,6 +265,34 @@ describe('session.create Agent preset identity', () => {
     await remote.create({ sessionId: brandString<SessionId>('s6') })
 
     expect(ctx.sessions.get(brandString<SessionId>('s6'))?.header.agentPreset).toBeUndefined()
+  })
+})
+
+describe('preset loop backend routing', () => {
+  it('records the resolved backend when creating a Session', async () => {
+    const { ctx, remote } = await harness({ presets: ['standard', 'pi-backed'], backendOf: new Map([['pi-backed', 'pi']]) })
+
+    const created = await remote.create({ sessionId: brandString<SessionId>('backend-new'), agentPreset: 'pi-backed' })
+
+    expect(created).toMatchObject({ ok: true })
+
+    expect(ctx.sessions.get(brandString<SessionId>('backend-new'))?.header.backend).toBe('pi')
+  })
+
+  it('resumes a stored blank Session with the resolved backend', async () => {
+    const draft = brandString<SessionId>('backend-stored')
+    const stored = new Map<SessionId, StoredSession>()
+    const { ctx, remote, resumedBackends, cwd } = await harness({
+      presets: ['standard', 'pi-backed'], backendOf: new Map([['pi-backed', 'pi']]), stored,
+    })
+    stored.set(draft, { header: storedHeader(draft, cwd), events: [] })
+
+    const reused = await remote.create({ sessionId: draft, agentPreset: 'pi-backed' })
+
+    expect(reused).toMatchObject({ ok: true })
+    expect(resumedBackends).toEqual(['pi'])
+    // A resumed Session keeps the header it was stored with; the backend only drives the loop factory.
+    expect(ctx.sessions.get(draft)?.header.backend).toBeUndefined()
   })
 })
 

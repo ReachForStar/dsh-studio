@@ -106,6 +106,17 @@ describe('ApiSession Agent lookup and recovery', () => {
     await expect(agents.resolveObservedAgent(observed)).resolves.toEqual({ agent: resumed })
     expect(resume).toHaveBeenCalledWith(expect.objectContaining({ resumeSessionId: meta.id }))
 
+    // A preset that carries a loop backend passes it to the resume, mirroring the Pi backend.
+    ctx.provide('agentPresets', {
+      defaultId: 'pi-backed',
+      presetForSession: () => undefined,
+      resolve: () => Promise.resolve({ id: 'pi-backed', backend: 'pi' }),
+      mount: () => Promise.resolve({ id: 'pi-backed' }),
+      select: () => Promise.resolve('pi-backed'),
+    } as never)
+    await expect(agents.resolveObservedAgent(observed)).resolves.toEqual({ agent: resumed })
+    expect(resume).toHaveBeenLastCalledWith(expect.objectContaining({ backend: 'pi' }))
+
     const invalid = {
       ...observed,
       header: header('observed-without-cwd', null),

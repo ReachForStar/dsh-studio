@@ -673,6 +673,16 @@ describe('require resolution', () => {
     expect(b.loader.loadCache.has('a/client.rolldown-runtime.js')).toBe(true)
   })
 
+  it('returns an already materialized sibling chunk from the module table', async () => {
+    const b = bench([row('a')], {
+      a: req => ({ first: req('./client.shared.js'), second: req('./client.shared.js') }),
+    }, {
+      pending: [{ id: 'a', chunk: 'client.shared.js', factory: () => ({ marker: 'shared' }) }],
+    })
+    const exports = await b.loader.import('a', '', {})
+    expect(exports).toEqual({ first: { marker: 'shared' }, second: { marker: 'shared' } })
+  })
+
   it('a relative chunk require without its registration is loud', async () => {
     const b = bench([row('a')], { a: req => ({ dep: req('./client.missing.js') }) })
     await expect(b.loader.import('a', '', {})).rejects.toThrow(

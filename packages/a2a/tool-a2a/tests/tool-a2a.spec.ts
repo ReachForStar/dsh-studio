@@ -91,6 +91,18 @@ describe('a2a_send', () => {
     expect(textOf(result)).toBe('审查完成')
   })
 
+  it('把 skill 与 workspace 作为 metadata 透传给对等端', async () => {
+    const send = vi.fn((_request: { peer: string; text: string; metadata?: Record<string, unknown> }) => Promise.resolve({
+      text: 'ok',
+      state: 'TASK_STATE_WORKING',
+    } satisfies A2APeerReply))
+    const ctx = await setup({ inspect: vi.fn(), send })
+    await call(ctx, 'a2a_send', { peer: 'reviewer', message: 'hi', skill: 'code-review', workspace: '/w' })
+    expect(send).toHaveBeenCalledExactlyOnceWith({
+      peer: 'reviewer', text: 'hi', metadata: { skill: 'code-review', workspace: '/w' },
+    })
+  })
+
   it('省略续聊标识时不传这些字段', async () => {
     const send = vi.fn(() => Promise.resolve({ text: 'ok' } satisfies A2APeerReply))
     const ctx = await setup({ inspect: vi.fn(), send })
@@ -116,6 +128,20 @@ describe('工具注册', () => {
     expect((send?.parameters as { required?: string[] }).required).toEqual(['peer', 'message'])
     expect(tool.name).toBe('tool-a2a')
     expect(tool.inject).toEqual(['tools', 'a2a'])
+  })
+})
+
+describe('工具卡片呈现', () => {
+  it('为两个工具都提供调用卡片', async () => {
+    const ctx = await setup({ inspect: vi.fn(async () => []), send: vi.fn() })
+    const peers = ctx.tools.get('a2a_peers')
+    const send = ctx.tools.get('a2a_send')
+    expect(peers?.presentCall?.({})).toEqual({ card: 'generic', title: 'List A2A peers', kind: 'other' })
+    expect(send?.presentCall?.({ peer: 'reviewer', message: 'hi' })).toEqual({
+      card: 'generic', title: 'Message A2A peer reviewer', kind: 'other', rawInput: 'hi',
+    })
+    expect(send?.presentCall?.({ peer: 'reviewer', skill: 'code-review', message: 'hi' }))
+      .toMatchObject({ title: 'Message A2A peer reviewer (code-review)' })
   })
 })
 
@@ -177,6 +203,15 @@ describe('a2a_send 走桥方案', () => {
       contextId: 'c0',
     }))
     expect(stub.send).not.toHaveBeenCalled()
+  })
+
+  it('派发答复没有任务标识时只回答案文本', async () => {
+    const stub = bridgeStub()
+    stub.dispatch?.mockResolvedValueOnce({ text: '只有文本' })
+    const ctx = await setup(stub)
+    const result = await call(ctx, 'a2a_send', { peer: 'claude-code', message: 'hi' })
+    expect(result).toBeDefined()
+    expect(textOf(result)).toBe('只有文本')
   })
 
   it('省略 skill 时用该 agent 的第一个 skill，未配置 skill 的 agent 直接报错', async () => {

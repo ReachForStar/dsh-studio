@@ -464,9 +464,7 @@ export default defineConfig({
         // silently; delete the entry when the file reaches the bar.
         'packages/a2a/a2a/src/{bus,client,index,server,task-store}.ts',
         'packages/a2a/a2a-host/src/{executor,index}.ts',
-        'packages/a2a/tool-a2a/src/index.ts',
         'packages/core/pi-agent-loop/src/{agent,dsh-tool-adapter,index,pi-event-translator,pi-session,pi-tool-adapter}.ts',
-        'packages/subagent/subagent-pi/src/{index,run}.ts',
         'packages/remote/fs-sftp/src/index.ts',
         'packages/remote/ssh-local/src/index.ts',
         'packages/remote/subprocess-sftp/src/index.ts',

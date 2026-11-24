@@ -190,6 +190,24 @@ describe('DshA2AExecutor.onMessage', () => {
     expect(cancel).toHaveBeenCalledExactlyOnceWith({ sessionId: 'ctx-9' })
   })
 
+  it('忽略空增量、快照帧与没有 rpcId 的用户消息', async () => {
+    const steps: Step[] = [
+      deltaFrame(''),
+      eventFrame('user/message', { source: { kind: 'user' } }),
+      ownUserFrame(),
+      deltaFrame(''),
+      deltaFrame('你'),
+      deltaFrame('好'),
+      eventFrame('assistant/message', { message: { content: [{ type: 'text', text: '你好' }] } }),
+      eventFrame('turn/end'),
+    ]
+    const { executor } = harness(steps)
+    const sink = recorder()
+    await executor.onMessage({ ...contextOf(), sink: sink.sink })
+    expect(sink.artifacts.length).toBeGreaterThan(0)
+    expect(sink.artifacts.map(entry => entry.text).join('')).toBe('你好')
+  })
+
   it('取消未运行的任务只请求会话取消', () => {
     const { executor, cancel } = harness([])
     executor.onCancel({ taskId: 'missing', contextId: 'ctx-2' })

@@ -537,6 +537,29 @@ describe('provider runs against a scripted Pi RPC child', () => {
     await expectQuiescent()
   })
 
+  it('reports an aborted request instead of an unusable child cwd', async () => {
+    const { ctx, parent, workspace } = await harness('complete')
+    const controller = new AbortController()
+    controller.abort()
+    const missing = join(workspace, 'definitely-missing-dir')
+    // Both facts are true; the abort is the reported one because it explains the stop.
+    // `start` throws synchronously, so the assertion needs an async wrapper.
+    await expect((async () => ctx.subagents.getProvider('pi')!.start!({
+      prompt: [{ type: 'text', text: 'Return the sentinel.' }],
+      parent,
+      cwd: missing,
+      signal: controller.signal,
+    }))()).rejects.toThrow('request was aborted before child startup')
+
+    // A live request keeps the cwd diagnosis instead.
+    await expect((async () => ctx.subagents.getProvider('pi')!.start!({
+      prompt: [{ type: 'text', text: 'Return the sentinel.' }],
+      parent,
+      cwd: missing,
+      signal: new AbortController().signal,
+    }))()).rejects.toThrow('child cwd is not an accessible directory')
+  })
+
   it('auto-cancels an extension dialog and still completes', async () => {
     const { ctx, parent, workspace } = await harness('extension-ui')
     const run = await ctx.subagents.getProvider('pi')!.start!({
@@ -791,6 +814,23 @@ describe('startPiRun rollback paths', () => {
     expect(error).toBeInstanceOf(Error)
     expect(error).not.toBeInstanceOf(AggregateError)
     expect((error as Error).message).toContain('spawn observer failed')
+  })
+})
+
+describe('startPiRun aggregate failures', () => {
+  it('aggregates a startup failure with a failed process cleanup', async () => {
+    const child = fakeChild({ exitOnTerminate: false })
+    // A destroyed stdin makes the protocol start throw while the child still runs,
+    // so the rollback reaches termination and that termination then fails.
+    child.toChild.destroy()
+    child.terminate.mockImplementation(() => { throw new Error('kill failed') })
+    const error: unknown = await startPiRun(request(), runSpec(child)).then(
+      () => undefined,
+      (failure: unknown) => failure,
+    )
+    expect(error).toBeInstanceOf(AggregateError)
+    expect((error as AggregateError).errors).toHaveLength(2)
+    expect((error as Error).message).toContain('startup failed and Pi cleanup also failed')
   })
 })
 

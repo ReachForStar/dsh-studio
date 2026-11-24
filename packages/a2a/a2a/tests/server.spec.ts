@@ -38,7 +38,7 @@ interface WebhookDelivery {
 }
 
 interface Webhook {
-  readonly url: string
+  url: string
   readonly deliveries: WebhookDelivery[]
   /** 接下来多少次投递回应 5xx；用完之前不回应成功。 */
   failures: number

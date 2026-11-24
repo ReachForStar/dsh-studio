@@ -293,3 +293,14 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `xingchen/src/index.ts` | `turnReasonOf` 的五个终止原因与未建模默认值、投影 `wire.view` 恒等、空答复不落会话、子运行释放失败不掩盖结果 | 工具无调用 agent 的守卫、`holdRole` 保持上一席位、派发抛错后记失败进度、席位超时释放（已有时机断言但覆盖未计） |
 
 `fs-local` 的 `removePath` 失败分支需要 `chmod` 造出 `EACCES`（与既有目录权限用例同法），通用 errno 分支在本机没有 root 无法构造；`xingchen` 的 `holdRole` 需要投影里先有上一席位的派发记录。
+
+
+### 2026-11-24 覆盖率收敛续（40 → 34）
+
+| 文件 | 补的用例 | 结果 |
+| --- | --- | --- |
+| `client/ui-sidebar-files/src/client/{FileNavigator,face,paths,store}.ts*` | 删除对话框的关闭控件路径、`createDelete` 的目录标志透传、根路径的包含判定、未加载层级的移除 | 四个文件转为强制 |
+| `experimental/client-ui-stats/src/client/StatsTable.tsx` | 审批状态的 `timed-out` 分支 | 转为强制 |
+| `experimental/cua/src/client/controller.ts` | 管理动作遇到 `gateway/service-unavailable` 时同样标记服务缺失（不进 toast） | 转为强制 |
+
+同一轮把 `ui-reference/src/client/index.ts` 误判为达标并删除豁免：json 报告显示它仍有 5 处缺口（`apply` 的注册与 codec 路径），已恢复豁免。教训是「text 报告没有输出」不能作为达标证据，必须读 json 里该文件的键与覆盖计数。

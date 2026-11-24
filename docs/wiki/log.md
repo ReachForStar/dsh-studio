@@ -1328,3 +1328,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - `packages/fs/fs-local/src/fsio.ts` 的 `removePath`：两处 catch 手写 `FS_NOT_FOUND`／`FS_PERMISSION_DENIED` 分支，与 `fsErrorFromErrno` 的映射逐字相同（ENOENT/ENOTDIR→not found、EACCES/EPERM→permission denied、其余→FS_IO_ERROR），直接改为一行 `throw fsErrorFromErrno(...)`；行为不变，`fsio.ts` 达 100% 后删除豁免。
 - 同时补齐宽容匹配各阶段与 `removePath` 的缺失/非空/权限/特殊文件用例；`xingchen/index.ts` 再补命令面派发失败用例。
+
+## [2026-11-24] test(coverage): 客户端面板与 CUA 控制器达标，豁免 40 → 34
+
+- `ui-sidebar-files` 的 `FileNavigator.tsx`、`face.ts`、`paths.ts`、`store.ts` 与 `client-ui-stats/StatsTable.tsx`、`cua/src/client/controller.ts` 补用例后转为强制，六条豁免删除。
+- `ui-reference/src/client/index.ts` 曾被误判达标（text 报告无输出不等于 100%），json 复核发现 5 处缺口后恢复豁免。

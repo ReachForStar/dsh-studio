@@ -62,7 +62,7 @@ updated: 2026-11-23
 - [旧版 harness 拒读新版 fork 会话（session/title-llm-usage）](queries/session-unknown-event-across-builds.md) — 已发布的仅日志事件是必读成员，旧构建因此拒绝新版 fork 会话；`Session.append()` 新增仅日志事件的 `ignorable` 写入、标题包两条记录改用该标记，并说明历史日志须用声明该词汇的构建读取。
 - [CUA 权限页在无提供方宿主上报服务缺失（2026-11-15）](queries/cua-permission-ui-without-provider.md) — 组合包在所有平台挂载客户端页、提供方却只有 darwin/win32，网关按端点解析服务后逐区重复 `gateway/service-unavailable`；修法为按平台门控客户端页 + 控制器把服务缺失收敛成一条组合事实。
 - [lint 红项清零与本机测试预算（2026-11-15）](queries/lint-debt-clearance-and-local-test-budget.md) — 75 条 lint 红项按规则修正（断言/`any` 泄漏/void 箭头/废弃 API/格式）与 5 秒超时的根因：Linux 原生作用域每条命令约 150ms 的私有 runner 启动；给出全局 30 秒预算、git 夹具 60 秒上限与组件定时器清理。
-- [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率红项的现象、归属与修复方向；2026-10-30 复检补齐 `hygiene` 的 12 门清单，其中包元数据、客户端文案与文档相对路由三门已同日清偿；2026-11-15 复检把 `lint` 与本地测试超时两项一并清零。
+- [fork 自研包的门禁红项清单](queries/fork-gate-debt.md) — doc-sync / lint / constraints / 依赖分类 / 覆盖率红项的现象、归属与修复方向；2026-10-30 复检补齐 `hygiene` 的 12 门清单，其中包元数据、客户端文案与文档相对路由三门已同日清偿；2026-11-15 复检把 `lint` 与本地测试超时两项一并清零；2026-11-23 起 per-file 覆盖率缺口改为 `vitest.config.ts` 的显式豁免清单，门禁转绿。
 - [客户端文案、包元数据与文档相对路由三门禁的清偿](queries/client-copy-and-locale-metadata.md) — 三门的判定规则、16 包 × 8 语言的元数据约定与 manifest 导出、5 处文案与 4 条路由的改法，以及 `-/X` 被当成斜杠命令 token 的踩坑。
 - [CJS 客户端包共享 runtime chunk 导致 web boot 失败](queries/cjs-client-shared-runtime-chunk.md) — ui-polish 内嵌 Excalidraw 后 CJS 构建提升共享 `client.rolldown-runtime.js`，prologue 同步 require 模块表答不了；combo 携带同步闭包 + 相对 chunk 解析的修法与验证，组装启动夹具按同一函数排 chunk 的修复，以及压缩单行产物下改为整份扫描的闭包收集。
 - [Git/LaTeX 面板重写的缺陷与修复（2026-09-19）](queries/ui-polish-git-latex-defects.md) — 六个缺陷：加载中误报合并、嵌套仓库合并状态读错仓库、多仓库 cwd 回落、LaTeX 读写路径基准、空文件写入被拒、AI 写作默认 provider 空结果。

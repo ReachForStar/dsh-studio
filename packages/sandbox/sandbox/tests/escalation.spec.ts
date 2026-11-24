@@ -113,6 +113,16 @@ describe('approveEscalation', () => {
     })
   })
 
+  it('forwards the classified action and resources to the approver', async () => {
+    const seen: { action?: string; resources?: readonly string[] }[] = []
+    await approveEscalation(req(), ingredients({
+      action: 'bash',
+      resources: ['workspace/changed.txt'],
+      approver: approver('allowed-once', r => seen.push(r as { action?: string; resources?: readonly string[] })),
+    }))
+    expect(seen[0]).toMatchObject({ action: 'bash', resources: ['workspace/changed.txt'] })
+  })
+
   it.each(ESCALATION_TARGETS)('repeating %s succeeds without asking for approval', async (mode) => {
     const seen: unknown[] = []
     const request = req({ requestedMode: mode, effectiveMode: mode })

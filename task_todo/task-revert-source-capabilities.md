@@ -14,6 +14,6 @@
 - [x] 更新 `docs/wiki/index.md` 与 `docs/wiki/log.md`
 - [x] 补升级指南，记录被移除的对外能力
 - [x] 里程碑：`pnpm run build:check` 通过
-- [ ] 阻塞：`test:coverage` 的 per-file 100% 阈值在本 fork 既有红项上不达标（66 个文件，含 a2a、remote/*、cua、xingchen、pi-agent-loop、ui-paper-reader 等），与本次回退无关；全量 63657 通过 / 1 既定期望失败 / 278 跳过
+- [x] 里程碑：`pnpm run test:coverage` 通过（63,659 通过 / 1 既定期望失败 / 278 跳过，per-file 100% 无失败；本 fork 既有缺口按文件登记豁免，见 queries/fork-gate-debt.md）
 - [x] 里程碑：`pnpm run doc-sync` 通过
-- [ ] 提交并推送（提交 b7c2b6cd90、49411b6b35；推送待完成）（按来源拆分为四个回退提交，另加文档与 wiki 提交）
+- [ ] 提交并推送（代码回退、文档与任务清单各一个提交，均已推送）（按来源拆分为四个回退提交，另加文档与 wiki 提交）

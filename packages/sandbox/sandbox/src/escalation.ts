@@ -29,14 +29,12 @@ import type { SandboxMode } from './index.ts'
  *   or no approval channel.
  * - `SANDBOX_ESCALATION_REJECTED` — the user declined the escalation; the operation stays denied.
  * - `SANDBOX_ESCALATION_CANCELLED` — the approval request ended without a decision while the call itself was not cancelled.
- * - `SANDBOX_ESCALATION_TIMED_OUT` — the approval request exceeded its answer window without a decision.
  */
 export const SANDBOX_ESCALATION_ERROR_CODES = [
   'SANDBOX_ESCALATION_INVALID_ARGUMENT',
   'SANDBOX_ESCALATION_UNAVAILABLE',
   'SANDBOX_ESCALATION_REJECTED',
   'SANDBOX_ESCALATION_CANCELLED',
-  'SANDBOX_ESCALATION_TIMED_OUT',
 ] as const
 
 /** One code from {@link SANDBOX_ESCALATION_ERROR_CODES}. */
@@ -140,7 +138,7 @@ export function sandboxPermissionsDescription(subject: string): string {
  * to the approval seam's `ApprovalOutcome` so an `ApprovalService.request`
  * return is assignable without this package importing it.
  */
-export type EscalationOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable' | 'timed-out'
+export type EscalationOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'
 
 /**
  * The minimal approval-request shape {@link approveEscalation} needs —
@@ -266,11 +264,6 @@ export async function approveEscalation<A, C>(request: EscalationRequest, approv
       throw new SandboxEscalationError(
         `sandbox escalation to "${mode}" requires approval, but no approval channel is available`,
         'SANDBOX_ESCALATION_UNAVAILABLE',
-      )
-    case 'timed-out':
-      throw new SandboxEscalationError(
-        `approval for escalating to "${mode}" timed out; the ${subject} stays denied`,
-        'SANDBOX_ESCALATION_TIMED_OUT',
       )
     default: return assertNever(outcome, 'EscalationOutcome')
   }

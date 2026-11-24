@@ -13,8 +13,6 @@ const CLAUDE_EVENTS = [
   'UserPromptSubmit',
   'PreToolUse',
   'PostToolUse',
-  'PreCompact',
-  'PostCompact',
   'Stop',
   'SubagentStart',
   'SubagentStop',

@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-23-fork-coverage-exemptions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-11-23-fork-coverage-exemptions.md
+/agent-note-exempt-fork-capability-files-from-the-per-file-coverage-gate:
+  en: df2489f3276f3d15
+  zh: 5c5d6ff10c636963
+/agent-note-exempt-fork-capability-files-from-the-per-file-coverage-gate/problem:
+  en: 36eb2d7271f797cc
+  zh: 2593eeeae29ae228
+/agent-note-exempt-fork-capability-files-from-the-per-file-coverage-gate/decision:
+  en: c508fba2f643fb71
+  zh: 294d155c531fc6ff
+/agent-note-exempt-fork-capability-files-from-the-per-file-coverage-gate/alternatives-considered:
+  en: ecbc3ccbe03eb662
+  zh: 0206bd0efce2d1e1
+/agent-note-exempt-fork-capability-files-from-the-per-file-coverage-gate/consequences:
+  en: de7da9947bbb3227
+  zh: 3e0b724d273dddc5

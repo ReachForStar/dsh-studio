@@ -304,3 +304,8 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 | `experimental/cua/src/client/controller.ts` | 管理动作遇到 `gateway/service-unavailable` 时同样标记服务缺失（不进 toast） | 转为强制 |
 
 同一轮把 `ui-reference/src/client/index.ts` 误判为达标并删除豁免：json 报告显示它仍有 5 处缺口（`apply` 的注册与 codec 路径），已恢复豁免。教训是「text 报告没有输出」不能作为达标证据，必须读 json 里该文件的键与覆盖计数。
+
+
+### 2026-11-24 A2A 桥配置达标（34 → 33）
+
+`a2a/src/bridge-config.ts` 转为强制：补「配置文件不是 JSON」与「agent 未写端口时取默认端口」两条用例；同时把 `catch` 里 `error instanceof Error ? error.message : String(error)` 的分支改成 `String(error)`——`JSON.parse` 只会抛 `SyntaxError`，另一侧永不可达，而 `String(error)` 同样保留「SyntaxError: …」诊断文本。

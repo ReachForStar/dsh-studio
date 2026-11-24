@@ -1,6 +1,6 @@
 # 覆盖率豁免收敛：其余批次（2026-11-24）
 
-游标：豁免清单 50 → 46 → 43 → 41 → 40 → 34 个文件。
+游标：豁免清单 50 → 46 → 43 → 41 → 40 → 34 → 33 个文件。
 
 - [ ] 批次 A 第二批：`session-format-v3-to-v4/relationships.ts`、`session-persistence-sqlite/{persistence,sqlite}.ts`
 - [x] 批次 B 第一批：`fs/index.ts` 与 `fs/text.ts` 补用例并删除豁免（条目整体移除，2 个文件转为强制）
@@ -10,7 +10,8 @@
 - [x] 顺带：`session-format-v3-to-v4` 的条目收窄到 `relationships.ts`，`facts.ts` 转为强制
 - [x] 批次 D：4/5 完成 —— `workspace`、`api/session-controller`、`client/modules`、`client-runtime` 补用例并删除豁免
 - [ ] 阻塞：批次 D 的 `core/agent-loop/src/index.ts` —— `delegateToRegistry` 的字段缺省分支为死分支（唯一调用点必传 `backend`），委派成功路径需要一个真实 `Agent` 句柄，现有夹具只能用被 `verify-no-unknown-casts` 禁止的 `as unknown` 伪造，需先删死分支并由真实 peer 后端用例覆盖
-- [ ] 批次 E：A2A 9 个文件
+- [x] 批次 E 第一批：`a2a/src/bridge-config.ts` 转为强制（非法 JSON 与缺省端口用例，删掉只可能来自 SyntaxError 的分支）
+- [ ] 批次 E 第二批：`a2a/src/{bus,client,index,server,task-store}`、`a2a-host/{executor,index}`、`tool-a2a`
 - [ ] 批次 F：远端 SSH/SFTP 4 个文件
 - [x] 批次 G 第一批：`cua/src/client/controller.ts` 转为强制
 - [ ] 批次 G 第二批：`computer-use-cua-driver-mcp/{index,installer}.ts`（安装路由与安装器约 37 语句）、`CuaDriverInstall.tsx`

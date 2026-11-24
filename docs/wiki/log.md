@@ -1333,3 +1333,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - `ui-sidebar-files` 的 `FileNavigator.tsx`、`face.ts`、`paths.ts`、`store.ts` 与 `client-ui-stats/StatsTable.tsx`、`cua/src/client/controller.ts` 补用例后转为强制，六条豁免删除。
 - `ui-reference/src/client/index.ts` 曾被误判达标（text 报告无输出不等于 100%），json 复核发现 5 处缺口后恢复豁免。
+
+## [2026-11-24] fix(a2a): 桥配置解析达标，豁免 34 → 33
+
+- `a2a/src/bridge-config.ts`：补非法 JSON 与缺省端口用例；`catch` 里只可能来自 `SyntaxError` 的 `instanceof` 分支改为 `String(error)`，诊断文本保留。文件达 100% 后条目收窄到其余五个文件。

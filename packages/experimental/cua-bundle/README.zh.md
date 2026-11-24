@@ -1,5 +1,5 @@
 ---
-description: "在 macOS 和 Windows 上开启可选 Computer Use 及权限页面。"
+description: "在 macOS、Windows 和 Linux 上开启可选 Computer Use，平台提供权限页面时一并加载。"
 kind: "package-bundle"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-在 macOS 和 Windows 的插件页为已有和新建会话开启 Computer Use。PTC 通过 `run_code` 使用 `cua`，其他预设使用 `cua_run_code`。组合包随 DSH 提供且默认关闭，在受支持 Host 的实验性插件列表中显示。各 Host 加载对应平台的原生提供方和共享权限页面。关闭时不准备本机组件、不注册 CUA 工具或添加其模型指引。
+在 macOS、Windows 和 Linux 的插件页为已有和新建会话开启 Computer Use。PTC 通过 `run_code` 使用 `cua`，其他预设使用 `cua_run_code`。组合包随 DSH 提供且默认关闭，在受支持 Host 的实验性插件列表中显示。各 Host 加载对应平台的原生提供方；macOS 和 Windows 还会加载共享权限页面。关闭时不准备本机组件、不注册 CUA 工具或添加其模型指引。
 
 ## 目录
 
@@ -24,9 +24,11 @@ kind: "package-bundle"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在 macOS 或 Windows 上打开“插件 → 更多”，在实验性插件列表中开启 Computer Use。开启后组合包也会出现在插件主列表中，关闭后只留在实验性插件列表。启用后，详情页在配图下方、设置项上方显示使用建议，Windows 用户还可查看辅助程序的配置步骤。
+在 macOS、Windows 或 Linux 上打开“插件 → 更多”，在实验性插件列表中开启 Computer Use。开启后组合包也会出现在插件主列表中，关闭后只留在实验性插件列表。启用后，详情页在配图下方、设置项上方显示使用建议，Windows 用户还可查看辅助程序的配置步骤。
 
 在 macOS 上，组合包随 DSH 提供并随之升级，开启时无需下载。发布包包含已签名和公证的 helper，用户无需编译工具。源码 Web 和开发 Desktop 在开启时准备临时签名的 helper。请为 `DSH Computer Use.app` 授予辅助功能和屏幕录制权限。
+
+在 Linux 上，提供方在 Host 进程内运行 Cua Driver SDK，开启时无需下载也不准备 helper；Host 需要其进程能访问的 X11 图形会话。Linux 只提供驱动自带的工具，不加载权限页面。
 
 各平台的原生准备和访问要求分别见 [macOS 提供方](../cua-macos/README.zh.md)和 [Windows 提供方](../cua-windows/README.zh.md)。源码 Web 在仓库根目录运行以下命令：
 
@@ -92,6 +94,9 @@ CUA 生效和卸载会改变工具 schema 与系统指引，后续请求使用�
 - Windows 的 npm 安装包不含 helper。请按架构准备原生产物，并通过 `helperPath` 指定 exe。见 [Windows 配置说明](../cua-windows/README.zh.md#setup)。
 - 系统权限需用户在 macOS 中确认，开启组合包不会自动授予权限。
 - PTC 执行方式由 profile 共享，与 CUA 提供方持有的程序运行时分别配置。未启用 HMR 的 Host 在重启时应用已保存的变更。
+- Linux 需要 Host 进程能访问的 X11 图形会话；访问不到的会话窗口无法读取。
+- Linux 不加载权限页面和 `cua`／`cua_run_code` 绑定，模型得到的是驱动自带的 `cua_driver_native__*` 工具。
+- Linux 提供方与 Host 同进程，原生失败会终止 Host。
 
 <a id="dev-note"></a>
 ### 开发备注

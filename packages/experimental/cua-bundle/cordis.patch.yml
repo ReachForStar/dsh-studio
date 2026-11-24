@@ -11,8 +11,15 @@
       disabled: !!js process.platform !== 'win32'
       config:
         agentPreset: ptc
+    # Linux runs the Cua Driver SDK inside this process instead of the macOS and
+    # Windows helper applications, so it needs a graphical X11 session but no
+    # separate permission surface.
+    - id: cua-native
+      name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
+      disabled: !!js process.platform !== 'linux'
     - id: ui-cua
       name: '@deepseek-ai/dsh-cua'
-      # No Linux provider exists, so the permission page would render against an absent
-      # cuaAccess Service; load the client UI only where a provider can serve it.
+      # The permission page drives the shared `cuaAccess` Service, which only the
+      # macOS and Windows native channels provide; Linux keeps the provider tools
+      # and loads no client UI.
       disabled: !!js process.platform !== 'darwin' && process.platform !== 'win32'

@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-cua-bundle",
-  "description": "Optional Computer Use for macOS and Windows",
+  "description": "Optional Computer Use for macOS, Windows, and Linux",
   "version": "0.2.3-alpha.2",  "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"
@@ -40,7 +40,8 @@
       "patch": "./cordis.patch.yml",
       "platforms": [
         "darwin",
-        "win32"
+        "win32",
+        "linux"
       ]
     }
   },
@@ -54,10 +55,15 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/cordis-plugin-include": "workspace:~",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:~"
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tool-executor-native": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
   },
   "optionalDependencies": {
     "@deepseek-ai/dsh-cua-macos": "workspace:*",
-    "@deepseek-ai/dsh-cua-windows": "workspace:*"
+    "@deepseek-ai/dsh-cua-windows": "workspace:*",
+    "@deepseek-ai/dsh-experimental-computer-use-cua-driver-native": "workspace:*"
   }
 }

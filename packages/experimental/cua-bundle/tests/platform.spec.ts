@@ -5,17 +5,23 @@ import Loader, { interpolate, type EntryOptions } from '@deepseek-ai/cordis-plug
 import { parseEntryYaml } from '@deepseek-ai/cordis-plugin-include'
 import { expect, it, vi } from 'vitest'
 
+const NATIVE = '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
+
 it.each(['darwin', 'win32', 'linux'])('loads the exported patch directly on %s and selects its native provider', async (platform) => {
   const patch = parseEntryYaml(await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')) as { insert: EntryOptions[] }[]
   for (const id of ['cua-macos', 'cua-windows']) {
     expect(patch[0]!.insert.find(row => row.id === id)?.name).toBe(`@deepseek-ai/dsh-${id}`)
   }
+  expect(patch[0]!.insert.find(row => row.id === 'cua-native')?.name).toBe(NATIVE)
   const ctx = new Context()
   await ctx.plugin(Loader)
   if (!ctx.loader.internal) throw new Error('Loader module importer is unavailable')
   const imported = vi.spyOn(ctx.loader.internal, 'import').mockImplementation(async (name: string) => {
     if (platform !== 'darwin' && name === '@deepseek-ai/dsh-cua-macos') {
       throw new Error('native provider is absent from this installation')
+    }
+    if (platform !== 'linux' && name === NATIVE) {
+      throw new Error('the Cua Driver SDK is absent from this installation')
     }
     return { name, apply: () => {} }
   })
@@ -25,11 +31,12 @@ it.each(['darwin', 'win32', 'linux'])('loads the exported patch directly on %s a
     }
     await ctx.loader.await()
     const imports = imported.mock.calls.map(call => call[0])
-    const supported = platform === 'darwin' || platform === 'win32'
-    expect(imports.includes('@deepseek-ai/dsh-cua')).toBe(supported)
+    const sharedTools = platform === 'darwin' || platform === 'win32'
+    expect(imports.includes('@deepseek-ai/dsh-cua')).toBe(sharedTools)
     expect(imports).toContain('@deepseek-ai/dsh-computer-use')
     expect(imports.includes('@deepseek-ai/dsh-cua-macos')).toBe(platform === 'darwin')
     expect(imports.includes('@deepseek-ai/dsh-cua-windows')).toBe(platform === 'win32')
+    expect(imports.includes(NATIVE)).toBe(platform === 'linux')
   } finally {
     await ctx.fiber.dispose()
     imported.mockRestore()

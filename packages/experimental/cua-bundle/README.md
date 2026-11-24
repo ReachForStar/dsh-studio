@@ -1,5 +1,5 @@
 ---
-description: "Enable optional Computer Use on macOS and Windows with its permission page."
+description: "Enable optional Computer Use on macOS, Windows, and Linux, with the shared permission page where the platform provides one."
 kind: "package-bundle"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Enable Computer Use from Plugins on macOS and Windows for existing and new sessions. PTC uses the `cua` binding through `run_code`. Other presets receive `cua_run_code`. The bundle ships with DSH switched off and appears in the Experimental plugins list on supported Hosts. Each Host loads its platform's native provider and the shared permission page. Disabled profiles prepare no native components and register neither CUA tools nor their model guidance.
+Enable Computer Use from Plugins on macOS, Windows, and Linux for existing and new sessions. PTC uses the `cua` binding through `run_code`. Other presets receive `cua_run_code`. The bundle ships with DSH switched off and appears in the Experimental plugins list on supported Hosts. Each Host loads its platform's native provider; macOS and Windows also load the shared permission page. Disabled profiles prepare no native components and register neither CUA tools nor their model guidance.
 
 ## Table of Contents
 
@@ -24,9 +24,11 @@ Enable Computer Use from Plugins on macOS and Windows for existing and new sessi
 <a id="use-this-package"></a>
 ## Use this package
 
-On macOS or Windows, open **Plugins → More** and switch on **Computer use** in the Experimental plugins list. An enabled bundle also appears in the main plugin list; switching it off returns it to the Experimental plugins list only. Once enabled, the details show usage guidance below the preview and above the settings. On Windows they also explain how to configure the helper.
+On macOS, Windows, or Linux, open **Plugins → More** and switch on **Computer use** in the Experimental plugins list. An enabled bundle also appears in the main plugin list; switching it off returns it to the Experimental plugins list only. Once enabled, the details show usage guidance below the preview and above the settings. On Windows they also explain how to configure the helper.
 
 On macOS, the bundle ships with DSH and updates with it, so enabling it downloads nothing. Published packages contain the signed and notarized helper; users need no compiler. Source Web and development Desktop prepare an ad-hoc helper when enabled. Grant Accessibility and Screen Recording to `DSH Computer Use.app`.
+
+On Linux, the provider runs the Cua Driver SDK inside the Host process, so enabling the bundle installs nothing and prepares no helper; the Host needs an X11 graphical session that its process can reach. Linux receives the driver's own tools and loads no permission page.
 
 Native preparation and access requirements belong to the [macOS provider](../cua-macos/README.md) and [Windows provider](../cua-windows/README.md). For source Web, run these commands from the repository root:
 
@@ -92,6 +94,9 @@ CUA activation and removal change tool schemas and system guidance; subsequent r
 - Windows npm installations require a separate native helper. Configure `helperPath` for the matching architecture as described in [Windows setup](../cua-windows/README.md#setup).
 - System permissions require the user’s approval in macOS; enabling the bundle does not grant them.
 - PTC execution is shared by the profile and configured independently of the CUA provider's program runtime. A Host without HMR applies saved changes at restart.
+- Linux needs an X11 graphical session the Host process can reach; windows of a session it cannot reach stay unreadable.
+- Linux loads no permission page and no `cua`/`cua_run_code` bindings; the model receives the driver's own `cua_driver_native__*` tools.
+- The Linux provider shares the Host process, so a native failure terminates the Host.
 
 <a id="dev-note"></a>
 ### Dev Note

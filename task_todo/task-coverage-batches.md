@@ -2,7 +2,7 @@
 
 游标：豁免清单 50 → … → 30 → 29 个文件。
 
-- [ ] 批次 A 第二批：`session-format-v3-to-v4/relationships.ts`、`session-persistence-sqlite/{persistence,sqlite}.ts`
+- [x] 批次 A 第二批：`session-format-v3-to-v4/relationships.ts` 的用例原本走错代际（v5 编解码器），改走 `restoreReleasedV4Artifact` 后达标；`session-persistence-sqlite/{persistence,sqlite}.ts` 补删除分叉与独占分段用例
 - [x] 批次 B 第一批：`fs/index.ts` 与 `fs/text.ts` 补用例并删除豁免（条目整体移除，2 个文件转为强制）
 - [x] 批次 B 第二批（`fs-local/src/fsio.ts`）：补宽容匹配与 `removePath` 的失败分支，删除 `removePath` 里与 `fsErrorFromErrno` 重复的错误映射，文件达 100% 并删除豁免
 - [ ] 批次 B 第三批：`tool-excalidraw/src/index.ts`（约 47 语句 / 90 分支）

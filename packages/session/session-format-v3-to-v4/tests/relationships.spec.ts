@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { Session, type SessionId, SessionLogOffset, type SessionEvent, type SessionHeader } from '@deepseek-ai/dsh-session'
-import { sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog'
-import type { SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
+import { KNOWN_SESSION_EVENT_TYPES, Session, type SessionId, SessionLogOffset, type SessionEvent, type SessionHeader } from '@deepseek-ai/dsh-session'
+import type { SessionFormatArtifact, SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
+import { restoreReleasedV4Artifact } from '../src/index.ts'
 import { brandString } from '@deepseek-ai/dsh-brand'
 
 type Row = { type: string; data: Record<string, unknown>; surfaceOp?: unknown; sourceEventSeqs?: number[]; ignorable?: true }
@@ -23,16 +23,18 @@ const end = () => [row('step/end', step), row('turn/end', { turn: 1, reason: { k
 const toolCall = () => row('tool/call', { ...step, callId: 'call', name: 'read', arguments: '{}' })
 const request = () => row('request/header', { reason: 'initial', header: { config: { provider: 'mock', model: 'mock' } } })
 
-/** Exercise physical JSON, catalog relationship admission, Session adoption, and derivation together. */
+/** Exercise released-V4 relationship admission, Session adoption, and derivation together. */
 function reopen(rows: readonly Row[], inherited = 0, seeded = false) {
-  const restore = sessionFormatCatalog.createRestore({ type: 'session', version: 5, id: 'native-relations', createdAt: 1, delegationDepth: 0, isSeeded: seeded, ...(seeded ? { parentSession: 'parent' } : {}) }, { recovery: 'strict', validation: 'current' })
-  for (const [seq, candidate] of rows.entries()) {
-    const event = { ...candidate, seq, time: seq + 1 } as unknown as SessionFormatEvent
-    restore.decodeRow(JSON.parse(JSON.stringify(sessionFormatCatalog.encodeCurrentEvent(event))))
+  const input: SessionFormatArtifact = {
+    header: { version: 4, id: 'native-relations', createdAt: 1, delegationDepth: 0, isSeeded: seeded, ...(seeded ? { parentSession: 'parent' } : {}) },
+    events: rows.map((row, seq): SessionFormatEvent => ({ ...row, seq, time: seq + 1 }) as unknown as SessionFormatEvent),
+    inheritedEventCount: inherited,
   }
-  const artifact = restore.finish()
+  const artifact = restoreReleasedV4Artifact(input, KNOWN_SESSION_EVENT_TYPES)
   expect(artifact.inheritedEventCount).toBe(inherited)
-  const session = Session.fromRestore(brandString<SessionId>(artifact.header.id), artifact.events as SessionEvent[], artifact.header as unknown as SessionHeader, SessionLogOffset(inherited), 'detached')
+  // Session adopts the current generation; the V4 header only supplies identity facts here.
+  const header = { ...artifact.header, version: 5 } as unknown as SessionHeader
+  const session = Session.fromRestore(brandString<SessionId>(artifact.header.id), artifact.events as SessionEvent[], header, SessionLogOffset(inherited), 'detached')
   return { artifact, messages: session.deriveMessages() }
 }
 

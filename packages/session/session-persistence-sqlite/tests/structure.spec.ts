@@ -199,3 +199,28 @@ it('reads long histories across frame decode groups and restores headers without
   expect(await logs.read(header, 0, events.length)).toEqual(events)
   await writer.close()
 })
+
+it('deletes a forked Trace while keeping segments its parent still references', async () => {
+  const { logs, id, header, event } = await fixture()
+  await using parent = await logs.create(header)
+  const prefix = [event(0), event(1), event(2)]
+  await parent.append(prefix)
+  const childId = SessionId('deleted-child')
+  await sharedHistory(logs, id, childId, prefix)
+  // 再分叉一层：被删 Trace 的分段仍被它的后代引用，第二个共享查询才有行。
+  await sharedHistory(logs, childId, SessionId('grandchild'), prefix.slice(0, 2))
+  expect(await logs.delete(childId)).toBe(true)
+  expect(await logs.delete(SessionId('never-stored'))).toBe(false)
+  await using reopened = await logs.open(id, 'read')
+  expect((await reopened.read()).events.map(item => item.seq)).toEqual([0, 1, 2])
+  expect(await logs.stat(childId)).toBeUndefined()
+})
+
+it('deletes a Trace together with the segments no other Trace references', async () => {
+  const { logs, id, header, event } = await fixture()
+  const writer = await logs.create(header)
+  await writer.append([event(0), event(1)])
+  await writer.close()
+  expect(await logs.delete(id)).toBe(true)
+  expect(await logs.stat(id)).toBeUndefined()
+})

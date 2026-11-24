@@ -345,3 +345,13 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 其余不可达守卫改用 `v8 ignore` 并逐条写明理由（Node 的请求 URL 恒存在、销毁后的请求不再发事件、半途写失败只报错不抛、`fetch` 只以 Error 拒绝等），每条都注明「覆盖外来实现」的范围，不用它掩盖可达分支。
 
 顺带修掉两处结构问题：`a2a-host` 的端点与日志助手移到内部模块 `src/endpoint.ts`（插件入口只导出加载器需要的值，`verify-plugin-entry-exports` 因此转绿）；`replyOf` 的返回类型显式带上必有的 `state`，让 `dispatch` 不再需要判断状态缺省。
+
+### 2026-11-24 会话格式关系与 SQLite 持久化达标（23 → 20）
+
+三个文件补用例后转为强制：`session-format-v3-to-v4/src/relationships.ts`、`session-persistence-sqlite/src/{persistence,sqlite}.ts`。
+
+**`relationships.spec.ts` 原本是空转的。** 它用 `@deepseek-ai/dsh-session-format-catalog` 的**当前（v5）**编解码器构造会话，而 `assertV4LifecycleRelationships` 只在读**已发布 V4**工件时运行（`validation.ts#assertReleasedV4Relationships`），于是 61 条用例全部绕过关系校验，判定「通过」或「抛错」的其实是 v5 侧的其它校验器。改为按 `developer-relationships.spec.ts` 的做法直接构造 V4 工件并交给 `restoreReleasedV4Artifact`：`reopen` 只用 V4 头（`version: 4`）与 `KNOWN_SESSION_EVENT_TYPES`，`Session.fromRestore` 再按当前代际（`version: 5`）收养事件。改完后同一批用例立刻覆盖了 `developer`、PTC 派发、`llm/retry` 链、命令配对、标题来源、压缩区间、工具生命周期、受保护系统头这些分支，整棵树达到 100%。
+
+**SQLite 删除路径**：补两条例程级用例（`structure.spec.ts`）——删除一个分叉 Trace（父与后代仍引用它的分段）与删除独占分段；分叉用例再分出孙代，才能让「其它 Trace 的祖先」查询返回行。`persistence.ts` 的 `if (!removed) return false` 是跨进程竞态守卫（路由记录仍在、Trace 行已被外部删除），进程内不可复现，加 `v8 ignore` 并注明原因。
+
+**教训**：名字里带版本号的用例可能根本没走命名的那一代。判定方法是先看覆盖率是否落到目标文件——整份用例跑下来目标文件 0 覆盖，说明它被上游校验器或另一代编解码器挡在了前面。

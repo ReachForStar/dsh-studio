@@ -213,6 +213,7 @@ export class SqliteSessionPersistence extends SessionPersistence {
     try {
       options?.signal?.throwIfAborted()
       const removed = await this.sqlite.delete(id, options?.signal)
+      /* v8 ignore next -- another process removing the routed Trace between the read and the delete is the only way here. */
       if (!removed) return false
       this.publishedRoutes.delete(id)
       await rm(this.markerPath(id), { force: true })

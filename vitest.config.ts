@@ -475,8 +475,6 @@ export default defineConfig({
         'packages/client/ui-reference/src/client/index.ts',
         'packages/fs/tool-excalidraw/src/index.ts',
         'packages/core/agent-loop/src/index.ts',
-        'packages/session/session-format-v3-to-v4/src/relationships.ts',
-        'packages/session/session-persistence-sqlite/src/{persistence,sqlite}.ts',
         ...windowsUnsupportedCoveragePackages.map(path => `${path}/src/**/*.ts`),
         ...windowsOnlyCoverageExclusions,
         ...windowsRunnerCoverageExclusions,

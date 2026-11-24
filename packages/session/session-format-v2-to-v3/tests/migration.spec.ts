@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createSessionFormatCatalog, SessionFormatEventCollector } from '@deepseek-ai/dsh-session-format'
+import { createSessionFormatCatalog, isSessionFormatJsonObject, SessionFormatEventCollector } from '@deepseek-ai/dsh-session-format'
 import type { SessionFormatArtifact, SessionFormatEvent, SessionFormatHeader, SessionFormatJsonObject } from '@deepseek-ai/dsh-session-format'
 import { releasedV0SessionFormatCodec, releasedV1SessionFormatCodec, sessionFormatV0ToV1 } from '@deepseek-ai/dsh-session-format-v0-to-v1'
 import { sessionFormatV1ToV2 } from '@deepseek-ai/dsh-session-format-v1-to-v2'
@@ -264,6 +264,16 @@ describe('streaming V2 system prompt migration', () => {
 })
 
 describe('native V3 codec and restorer', () => {
+  it('keeps the optional v3 backend field on decode and rejects an unknown value', () => {
+    const physical = { type: 'session', ...header, version: 3, backend: 'pi' }
+    const backendOf = (value: unknown): unknown => isSessionFormatJsonObject(value) ? value['backend'] : undefined
+    expect(backendOf(releasedV3SessionFormatCodec.decodeHeader(physical))).toBe('pi')
+    expect(backendOf(releasedV3SessionFormatCodec.decodeHeader({ type: 'session', ...header, version: 3 }))).toBeUndefined()
+    expect(backendOf(releasedV3SessionFormatCodec.createDecoder(physical, 'strict').header)).toBe('pi')
+    expect(backendOf(releasedV3SessionFormatCodec.encodeHeader({ ...header, version: 3, backend: 'pi' }, 0))).toBe('pi')
+    expect(backendOf(releasedV3SessionFormatCodec.encodeHeader({ ...header, version: 3 }, 0))).toBeUndefined()
+    expect(() => assertReleasedV3Header({ ...header, version: 3, backend: 'other' })).toThrow(/backend/)
+  })
   it('round-trips system messages and empty heads, returning no projected user-message substitutes', () => {
     const target = migrate([...opening(), event('request/header', request('system'))])
     const restore = catalog.createRestore(releasedV3SessionFormatCodec.encodeHeader(target.header, 0), { recovery: 'strict', validation: 'current' })

@@ -463,6 +463,29 @@ describe('JsonlSessionPersistence: format helpers', () => {
     expect(scan.inheritedEventCount).toBe(3)
   })
 
+  it('refuses to write a header field the frozen physical line does not carry', () => {
+    // `backend` is a logical V5 field; the physical line keeps the released V2
+    // shape, so the writer refuses it instead of emitting an unreadable row.
+    const withBackend: SessionHeader = {
+      version: SESSION_FORMAT_VERSION,
+      id: brandString<SessionId>('backend-header'),
+      createdAt: 5,
+      isSeeded: false,
+    }
+    expect(() => toHeaderLine({ ...withBackend, backend: 'pi' }, SessionLogOffset(0))).toThrow(/unexpected field backend/)
+    for (const backend of ['dsh', 'pi'] as const) {
+      // The shape guard admits the logical field; the released V5 row keeps the
+      // V2 physical keys, so the header cannot be restored from such a line.
+      const crafted = { ...toHeaderLine(withBackend, SessionLogOffset(0)), backend }
+      expect(() => scanLog(Buffer.from(`${JSON.stringify(crafted)}\n`)), backend).toThrow(/not a session header/)
+    }
+  })
+
+  it('refuses a first line that is valid JSON but no object', () => {
+    expect(() => scanLog(Buffer.from('42\n'))).toThrow(/not a JSON object/)
+    expect(() => scanLog(Buffer.from('[1]\n'))).toThrow(/not a JSON object/)
+  })
+
   it.each([
     ['unseeded', false, 0],
     ['empty-seed', true, 0],

@@ -91,6 +91,7 @@ describe('assertReleasedV5Header', () => {
       ['non-string parentSession', { ...header(), parentSession: 3 }, /parentSession must be a string/],
       ['non-string agentPreset', { ...header(), agentPreset: 3 }, /agentPreset must be a string/],
       ['invalid origin', { ...header(), origin: 'other' }, /origin must be "subagent"/],
+      ['invalid backend', { ...header(), backend: 'other' }, /backend must be "dsh" or "pi"/],
     ]
     for (const [name, value, message] of malformed) {
       expect(() => { assertReleasedV5Header(value) }, name).toThrow(message)
@@ -120,9 +121,20 @@ describe('restoreReleasedV5Artifact', () => {
     const valid = artifact([event])
     expect(restoreReleasedV5Artifact(valid, known)).toBe(valid)
     expect(() => restoreReleasedV5Artifact(artifact([{ ...event, data: { ...data, label: 'retained' } }]), known)).not.toThrow()
-    for (const invalid of [null, { ...data, version: 0 }, { ...data, version: 2 }, { ...data, childId: 1 },
-      { ...data, childCreatedAt: -1 }, { ...data, mode: 'invalid' }, { ...data, label: null }]) {
+    for (const invalid of [null, { ...data, version: 0 }, { ...data, version: 2 }, { ...data, version: 4 },
+      { ...data, childId: 1 }, { ...data, childCreatedAt: -1 }, { ...data, mode: 'invalid' }, { ...data, label: null }]) {
       expect(() => restoreReleasedV5Artifact(artifact([{ ...event, data: invalid }]), known)).toThrow()
+    }
+    for (const released of [
+      { version: 0, mode: 'one-shot' },
+      { version: 0, mode: 'continuable', label: 'named' },
+      { version: 1, mode: 'one-shot' },
+      { version: 1, mode: 'continuable', label: 'named' },
+      { version: 2, mode: 'external' },
+      { version: 3, mode: 'external', name: 'child' },
+      { version: 3, mode: 'continuable', label: 'named', name: 'child' },
+    ]) {
+      expect(restoreReleasedV5Artifact(artifact([{ ...event, data: { ...data, ...released } }]), known)).toBeDefined()
     }
     expect(() => restoreReleasedV5Artifact(artifact([event, { ...event, seq: 1 }]), known)).toThrow('duplicate catalog child')
     expect(() => restoreReleasedV5Artifact(artifact([event, { type: 'subagent/catalog', seq: 1, time: 1,

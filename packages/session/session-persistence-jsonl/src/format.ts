@@ -154,7 +154,6 @@ function fromHeaderLine(line: HeaderLine): SessionStorageMetadata {
       ...line.origin !== undefined ? { origin: line.origin } : {},
       delegationDepth: line.delegationDepth,
       ...line.agentPreset !== undefined ? { agentPreset: line.agentPreset } : {},
-      ...line.backend !== undefined ? { backend: line.backend } : {},
     },
     inheritedEventCount: SessionLogOffset(0),
   }

@@ -83,6 +83,14 @@ describe('V4 to V5 source preservation', () => {
     expect(rows).toEqual(before)
   })
 
+  it('rewrites a released V4 plugin source inside a nested message slot', () => {
+    const plugin: SessionFormatEvent = { type: 'developer/message', seq: 0, time: 1, surfaceOp: 'append', data: {
+      turn: 1, step: 1,
+      message: { id: 'developer', role: 'developer', source: { kind: 'plugin', plugin: 'mock', extra: 1 }, content: [] },
+    } }
+    expect(migrate([plugin]).events[0]?.data).toMatchObject({ message: { source: { kind: 'plugin:mock', extra: 1 } } })
+  })
+
   it('rejects generic required V4 extensions before target vocabulary admission', () => {
     const required = { ...fact, type: 'external/required' }
     expect(() => migrate([required])).toThrow('format v4 contains unknown event type "external/required" at seq 0')

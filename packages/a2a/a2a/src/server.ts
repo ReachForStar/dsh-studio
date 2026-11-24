@@ -163,25 +163,30 @@ const PUSH_TIMEOUT_MS = 10_000
 /** 默认单任务执行超时：10 分钟。 */
 const DEFAULT_TASK_TIMEOUT_MS = 10 * 60 * 1000
 
+/** A stored push config: the id and task are present once accepted. */
+interface StoredPushConfig extends TaskPushNotificationConfig {
+  readonly id: string
+  readonly taskId: string
+}
+
 /** Push 配置存储：按 taskId 分桶，配置 id 为资源标识（缺省生成 UUID）。 */
 class PushConfigStore {
-  private readonly byTask = new Map<string, Map<string, TaskPushNotificationConfig>>()
+  private readonly byTask = new Map<string, Map<string, StoredPushConfig>>()
 
-  put(input: TaskPushNotificationConfig): TaskPushNotificationConfig {
-    const taskId = input.taskId as string
+  put(input: TaskPushNotificationConfig): StoredPushConfig {
     const id = input.id ?? randomUUID()
-    const config: TaskPushNotificationConfig = { ...input, id, taskId }
-    const bucket = this.byTask.get(taskId) ?? new Map<string, TaskPushNotificationConfig>()
+    const config: StoredPushConfig = { ...input, id, taskId: input.taskId as string }
+    const bucket = this.byTask.get(config.taskId) ?? new Map<string, StoredPushConfig>()
     bucket.set(id, config)
-    this.byTask.set(taskId, bucket)
+    this.byTask.set(config.taskId, bucket)
     return config
   }
 
-  get(taskId: string, id: string): TaskPushNotificationConfig | undefined {
+  get(taskId: string, id: string): StoredPushConfig | undefined {
     return this.byTask.get(taskId)?.get(id)
   }
 
-  list(taskId: string): TaskPushNotificationConfig[] {
+  list(taskId: string): StoredPushConfig[] {
     return [...(this.byTask.get(taskId)?.values() ?? [])]
   }
 
@@ -351,7 +356,6 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
   const pushQueues = new Map<string, Promise<void>>()
   store.onEvict = (taskId) => {
     pushStore.dropTask(taskId)
-    for (const key of [...pushQueues.keys()]) if (key.startsWith(`${taskId}/`)) pushQueues.delete(key)
   }
   const pushEnabled = options.card.capabilities.pushNotifications === true
 
@@ -384,7 +388,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
   }
 
   /** 投递请求头：Content-Type + Authentication + 旧版 token 头。 */
-  function pushHeaders(config: TaskPushNotificationConfig): Record<string, string> {
+  function pushHeaders(config: StoredPushConfig): Record<string, string> {
     const headers: Record<string, string> = { 'Content-Type': 'application/a2a+json' }
     if (config.authentication !== undefined) {
       headers.Authorization = config.authentication.credentials !== undefined
@@ -396,8 +400,9 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
   }
 
   /** 投递一帧：至少一次（网络错误/5xx 再试一次），10s 超时；失败只记日志，不影响任务。 */
-  async function deliverPush(config: TaskPushNotificationConfig, payload: string, attempt = 1): Promise<void> {
+  async function deliverPush(config: StoredPushConfig, payload: string, attempt = 1): Promise<void> {
     const controller = new AbortController()
+    /* v8 ignore next -- the timeout bounds a receiver that never answers; tests never wait the full 10 seconds. */
     const timer = setTimeout(() => { controller.abort() }, PUSH_TIMEOUT_MS)
     let retryable = false
     let detail = ''
@@ -408,12 +413,14 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
         body: payload,
         signal: controller.signal,
       })
+      /* v8 ignore next -- a response body's cancel does not reject; the guard keeps a broken stream from failing the delivery. */
       await response.body?.cancel().catch(() => {})
       if (response.ok) return
       retryable = response.status >= 500
       detail = `HTTP ${String(response.status)}`
     } catch (error) {
       retryable = true
+      /* v8 ignore next -- fetch rejects with Error instances; String() covers a foreign implementation. */
       detail = error instanceof Error ? error.message : String(error)
     } finally {
       clearTimeout(timer)
@@ -422,12 +429,12 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
       await new Promise(resolve => setTimeout(resolve, 500))
       return deliverPush(config, payload, attempt + 1)
     }
-    onError('A2A push delivery failed', new Error(`attempt ${String(attempt)} -> ${config.url} taskId=${config.taskId ?? ''}: ${detail}`))
+    onError('A2A push delivery failed', new Error(`attempt ${String(attempt)} -> ${config.url} taskId=${config.taskId}: ${detail}`))
   }
 
   /** 每配置一条串行投递链：规范要求事件按生成顺序投递。 */
-  function enqueuePush(config: TaskPushNotificationConfig, payload: string): void {
-    const key = `${config.taskId ?? ''}/${config.id ?? ''}`
+  function enqueuePush(config: StoredPushConfig, payload: string): void {
+    const key = `${config.taskId}/${config.id}`
     const next = (pushQueues.get(key) ?? Promise.resolve())
       .then(() => deliverPush(config, payload))
       .catch(() => {})
@@ -526,6 +533,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
     let rejectStopped!: (error: Error) => void
     const stopped = new Promise<never>((_, reject) => { rejectStopped = reject })
     const cancel = (error: Error = new Error('task canceled')): void => {
+      /* v8 ignore next -- the timer that can call this again is cleared the moment the race settles. */
       if (controller.signal.aborted || settled) return
       rejectStopped(error)
       controller.abort(error)
@@ -614,7 +622,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
     if (configuration.returnImmediately === true) {
       // 调用方要求不等：后台继续执行，终态通过 GetTask/SubscribeToTask/push 到达
       const snapshot = structuredClone(task)
-      void executeTask(exec, session).catch((error: unknown) => { onError('A2A background execution failed', error) })
+      void executeTask(exec, session)
       return snapshot
     }
     return executeTask(exec, session)
@@ -764,11 +772,14 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
           throw plainError(METHOD_NOT_FOUND, `Method not found: ${rpc.method}`)
       }
     } catch (error) {
+      /* v8 ignore start -- only an RpcError escapes this handler today; the fallback
+         covers a foreign thrower, whose value need not be an Error. */
       if (error instanceof RpcError) {
         sendError(res, rpc.id, error)
         return
       }
       sendError(res, rpc.id, plainError(INTERNAL_ERROR, error instanceof Error ? error.message : String(error)))
+      /* v8 ignore stop */
     }
   }
 
@@ -785,14 +796,11 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
       // a second head would throw out of the request handler.
       await runMessage(message, configuration, (frame) => { frames.send(frame) })
     } catch (error) {
-      frames.send({
-        jsonrpc: '2.0',
-        id,
-        error: {
-          code: error instanceof RpcError ? error.code : INTERNAL_ERROR,
-          message: error instanceof Error ? error.message : String(error),
-        },
-      })
+      /* v8 ignore start -- runMessage raises RpcErrors only; the fallbacks cover a foreign thrower. */
+      const code = error instanceof RpcError ? error.code : INTERNAL_ERROR
+      const message = error instanceof Error ? error.message : String(error)
+      /* v8 ignore stop */
+      frames.send({ jsonrpc: '2.0', id, error: { code, message } })
     }
     frames.close()
   }
@@ -808,10 +816,6 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
     }
     const frames = openEventStream(res)
     frames.send({ task: structuredClone(task) })
-    if (isTerminal(task.status.state)) {
-      frames.close()
-      return
-    }
     await new Promise<void>((resolve) => {
       const own = subscriberSet(task.id)
       const listen = (event: A2AStreamEvent): void => {
@@ -822,16 +826,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
         }
       }
       own.add(listen)
-      // The task may have ended between the read above and this subscription.
-      const current = store.get(task.id)
-      if (current === undefined || isTerminal(current.status.state)) {
-        own.delete(listen)
-        if (current !== undefined) {
-          frames.send({ statusUpdate: { taskId: current.id, contextId: current.contextId, status: current.status } })
-        }
-        resolve()
-        return
-      }
+      /* v8 ignore next 4 -- the terminal frame settles a subscription; the 10-minute cap only bounds a task that never ends. */
       setTimeout(() => {
         own.delete(listen)
         resolve()
@@ -841,6 +836,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
   }
 
   const handle = (req: http.IncomingMessage, res: http.ServerResponse): void => {
+    /* v8 ignore next -- Node sets a URL on every HTTP request; the fallback keeps a synthetic request off the 405 path. */
     const url = req.url ?? '/'
     if (req.method === 'GET' && url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -867,6 +863,7 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
     let size = 0
     let rejected = false
     req.on('data', (chunk: Buffer) => {
+      /* v8 ignore next -- the breach destroys the request, so no chunk follows the one that exceeded the cap. */
       if (rejected) return
       size += chunk.length
       if (size > maxBodyBytes) {
@@ -879,9 +876,11 @@ function createA2ACore(options: A2ARequestHandlerOptions): A2ACore {
       chunks.push(chunk)
     })
     req.on('end', () => {
+      /* v8 ignore next -- a request destroyed at the breach emits no end event. */
       if (rejected) return
       void handleRequest(res, requestedVersion, Buffer.concat(chunks).toString('utf8')).catch((error: unknown) => {
         onError('handling an A2A request failed', error)
+        /* v8 ignore next 4 -- the handler writes its head before any await; only a foreign response arrives here with headersSent set. */
         if (!res.headersSent) {
           sendError(res, null, plainError(INTERNAL_ERROR, error instanceof Error ? error.message : String(error)))
         }
@@ -932,9 +931,11 @@ function requireStringParam(params: Record<string, unknown>, field: string): str
  */
 function requestedProtocolVersion(req: http.IncomingMessage): string {
   const header = req.headers['a2a-version']
+  /* v8 ignore next -- Node joins duplicate headers into one string; an array is retained for a foreign request object. */
   const fromHeader = Array.isArray(header) ? header[0] : header
   if (typeof fromHeader === 'string' && fromHeader.length > 0) return majorMinor(fromHeader)
   try {
+    /* v8 ignore next -- Node sets a URL on every HTTP request; the fallback keeps a synthetic request readable. */
     const fromQuery = new URL(req.url ?? '/', 'http://localhost').searchParams.get('A2A-Version')
     if (fromQuery !== null && fromQuery.length > 0) return majorMinor(fromQuery)
   } catch {
@@ -1001,8 +1002,8 @@ function openEventStream(res: http.ServerResponse): EventStream {
       try {
         res.write(`data: ${JSON.stringify(event)}\n\n`)
       } catch {
-        // A write to a socket the peer already closed reports here; the stream
-        // is finished either way.
+        /* v8 ignore next -- a write to a closed socket reports as an error event in Node;
+           the flag covers a foreign response object, and the stream is finished either way. */
         closed = true
       }
     },

@@ -325,3 +325,23 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 `ui-paper-reader/src/translate-service.ts` 转为强制：补 `/paper-reader/models` 的 GET 列表、非 GET 的 405、目录读取失败的 500 三条用例；同时把 405 文案里的 `req.method ?? 'GET'` 改为 `String(req.method)`（非 GET 判定已经排除了 `undefined`，另一侧永不执行）。
 
 同批还补了 `PaperReader.tsx` 的「清空固定模型」「目录读取失败回落到会话路由」「卸载后到达的目录不写状态」用例，并把固定模型的解析提前到目录匹配之前——原来先比较 `provider/model` 字符串再解析，导致 `parseStoredModel` 的空值与残缺分隔符守卫不可达。该文件仍差三处（localStorage 读取失败的 catch、两处已卸载分支），留在豁免中。
+
+### 2026-11-24 A2A 全部达标（29 → 23）
+
+`packages/a2a/a2a/src/{bus,client,index,server,task-store}.ts` 与 `packages/a2a/a2a-host/src/{executor,index}.ts` 两个豁免条目整体删除：两棵 src 树在库内用例下达到 per-file 100%。做法分两类。
+
+补真实用例：
+
+| 范围 | 补的用例 |
+| --- | --- |
+| `a2a/src/server.ts` | 推送通知整段（webhook 接收器替身：内联配置在首个事件前注册、四个 RPC 方法、分页与游标、认证头、5xx 重试一次、4xx 单次并上报、能力未声明时四个方法一律拒绝、任务淘汰连带丢弃配置）；总线入口 `attachTask`/`executeTask`（并发复用同一执行、终态直接返回快照、取消后写入丢弃、无订阅者任务取消、`onCancel` 抛错上报、任务期限落 FAILED 并写明原因）；协议边界（`ROLE_AGENT`、`historyLength`、`tenant`、残缺 `authentication`、非法请求体、非法游标、`A2A-Version` 查询参数与 patch 号、非回环绑定缺 key、二次 `close`、端口占用时 `ready` 拒绝） |
+| `a2a/src/bus.ts` | `rememberFinished` 台账（容量与 TTL 参数化后直接单测）、未注入客户端时自建 kafkajs、`retry` 透传、非 Error 处理器抛错的死信文本、空 payload 消息、重建退避期间停止、启动连接未落定前停止、关闭时容忍失败的消费者 |
+| `a2a/src/client.ts` | `taskId`/`contextId` 参数、`getCard`/流式/订阅的取消信号、无 `content-type` 的 SSE、JSON 而非流的答复、SSE 内错误帧先收到帧再上抛、无终态帧的截断、调用方注入失败值原样上抛 |
+| `a2a/src/index.ts` | 对等端 `apiKey`、`send` 的 `taskId`/`metadata`、无状态帧时用任务答案补文本、总线等待超时的空文本、总线进度跳过别的任务与空事件、`A2A_CONFIG` 环境变量来源、真实总线句柄的创建与卸载关闭 |
+| `a2a-host/src` | 会话快照帧被跳过、端点推导助手（默认端点、通配地址映射、非 TCP 地址拒绝）、`apply` 端口占用跳过、IPv6 通配不依赖本机网络（`advertisedUrl` 用构造的 `AddressInfo` 单测）、后台取消失败的告警日志 |
+
+删除不可达代码（豁免正是它掩盖的地方）：`TaskStore` 的 `byContext` 索引只写不读、`DshA2AExecutorOptions.onError` 从未被执行器调用、`subscribe` 里两处同线程内不可能的「任务在读与订阅之间结束」复查、`returnImmediately` 分支上不可能失败的 `.catch`、`PushConfigStore` 与 `enqueuePush` 里恒为空的 `taskId`/`id` 兜底、`withDeadline` 恒为真的 `timer !== undefined` 守卫。
+
+其余不可达守卫改用 `v8 ignore` 并逐条写明理由（Node 的请求 URL 恒存在、销毁后的请求不再发事件、半途写失败只报错不抛、`fetch` 只以 Error 拒绝等），每条都注明「覆盖外来实现」的范围，不用它掩盖可达分支。
+
+顺带修掉两处结构问题：`a2a-host` 的端点与日志助手移到内部模块 `src/endpoint.ts`（插件入口只导出加载器需要的值，`verify-plugin-entry-exports` 因此转绿）；`replyOf` 的返回类型显式带上必有的 `state`，让 `dispatch` 不再需要判断状态缺省。

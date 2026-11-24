@@ -462,8 +462,6 @@ export default defineConfig({
         // in-repo SSH test server, so their gaps close with more fakes and
         // cases. Every entry names one file so the exemption cannot grow
         // silently; delete the entry when the file reaches the bar.
-        'packages/a2a/a2a/src/{bus,client,index,server,task-store}.ts',
-        'packages/a2a/a2a-host/src/{executor,index}.ts',
         'packages/core/pi-agent-loop/src/{agent,dsh-tool-adapter,index,pi-event-translator,pi-session,pi-tool-adapter}.ts',
         'packages/remote/fs-sftp/src/index.ts',
         'packages/remote/ssh-local/src/index.ts',

@@ -66,6 +66,7 @@ kind: "package-reference"
 | [`src/index.ts`](src/index.ts) | `A2AHostService`：卡片、监听器、生命周期与 `Config` |
 | [`src/executor.ts`](src/executor.ts) | `DshA2AExecutor`：会话跟随、提示、流式、取消、超时 |
 | [`src/card.ts`](src/card.ts) | `buildAgentCard` 与默认技能 |
+| [`src/endpoint.ts`](src/endpoint.ts) | 端点默认值与绑定地址公布的 URL |
 | [`src/kafka-detect.ts`](src/kafka-detect.ts) | `ensureKafka`：探测、经 stdin 启动 Kafka 集群，并回传失败类别与诊断 |
 
 ### Kafka 启动为什么要走 stdin

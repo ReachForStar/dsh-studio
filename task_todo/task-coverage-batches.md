@@ -12,7 +12,7 @@
 - [ ] 阻塞：批次 D 的 `core/agent-loop/src/index.ts` —— `delegateToRegistry` 的字段缺省分支为死分支（唯一调用点必传 `backend`），委派成功路径需要一个真实 `Agent` 句柄，现有夹具只能用被 `verify-no-unknown-casts` 禁止的 `as unknown` 伪造，需先删死分支并由真实 peer 后端用例覆盖
 - [x] 批次 E 第一批：`a2a/src/bridge-config.ts` 转为强制（非法 JSON 与缺省端口用例，删掉只可能来自 SyntaxError 的分支）
 - [x] 批次 E 第二批：`tool-a2a/src/index.ts` 转为强制（两个工具的调用卡片、skill/workspace 作为 metadata、派发答复缺标识）
-- [ ] 批次 E 第三批：`a2a/src/{bus,client,index,server,task-store}`、`a2a-host/{executor,index}`
+- [x] 批次 E 第三批：`a2a/src/{bus,client,index,server,task-store}`、`a2a-host/{executor,index}` 补用例并删豁免，两棵 src 树达标
 - [ ] 批次 F：远端 SSH/SFTP 4 个文件
 - [x] 批次 G 第一批：`cua/src/client/controller.ts` 转为强制
 - [ ] 批次 G 第二批：`computer-use-cua-driver-mcp/{index,installer}.ts`（安装路由与安装器约 37 语句）、`CuaDriverInstall.tsx`

@@ -1345,3 +1345,10 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 ## [2026-11-24] test(coverage): 论文翻译路由达标，豁免 30 → 29
 
 - `ui-paper-reader/src/translate-service.ts` 补 models 路由三条用例后转为强制；`PaperReader.tsx` 先解析后匹配固定模型，使其空值/残缺守卫可达，并补清空、目录失败、卸载后到达三条用例，仍余三处。
+
+## [2026-11-24] test(a2a): A2A 服务与主机达标，豁免 29 → 23
+
+- `packages/a2a/a2a/src/{bus,client,index,server,task-store}.ts` 与 `a2a-host/src/{executor,index}.ts` 两棵 src 树补齐用例后转为强制，两个豁免条目整体删除。
+- 用例覆盖推送通知全段（webhook 替身）、总线入口、协议边界、总线台账与自恢复、客户端协议边界、桥配置环境来源、端点推导与安装告警；详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-11-24-a2a-全部达标29--23)。
+- 删除不可达代码：`TaskStore` 只写不读的会话索引、执行器从未使用的 `onError` 选项、`subscribe` 的同线程「到期」复查、`PushConfigStore`/`enqueuePush` 的空标识兜底、`withDeadline` 恒真守卫；其余不可达守卫加 `v8 ignore` 并逐条写理由。
+- `a2a-host` 的端点助手移到内部模块 `src/endpoint.ts`，`verify-plugin-entry-exports` 的新增导出告警消失；`replyOf` 返回类型带上必有 `state`。

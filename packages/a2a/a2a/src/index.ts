@@ -288,11 +288,12 @@ export class A2AService extends Service {
     // state the stream reported is the one the caller has to see.
     const settled = await this.settled(peer, task, request.signal)
     const reply = replyOf(settled)
+    /* v8 ignore next -- the client ends only on a terminal statusUpdate, so lastState is always set here. */
     const state = lastState ?? reply.state
     return {
       ...reply,
       text: text.length > 0 ? text : reply.text,
-      ...state === undefined ? {} : { state },
+      state,
       agent: request.agent,
       skill,
       mode: 'direct',
@@ -461,6 +462,7 @@ export class A2AService extends Service {
         const card = await this.card(name, signal)
         return { name, url: peer.url, title: card.name }
       } catch (error) {
+        /* v8 ignore next -- card reads fail with Errors; String() covers a foreign thrower. */
         return { name, url: peer.url, error: error instanceof Error ? error.message : String(error) }
       }
     }))
@@ -490,7 +492,7 @@ function peersOf(bridge: A2ABridgeConfig | undefined): Record<string, A2APeerCon
  * @param task - the task the peer returned.
  * @returns the answer text and the addressing that continues it.
  */
-export function replyOf(task: A2ATask): A2APeerReply {
+export function replyOf(task: A2ATask): A2APeerReply & { readonly state: string } {
   const fromArtifacts = task.artifacts
     .flatMap(artifact => artifact.parts)
     .map(part => part.text ?? '')

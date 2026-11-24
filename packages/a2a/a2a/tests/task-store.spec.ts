@@ -111,7 +111,22 @@ describe('TaskStore', () => {
     expect(task.artifacts[0]?.parts).toEqual([{ text: 'ab' }, { url: 'x' }, { text: 'c' }])
   })
 
-  it('超过上限时淘汰最旧的终态任务并清理会话索引', () => {
+  it('状态时间戳相同时按 id 升序排列', () => {
+    const store = new TaskStore()
+    for (const id of ['c-task', 'a-task', 'b-task']) store.ensureTask(id, 'ctx-1').status.timestamp = '2026-01-01T00:00:00.000Z'
+    expect(store.list({ contextId: 'ctx-1' }).map(task => task.id)).toEqual(['a-task', 'b-task', 'c-task'])
+  })
+
+  it('状态时间戳不同时按时间降序排列', () => {
+    const store = new TaskStore()
+    const later = store.ensureTask('z-task', 'ctx-1')
+    const earlier = store.ensureTask('a-task', 'ctx-1')
+    later.status.timestamp = '2026-01-02T00:00:00.000Z'
+    earlier.status.timestamp = '2026-01-01T00:00:00.000Z'
+    expect(store.list({ contextId: 'ctx-1' }).map(task => task.id)).toEqual(['z-task', 'a-task'])
+  })
+
+  it('超过上限时淘汰最旧的终态任务', () => {
     const store = new TaskStore({ maxTasks: 2 })
     const done = store.create('ctx-1')
     store.setStatus(done, 'TASK_STATE_COMPLETED')
@@ -127,14 +142,5 @@ describe('TaskStore', () => {
     store.create('ctx-1')
     store.create('ctx-2')
     expect(store.count()).toBe(2)
-  })
-
-  it('会话索引里没有该任务时淘汰仍然生效', () => {
-    const store = new TaskStore({ maxTasks: 1 })
-    const task = store.create('ctx-1')
-    store.setStatus(task, 'TASK_STATE_COMPLETED')
-    const orphan = store.create('ctx-2')
-    store.setStatus(orphan, 'TASK_STATE_COMPLETED')
-    expect(store.count()).toBe(1)
   })
 })

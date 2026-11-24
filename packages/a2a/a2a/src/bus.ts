@@ -100,6 +100,31 @@ const DONE_CAPACITY = 20_000
 /** Delay before rebuilding a consumer whose connection died for good. */
 const RESTART_BACKOFF_MS = 5_000
 
+/**
+ * Remember a finished task id so a redelivery is skipped.
+ *
+ * The ledger is bounded by capacity, not by size alone: once it is over the
+ * bound, ids older than the TTL are dropped so a long-running agent does not
+ * grow the set without limit.
+ * @param done - the ledger, task id to completion time.
+ * @param taskId - the id to remember.
+ * @param now - current time in milliseconds.
+ * @param capacity - ids kept before the sweep runs.
+ * @param ttlMs - age past which an id may be forgotten.
+ */
+export function rememberFinished(
+  done: Map<string, number>,
+  taskId: string,
+  now: number,
+  capacity = DONE_CAPACITY,
+  ttlMs = DONE_TTL_MS,
+): void {
+  done.set(taskId, now)
+  if (done.size <= capacity) return
+  const cutoff = now - ttlMs
+  for (const [id, at] of done) if (at < cutoff) done.delete(id)
+}
+
 /** How long startup waits for the consumer group to own its partitions. */
 const GROUP_READY_TIMEOUT_MS = 15_000
 
@@ -143,13 +168,6 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
   const done = new Map<string, number>()
   let producerConnected = false
 
-  /** Remember a finished task so its redelivery is skipped. */
-  function markDone(taskId: string): void {
-    done.set(taskId, Date.now())
-    if (done.size <= DONE_CAPACITY) return
-    const cutoff = Date.now() - DONE_TTL_MS
-    for (const [id, at] of done) if (at < cutoff) done.delete(id)
-  }
 
   /** Connect the producer once; later publishes reuse the connection. */
   async function connectProducer(): Promise<void> {
@@ -268,14 +286,13 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
 
   /** Reject `work` once `ms` elapse, leaving it running in the background. */
   async function withDeadline(work: Promise<void>, ms: number): Promise<void> {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const expired = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => { reject(new TaskTimeoutError(`task exceeded ${ms}ms`)) }, ms)
-    })
+    let expire!: (error: Error) => void
+    const expired = new Promise<never>((_resolve, reject) => { expire = reject })
+    const timer = setTimeout(() => { expire(new TaskTimeoutError(`task exceeded ${ms}ms`)) }, ms)
     try {
       await Promise.race([work, expired])
     } finally {
-      if (timer !== undefined) clearTimeout(timer)
+      clearTimeout(timer)
     }
   }
 
@@ -330,7 +347,7 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
             try {
               if (deadline !== undefined && deadline > 0) await withDeadline(handler(task), deadline)
               else await handler(task)
-              markDone(task.taskId)
+              rememberFinished(done, task.taskId, Date.now())
             } catch (error) {
               if (error instanceof TaskTimeoutError) {
                 // A hung task is not a transient failure: retrying it would
@@ -350,7 +367,7 @@ export function createA2ABus(config: A2ABusConfig, options: A2ABusOptions = {}):
                   error: `timeout after ${deadline}ms`,
                   ts: Date.now(),
                 })
-                markDone(task.taskId)
+                rememberFinished(done, task.taskId, Date.now())
                 return
               }
               const attempt = task.attempt + 1

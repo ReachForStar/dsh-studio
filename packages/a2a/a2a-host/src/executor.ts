@@ -26,8 +26,6 @@ export interface DshA2AExecutorOptions {
   readonly agentPreset?: string
   /** How long one turn may run before the task fails. */
   readonly turnTimeoutMs?: number
-  /** Where background failures are reported. */
-  readonly onError?: (message: string, error: unknown) => void
 }
 
 /** One JSON object view of a wire value, or undefined when it is not an object. */
@@ -100,10 +98,11 @@ export class DshA2AExecutor implements A2AExecutor {
     const cancellation = new AbortController()
     // 盒子持有标志：定时器回调的赋值不受外层控制流收窄影响。
     const deadline = { reached: false }
+    const budget = this.options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS
     const timeout = setTimeout(() => {
       deadline.reached = true
       cancellation.abort()
-    }, this.options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS)
+    }, budget)
     timeout.unref()
     this.running.set(context.taskId, cancellation)
 
@@ -127,7 +126,7 @@ export class DshA2AExecutor implements A2AExecutor {
       await this.consume(frames, context.sink, requestId)
     } catch (error) {
       if (deadline.reached) {
-        throw new Error(`A2A task ${context.taskId} exceeded its ${String(this.options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS)}ms turn budget`, { cause: error })
+        throw new Error(`A2A task ${context.taskId} exceeded its ${String(budget)}ms turn budget`, { cause: error })
       }
       throw error
     } finally {

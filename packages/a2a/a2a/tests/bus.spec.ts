@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Kafka } from 'kafkajs'
-import { createA2ABus } from '../src/bus.ts'
+import { createA2ABus, rememberFinished } from '../src/bus.ts'
 import type { A2ABusConfig } from '../src/bus.ts'
 import type { BusEvent, BusTask } from '../src/schema.ts'
 
@@ -38,6 +38,10 @@ class FakeKafka {
   /** 让 connect / run / subscribe 抛错，驱动重建路径。 */
   failConnect = false
   failRun = false
+  /** 连接要等到这个 promise 落定；用于观察启动中的停止。 */
+  connectGate: Promise<void> | undefined
+  /** 让 stop 抛错，驱动关闭时的容忍路径。 */
+  failStop = false
   consumerStops = 0
   producerConnects = 0
   producerDisconnects = 0
@@ -86,6 +90,7 @@ class FakeKafka {
     return {
       events: this.events,
       connect: async (): Promise<void> => {
+        if (this.connectGate !== undefined) await this.connectGate
         if (this.failConnect) throw new Error('connect refused')
       },
       subscribe: async (): Promise<void> => undefined,
@@ -94,6 +99,7 @@ class FakeKafka {
         handlers.push(args.eachMessage)
       },
       stop: async (): Promise<void> => {
+        if (this.failStop) throw new Error('stop refused')
         this.consumerStops += 1
       },
       disconnect: async (): Promise<void> => undefined,
@@ -113,6 +119,13 @@ class FakeKafka {
         value: typeof value === 'string' ? Buffer.from(value) : Buffer.from(JSON.stringify(value)),
       },
     })
+  }
+
+  /** 驱动一条没有 payload 的消息（墓碑）。 */
+  async deliverEmpty(): Promise<void> {
+    const handler = this.handlers.at(-1)
+    if (handler === undefined) throw new Error('no consumer handler registered')
+    await handler({ message: { key: Buffer.from('k'), value: null } })
   }
 
   /** 驱动最近一个 CRASH 处理器。 */
@@ -196,6 +209,30 @@ describe('A2ABus 发布', () => {
     await bus.close()
     expect(kafka.producerDisconnects).toBe(1)
   })
+
+  it('未注入客户端时自己建 kafkajs 客户端', async () => {
+    const bus = createA2ABus(CONFIG)
+    await bus.close()
+  })
+
+  it('把 retry 配置交给消费者', async () => {
+    const kafka = new FakeKafka()
+    const bus = busOf(kafka, { retry: { retries: 2 } })
+    await bus.consumeEvents('g-retry', () => undefined)
+    expect(kafka.consumerOptions[0]).toMatchObject({ groupId: 'g-retry', retry: { retries: 2 } })
+    await bus.close()
+    expect(kafka.consumerStops).toBe(1)
+  })
+
+  it('关闭时忽略已经失败的消费者，连接断开后不再断开生产者', async () => {
+    const kafka = new FakeKafka()
+    kafka.failStop = true
+    const bus = busOf(kafka)
+    await bus.consumeEvents('g-stop-fail', () => undefined)
+    await bus.close()
+    expect(kafka.consumerStops).toBe(0)
+    expect(kafka.producerDisconnects).toBe(0)
+  })
 })
 
 describe('A2ABus 任务消费', () => {
@@ -224,8 +261,27 @@ describe('A2ABus 任务消费', () => {
     expect(dlq[0]?.key).toBe('malformed')
   })
 
-  it('处理失败按 attempt 重投，超过上限进死信', async () => {
+  it('没有 payload 的任务消息同样进死信', async () => {
     const kafka = new FakeKafka()
+    const bus = busOf(kafka)
+    await bus.consumeTasks('claude-code', 'g1', async () => undefined)
+    await kafka.deliverEmpty()
+    const dlq = kafka.on('a2a.dlq')
+    expect(dlq).toHaveLength(1)
+    expect((dlq[0]?.value as { raw: string }).raw).toBe('')
+  })
+
+  it('处理器抛出的非 Error 值同样写入死信', async () => {
+    const kafka = new FakeKafka()
+    const bus = busOf(kafka, { maxAttempts: 1 })
+    await bus.consumeTasks('claude-code', 'g1', async () => {
+      throw 'plain text'
+    })
+    await kafka.deliver(taskOf())
+    expect((kafka.on('a2a.dlq')[0]?.value as { error: string }).error).toBe('plain text')
+  })
+
+  it('处理失败按 attempt 重投，超过上限进死信', async () => {    const kafka = new FakeKafka()
     const bus = busOf(kafka, { maxAttempts: 2 })
     await bus.consumeTasks('claude-code', 'g1', async () => {
       throw new Error('handler exploded')
@@ -308,6 +364,7 @@ describe('A2ABus 事件消费', () => {
       throw new Error('must not be called')
     })
     await kafka.deliver('{ not json')
+    await kafka.deliverEmpty()
   })
 })
 
@@ -360,6 +417,37 @@ describe('A2ABus 消费者自恢复', () => {
     expect(kafka.groupIds.length).toBe(before)
   })
 
+  it('重建等待期间停止时不再新建消费者', async () => {
+    vi.useFakeTimers()
+    const kafka = new FakeKafka()
+    const bus = busOf(kafka)
+    const pending = bus.consumeEvents('g7', () => undefined)
+    await vi.advanceTimersByTimeAsync(1)
+    const handle = await pending
+    const before = kafka.groupIds.length
+    kafka.crash(false)
+    await vi.advanceTimersByTimeAsync(1)
+    await handle.stop()
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(kafka.groupIds.length).toBe(before)
+  })
+
+  it('启动过程中停止时不再报告连接失败', async () => {
+    vi.useFakeTimers()
+    const kafka = new FakeKafka()
+    const gate = Promise.withResolvers<undefined>()
+    kafka.connectGate = gate.promise
+    const bus = busOf(kafka)
+    const pending = bus.consumeEvents('g8', () => undefined)
+    await vi.advanceTimersByTimeAsync(1)
+    const handle = await pending
+    kafka.failConnect = true
+    await handle.stop()
+    gate.resolve(undefined)
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(kafka.groupIds).toEqual(['g8'])
+  })
+
   it('消费组迟迟未分配时按超时兜底返回', async () => {
     vi.useFakeTimers()
     const kafka = new FakeKafka()
@@ -373,5 +461,16 @@ describe('A2ABus 消费者自恢复', () => {
     const handle = await pending
     expect(kafka.groupIds).toEqual(['g6'])
     await handle.stop()
+  })
+})
+
+describe('已完成任务台账', () => {
+  it('未超过容量时只登记，超过后丢弃超期的 id', () => {
+    const done = new Map<string, number>()
+    rememberFinished(done, 'a', 0, 2, 100)
+    rememberFinished(done, 'b', 50, 2, 100)
+    expect([...done.keys()]).toEqual(['a', 'b'])
+    rememberFinished(done, 'c', 200, 2, 100)
+    expect([...done.keys()]).toEqual(['c'])
   })
 })

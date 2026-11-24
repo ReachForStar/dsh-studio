@@ -2,8 +2,8 @@ import { Buffer } from 'node:buffer'
 import { EventEmitter } from 'node:events'
 import http from 'node:http'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createA2ARequestHandler, createA2AServer, type A2AExecutor, type A2AServer } from '../src/server.ts'
-import type { AgentCard } from '../src/schema.ts'
+import { createA2ARequestHandler, createA2AServer, teeSink, type A2AExecutor, type A2AServer } from '../src/server.ts'
+import type { AgentCard, TaskPushNotificationConfig } from '../src/schema.ts'
 import { TaskStore } from '../src/task-store.ts'
 
 const CARD: AgentCard = {
@@ -25,6 +25,70 @@ interface Harness {
 
 const running: Harness[] = []
 
+/** 声明支持推送通知的卡片：四个配置方法只在这个能力下开放。 */
+const PUSH_CARD: AgentCard = {
+  ...CARD,
+  capabilities: { streaming: true, pushNotifications: true },
+}
+
+/** 一条投递到 webhook 的通知。 */
+interface WebhookDelivery {
+  readonly headers: http.IncomingHttpHeaders
+  readonly body: Record<string, unknown>
+}
+
+interface Webhook {
+  readonly url: string
+  readonly deliveries: WebhookDelivery[]
+  /** 接下来多少次投递回应 5xx；用完之前不回应成功。 */
+  failures: number
+  /** 成功投递时回应的状态码，用于按「不可重试」分类。 */
+  status: number
+  stop(): Promise<void>
+}
+
+const hooks: Webhook[] = []
+
+/** 在本机起一个接收推送的 webhook。 */
+async function webhook(): Promise<Webhook> {
+  const deliveries: WebhookDelivery[] = []
+  const hook: Webhook = {
+    url: '',
+    deliveries,
+    failures: 0,
+    status: 200,
+    stop: () => Promise.resolve(),
+  }
+  const server = http.createServer((req, res) => {
+    let raw = ''
+    req.on('data', (chunk) => { raw += String(chunk) })
+    req.on('end', () => {
+      deliveries.push({ headers: req.headers, body: JSON.parse(raw) as Record<string, unknown> })
+      if (hook.failures > 0) {
+        hook.failures -= 1
+        res.writeHead(500)
+        res.end('boom')
+        return
+      }
+      res.writeHead(hook.status)
+      res.end('ok')
+    })
+  })
+  await new Promise<void>((resolve) => { server.listen(0, '127.0.0.1', resolve) })
+  hook.url = `http://127.0.0.1:${String((server.address() as { port: number }).port)}/webhook`
+  hook.stop = () => new Promise<void>((resolve) => {
+    server.closeAllConnections()
+    server.close(() => { resolve() })
+  })
+  hooks.push(hook)
+  return hook
+}
+
+/** 取一个 RPC 答复里的任务 id。 */
+function taskIdOf(response: { body: Record<string, unknown> }): string {
+  return (response.body.result as { task: { id: string } }).task.id
+}
+
 async function start(
   executor: A2AExecutor,
   options: {
@@ -32,6 +96,7 @@ async function start(
     card?: AgentCard
     maxBodyBytes?: number
     store?: TaskStore
+    taskTimeoutMs?: number
     onError?: (message: string, error: unknown) => void
   } = {},
 ): Promise<Harness> {
@@ -42,6 +107,7 @@ async function start(
     apiKey: options.apiKey ?? '',
     ...options.maxBodyBytes === undefined ? {} : { maxBodyBytes: options.maxBodyBytes },
     ...options.store === undefined ? {} : { store: options.store },
+    ...options.taskTimeoutMs === undefined ? {} : { taskTimeoutMs: options.taskTimeoutMs },
     ...options.onError === undefined ? {} : { onError: options.onError },
   })
   await server.ready
@@ -58,6 +124,7 @@ async function start(
 
 afterEach(async () => {
   while (running.length > 0) await running.pop()?.close()
+  while (hooks.length > 0) await hooks.pop()?.stop()
 })
 
 async function call(
@@ -562,5 +629,524 @@ describe('A2A 流式与查询', () => {
     req.emit('end')
     await new Promise(resolve => setTimeout(resolve, 20))
     expect(onError).toHaveBeenCalledWith('handling an A2A request failed', expect.any(Error))
+  })
+})
+
+describe('teeSink', () => {
+  it('把状态与工件转发给每个 sink', () => {
+    const a: string[] = []
+    const b: string[] = []
+    const sinkOf = (log: string[]) => ({
+      sendStatus: (state: string, text?: string) => { log.push(`status:${state}:${text ?? ''}`) },
+      appendArtifact: (artifactId: string, name: string, text: string, lastChunk?: boolean) => {
+        log.push(`artifact:${artifactId}:${name}:${text}:${String(lastChunk ?? false)}`)
+      },
+    })
+    const tee = teeSink(sinkOf(a), sinkOf(b))
+    tee.sendStatus('TASK_STATE_WORKING', '进行中')
+    tee.appendArtifact('reply', 'reply', 'x', true)
+    expect(a).toEqual(['status:TASK_STATE_WORKING:进行中', 'artifact:reply:reply:x:true'])
+    expect(b).toEqual(a)
+  })
+})
+
+describe('A2A 推送通知配置', () => {
+  it('内联配置在首个事件前注册，并把事件投递到 webhook', async () => {
+    const hook = await webhook()
+    const harness = await start(instant(), { card: PUSH_CARD })
+    const sent = await call(harness.url, rpc('SendMessage', {
+      ...message('你好'),
+      configuration: { taskPushNotificationConfig: { url: hook.url, token: 'tok' } },
+    }))
+    const id = taskIdOf(sent)
+    await waitFor(() => hook.deliveries.length >= 3)
+    expect(hook.deliveries[0]?.body).toMatchObject({ task: { id } })
+    expect(hook.deliveries.at(-1)?.body).toMatchObject({ statusUpdate: { status: { state: 'TASK_STATE_COMPLETED' } } })
+    expect(hook.deliveries[0]?.headers['content-type']).toBe('application/a2a+json')
+    expect(hook.deliveries[0]?.headers['x-a2a-notification-token']).toBe('tok')
+    const listed = await call(harness.url, rpc('ListTaskPushNotificationConfigs', { taskId: id }))
+    const configs = (listed.body.result as { configs: TaskPushNotificationConfig[] }).configs
+    expect(configs).toHaveLength(1)
+    const config = configs[0]!
+    const got = await call(harness.url, rpc('GetTaskPushNotificationConfig', { taskId: id, id: config.id }))
+    expect((got.body.result as TaskPushNotificationConfig).url).toBe(hook.url)
+    const deleted = await call(harness.url, rpc('DeleteTaskPushNotificationConfig', { taskId: id, id: config.id }))
+    expect(deleted.body.result).toEqual({})
+  })
+
+  it('配置分页读取，页大小与游标都有默认值', async () => {
+    const hook = await webhook()
+    const harness = await start(instant(), { card: PUSH_CARD })
+    const id = taskIdOf(await call(harness.url, rpc('SendMessage', message('a'))))
+    for (const configId of ['c1', 'c2', 'c3']) {
+      await call(harness.url, rpc('CreateTaskPushNotificationConfig', { taskId: id, url: hook.url, id: configId }))
+    }
+    const ignoredPageSize = await call(harness.url, rpc('ListTaskPushNotificationConfigs', { taskId: id, pageSize: 'many' }))
+    expect((ignoredPageSize.body.result as { configs: unknown[] }).configs).toHaveLength(3)
+    const first = await call(harness.url, rpc('ListTaskPushNotificationConfigs', { taskId: id, pageSize: 2 }))
+    expect((first.body.result as { configs: unknown[] }).configs).toHaveLength(2)
+    const token = (first.body.result as { nextPageToken: string }).nextPageToken
+    expect(token).not.toBe('')
+    const rest = await call(harness.url, rpc('ListTaskPushNotificationConfigs', { taskId: id, pageSize: 2, pageToken: token }))
+    expect((rest.body.result as { configs: unknown[] }).configs).toHaveLength(1)
+    expect((rest.body.result as { nextPageToken: string }).nextPageToken).toBe('')
+    const unreadable = await call(harness.url, rpc('ListTaskPushNotificationConfigs', { taskId: id, pageSize: 1, pageToken: '!!' }))
+    expect((unreadable.body.result as { configs: unknown[] }).configs).toHaveLength(1)
+  })
+
+  it('配置参数的缺失与未知对象分别回 -32602 与 -32001', async () => {
+    const hook = await webhook()
+    const harness = await start(instant(), { card: PUSH_CARD })
+    const id = taskIdOf(await call(harness.url, rpc('SendMessage', message('a'))))
+    const noTaskId = await call(harness.url, rpc('CreateTaskPushNotificationConfig', { url: hook.url }))
+    expect(noTaskId.body.error).toMatchObject({ code: -32602 })
+    const unknownTask = await call(harness.url, rpc('CreateTaskPushNotificationConfig', { taskId: 'ghost', url: hook.url }))
+    expect(unknownTask.body.error).toMatchObject({ code: -32001 })
+    const noUrl = await call(harness.url, rpc('CreateTaskPushNotificationConfig', { taskId: id }))
+    expect(noUrl.body.error).toMatchObject({ code: -32602 })
+    const missingId = await call(harness.url, rpc('GetTaskPushNotificationConfig', { taskId: id }))
+    expect(missingId.body.error).toMatchObject({ code: -32602 })
+    const unknownConfig = await call(harness.url, rpc('GetTaskPushNotificationConfig', { taskId: id, id: 'ghost' }))
+    expect(unknownConfig.body.error).toMatchObject({ code: -32001 })
+    const missingDeleteParam = await call(harness.url, rpc('DeleteTaskPushNotificationConfig', { taskId: id }))
+    expect(missingDeleteParam.body.error).toMatchObject({ code: -32602 })
+    const unknownDelete = await call(harness.url, rpc('DeleteTaskPushNotificationConfig', { taskId: id, id: 'ghost' }))
+    expect(unknownDelete.body.error).toMatchObject({ code: -32001 })
+  })
+
+  it('声明的认证方案与凭据写进投递头', async () => {
+    const hook = await webhook()
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const harness = await start({
+      onMessage: async (ctx) => {
+        await gate
+        ctx.sink.appendArtifact('reply', 'reply', 'done', true)
+      },
+    }, { card: PUSH_CARD })
+    const sent = await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { returnImmediately: true },
+    }))
+    const id = taskIdOf(sent)
+    await call(harness.url, rpc('CreateTaskPushNotificationConfig', {
+      taskId: id,
+      url: hook.url,
+      id: 'with-credentials',
+      authentication: { scheme: 'Bearer', credentials: 'secret' },
+    }))
+    await call(harness.url, rpc('CreateTaskPushNotificationConfig', {
+      taskId: id,
+      url: hook.url,
+      id: 'scheme-only',
+      authentication: { scheme: 'Basic' },
+    }))
+    release()
+    await waitFor(() => hook.deliveries.length >= 2)
+    const authorization = hook.deliveries.map(delivery => delivery.headers.authorization)
+    expect(authorization).toContain('Bearer secret')
+    expect(authorization).toContain('Basic')
+  })
+
+  it('5xx 重试一次后成功，4xx 不重试并报给 onError', async () => {
+    const retried = await webhook()
+    retried.failures = 1
+    const quiet = vi.fn()
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const harness = await start({
+      onMessage: async (ctx) => {
+        ctx.sink.sendStatus('TASK_STATE_WORKING')
+        await gate
+        ctx.sink.appendArtifact('reply', 'reply', 'done', true)
+      },
+    }, { card: PUSH_CARD, onError: quiet })
+    await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { returnImmediately: true, taskPushNotificationConfig: { url: retried.url } },
+    }))
+    await waitFor(() => retried.deliveries.length >= 2)
+    expect(quiet).not.toHaveBeenCalled()
+    release()
+
+    const refused = await webhook()
+    refused.status = 404
+    const reported = vi.fn()
+    const failing = await start(instant(), { card: PUSH_CARD, onError: reported })
+    await call(failing.url, rpc('SendMessage', {
+      ...message('b'),
+      configuration: { taskPushNotificationConfig: { url: refused.url } },
+    }))
+    await waitFor(() => reported.mock.calls.length >= 1)
+    expect(reported).toHaveBeenCalledWith('A2A push delivery failed', expect.any(Error))
+    expect(refused.deliveries).toHaveLength(3)
+  })
+
+  it('未声明推送能力时内联配置与四个方法都被拒绝', async () => {
+    const hook = await webhook()
+    const harness = await start(instant())
+    const sent = await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { taskPushNotificationConfig: { url: hook.url } },
+    }))
+    expect(sent.body.error).toMatchObject({ code: -32003 })
+    for (const method of [
+      'CreateTaskPushNotificationConfig',
+      'GetTaskPushNotificationConfig',
+      'ListTaskPushNotificationConfigs',
+      'DeleteTaskPushNotificationConfig',
+    ]) {
+      const refused = await call(harness.url, rpc(method, { taskId: 't', id: 'c', url: hook.url }))
+      expect(refused.body.error).toMatchObject({ code: -32003 })
+    }
+    expect(hook.deliveries).toEqual([])
+  })
+
+  it('任务淘汰时连带丢弃它的推送配置', async () => {
+    const hook = await webhook()
+    const store = new TaskStore({ maxTasks: 2 })
+    const harness = await start(instant(), { card: PUSH_CARD, store })
+    const id = taskIdOf(await call(harness.url, rpc('SendMessage', message('a'))))
+    await call(harness.url, rpc('CreateTaskPushNotificationConfig', { taskId: id, url: hook.url, id: 'cfg' }))
+    await call(harness.url, rpc('SendMessage', message('b')))
+    await call(harness.url, rpc('SendMessage', message('c')))
+    expect(store.get(id)).toBeUndefined()
+    const readded = store.ensureTask(id, 'ctx-again')
+    expect(readded.id).toBe(id)
+    const listed = await call(harness.url, rpc('ListTaskPushNotificationConfigs', { taskId: id }))
+    expect((listed.body.result as { configs: unknown[] }).configs).toEqual([])
+  })
+})
+
+describe('A2A 请求解析边界', () => {
+  it('接受 ROLE_AGENT、historyLength、tenant 与残缺的 authentication', async () => {
+    const hook = await webhook()
+    const harness = await start(instant(), { card: PUSH_CARD })
+    const sent = await call(harness.url, rpc('SendMessage', {
+      message: { messageId: 'm1', role: 'ROLE_AGENT', parts: [{ text: '你好' }] },
+      configuration: {
+        historyLength: 1,
+        taskPushNotificationConfig: {
+          url: hook.url,
+          id: 'cfg',
+          tenant: 'tenant-a',
+          authentication: { scheme: '' },
+        },
+      },
+    }))
+    const id = taskIdOf(sent)
+    await call(harness.url, rpc('CreateTaskPushNotificationConfig', {
+      taskId: id,
+      url: hook.url,
+      id: 'plain',
+      authentication: 'not-an-object',
+    }))
+    const listed = await call(harness.url, rpc('ListTaskPushNotificationConfigs', { taskId: id }))
+    const configs = (listed.body.result as { configs: TaskPushNotificationConfig[] }).configs
+    expect(configs.map(config => config.id).sort()).toEqual(['cfg', 'plain'])
+    const inline = configs.find(config => config.id === 'cfg')
+    expect(inline).toMatchObject({ tenant: 'tenant-a' })
+    expect(inline?.authentication).toBeUndefined()
+    expect(configs.find(config => config.id === 'plain')?.authentication).toBeUndefined()
+    const message = (await call(harness.url, rpc('GetTask', { id, historyLength: 1 }))).body.result as { history: unknown[] }
+    expect(message.history).toHaveLength(1)
+  })
+
+  it('删掉同一任务的一个配置后其余配置仍在', async () => {
+    const hook = await webhook()
+    const harness = await start(instant(), { card: PUSH_CARD })
+    const id = taskIdOf(await call(harness.url, rpc('SendMessage', message('a'))))
+    await call(harness.url, rpc('CreateTaskPushNotificationConfig', { taskId: id, url: hook.url, id: 'keep' }))
+    await call(harness.url, rpc('CreateTaskPushNotificationConfig', { taskId: id, url: hook.url, id: 'drop' }))
+    await call(harness.url, rpc('DeleteTaskPushNotificationConfig', { taskId: id, id: 'drop' }))
+    const listed = await call(harness.url, rpc('ListTaskPushNotificationConfigs', { taskId: id }))
+    expect((listed.body.result as { configs: { id: string }[] }).configs.map(config => config.id)).toEqual(['keep'])
+  })
+
+  it('无效的任务超时配置在构造时拒绝', () => {
+    expect(() => createA2AServer({ card: CARD, executor: instant(), port: 0, taskTimeoutMs: 0 })).toThrow(/taskTimeoutMs/)
+  })
+
+  it('非回环绑定缺少 apiKey 时拒绝启动', () => {
+    expect(() => createA2AServer({ card: CARD, executor: instant(), port: 0, host: '0.0.0.0' })).toThrow(/requires a non-empty apiKey/)
+  })
+
+  it('默认主机与空 apiKey 用于回环监听，关闭两次时第二次报错', async () => {
+    const server = createA2AServer({ card: CARD, executor: instant(), port: 0 })
+    await server.ready
+    await server.close()
+    await expect(server.close()).rejects.toMatchObject({ code: 'ERR_SERVER_NOT_RUNNING' })
+  })
+
+  it('端口已被占用时 ready 拒绝', async () => {
+    const first = await start(instant())
+    const port = (first.server.server.address() as { port: number }).port
+    const second = createA2AServer({ card: CARD, executor: instant(), port })
+    await expect(second.ready).rejects.toMatchObject({ code: 'EADDRINUSE' })
+  })
+
+  it('非法请求体按子句分别报 -32600', async () => {
+    const harness = await start(instant())
+    const post = async (body: string): Promise<Record<string, unknown>> => {
+      const response = await fetch(harness.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
+        body,
+      })
+      return await response.json() as Record<string, unknown>
+    }
+    expect((await post(JSON.stringify({ jsonrpc: '2.0' }))).id).toBeNull()
+    expect((await post(JSON.stringify({ jsonrpc: '2.0', id: 'keep', method: 7 }))).id).toBe('keep')
+    expect((await post(JSON.stringify([1, 2]))).id).toBeNull()
+    expect((await post(JSON.stringify({ jsonrpc: '2.0', id: 'x', method: 'GetTask', params: { id: 'ghost' } }))).error)
+      .toMatchObject({ code: -32001 })
+  })
+
+  it('ListTasks 拒绝不是游标的 pageToken', async () => {
+    const harness = await start(instant())
+    const invalid = await call(harness.url, rpc('ListTasks', { pageToken: 'not-a-cursor' }))
+    expect(invalid.body.error).toMatchObject({ code: -32602 })
+  })
+
+  it('协议版本可来自重复表头或查询参数，patch 号被忽略', async () => {
+    const harness = await start(instant())
+    const post = async (headers: Record<string, string>, url = harness.url): Promise<Record<string, unknown>> => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(rpc('ListTasks', {})),
+      })
+      return await response.json() as Record<string, unknown>
+    }
+    expect((await post({ 'A2A-Version': '1.0.7' })).result).toBeDefined()
+    expect((await post({ 'A2A-Version': '1.0' })).result).toBeDefined()
+    const query = await post({}, `${harness.url}?A2A-Version=1.0.3`)
+    expect(query.result).toBeDefined()
+  })
+})
+
+describe('A2A 总线入口与执行驱动', () => {
+  it('attachTask 建任务并执行一轮，重复与终态调用都复用同一结果', async () => {
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const seen: string[] = []
+    const harness = await start({
+      onMessage: async (ctx) => {
+        seen.push(ctx.taskId)
+        await gate
+        ctx.sink.appendArtifact('reply', 'reply', `bus:${ctx.text}`, true)
+      },
+    })
+    const session = harness.server.attachTask({ taskId: 'b1', contextId: 'c1' })
+    const context = { taskId: 'b1', contextId: 'c1', skill: 'default', text: '你好', metadata: {} }
+    const first = harness.server.executeTask(context, session)
+    const second = harness.server.executeTask(context)
+    release()
+    const [finished, reused] = await Promise.all([first, second])
+    expect(finished.id).toBe('b1')
+    expect(reused.id).toBe('b1')
+    expect(seen).toEqual(['b1'])
+    expect(finished.status.state).toBe('TASK_STATE_COMPLETED')
+    const again = await harness.server.executeTask({ ...context, text: '再来' })
+    expect(again.artifacts[0]?.parts).toEqual([{ text: 'bus:你好' }])
+    expect(seen).toEqual(['b1'])
+  })
+
+  it('执行会话收尾后的写入被丢弃', async () => {
+    let captured: Parameters<Parameters<typeof start>[0]['onMessage']>[0] | undefined
+    const harness = await start({
+      onMessage: (ctx) => {
+        captured = ctx
+        ctx.sink.appendArtifact('reply', 'reply', 'ok', true)
+        return Promise.resolve()
+      },
+    })
+    await call(harness.url, rpc('SendMessage', message('a')))
+    // 任务已经完成，执行器事后再写状态与工件都不应改变结果
+    captured?.sink.sendStatus('TASK_STATE_WORKING', '迟到')
+    captured?.sink.appendArtifact('reply', 'reply', '迟到')
+    const stored = harness.server.store.all()[0]
+    expect(stored?.status.state).toBe('TASK_STATE_COMPLETED')
+    expect(stored?.artifacts[0]?.parts).toEqual([{ text: 'ok' }])
+  })
+
+  it('取消后执行器的写入被丢弃，取消钩子只调用一次', async () => {
+    let captured: Parameters<Parameters<typeof start>[0]['onMessage']>[0] | undefined
+    const onCancel = vi.fn()
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const harness = await start({
+      onMessage: async (ctx) => {
+        captured = ctx
+        await gate
+      },
+      onCancel,
+    })
+    const sent = await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { returnImmediately: true },
+    }))
+    const id = taskIdOf(sent)
+    const canceled = await call(harness.url, rpc('CancelTask', { id }))
+    expect((canceled.body.result as { status: { state: string } }).status.state).toBe('TASK_STATE_CANCELED')
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    captured?.sink.sendStatus('TASK_STATE_WORKING', '迟到')
+    captured?.sink.appendArtifact('reply', 'reply', '迟到')
+    release()
+    await waitFor(() => harness.server.store.get(id)?.status.state === 'TASK_STATE_CANCELED')
+    expect(harness.server.store.get(id)?.artifacts).toEqual([])
+  })
+
+  it('取消之后超时再触发取消时不重复上报', async () => {
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const onCancel = vi.fn()
+    const harness = await start({
+      onMessage: async () => { await gate },
+      onCancel,
+    }, { taskTimeoutMs: 20 })
+    const sent = await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { returnImmediately: true },
+    }))
+    const id = taskIdOf(sent)
+    await call(harness.url, rpc('CancelTask', { id }))
+    await new Promise(resolve => setTimeout(resolve, 40))
+    release()
+    await waitFor(() => harness.server.store.get(id)?.status.state === 'TASK_STATE_CANCELED')
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('没有订阅者的任务被取消时照常广播', async () => {
+    const harness = await start(instant())
+    harness.server.store.ensureTask('orphan', 'ctx-orphan')
+    const canceled = await call(harness.url, rpc('CancelTask', { id: 'orphan' }))
+    expect((canceled.body.result as { status: { state: string } }).status.state).toBe('TASK_STATE_CANCELED')
+  })
+
+  it('投递失败由 onError 上报，上报自身抛错也不中断投递链', async () => {
+    const harness = await start(instant(), {
+      card: PUSH_CARD,
+      onError: () => { throw new Error('reporter failed') },
+    })
+    await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { taskPushNotificationConfig: { url: 'http://127.0.0.1:1/unreachable' } },
+    }))
+    const healthy = await call(harness.url, rpc('SendMessage', message('b')))
+    expect(taskIdOf(healthy)).toBeTruthy()
+    expect(harness.server.store.all()).toHaveLength(2)
+  })
+})
+
+describe('A2A 事件流生命周期', () => {
+  it('客户端断开后不再写帧，任务照常结束', async () => {
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const harness = await start({
+      onMessage: async (ctx) => {
+        ctx.sink.sendStatus('TASK_STATE_WORKING')
+        await gate
+        ctx.sink.appendArtifact('reply', 'reply', 'late', true)
+      },
+    })
+    const id = taskIdOf(await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { returnImmediately: true },
+    })))
+    const controller = new AbortController()
+    const response = await fetch(harness.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
+      body: JSON.stringify(rpc('SubscribeToTask', { id })),
+      signal: controller.signal,
+    })
+    const reader = response.body?.getReader()
+    await reader?.read()
+    controller.abort()
+    await new Promise(resolve => setTimeout(resolve, 20))
+    release()
+    await waitFor(() => harness.server.store.get(id)?.status.state === 'TASK_STATE_COMPLETED')
+    await new Promise(resolve => setTimeout(resolve, 20))
+  })
+})
+
+describe('A2A 会话收尾与超时', () => {
+  it('会话收尾后 sink 不再写库', async () => {
+    const harness = await start(instant())
+    const session = harness.server.attachTask({ taskId: 's1', contextId: 'c1' })
+    session.sink.sendStatus('TASK_STATE_WORKING', '进行中')
+    const finished = session.finish()
+    session.sink.sendStatus('TASK_STATE_WORKING', '迟到')
+    session.sink.appendArtifact('reply', 'reply', '迟到')
+    expect(finished.status.state).toBe('TASK_STATE_COMPLETED')
+    expect(harness.server.store.get('s1')?.artifacts).toEqual([])
+  })
+
+  it('不带会话的执行自己建会话', async () => {
+    const harness = await start(instant())
+    const finished = await harness.server.executeTask({
+      taskId: 'direct',
+      contextId: 'c-direct',
+      skill: 'default',
+      text: '你好',
+      metadata: {},
+    })
+    expect(finished.status.state).toBe('TASK_STATE_COMPLETED')
+    expect(finished.artifacts[0]?.parts).toEqual([{ text: 'ok' }])
+  })
+
+  it('取消钩子抛错时上报 onError', async () => {
+    const onError = vi.fn()
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const harness = await start({
+      onMessage: async () => { await gate },
+      onCancel: () => { throw new Error('hook failed') },
+    }, { onError })
+    const id = taskIdOf(await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { returnImmediately: true },
+    })))
+    await call(harness.url, rpc('CancelTask', { id }))
+    await waitFor(() => onError.mock.calls.length >= 1)
+    expect(onError).toHaveBeenCalledWith('A2A onCancel failed', expect.any(Error))
+    release()
+  })
+
+  it('超出任务期限时置 FAILED 并在状态消息里写明原因', async () => {
+    const harness = await start({
+      onMessage: async () => { await new Promise<void>(() => {}) },
+    }, { taskTimeoutMs: 20 })
+    const id = taskIdOf(await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { returnImmediately: true },
+    })))
+    await waitFor(() => harness.server.store.get(id)?.status.state === 'TASK_STATE_FAILED')
+    expect(harness.server.store.get(id)?.status.message?.parts).toEqual([{ text: 'task timed out after 20ms' }])
+  })
+
+  it('空的查询版本与非法游标载荷都按协议拒绝', async () => {
+    const harness = await start(instant())
+    const empty = await fetch(`${harness.url}?A2A-Version=`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rpc('ListTasks', {})),
+    })
+    expect(((await empty.json()) as { error: { code: number } }).error.code).toBe(-32009)
+    const token = Buffer.from('{"t":1}').toString('base64url')
+    const invalid = await call(harness.url, rpc('ListTasks', { pageToken: token }))
+    expect(invalid.body.error).toMatchObject({ code: -32602 })
+  })
+
+  it('投递失败且没有配置 onError 时只记在默认空处理器上', async () => {
+    const hook = await webhook()
+    hook.status = 404
+    const harness = await start(instant(), { card: PUSH_CARD })
+    await call(harness.url, rpc('SendMessage', {
+      ...message('a'),
+      configuration: { taskPushNotificationConfig: { url: hook.url } },
+    }))
+    await waitFor(() => hook.deliveries.length >= 3)
   })
 })

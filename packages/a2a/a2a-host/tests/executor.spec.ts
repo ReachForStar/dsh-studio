@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SessionFollowFrame } from '@deepseek-ai/dsh-api-session-controller'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { assistantText, DshA2AExecutor, streamText } from '../src/executor.ts'
 import type { A2AExecutorContext, A2AStreamSink } from '@reachforstar/dsh-a2a'
 
@@ -107,6 +108,18 @@ function harness(
   return { executor, create, prompt, cancel, seen }
 }
 
+/** 真实订阅开头的快照帧；执行器只消费事件帧。 */
+function snapshotFrame(): SessionFollowFrame {
+  return {
+    type: 'snapshot',
+    header: { version: 5, id: SessionId('ctx-1'), createdAt: 0, isSeeded: false },
+    cursor: 0,
+    records: [],
+    hasMore: false,
+    projections: { asOfSeq: 0, values: {} },
+  }
+}
+
 const FOREIGN_TURN: readonly Step[] = [
   deltaFrame('别的客户端'),
   eventFrame('user/message', { source: { kind: 'user', rpcId: 'someone-else' } }),
@@ -192,6 +205,7 @@ describe('DshA2AExecutor.onMessage', () => {
 
   it('忽略空增量、快照帧与没有 rpcId 的用户消息', async () => {
     const steps: Step[] = [
+      snapshotFrame(),
       deltaFrame(''),
       eventFrame('user/message', { source: { kind: 'user' } }),
       ownUserFrame(),

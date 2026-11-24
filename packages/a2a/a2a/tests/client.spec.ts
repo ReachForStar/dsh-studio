@@ -270,6 +270,136 @@ describe('A2AClient 流式调用', () => {
   })
 })
 
+describe('A2AClient 协议边界', () => {
+  it('续接任务时把 taskId 写进消息参数', async () => {
+    const bodies: Record<string, unknown>[] = []
+    const url = await rawServer((req, res) => {
+      let raw = ''
+      req.on('data', (chunk) => { raw += String(chunk) })
+      req.on('end', () => {
+        bodies.push(JSON.parse(raw) as Record<string, unknown>)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: { task: TASK } }))
+      })
+    })
+    await new A2AClient({ url }).sendMessage({ text: 'hi', taskId: 't1' })
+    expect((bodies[0]?.params as { message: { taskId?: string } }).message.taskId).toBe('t1')
+  })
+
+  it('读卡片时透传取消信号', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(CARD))
+    })
+    const card = await new A2AClient({ url }).getCard({ signal: new AbortController().signal })
+    expect(card.name).toBe('peer')
+  })
+
+  it('发送消息时透传 contextId', async () => {
+    const bodies: Record<string, unknown>[] = []
+    const url = await rawServer((req, res) => {
+      let raw = ''
+      req.on('data', (chunk) => { raw += String(chunk) })
+      req.on('end', () => {
+        bodies.push(JSON.parse(raw) as Record<string, unknown>)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: { task: TASK } }))
+      })
+    })
+    await new A2AClient({ url }).sendMessage({ text: 'hi', contextId: 'c1' })
+    expect((bodies[0]?.params as { message: { contextId?: string } }).message.contextId).toBe('c1')
+  })
+
+  it('调用方注入的失败值原样上抛', async () => {
+    const url = (await peerServer({
+      onMessage: async (ctx) => {
+        ctx.sink.sendStatus('TASK_STATE_WORKING')
+        await new Promise<void>((resolve) => { setTimeout(resolve, 50) })
+        ctx.sink.appendArtifact('reply', 'reply', 'late', true)
+      },
+    })).url
+    const generator = new A2AClient({ url }).sendMessageStream({ text: 'hi' })
+    const first = await generator.next()
+    expect(first.done).toBe(false)
+    await expect(generator.throw('consumer failed')).rejects.toBe('consumer failed')
+  })
+
+  it('流式与订阅都透传取消信号', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't', contextId: 'c', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
+      res.end()
+    })
+    const client = new A2AClient({ url })
+    const signal = new AbortController().signal
+    const frames: A2AStreamEvent[] = []
+    for await (const event of client.sendMessageStream({ text: 'hi' }, signal)) frames.push(event)
+    expect(frames).toHaveLength(1)
+  })
+
+  it('响应没有 content-type 时按 SSE 读取', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200)
+      res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't', contextId: 'c', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
+      res.end()
+    })
+    const frames: A2AStreamEvent[] = []
+    for await (const event of new A2AClient({ url }).sendMessageStream({ text: 'hi' })) frames.push(event)
+    expect(frames).toHaveLength(1)
+  })
+
+  it('订阅响应没有 content-type 时按 SSE 读取，跳过没有 data 的帧', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200)
+      res.write('event: message\n\n')
+      res.write(`data: ${JSON.stringify({ task: { id: 't', contextId: 'c', status: { state: 'TASK_STATE_WORKING', timestamp: 'now' }, artifacts: [], history: [] } })}\n\n`)
+      res.end()
+    })
+    const frames: A2AStreamEvent[] = []
+    for await (const event of new A2AClient({ url }).subscribeToTask('t', new AbortController().signal)) frames.push(event)
+    expect(frames.map(frame => Object.keys(frame)[0])).toEqual(['task'])
+  })
+
+  it('流返回 JSON 而没有错误字段时报告协议不符', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: { task: TASK } }))
+    })
+    const streamed: A2AStreamEvent[] = []
+    await expect((async () => {
+      for await (const event of new A2AClient({ url }).sendMessageStream({ text: 'hi' })) streamed.push(event)
+    })()).rejects.toThrow(/SendStreamingMessage answered JSON instead of a stream/)
+    await expect((async () => {
+      for await (const event of new A2AClient({ url }).subscribeToTask('t')) streamed.push(event)
+    })()).rejects.toThrow(/SubscribeToTask answered JSON instead of a stream/)
+    expect(streamed).toEqual([])
+  })
+
+  it('流在终态前关闭时报截断，帧内错误直接上抛', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      res.write('event: message\n\n')
+      res.write(`data: ${JSON.stringify({ task: { id: 't', contextId: 'c', status: { state: 'TASK_STATE_WORKING', timestamp: 'now' }, artifacts: [], history: [] } })}\n\n`)
+      res.write(`data: ${JSON.stringify({ jsonrpc: '2.0', id: '1', error: { code: -32001, message: 'boom' } })}\n\n`)
+      res.end()
+    })
+    await expect((async () => {
+      for await (const event of new A2AClient({ url }).sendMessageStream({ text: 'hi' })) void event
+    })()).rejects.toThrow(/SendStreamingMessage failed with code -32001: boom/)
+  })
+
+  it('流在没有终态帧的情况下安静关闭时报截断', async () => {
+    const url = await rawServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      res.write(`data: ${JSON.stringify({ task: { id: 't', contextId: 'c', status: { state: 'TASK_STATE_WORKING', timestamp: 'now' }, artifacts: [], history: [] } })}\n\n`)
+      res.end()
+    })
+    await expect((async () => {
+      for await (const event of new A2AClient({ url }).sendMessageStream({ text: 'hi' })) void event
+    })()).rejects.toThrow(/stream ended without a terminal frame/)
+  })
+})
+
 describe('A2AClient 推送配置与参数', () => {
   it('发送时带上内联推送配置，流式同样携带', async () => {
     const bodies: Record<string, unknown>[] = []

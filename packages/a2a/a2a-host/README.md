@@ -65,6 +65,7 @@ Choose it when this deployment should be reachable as an A2A agent. A deployment
 | [`src/index.ts`](src/index.ts) | `A2AHostService`: card, listener, lifetime, and `Config` |
 | [`src/executor.ts`](src/executor.ts) | `DshA2AExecutor`: session follow, prompt, streaming, cancel, timeout |
 | [`src/card.ts`](src/card.ts) | `buildAgentCard` and the default skill |
+| [`src/endpoint.ts`](src/endpoint.ts) | Endpoint defaults, the advertised URL for a bound address, and the failure log line |
 | [`src/kafka-detect.ts`](src/kafka-detect.ts) | `ensureKafka`: probing, starting the Kafka cluster over stdin, and reporting a failure category with its diagnostic |
 
 ### Why Kafka starts over stdin

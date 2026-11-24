@@ -1,6 +1,7 @@
 import { Context } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AgentCard } from '@reachforstar/dsh-a2a'
+import { advertisedUrl, boundAddress, failureLine } from '../src/endpoint.ts'
 import { apply, A2AHostService, Config } from '../src/index.ts'
 
 const disposers: (() => Promise<void>)[] = []
@@ -12,7 +13,7 @@ afterEach(async () => {
 /** 只提供 A2A 主机用到的那两个方法。 */
 interface SessionControllerStub {
   create: () => Promise<{ sessionId: string }>
-  prompt: () => Promise<{ accepted: true }>
+  prompt: (request: unknown, signal: AbortSignal) => Promise<{ accepted: true }>
   cancel: () => { accepted: true }
   follow: () => AsyncIterable<never>
 }
@@ -26,12 +27,33 @@ function sessionController(): SessionControllerStub {
   }
 }
 
+/** 第一个 prompt 阻塞到被中止；取消本身抛错，用于观察后台失败日志。 */
+function abortableController(): SessionControllerStub {
+  return {
+    create: () => Promise.resolve({ sessionId: 's' }),
+    prompt: (_request, signal) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => { reject(new Error('aborted')) }, { once: true })
+    }),
+    cancel: () => { throw new Error('cancel failed') },
+    follow: () => (async function* () {})() as AsyncIterable<never>,
+  }
+}
+
+async function call(url: string, method: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: '1', method, params }),
+  })
+  return await response.json() as Record<string, unknown>
+}
+
 async function host(
   config: Parameters<typeof apply>[1],
-  options: { credentials?: Record<string, string> } = {},
+  options: { credentials?: Record<string, string>; sessions?: SessionControllerStub } = {},
 ): Promise<{ ctx: Context; service: A2AHostService }> {
   const ctx = new Context()
-  ctx.provide('sessionController', sessionController() as never)
+  ctx.provide('sessionController', (options.sessions ?? sessionController()) as never)
   if (options.credentials !== undefined) {
     const values = options.credentials
     ctx.provide('credentials', {
@@ -124,6 +146,18 @@ describe('A2AHostService', () => {
     expect(accepted.status).toBe(200)
   })
 
+  it('后台取消失败时写入告警日志，任务仍落终态', async () => {
+    const { ctx, service } = await host({ port: 0 }, { sessions: abortableController() })
+    const warn = vi.spyOn(ctx.logger, 'warn')
+    const sent = await call(service.url, 'SendMessage', {
+      message: { parts: [{ text: '你好' }] },
+      configuration: { returnImmediately: true },
+    })
+    const task = (sent.result as { task: { id: string } }).task
+    await call(service.url, 'CancelTask', { id: task.id })
+    await vi.waitFor(() => { expect(warn).toHaveBeenCalledWith('A2A onCancel failed: cancel failed') })
+  })
+
   it('自带卡片身份可覆盖，卸载后停止监听', async () => {
     const { service } = await host({
       port: 0,
@@ -145,6 +179,7 @@ describe('A2AHostService', () => {
     const port = service.port
     await disposers.pop()?.()
     expect(service.listening).toBe(false)
+    expect(service.port).toBeUndefined()
     await expect(fetch(`http://127.0.0.1:${String(port)}/health`)).rejects.toThrow()
   })
 })
@@ -182,6 +217,25 @@ describe('A2AHostService 启动路径', () => {
     expect(failing.listening).toBe(true)
   })
 
+  it('端口被占用时 apply 跳过启动', async () => {
+    const { service: first } = await host({ port: 0 })
+    const busy = first.port ?? 0
+    const ctx = new Context()
+    ctx.provide('sessionController', sessionController() as never)
+    const info = vi.spyOn(ctx.logger, 'info')
+    await apply(ctx, { port: busy, host: '127.0.0.1' })
+    expect(info).toHaveBeenCalledWith(expect.stringContaining('已被占用'))
+    expect(ctx.reflect.get('a2aHost')).toBeUndefined()
+  })
+
+  it('未配置主机与端口时按默认端点公布', () => {
+    const ctx = new Context()
+    ctx.provide('sessionController', sessionController() as never)
+    const service = new A2AHostService(ctx, {})
+    expect(service.url).toBe('http://127.0.0.1:9310/')
+    expect(service.card.supportedInterfaces[0]?.url).toBe('http://127.0.0.1:9310/')
+  })
+
   it('按类插件挂载时由 init 完成绑定', async () => {
     const ctx = new Context()
     ctx.provide('sessionController', sessionController() as never)
@@ -200,5 +254,25 @@ describe('Config', () => {
     expect(config).toMatchObject({ host: '127.0.0.1', port: 9310, apiKey: '', turnTimeoutMs: 1_800_000 })
     expect(config.card).toMatchObject({ name: 'dsh-studio', version: '0.1.0' })
     expect(config.card?.skills).toHaveLength(1)
+  })
+})
+
+describe('端点推导', () => {
+  it('通配地址映射到回环，具体地址原样公布', () => {
+    expect(advertisedUrl({ address: '::', family: 'IPv6', port: 9310 })).toBe('http://127.0.0.1:9310/')
+    expect(advertisedUrl({ address: '0.0.0.0', family: 'IPv4', port: 7 })).toBe('http://127.0.0.1:7/')
+    expect(advertisedUrl({ address: '10.0.0.5', family: 'IPv4', port: 8 })).toBe('http://10.0.0.5:8/')
+  })
+
+  it('没有绑定 TCP 套接字时拒绝读出地址', () => {
+    expect(() => boundAddress({ address: () => null })).toThrow(/did not bind a TCP socket/)
+    expect(() => boundAddress({ address: () => '/run/a2a.sock' })).toThrow(/did not bind a TCP socket/)
+  })
+})
+
+describe('failureLine', () => {
+  it('Error 取 message，其它值取字符串', () => {
+    expect(failureLine('A2A onCancel failed', new Error('boom'))).toBe('A2A onCancel failed: boom')
+    expect(failureLine('A2A onCancel failed', 'boom')).toBe('A2A onCancel failed: boom')
   })
 })

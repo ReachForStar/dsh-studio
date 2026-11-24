@@ -5,6 +5,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { createA2AServer, TaskStore } from '@reachforstar/dsh-a2a'
 import type { A2AServer, AgentCard, AgentSkill } from '@reachforstar/dsh-a2a'
 import { buildAgentCard, DEFAULT_SKILL } from './card.ts'
+import { advertisedUrl, boundAddress, endpointOf, failureLine } from './endpoint.ts'
 import { DshA2AExecutor } from './executor.ts'
 
 export { buildAgentCard, DEFAULT_SKILL } from './card.ts'
@@ -118,6 +119,12 @@ export class A2AHostService extends Service {
   private settleReady!: () => void
   private failReady!: (error: unknown) => void
   private server: A2AServer | undefined
+  /** Interface this deployment binds. */
+  private readonly bindHost: string
+  /** TCP port this deployment binds; 0 asks the OS for one. */
+  private readonly bindPort: number
+  /** The endpoint peers are told to call, rewritten once an OS-assigned port is known. */
+  private endpoint: string
 
   /**
    * @param ctx - the owning host context.
@@ -125,6 +132,10 @@ export class A2AHostService extends Service {
    */
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'a2aHost')
+    const endpoint = endpointOf(config)
+    this.bindHost = endpoint.host
+    this.bindPort = endpoint.port
+    this.endpoint = config.url ?? `http://${endpoint.host}:${String(endpoint.port)}/`
     this.ready = new Promise<void>((resolve, reject) => {
       this.settleReady = resolve
       this.failReady = reject
@@ -138,7 +149,7 @@ export class A2AHostService extends Service {
       version: card.version ?? '0.1.0',
       ...card.documentationUrl === undefined || card.documentationUrl.length === 0
         ? {} : { documentationUrl: card.documentationUrl },
-      url: config.url ?? `http://${config.host ?? '127.0.0.1'}:${String(config.port ?? 9310)}/`,
+      url: this.endpoint,
       skills: card.skills ?? [DEFAULT_SKILL],
       authenticated: (config.apiKey ?? '').length > 0 || (config.apiKeyEnv ?? '').length > 0,
     })
@@ -146,7 +157,7 @@ export class A2AHostService extends Service {
 
   /** The endpoint peers call, as this deployment advertises it. */
   get url(): string {
-    return this.card.supportedInterfaces[0]?.url ?? ''
+    return this.endpoint
   }
 
   /**
@@ -200,9 +211,6 @@ export class A2AHostService extends Service {
       ...this.config.cwd === undefined ? {} : { cwd: this.config.cwd },
       ...this.config.agentPreset === undefined ? {} : { agentPreset: this.config.agentPreset },
       ...this.config.turnTimeoutMs === undefined ? {} : { turnTimeoutMs: this.config.turnTimeoutMs },
-      onError: (message, error) => {
-        this.ctx.logger.warn(`${message}: ${error instanceof Error ? error.message : String(error)}`)
-      },
     })
     const apiKey = await this.resolveApiKey()
     // The card advertises authentication from the resolved key rather than the
@@ -217,10 +225,10 @@ export class A2AHostService extends Service {
       executor,
       store: this.store,
       apiKey,
-      port: this.config.port ?? 9310,
-      host: this.config.host ?? '127.0.0.1',
+      port: this.bindPort,
+      host: this.bindHost,
       onError: (message, error) => {
-        this.ctx.logger.warn(`${message}: ${error instanceof Error ? error.message : String(error)}`)
+        this.ctx.logger.warn(failureLine(message, error))
       },
     })
     this.server = server
@@ -231,12 +239,8 @@ export class A2AHostService extends Service {
       throw error
     }
     if (this.config.url === undefined) {
-      const address = server.server.address()
-      if (typeof address === 'object' && address !== null) {
-        const host = address.address === '::' || address.address === '0.0.0.0' ? '127.0.0.1' : address.address
-        const interface0 = this.card.supportedInterfaces[0]
-        if (interface0 !== undefined) interface0.url = `http://${host}:${String(address.port)}/`
-      }
+      this.endpoint = advertisedUrl(boundAddress(server.server))
+      for (const interface0 of this.card.supportedInterfaces) interface0.url = this.endpoint
     }
     this.ctx.effect(() => async () => {
       await server.close()
@@ -283,8 +287,7 @@ async function isPortInUse(host: string, port: number): Promise<boolean> {
  * @returns a promise resolved once the listener is bound, or immediately when the port is already taken.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
-  const host = config.host ?? '127.0.0.1'
-  const port = config.port ?? 9310
+  const { host, port } = endpointOf(config)
   if (await isPortInUse(host, port)) {
     ctx.logger.info(`a2a-host: ${host}:${port} 已被占用，跳过启动`)
     return

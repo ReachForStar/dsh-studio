@@ -260,6 +260,15 @@ class FakeBus {
   }
 }
 
+/** 暴露真实总线句柄的服务，用于验证首次使用时的创建与卸载时的关闭。 */
+class BusProbeService extends A2AService {
+  probeBus(): A2ABus {
+    const bridge = this.bridgeConfig
+    if (bridge === undefined) throw new Error('no bridge configured')
+    return this.busOf(bridge)
+  }
+}
+
 /** 用假总线替换真实 Kafka 的服务。 */
 class BusBackedService extends A2AService {
   constructor(ctx: Context, config: A2AConfig, private readonly injected: FakeBus) {
@@ -497,5 +506,155 @@ describe('A2AService 桥配置与委派', () => {
     const second = new BusBackedService(new Context(), { bridge: { configPath: bridgeFile() } }, new FakeBus())
     const reply = await second.dispatch({ agent: 'pi', skill: 'code-dev', text: 'x', mode: 'bus' })
     expect(reply.state).toBe('TASK_STATE_SUBMITTED')
+  })
+})
+
+describe('A2AService 参数透传与桥来源', () => {
+  const TASK: A2ATask = {
+    id: 't1',
+    contextId: 'c1',
+    status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' },
+    artifacts: [{ artifactId: 'reply', parts: [{ text: '任务答案' }] }],
+    history: [],
+  }
+
+  it('对等端的 apiKey 用在调用上，send 透传 taskId 与 metadata', async () => {
+    const bodies: Record<string, unknown>[] = []
+    const keys: string[] = []
+    const url = await rawServer((req, res) => {
+      let raw = ''
+      keys.push(String(req.headers['x-api-key'] ?? ''))
+      req.on('data', (chunk) => { raw += String(chunk) })
+      req.on('end', () => {
+        bodies.push(JSON.parse(raw) as Record<string, unknown>)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: { task: TASK } }))
+      })
+    })
+    const service = serviceOf({ peers: { peer: { url, apiKey: 'secret' } } })
+    const reply = await service.send({ peer: 'peer', text: 'x', taskId: 't1', metadata: { skill: 'code-review' } })
+    expect(reply.taskId).toBe('t1')
+    expect(keys[0]).toBe('secret')
+    const message = (bodies[0]?.params as { message: Record<string, unknown> }).message
+    expect(message.taskId).toBe('t1')
+    expect(message.metadata).toEqual({ skill: 'code-review' })
+  })
+
+  it('直连派发在没有状态帧时用任务答案补文本与状态', async () => {
+    const url = await rawServer((req, res) => {
+      let raw = ''
+      req.on('data', (chunk) => { raw += String(chunk) })
+      req.on('end', () => {
+        const body = JSON.parse(raw) as { method: string }
+        if (body.method === 'GetTask') {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: TASK }))
+          return
+        }
+        res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+        res.write(`data: ${JSON.stringify({ task: { ...TASK, status: { state: 'TASK_STATE_SUBMITTED', timestamp: 'now' }, artifacts: [] } })}\n\n`)
+        res.write(`data: ${JSON.stringify({ artifactUpdate: { taskId: 't1', contextId: 'c1', artifact: { artifactId: 'reply', parts: [{ text: '流内' }] } } })}\n\n`)
+        res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't1', contextId: 'c1', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
+        res.end()
+      })
+    })
+    const service = serviceOf({ bridge: { configPath: bridgeFile() }, peers: { 'claude-code': { url } } })
+    const progress: { state?: string; text: string }[] = []
+    const reply = await service.dispatch({
+      agent: 'claude-code',
+      skill: 'code-review',
+      text: 'x',
+      contextId: 'c1',
+      onProgress: (report) => { progress.push(report) },
+    })
+    expect(progress[0]).toEqual({ text: '流内' })
+    expect(reply).toMatchObject({ text: '流内', state: 'TASK_STATE_COMPLETED', contextId: 'c1' })
+  })
+
+  it('直连派发只回任务时用任务答案作正文', async () => {
+    const url = await rawServer((req, res) => {
+      let raw = ''
+      req.on('data', (chunk) => { raw += String(chunk) })
+      req.on('end', () => {
+        const body = JSON.parse(raw) as { method: string }
+        if (body.method === 'GetTask') {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ jsonrpc: '2.0', id: '1', result: TASK }))
+          return
+        }
+        res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+        res.write(`data: ${JSON.stringify({ task: { ...TASK, status: { state: 'TASK_STATE_SUBMITTED', timestamp: 'now' }, artifacts: [] } })}\n\n`)
+        res.write(`data: ${JSON.stringify({ statusUpdate: { taskId: 't1', contextId: 'c1', status: { state: 'TASK_STATE_COMPLETED', timestamp: 'now' } } })}\n\n`)
+        res.end()
+      })
+    })
+    const service = serviceOf({ bridge: { configPath: bridgeFile() }, peers: { 'claude-code': { url } } })
+    const reply = await service.dispatch({ agent: 'claude-code', skill: 'code-review', text: 'x' })
+    expect(reply).toMatchObject({ text: '任务答案', state: 'TASK_STATE_COMPLETED' })
+  })
+
+  it('总线等待什么都没到时保留空文本', async () => {
+    const bus = new FakeBus()
+    const service = new BusBackedService(new Context(), { bridge: { configPath: bridgeFile() } }, bus)
+    const reply = await service.dispatch({ agent: 'pi', skill: 'code-dev', text: 'x', mode: 'bus', wait: true, timeoutMs: 1 })
+    expect(reply).toMatchObject({ text: '', state: 'TASK_STATE_WORKING' })
+  })
+
+  it('总线进度跳过别的任务与空事件', async () => {
+    const bus = new FakeBus()
+    const service = new BusBackedService(new Context(), { bridge: { configPath: bridgeFile() } }, bus)
+    const progress: { state?: string; text: string }[] = []
+    const waiting = service.dispatch({
+      agent: 'pi', skill: 'code-dev', text: 'x', mode: 'bus', wait: true, timeoutMs: 5_000,
+      onProgress: (report) => { progress.push(report) },
+    })
+    await vi.waitFor(() => { expect(bus.produced).toHaveLength(1) })
+    const task = bus.produced[0]!
+    bus.emit({ schema: 'a2a.event/1', taskId: 'other', contextId: 'other', from: 'pi', type: 'status-update', state: 'TASK_STATE_WORKING', ts: 1 })
+    bus.emit({ schema: 'a2a.event/1', taskId: task.taskId, contextId: task.contextId, from: 'pi', type: 'artifact-update', ts: 2 })
+    bus.emit({ schema: 'a2a.event/1', taskId: task.taskId, contextId: task.contextId, from: 'pi', type: 'artifact-update', text: '一段', ts: 2 })
+    bus.emit({ schema: 'a2a.event/1', taskId: task.taskId, contextId: task.contextId, from: 'pi', type: 'terminal', state: 'TASK_STATE_COMPLETED', ts: 3 })
+    await expect(waiting).resolves.toMatchObject({ text: '一段', state: 'TASK_STATE_COMPLETED' })
+    expect(progress).toEqual([
+      { text: '一段' },
+      { state: 'TASK_STATE_COMPLETED', text: '一段' },
+    ])
+  })
+
+  it('桥配置可来自 A2A_CONFIG 环境变量，并带上共享的 apiKey', async () => {
+    const path = bridgeFile()
+    const previousPath = process.env.A2A_CONFIG
+    const previousKey = process.env.A2A_API_KEY
+    process.env.A2A_CONFIG = path
+    process.env.A2A_API_KEY = 'shared'
+    try {
+      const fromEnv = serviceOf({ bridge: {} })
+      expect(fromEnv.bridgeConfig?.agents['claude-code']?.port).toBe(9320)
+      expect(fromEnv.resolve('pi')).toMatchObject({ url: 'http://127.0.0.1:9310/', apiKey: 'shared' })
+    } finally {
+      if (previousPath === undefined) delete process.env.A2A_CONFIG
+      else process.env.A2A_CONFIG = previousPath
+      if (previousKey === undefined) delete process.env.A2A_API_KEY
+      else process.env.A2A_API_KEY = previousKey
+    }
+  })
+
+  it('只给了空 bridge 段且没有环境变量时不读文件', () => {
+    const previous = process.env.A2A_CONFIG
+    delete process.env.A2A_CONFIG
+    try {
+      expect(serviceOf({ bridge: {} }).bridgeConfig).toBeUndefined()
+    } finally {
+      if (previous !== undefined) process.env.A2A_CONFIG = previous
+    }
+  })
+
+  it('未注入总线时自己按桥配置建一条，卸载时关闭', async () => {
+    const ctx = new Context()
+    const service = new BusProbeService(ctx, { bridge: { configPath: bridgeFile() } })
+    const bus = service.probeBus()
+    expect(service.probeBus()).toBe(bus)
+    await ctx.fiber.dispose()
+    expect(service.probeBus()).not.toBe(bus)
   })
 })

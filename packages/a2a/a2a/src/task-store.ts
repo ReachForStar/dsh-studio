@@ -28,7 +28,6 @@ export interface TaskCursor {
 /** The task table one A2A server works against. */
 export class TaskStore {
   private readonly tasks = new Map<string, A2ATask>()
-  private readonly byContext = new Map<string, string[]>()
   private readonly maxTasks: number
   private readonly maxHistory: number
   /**
@@ -84,9 +83,6 @@ export class TaskStore {
       ...metadata === undefined ? {} : { metadata },
     }
     this.tasks.set(id, task)
-    const siblings = this.byContext.get(context) ?? []
-    siblings.push(id)
-    this.byContext.set(context, siblings)
     this.evict()
     return task
   }
@@ -194,10 +190,9 @@ export class TaskStore {
     if (filter.contextId !== undefined) rows = rows.filter(task => task.contextId === filter.contextId)
     if (filter.status !== undefined) rows = rows.filter(task => task.status.state === filter.status)
     // ISO 8601 UTC strings compare chronologically as plain strings.
-    return rows.sort((a, b) =>
-      a.status.timestamp === b.status.timestamp
-        ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-        : (a.status.timestamp < b.status.timestamp ? 1 : -1))
+    return rows.sort((a, b) => a.status.timestamp === b.status.timestamp
+      ? (a.id < b.id ? -1 : 1)
+      : (a.status.timestamp < b.status.timestamp ? 1 : -1))
   }
 
   /** Drop the oldest terminal tasks once the table is over its bound. */
@@ -208,11 +203,6 @@ export class TaskStore {
       if (!isTerminalState(task.status.state)) continue
       this.tasks.delete(id)
       this.onEvict?.(id)
-      const siblings = this.byContext.get(task.contextId)
-      if (siblings === undefined) continue
-      const index = siblings.indexOf(id)
-      if (index >= 0) siblings.splice(index, 1)
-      if (siblings.length === 0) this.byContext.delete(task.contextId)
     }
   }
 }

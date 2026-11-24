@@ -453,6 +453,14 @@ describe('本机专家席（默认）', () => {
     expect(test.session.snapshotEvents().some(event => event.type === 'assistant/peer-message')).toBe(false)
   })
 
+  it('席位启动失败时记下失败进度并让路由继续', async () => {
+    const test = await harness(a2aStub(), 'auto')
+    test.subagents.startActivation.mockRejectedValueOnce(new Error('no provider'))
+    const execution = await test.ctx.commands.execute(test.agent, '/review 评估', [], signal)
+    // The command face reports the seat failure instead of publishing a reply.
+    expect(execution?.result).toEqual({ kind: 'error', text: '天权 委派失败：no provider' })
+  })
+
   it('子运行释放失败不掩盖席位结果', async () => {
     const completed = await harness(a2aStub(), 'auto')
     completed.subagents.startActivation.mockResolvedValueOnce({

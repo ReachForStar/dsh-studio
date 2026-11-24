@@ -308,7 +308,6 @@ export async function removePath(
   try {
     info = await lstat(absolutePath)
   } catch (error: unknown) {
-    if (isENOENT(error)) throw new FsError(`cannot remove "${absolutePath}": not found`, 'FS_NOT_FOUND', { cause: error })
     throw fsErrorFromErrno('remove', absolutePath, error)
   }
   const kind = info.isFile() ? 'file' : info.isSymbolicLink() ? 'symlink' : info.isDirectory() ? 'directory' : 'other'
@@ -322,11 +321,7 @@ export async function removePath(
   try {
     await rm(absolutePath, { recursive: true, force: false })
   } catch (error: unknown) {
-    /* v8 ignore next -- the entry passed the preflight probe; losing it in between is a race. */
-    if (isENOENT(error)) throw new FsError(`cannot remove "${absolutePath}": not found`, 'FS_NOT_FOUND', { cause: error })
-    if (isPermissionError(error)) {
-      throw new FsError(`cannot remove "${absolutePath}": permission denied`, 'FS_PERMISSION_DENIED', { cause: error })
-    }
+    // `fsErrorFromErrno` already owns the not-found, permission, and generic mapping.
     throw fsErrorFromErrno('remove', absolutePath, error)
   }
   return { kind }
@@ -1043,6 +1038,7 @@ function tolerantLiteralEdit(
   if (indented.length > 0) {
     if (indented.length > 1 && !replaceAll) throw ambiguousEdit(displayPath, indented.length)
     const match = indented[0]
+    /* v8 ignore next -- a non-empty result always carries its first element. */
     if (match === undefined) throw ambiguousEdit(displayPath, indented.length)
     return applySpan(content, match, replacement)
   }
@@ -1051,6 +1047,7 @@ function tolerantLiteralEdit(
   if (anchored.length > 0) {
     if (anchored.length > 1 && !replaceAll) throw ambiguousEdit(displayPath, anchored.length)
     const match = anchored[0]
+    /* v8 ignore next -- a non-empty result always carries its first element. */
     if (match === undefined) throw ambiguousEdit(displayPath, anchored.length)
     return applySpan(content, match, replacement)
   }

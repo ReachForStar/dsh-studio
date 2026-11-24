@@ -951,6 +951,17 @@ describe('removePath', () => {
     expect(await stat(join(dir, 'busy')).then(() => 'present', () => 'gone')).toBe('gone')
   })
 
+  it('removes a special file reported as type "other"', async () => {
+    const socketPath = join(dir, 'special.sock')
+    const server = createServer()
+    await new Promise<void>((resolve) => { server.listen(socketPath, resolve) })
+    try {
+      await expect(removePath(socketPath, false)).resolves.toEqual({ kind: 'other' })
+    } finally {
+      await new Promise<void>((resolve) => { server.close(() => { resolve() }) })
+    }
+  })
+
   it('translates permission failures from the probe and the removal', async () => {
     const locked = join(dir, 'locked')
     await mkdir(locked)
@@ -1049,6 +1060,31 @@ describe('applyLiteralEdit', () => {
       .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
     expect(() => applyLiteralEdit('start\nA\nB\nstart\nA\nB', 'start\nA\nB', 'X', false, 'f'))
       .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+  })
+
+  it('reports ambiguity that only the indentation or anchor stage can see', () => {
+    // No exact occurrence: the ambiguity appears at the indentation stage.
+    expect(() => applyLiteralEdit('    one\n    two\n  one\n  two', 'one\ntwo', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+    // No exact and no indentation-equal window: the anchor stage reports it.
+    expect(() => applyLiteralEdit('start\nA\nB\nother\nend\nstart\nA\nB\nchanged\nend', 'start\nA\nB\nmiddle\nend', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+  })
+
+  it('walks every tolerant stage before reporting not found', () => {
+    expect(() => applyLiteralEdit('alpha', '  9: zzz  ', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_EDIT_NOT_FOUND' }))
+    expect(() => applyLiteralEdit('alpha', 'z\\nz', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_EDIT_NOT_FOUND' }))
+  })
+
+  it('matches a unique line-number gutter and a unique escape', () => {
+    expect(applyLiteralEdit('alpha\nbeta', '1: alpha', 'A', false, 'f').content).toBe('A\nbeta')
+    expect(applyLiteralEdit('x\ty', 'x\\ty', 'T', false, 'f').content).toBe('T')
+  })
+
+  it('interprets the tab escape', () => {
+    expect(applyLiteralEdit('a\tb', 'a\\tb', 'X', false, 'f').content).toBe('X')
   })
 
   it('matches a unique trimmed search and a unique indentation block', () => {

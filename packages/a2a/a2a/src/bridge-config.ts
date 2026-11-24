@@ -126,8 +126,9 @@ export function loadA2ABridgeConfig(source: A2ABridgeConfigSource = {}): A2ABrid
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
-  } catch (error) {
-    throw new Error(`a2a bridge: ${path} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`)
+  } catch (error: unknown) {
+    // `String(error)` keeps the parser diagnostic, including a non-Error throw.
+    throw new Error(`a2a bridge: ${path} is not valid JSON: ${String(error)}`)
   }
   const file = asRecord(parsed, path)
 

@@ -24,6 +24,16 @@ describe('loadA2ABridgeConfig', () => {
     expect(() => loadA2ABridgeConfig({ env: {} })).toThrow(/no configuration path; pass one or set A2A_CONFIG/)
   })
 
+  it('拒绝不是 JSON 的配置文件', () => {
+    expect(() => loadA2ABridgeConfig({ path: configFile('{oops') })).toThrow(/is not valid JSON/)
+  })
+
+  it('给未写端口的 agent 保留默认端口', () => {
+    const path = configFile({ agents: { pi: { defaultWorkspace: '/w' } } })
+    const config = loadA2ABridgeConfig({ path })
+    expect(config.agents.pi).toEqual({ port: 9310, defaultWorkspace: '/w' })
+  })
+
   it('读取文件里的 agents / bus / skills 与模型', () => {
     const path = configFile({
       agents: { pi: { port: 1, defaultWorkspace: '/w' }, opencode: { port: 3, defaultWorkspace: '/o' } },

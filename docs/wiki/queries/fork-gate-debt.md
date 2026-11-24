@@ -282,3 +282,14 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 `text.ts` 顺带做了三处代码清理：删掉 `String.split` 不可能为空的长度判断、删掉 `lineSimilarity` 的 `total === 0` 分支；三处 `noUncheckedIndexedAccess` 必需的 undefined 守卫（窗口首尾、锚点首尾行）标注 `v8 ignore` 并写明「循环上界保证存在」的理由。
 
 剩余：`tool-excalidraw/src/index.ts`（约 47 语句 / 90 分支）与 `fs-local/src/fsio.ts`（约 23 语句）。
+
+### 2026-11-24 豁免内文件的分支推进（清单仍 41）
+
+两个仍豁免的文件补了可直接覆盖的分支，条目暂不删除：
+
+| 文件 | 已补 | 仍缺 |
+| --- | --- | --- |
+| `fs-local/src/fsio.ts` | 宽容匹配的五个阶段歧义上报（引号、行号、转义、trim、块锚点）、双反斜杠转义不生效 | `removePath` 的 `lstat` 权限/通用 errno 分支、`rm` 的 `EACCES` 与通用 errno 分支；两处 `noUncheckedIndexedAccess` 守卫（`indented[0]`／`anchored[0]`）为死分支 |
+| `xingchen/src/index.ts` | `turnReasonOf` 的五个终止原因与未建模默认值、投影 `wire.view` 恒等、空答复不落会话、子运行释放失败不掩盖结果 | 工具无调用 agent 的守卫、`holdRole` 保持上一席位、派发抛错后记失败进度、席位超时释放（已有时机断言但覆盖未计） |
+
+`fs-local` 的 `removePath` 失败分支需要 `chmod` 造出 `EACCES`（与既有目录权限用例同法），通用 errno 分支在本机没有 root 无法构造；`xingchen` 的 `holdRole` 需要投影里先有上一席位的派发记录。

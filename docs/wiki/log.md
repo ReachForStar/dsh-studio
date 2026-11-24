@@ -1314,3 +1314,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - 新增 `packages/fs/fs/tests/text.spec.ts`（22 项）与 `tests/binary-write.spec.ts`，覆盖换行机制、七个宽容匹配阶段、补丁失败码、严格解码与二进制采样、文本后端的 `writeBytes` 拒绝；`fs/src/{index,text}.ts` 达 100% 后豁免条目整体移除。
 - `text.ts` 清理三处不可能成立的分支，另三处 `noUncheckedIndexedAccess` 必需的 undefined 守卫标注 `v8 ignore` 并写明理由。
+
+## [2026-11-24] test(coverage): 豁免内文件分支推进
+
+- `fs-local/src/fsio.ts`：补宽容匹配五个阶段的歧义上报与双反斜杠转义；剩 `removePath` 的权限/通用 errno 分支与两处 NIA 守卫。
+- `xingchen/src/index.ts`：补 `turnReasonOf` 各终止原因、投影线面恒等、空答复不落会话、子运行释放失败；剩工具无 agent、`holdRole`、派发抛错、超时释放。豁免清单仍为 41 个文件。

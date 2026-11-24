@@ -999,6 +999,22 @@ describe('applyLiteralEdit', () => {
   it('reports tolerant ambiguity instead of choosing a candidate', () => {
     expect(() => applyLiteralEdit('  one\n  one', 'one', 'X', false, 'f'))
       .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+    // Every tolerant stage reports the same code rather than picking a candidate.
+    expect(() => applyLiteralEdit('“a” and “a”', '"a"', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+    expect(() => applyLiteralEdit('alpha\nalpha', '1: alpha', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+    expect(() => applyLiteralEdit('one\ntwo\none\ntwo', 'one\\ntwo', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+    expect(() => applyLiteralEdit('trim trim', '  trim  ', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+    expect(() => applyLiteralEdit('start\nA\nB\nstart\nA\nB', 'start\nA\nB', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+  })
+
+  it('leaves escapes with a doubled backslash for later stages', () => {
+    expect(() => applyLiteralEdit('a\nb', 'a\\\\nb', 'X', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_EDIT_NOT_FOUND' }))
   })
 })
 

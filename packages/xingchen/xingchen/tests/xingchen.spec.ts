@@ -266,6 +266,25 @@ describe('@reachforstar/dsh-xingchen 注册', () => {
   })
 })
 
+describe('终止原因与投影视图', () => {
+  it('把会话的终态原因裁剪成清单视图', () => {
+    expect(xingchen.turnReasonOf({ kind: 'aborted', reason: { kind: 'user' } })).toEqual({ kind: 'aborted', cause: 'user' })
+    expect(xingchen.turnReasonOf({ kind: 'blocked' })).toEqual({ kind: 'blocked' })
+    expect(xingchen.turnReasonOf({ kind: 'error', error: { message: 'x', code: 'UNKNOWN' } })).toEqual({ kind: 'error' })
+    expect(xingchen.turnReasonOf({ kind: 'max-tokens' })).toEqual({ kind: 'max-tokens' })
+    expect(xingchen.turnReasonOf({ kind: 'interrupted' })).toEqual({ kind: 'interrupted' })
+    // An unmodeled merge-extensible kind surfaces as the generic failure label.
+    expect(xingchen.turnReasonOf({ kind: 'future-kind' } as never)).toEqual({ kind: 'error' })
+  })
+
+  it('投影线面直接复用单元状态', () => {
+    const state = { lastRole: null, dispatchCount: 0, lastTurnReason: null }
+    const wire = xingchen.xingchenProjectionDefinition.wire
+    if (wire === undefined) throw new Error('the projection declares no wire view')
+    expect(wire.view(state)).toBe(state)
+  })
+})
+
 describe('/review /bug /planning 人面命令', () => {
   it('把任务连同角色章程派发给对应 A2A 对等端', async () => {
     const test = await harness()
@@ -392,6 +411,64 @@ describe('本机专家席（默认）', () => {
     expect(execution?.result.kind).toBe('error')
     expect((execution?.result as { text: string }).text).toContain('未完成')
     expect(stuck.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('席位激活抛错时落定为失败文本并释放子运行', async () => {
+    const test = await harness(a2aStub(), 'auto')
+    const dispose = vi.fn(() => Promise.resolve())
+    test.subagents.startActivation.mockResolvedValueOnce({
+      result: Promise.reject(new Error('spawn failed')),
+      dispose,
+    })
+    const execution = await test.ctx.commands.execute(test.agent, '/review 评估', [], signal)
+    expect(dispose).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(execution?.result)).toContain('spawn failed')
+  })
+
+  it('按子代理的结束原因落定 killed 与 failed 的细节', async () => {
+    const cases: readonly [Record<string, unknown>, string][] = [
+      [{ stopReason: 'aborted' }, '（killed）'],
+      [{ stopReason: 'aborted', diagnostic: 'provider gone' }, 'aborted; diagnostic: provider gone'],
+      [{ stopReason: 'failed' }, '（failed）'],
+      [{ stopReason: 'failed', diagnostic: 'boom' }, 'failed; diagnostic: boom'],
+    ]
+    for (const [result, expected] of cases) {
+      const test = await harness(a2aStub(), 'auto')
+      test.subagents.startActivation.mockResolvedValueOnce({
+        result: Promise.resolve({ ...result, output: [] }),
+        dispose: () => Promise.resolve(),
+      })
+      const execution = await test.ctx.commands.execute(test.agent, '/review 评估', [], signal)
+      expect(JSON.stringify(execution?.result), expected).toContain(expected)
+    }
+  })
+
+  it('空答复不落进会话', async () => {
+    const test = await harness(a2aStub(), 'auto')
+    test.subagents.startActivation.mockResolvedValueOnce({
+      result: Promise.resolve({ stopReason: 'completed', output: [] }),
+      dispose: () => Promise.resolve(),
+    })
+    await test.ctx.commands.execute(test.agent, '/review 评估', [], signal)
+    expect(test.session.snapshotEvents().some(event => event.type === 'assistant/peer-message')).toBe(false)
+  })
+
+  it('子运行释放失败不掩盖席位结果', async () => {
+    const completed = await harness(a2aStub(), 'auto')
+    completed.subagents.startActivation.mockResolvedValueOnce({
+      result: Promise.resolve({ stopReason: 'completed', output: [{ type: 'text', text: '答' }] }),
+      dispose: () => Promise.reject(new Error('dispose failed')),
+    })
+    const done = await completed.ctx.commands.execute(completed.agent, '/review 评估', [], signal)
+    expect(JSON.stringify(done?.result)).toContain('答')
+
+    const failed = await harness(a2aStub(), 'auto')
+    failed.subagents.startActivation.mockResolvedValueOnce({
+      result: Promise.reject(new Error('spawn failed')),
+      dispose: () => Promise.reject(new Error('dispose failed')),
+    })
+    const gone = await failed.ctx.commands.execute(failed.agent, '/review 评估', [], signal)
+    expect(JSON.stringify(gone?.result)).toContain('spawn failed')
   })
 
   it('对等端已配置时席位默认走 a2a，未配置时留在本机', async () => {

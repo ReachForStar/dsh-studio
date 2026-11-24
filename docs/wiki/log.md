@@ -1363,3 +1363,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 
 - `tool-excalidraw/src/index.ts` 补展示面（`presentCall`/`render`/`presentationMeta`）、工作区注册表路径与退化输入用例后转为强制。
 - 删除被工具 schema 挡住的三处死分支（`shapeNumber` 类型校验、draw 的元素对象守卫、写场景的 `appState` 兜底），`elementFromShape` 不再返回 `null`。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-11-24-excalidraw-场景工具达标20--19)。
+
+## [2026-11-24] test(paper): 论文阅读器面板达标，豁免 19 → 18
+
+- `ui-paper-reader/src/client/PaperReader.tsx` 转为强制：用 `Object.defineProperty` 换上拒绝访问的 `Storage` 触发读取失败分支；「卸载后落定的目录」原用例在打开论文前就卸载、属于空转，新用例先打开再卸载并分别兑现与拒绝。
+- 详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md#2026-11-24-论文阅读器面板达标19--18)。

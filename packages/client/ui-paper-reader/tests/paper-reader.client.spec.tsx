@@ -3,7 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateRoute,
+  PaperAnnotation, PaperRecord, PaperSummary, PaperTranslateModel, PaperTranslateRoute,
 } from '../src/types.ts'
 
 const api = vi.hoisted(() => ({
@@ -185,6 +185,57 @@ describe('paper library', () => {
     await waitFor(() => { expect(screen.getByTestId('translate-route').textContent).toBe('session-provider/session-model') })
   })
 
+  it('reads the fixed model through a storage that refuses access', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')
+    const refusing: Storage = {
+      length: 0,
+      clear() {},
+      getItem() { throw new Error('denied') },
+      key() { return null },
+      removeItem() {},
+      setItem() {},
+    }
+    Object.defineProperty(window, 'localStorage', { configurable: true, get: () => refusing })
+    try {
+      api.listPapers.mockResolvedValue([SUMMARY])
+      api.readPaper.mockResolvedValue(RECORD)
+      api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+      renderTab('en', { next: { provider: 'session-provider', model: 'session-model' } })
+      await libraryReady()
+      fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+      await waitFor(() => { expect(api.listTranslateModels).toHaveBeenCalled() })
+      expect(screen.getByTestId('translate-route').textContent).toBe('session-provider/session-model')
+    } finally {
+      if (descriptor === undefined) delete (window as { localStorage?: Storage }).localStorage
+      else Object.defineProperty(window, 'localStorage', descriptor)
+    }
+  })
+
+  it('drops a catalog that settles after the reader unmounted', async () => {
+    api.listPapers.mockResolvedValue([SUMMARY])
+    api.readPaper.mockResolvedValue(RECORD)
+    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
+    const resolved = Promise.withResolvers<readonly PaperTranslateModel[]>()
+    api.listTranslateModels.mockReturnValueOnce(resolved.promise)
+    renderTab()
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(api.listTranslateModels).toHaveBeenCalled() })
+    cleanup()
+    resolved.resolve([])
+    await act(async () => { await resolved.promise })
+
+    const rejected = Promise.withResolvers<readonly PaperTranslateModel[]>()
+    api.listTranslateModels.mockReturnValueOnce(rejected.promise)
+    renderTab()
+    await libraryReady()
+    fireEvent.click(screen.getByLabelText('openPaper:{"name":"attention.pdf"}'))
+    await waitFor(() => { expect(api.listTranslateModels).toHaveBeenCalledTimes(2) })
+    cleanup()
+    rejected.reject(new Error('late failure'))
+    await act(async () => { await rejected.promise.catch(() => undefined) })
+  })
+
   it('falls back to the session route when the catalog read fails', async () => {
     api.listPapers.mockResolvedValue([SUMMARY])
     api.readPaper.mockResolvedValue(RECORD)
@@ -196,19 +247,6 @@ describe('paper library', () => {
     await waitFor(() => { expect(screen.getByTestId('viewer')).toBeDefined() })
     expect(document.querySelector('select')?.options.length).toBe(1)
     expect(screen.getByTestId('translate-route').textContent).toBe('session-provider/session-model')
-  })
-
-  it('leaves a settled catalog write out of an unmounted reader', async () => {
-    const pending = Promise.withResolvers<readonly { provider: string; model: string; name: string }[]>()
-    api.listPapers.mockResolvedValue([SUMMARY])
-    api.readPaper.mockResolvedValue(RECORD)
-    api.readPaperBytes.mockResolvedValue(new Uint8Array([1]))
-    api.listTranslateModels.mockReturnValueOnce(pending.promise)
-    renderTab()
-    // The reader closes before the catalog arrives; the late value is dropped.
-    cleanup()
-    pending.resolve([{ provider: 'gateway', model: 'flash', name: 'Flash' }])
-    await act(async () => { await pending.promise })
   })
 
   it('ignores a stored model the catalog no longer offers', async () => {

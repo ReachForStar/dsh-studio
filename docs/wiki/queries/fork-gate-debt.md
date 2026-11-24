@@ -363,3 +363,12 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 顺带删掉三处被工具 schema 挡住的死分支：`shapeNumber` 的类型校验、draw 循环里「元素不是对象」的跳过、写场景时 `appState` 的兜底；`elementFromShape` 也不再返回 `null`——调用方已按 `DRAWABLE_TYPES` 过滤，再判一次只会留下不可达分支，`draw` 里的 `if (element === null)` 随之删除。三处无法经工具触达的守卫改用 `v8 ignore` 并注明「工具 schema 已保证」。
 
 `presentCall` 的参数先经工具 schema 校验：传不合规的参数会得到 `undefined` 而不是卡片，写用例时要按 schema 造参数。
+
+### 2026-11-24 论文阅读器面板达标（19 → 18）
+
+`packages/client/ui-paper-reader/src/client/PaperReader.tsx` 转为强制，补两处：
+
+- **拒绝访问的存储**：`storedTranslateModel` 的 `catch` 一直没有执行。原先的用例 `vi.spyOn(window, 'localStorage', 'get')` 想让读取抛错，但 jsdom 的该属性不是可拦截的数据属性，异常根本没走到 `getItem`。改成用 `Object.defineProperty(window, 'localStorage', { get: () => refusing })` 换上一个 `getItem` 必抛的 `Storage` 替身，并在结束时还原描述符。
+- **卸载后落定的目录**：原用例「leaves a settled catalog write out of an unmounted reader」在没打开论文时就卸载，`listTranslateModels` 根本没被调用，属于空转。真正驱动目录读取的是打开论文后的阅读器实例，新用例先打开论文、确认调用发生，再卸载并让 promise 分别兑现与拒绝，两个 `aborted` 守卫才得到覆盖。
+
+教训与 `relationships.spec.ts` 相同：断言「卸载后不写状态」不足以证明代码执行过，必须断言副作用确实发生过（这里用 `toHaveBeenCalled`）。

@@ -18,7 +18,7 @@
 - [ ] 批次 G 第二批：`computer-use-cua-driver-mcp/{index,installer}.ts`（安装路由与安装器约 37 语句）、`CuaDriverInstall.tsx`
 - [x] 批次 H 第一批：`ui-sidebar-files` 四个文件、`client-ui-stats/StatsTable.tsx` 转为强制
 - [x] 批次 H 第二批：`ui-paper-reader/src/translate-service.ts` 转为强制（models 路由的 GET、非 GET 405、目录读取失败的 500）
-- [ ] 批次 H 第三批：`PaperReader.tsx`（余 localStorage 读取失败与两处已卸载分支）、`CuaDriverInstall.tsx`、`ui-a2a-status`
+- [ ] 批次 H 第三批：`CuaDriverInstall.tsx`、`ui-a2a-status`（`PaperReader.tsx` 已达标：换存储替身触发读取失败、打开论文后再卸载覆盖两处 aborted 守卫）
 - [x] 批次 I 第一批：`subagent-pi/{index,run}.ts` 转为强制（启动失败与清理失败的聚合、中止优先于 cwd 诊断）
 - [ ] 批次 I 第二批：`pi-agent-loop` 6 个文件（0–88% 覆盖，需按 e2e 已验证行为逐条补）
 - [ ] 里程碑：`test:coverage` 全绿且豁免清单清零

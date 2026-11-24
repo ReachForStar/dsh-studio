@@ -1323,3 +1323,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 ## [2026-11-24] test(fs): `removePath` 失败分支与宽容匹配补用例
 
 - `packages/fs/fs-local/tests/fsio.spec.ts`：新增 `removePath` 的缺失/非空/权限分支（`chmod 000` 探针失败、只读目录内删除 `EACCES`，沿既有目录权限用例的 root 容错写法）、宽容匹配阶段的 `replaceAll` 首候选行为、回车转义；`fsio.ts` 剩通用 errno 兜底与四处 NIA 守卫。
+
+## [2026-11-24] fix(fs): `removePath` 的错误映射去重，豁免 41 → 40
+
+- `packages/fs/fs-local/src/fsio.ts` 的 `removePath`：两处 catch 手写 `FS_NOT_FOUND`／`FS_PERMISSION_DENIED` 分支，与 `fsErrorFromErrno` 的映射逐字相同（ENOENT/ENOTDIR→not found、EACCES/EPERM→permission denied、其余→FS_IO_ERROR），直接改为一行 `throw fsErrorFromErrno(...)`；行为不变，`fsio.ts` 达 100% 后删除豁免。
+- 同时补齐宽容匹配各阶段与 `removePath` 的缺失/非空/权限/特殊文件用例；`xingchen/index.ts` 再补命令面派发失败用例。

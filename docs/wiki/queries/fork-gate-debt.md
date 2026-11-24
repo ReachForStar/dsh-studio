@@ -289,7 +289,7 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 
 | 文件 | 已补 | 仍缺 |
 | --- | --- | --- |
-| `fs-local/src/fsio.ts` | 宽容匹配的五个阶段歧义上报（引号、行号、转义、trim、块锚点）、双反斜杠转义不生效、`removePath` 的缺失/非空/权限分支（`chmod 000` 探针失败、只读目录内删除 `EACCES`）、宽容阶段的 `replaceAll` 首候选行为 | `rm` 的通用 errno 兜底分支（本机无 root 造不出 `EPERM`/`EBUSY`）、四处 `noUncheckedIndexedAccess` 守卫 |
+| `fs-local/src/fsio.ts` | **已清偿**：补宽容匹配与 `removePath` 失败分支后，发现 `removePath` 的两个 catch 与 `fsErrorFromErrno` 的映射完全重复（同为「not found」/「permission denied」/通用 errno），删除重复分支即可达 100%，删除豁免 | — |
 | `xingchen/src/index.ts` | `turnReasonOf` 的五个终止原因与未建模默认值、投影 `wire.view` 恒等、空答复不落会话、子运行释放失败不掩盖结果 | 工具无调用 agent 的守卫、`holdRole` 保持上一席位、派发抛错后记失败进度、席位超时释放（已有时机断言但覆盖未计） |
 
 `fs-local` 的 `removePath` 失败分支需要 `chmod` 造出 `EACCES`（与既有目录权限用例同法），通用 errno 分支在本机没有 root 无法构造；`xingchen` 的 `holdRole` 需要投影里先有上一席位的派发记录。

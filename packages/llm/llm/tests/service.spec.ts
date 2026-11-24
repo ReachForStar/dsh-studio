@@ -536,7 +536,6 @@ describe('LlmRuntime', () => {
           [Symbol.asyncIterator](): AsyncIterator<StreamChunk> {
             return {
               // Third-party adapters can reject with arbitrary values.
-              // oxlint-disable-next-line typescript/prefer-promise-reject-errors
               next: () => Promise.reject('plain provider failure'),
             }
           },
@@ -1529,6 +1528,23 @@ describe('LlmRuntime', () => {
     expect(adapter.lastOptions?.messages[0]?.source).toEqual({
       kind: 'model', provider: 'historical', model: 'old-model', replayState,
     })
+  })
+
+  it('leaves a model message without replay state untouched across adapters', async () => {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    ctx.llm.registerAdapter(['historical'], new RecordingAdapter(SCRIPT))
+    const target = new RecordingAdapter(SCRIPT)
+    ctx.llm.registerAdapter(['target'], target)
+    const message = createMessage({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'old response' }],
+      source: { kind: 'model', provider: 'historical', model: 'old-model' },
+    })
+
+    for await (const _chunk of ctx.llm.stream({ provider: 'target', model: 'new-model', messages: [message] })) { /* drain */ }
+
+    expect(target.lastOptions?.messages[0]).toBe(message)
   })
 
   it('strips replay state but preserves provider and model when the target uses a different adapter instance', async () => {

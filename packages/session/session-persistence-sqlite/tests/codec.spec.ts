@@ -11,6 +11,8 @@ describe('SQLite header decoding', () => {
     expect(decodeHeader(header)).toEqual({ ...header, delegationDepth: 0 })
     const parent = { ...header, cwd: '/work', parentSession: SessionId('parent'), origin: 'subagent' as const, delegationDepth: 1, agentPreset: 'worker' }
     expect(decodeHeader(parent)).toEqual(parent)
+    const pi = { ...header, backend: 'pi' as const }
+    expect(decodeHeader(pi)).toEqual({ ...pi, delegationDepth: 0 })
   })
 
   it.each([null, { ...header, version: 100 }, { ...header, version: 3 }, { ...header, delegationDepth: -1 }])(

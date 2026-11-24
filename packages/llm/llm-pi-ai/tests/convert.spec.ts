@@ -567,6 +567,24 @@ describe('toPiContext', () => {
     expect(onDegrade).toHaveBeenCalledWith(expect.stringContaining('expected a response object'))
   })
 
+  it('maps a peer assistant source to the foreign provider and model', () => {
+    const context = toPiContext({
+      provider: 'deepseek',
+      model: 'm',
+      messages: [createMessage({
+        role: 'assistant',
+        content: [{ type: 'text', text: 'peer answer' }],
+        source: { kind: 'user' },
+      })],
+    })
+    expect(context.messages[0]).toMatchObject({
+      role: 'assistant',
+      api: 'dsh-foreign',
+      provider: 'dsh-foreign',
+      model: 'dsh-foreign',
+    })
+  })
+
   it('degrades replay metadata whose blocks do not match the durable content', () => {
     const onDegrade = vi.fn()
     const state = toPiReplayState(assistant({ content: [{ type: 'text', text: 'done' }] }))

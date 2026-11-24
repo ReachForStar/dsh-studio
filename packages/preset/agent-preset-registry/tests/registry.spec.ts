@@ -68,6 +68,13 @@ describe('declarative preset revisions', () => {
     expect(ctx.agentPresets.inspectCompositions()).toEqual([])
   })
 
+  it('reports a preset backend on list and resolve', async () => {
+    const ctx = await setup()
+    await declare(ctx, { ...contribution('standard'), backend: 'pi' })
+    expect(await ctx.agentPresets.list()).toMatchObject([{ id: 'standard', backend: 'pi' }])
+    expect(await ctx.agentPresets.resolve()).toMatchObject({ id: 'standard', backend: 'pi' })
+  })
+
   it('reports a failed definition while allowing healthy definitions and the host to start', async () => {
     const ctx = await setup()
     await declare(ctx, { id: 'broken', plugins: [{ name: 'missing-preset-plugin-for-test' }] })

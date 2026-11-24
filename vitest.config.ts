@@ -454,11 +454,14 @@ export default defineConfig({
         // TODO(gui): cover and remove with the client test lane above.
         'packages/interaction/commands/src/index.ts',
         // Fork capability debt — tracked in docs/wiki/queries/fork-gate-debt.md.
-        // These files carry fork-authored branches whose behavior is pinned by
-        // profile, e2e, or host lanes a keyless unit run cannot execute: A2A
-        // needs Kafka and peer hosts, the remote providers need POSIX SSH/SFTP
-        // servers, CUA needs a native helper, and the Pi loop needs a model key.
-        // Every entry names one file so the exemption cannot grow silently.
+        // Every file below carries fork-authored branches this host's unit lane
+        // never reaches, so the per-file bar stays off for it: CUA needs a
+        // native helper, the Pi loop's live turn is an e2e lane, and the client
+        // panels need the browser lane. The rest are missing unit cases, not
+        // host limits — the A2A bus mocks kafkajs and the remote suites run the
+        // in-repo SSH test server, so their gaps close with more fakes and
+        // cases. Every entry names one file so the exemption cannot grow
+        // silently; delete the entry when the file reaches the bar.
         'packages/a2a/a2a/src/{bridge-config,bus,client,index,server,task-store}.ts',
         'packages/a2a/a2a-host/src/{executor,index}.ts',
         'packages/a2a/tool-a2a/src/index.ts',
@@ -486,16 +489,12 @@ export default defineConfig({
         'packages/test-support/client-runtime/src/workspaces.ts',
         'packages/api/session-controller/src/agent.ts',
         'packages/client/modules/src/client/system.ts',
-        'packages/preset/agent-preset-registry/src/index.ts',
-        'packages/llm/llm/src/index.ts',
-        'packages/llm/llm-pi-ai/src/replay.ts',
         'packages/core/agent-loop/src/index.ts',
-        'packages/core/session/src/validation.ts',
         'packages/session/session-format-v2-to-v3/src/{codec,validation}.ts',
         'packages/session/session-format-v3-to-v4/src/{facts,relationships}.ts',
         'packages/session/session-format-v4-to-v5/src/{facts,migration,validation}.ts',
         'packages/session/session-persistence-jsonl/src/format.ts',
-        'packages/session/session-persistence-sqlite/src/{codec,persistence,sqlite}.ts',
+        'packages/session/session-persistence-sqlite/src/{persistence,sqlite}.ts',
         ...windowsUnsupportedCoveragePackages.map(path => `${path}/src/**/*.ts`),
         ...windowsOnlyCoverageExclusions,
         ...windowsRunnerCoverageExclusions,

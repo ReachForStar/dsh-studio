@@ -63,7 +63,8 @@ describe('pi agent session (real)', () => {
           reasoning: false,
           input: ['text'],
           cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-          contextWindow: 128_000,
+          // The gateway advertises context_length 1048576; keep the descriptor in step.
+          contextWindow: 1_048_576,
           maxTokens: 8192,
         },
       ],

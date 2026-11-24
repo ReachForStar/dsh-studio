@@ -11,6 +11,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionStore } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { PiLoop } from '@deepseek-ai/dsh-pi-agent-loop'
 import type { OpenedPiSession } from '@deepseek-ai/dsh-pi-agent-loop'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
@@ -41,7 +42,8 @@ async function openAmaxSession(cwd: string): Promise<OpenedPiSession> {
       reasoning: false,
       input: ['text'],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 128_000,
+      // The gateway advertises context_length 1048576; keep the descriptor in step.
+      contextWindow: 1_048_576,
       maxTokens: 8192,
     }],
   })
@@ -70,6 +72,7 @@ describe('PiLoop event alignment (real)', () => {
 
     const ctx = new Context()
     await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(PiLoop, { openSession: ({ cwd }) => openAmaxSession(cwd) })
 

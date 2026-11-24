@@ -20,6 +20,7 @@ import {
   readTextForDiff,
   readWholeBytes,
   readWholeText,
+  removePath,
   resolveLocalTarget,
   restoreLineEndings,
   streamWholeText,
@@ -939,6 +940,44 @@ describe('writeFileAtomic — temp-file safety', () => {
   })
 })
 
+describe('removePath', () => {
+  it('reports missing and non-empty directories without deleting', async () => {
+    await expect(removePath(join(dir, 'ghost'), false)).rejects.toMatchObject({ code: 'FS_NOT_FOUND' })
+    const busy = join(dir, 'busy')
+    await mkdir(busy)
+    await writeFile(join(busy, 'child.txt'), 'x')
+    await expect(removePath(busy, false)).rejects.toMatchObject({ code: 'FS_NOT_EMPTY' })
+    await expect(removePath(busy, true)).resolves.toEqual({ kind: 'directory' })
+    expect(await stat(join(dir, 'busy')).then(() => 'present', () => 'gone')).toBe('gone')
+  })
+
+  it('translates permission failures from the probe and the removal', async () => {
+    const locked = join(dir, 'locked')
+    await mkdir(locked)
+    await writeFile(join(locked, 'child.txt'), 'x')
+    await chmod(locked, 0o000)
+    try {
+      const probeFailure = await removePath(join(locked, 'child.txt'), false).then(() => undefined, (error: unknown) => error)
+      // Root-like environments may still read mode-000 directories.
+      if (probeFailure !== undefined) expect(probeFailure).toMatchObject({ code: 'FS_PERMISSION_DENIED' })
+    } finally {
+      await chmod(locked, 0o700)
+    }
+
+    const readOnly = join(dir, 'read-only')
+    await mkdir(readOnly)
+    const file = join(readOnly, 'kept.txt')
+    await writeFile(file, 'x')
+    await chmod(readOnly, 0o500)
+    try {
+      const removeFailure = await removePath(file, false).then(() => undefined, (error: unknown) => error)
+      if (removeFailure !== undefined) expect(removeFailure).toMatchObject({ code: 'FS_PERMISSION_DENIED' })
+    } finally {
+      await chmod(readOnly, 0o700)
+    }
+  })
+})
+
 describe('applyLiteralEdit', () => {
   it('replaces a unique match', () => {
     expect(applyLiteralEdit('a b c', 'b', 'X', false, 'f')).toEqual({ content: 'a X c', replacements: 1 })
@@ -1010,6 +1049,24 @@ describe('applyLiteralEdit', () => {
       .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
     expect(() => applyLiteralEdit('start\nA\nB\nstart\nA\nB', 'start\nA\nB', 'X', false, 'f'))
       .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+  })
+
+  it('matches a unique trimmed search and a unique indentation block', () => {
+    expect(applyLiteralEdit('x trim y', '  trim ', 'T', false, 'f').content).toBe('x T y')
+    expect(applyLiteralEdit('  keep\n  me', 'keep\nme', 'K', false, 'f').content).toBe('K')
+  })
+
+  it('replaces only the first tolerant candidate under replaceAll', () => {
+    // Without an exact occurrence the tolerant stages act on their first candidate.
+    expect(applyLiteralEdit('x trim y trim z', '  trim  ', 'T', true, 'f').content).toBe('x T y trim z')
+    expect(applyLiteralEdit('  one\n  two\n  one\n  two', 'one\ntwo', 'X', true, 'f').content)
+      .toBe('X\n  one\n  two')
+    expect(applyLiteralEdit('start\nA\nB\nchanged\nend\nstart\nA\nB\nchanged\nend', 'start\nA\nB\nother\nend', 'X', true, 'f').content)
+      .toBe('X\nstart\nA\nB\nchanged\nend')
+  })
+
+  it('interprets the carriage-return escape', () => {
+    expect(applyLiteralEdit('a\rb', 'a\\rb', 'X', false, 'f').content).toBe('X')
   })
 
   it('leaves escapes with a doubled backslash for later stages', () => {

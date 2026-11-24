@@ -240,3 +240,22 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 **发现的缺陷：V5 物理行不能携带 `backend`。** `SessionHeader.backend` 是逻辑字段，`format.ts#toHeaderLine` 会把它写进首行，但 V5 编码器把首行交给冻结的 V2 编码器，V2 校验拒收未知键，于是 `toHeaderLine` 抛 `format v2 header has unexpected field backend`。读侧同样拒收。该分支一直不可达，正是覆盖率豁免掩盖的真实问题。本轮只删掉读侧那条不可达的 `backend` 还原分支并补用例记录现状（写成首行会被拒），**持久化 `backend` 需要一次格式变更决策**：或在 V5 物理行上按 V3 的做法剥离再挂回（会改变已发布 V5 首行键集，需补持久化变更记录），或明确不持久化、由调用方在 resume 时指定。
 
 **仍欠**：`verify-no-unknown-casts` 156 处（ADR 禁止扩基线，需逐点重写夹具）、`duplication` 88 处（跨包重构），两者都要先定范围。
+
+### 2026-11-24 覆盖率达标续批
+
+豁免清单从 50 降到 46（删去 4 个文件），做法都是补真实分支用例，不改产品行为：
+
+| 文件 | 缺口 | 补的用例 |
+| --- | --- | --- |
+| `packages/client/modules/src/client/system.ts` | 兄弟 chunk 已在模块表里时的缓存返回 | 同一 chunk 被 require 两次，第二次命中模块表 |
+| `packages/test-support/client-runtime/src/workspaces.ts` | `deleteSession` 的默认镜像与 stub 两条路 | 预置带 session 的工作区与 pin 集合后删除，再走 stub |
+| `packages/api/session-controller/src/agent.ts` | 组合里 `backend` 的四处展开 | 让测试守护的预设解析出 `backend: 'pi'`，分别覆盖新建、复用（stored 空白会话）与 `resolveObservedAgent` 三条路 |
+| `packages/workspace/workspace/src/index.ts` | `deleteSession` 整段（活动/存活/成功/缺失日志） | 四个用例：进程仍持有会话、提供方报告活动、成功删除并清归档与 pin、日志不存在返回 false |
+
+`pi-agent-loop` 的 `config-session-id.spec.ts` 顺带补了后端校验与 `dsh` 元数据的用例，并让 peer 后端经注册表委派（覆盖 `delegateToRegistry` 的大部分）。`packages/core/agent-loop/src/index.ts` 仍挂在豁免里，剩余三处**不可达或需真实 peer 循环**：
+
+- `delegateToRegistry` 的 `{ cwd }`／`{ backend }` 展开里“字段缺省”那一侧：唯一调用点必定传入 `backend`，所以这些分支是死分支，应随代码简化删除而不是补用例。
+- 委派成功后的 `ownership.track(() => handle.dispose())`：peer 工厂必须返回一个真实 `Agent` 句柄，而现有夹具都靠 `as unknown as Agent` 伪造（被 `verify-no-unknown-casts` 禁止），只能靠挂真实 Pi／子代理后端才能覆盖。
+- `.catch` 里的启动失败报告需要 peer 循环创建失败才会执行。
+
+结论：`agent-loop` 的处理顺序是先删死分支、再由真实 peer 后端用例补齐，而不是继续在夹具里绕。

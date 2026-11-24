@@ -309,3 +309,13 @@ fork 自研包（`packages/remote/*`、`packages/a2a/*`、`packages/core/pi-agen
 ### 2026-11-24 A2A 桥配置达标（34 → 33）
 
 `a2a/src/bridge-config.ts` 转为强制：补「配置文件不是 JSON」与「agent 未写端口时取默认端口」两条用例；同时把 `catch` 里 `error instanceof Error ? error.message : String(error)` 的分支改成 `String(error)`——`JSON.parse` 只会抛 `SyntaxError`，另一侧永不可达，而 `String(error)` 同样保留「SyntaxError: …」诊断文本。
+
+### 2026-11-24 A2A 工具与 Pi 子代理达标（33 → 30）
+
+| 文件 | 补的用例 | 结果 |
+| --- | --- | --- |
+| `a2a/tool-a2a/src/index.ts` | 两个工具的 `presentCall` 卡片（含带 skill 的标题）、`skill`／`workspace` 合成 metadata 的透传、派发答复缺任务标识时只回文本 | 转强制 |
+| `subagent-pi/src/run.ts` | 启动失败与清理失败同时发生时的 `AggregateError`（销毁 stdin 让协议启动抛错，并让终止也抛） | 转强制 |
+| `subagent-pi/src/index.ts` | 请求已中止且 cwd 不可用时优先报告中止；请求仍存活时保留 cwd 诊断 | 转强制 |
+
+`a2a-host/executor.ts` 只差一条「非事件帧跳过」的分支：这一帧类型不在 `SessionFollowFrame` 的可构造成员里，现有测试靠被禁止的 `as unknown` 伪造，因此仍随 `index.ts` 留在豁免中。

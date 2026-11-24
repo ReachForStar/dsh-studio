@@ -1337,3 +1337,7 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 ## [2026-11-24] fix(a2a): 桥配置解析达标，豁免 34 → 33
 
 - `a2a/src/bridge-config.ts`：补非法 JSON 与缺省端口用例；`catch` 里只可能来自 `SyntaxError` 的 `instanceof` 分支改为 `String(error)`，诊断文本保留。文件达 100% 后条目收窄到其余五个文件。
+
+## [2026-11-24] test(coverage): A2A 工具与 Pi 子代理达标，豁免 33 → 30
+
+- `a2a/tool-a2a/src/index.ts`、`subagent-pi/src/{index,run}.ts` 补用例后转为强制；`a2a-host/executor.ts` 余一条不可构造帧的分支，仍与 `index.ts` 同组豁免。

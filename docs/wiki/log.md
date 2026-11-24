@@ -1288,3 +1288,8 @@ Linux 使用独立蓝色鲸鱼资源，保留其他平台图标。四平台打�
 - `constraints`、`verify-default-product-isolation`、`verify-product-use`、`verify-package-dependencies`、`publint` 五门转绿：删 11 个构建残渣目录；webhook 与 `tool-ralph` 登记进 `EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS` 与 `DEFAULT_PRODUCT_EXPERIMENTAL_PACKAGES`；四个 fork 包登记 `optional` 维护角色；删两条未使用的 safe-host 导出登记；`xingchen` 的 `files` 补 `lib/client.js` 与 `src`。
 - 覆盖率豁免 56 → 50：补齐 `session-format-v2-to-v3`、`session-format-v4-to-v5`、`session-persistence-jsonl/format.ts` 的分支用例。
 - 发现并记录缺陷：V5 物理首行不能携带 `backend`（编码经冻结 V2 校验拒收），读侧那条还原分支不可达，已删除并补现状用例；持久化 `backend` 需一次格式变更决策。详见 [fork 自研包的门禁红项清单](queries/fork-gate-debt.md)。
+
+## [2026-11-24] docs(wiki) | 记录 Linux 上的 computer use 方案
+
+- 新增 [Linux 上的 computer use 方案](queries/linux-computer-use-options.md)：对比原生 Cua Driver SDK、已装驱动的 MCP 桥、浏览器车道三条路径；本机 X11（`DISPLAY=:0`）实测原生 provider 自检通过，工具目录 42 个，`get_screen_size` 读到 4480x1440、`list_windows` 列出 10 个窗口。
+- 记录缺口：`cua-bundle` 只挂 `cua-macos`／`cua-windows` 并在非这两平台禁用权限面板，Linux 需自备 overlay；截图依赖 image 能力的模型路由与 attachment store；Wayland 场景待核验。

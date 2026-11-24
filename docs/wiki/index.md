@@ -1,6 +1,6 @@
 ---
 type: index
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # Wiki 索引
@@ -86,6 +86,7 @@ updated: 2026-11-23
 - [合并上游 upstream/master（2026-11-18，0.2.3-alpha.2 同步）](queries/upstream-merge-2026-11-18.md) — 1753 个提交、630 个冲突文件（389 个包清单、371 个仅版本号）；设置页改为独立 `settings.section` 分区、MCP 客户端整包取上游后重接 fork 连接池与资源等待、SQLite 持久化移植到 v5 并实现 `delete`、v4 冻结词表接纳上游改名事件、`SystemPrompt` 新依赖导致的测试夹具补挂与重复挂载坑，以及 7 个待重录快照与双亲提交重排的复发预防。
 - [fork 发布 dsh 0.2.1-rc.2 的流程与门禁踩坑](queries/fork-release-dsh-0.2.1-rc.2.md) — verify/build:official/pack/zip/release 一条链的顺序要求：家族同版本、workspace:* 协议、构建记录绑定 HEAD，以及同名 tag 更新走删除+新建；2026-10-30 复核家族 391 个成员与上游同版本，无需改动
 - [Linux 桌面 deb 安装包与 Release 工作流](queries/desktop-deb-release.md) — 四平台 Release 构建、Linux 蓝色鲸鱼及标准尺寸图标、客户端发布文件完整性与 ASAR Office 解析；含本机重打包的两个网络问题（坏代理拖垮 npm 下载、`@electron/get` 的 SHASUMS 行格式）与本地镜像做法；2026-10-27 补 Release 桌面包三触发（published / `dsh-v*` tag push / 手动 `release_tag` 补传）与按 target 校验非空；2026-11-17 补本机安装走 `pkexec` 的 polkit 弹窗授权（`sudo -n` 无凭据不可用）与装后自检。
+- [Linux 上的 computer use 方案](queries/linux-computer-use-options.md) — 三条路径对比（原生 Cua Driver SDK／已装独立驱动的 MCP／浏览器车道），本机 X11 实测 42 个工具与真实窗口读取；`cua-bundle` 只覆盖 macOS 与 Windows 的缺口，以及截图需要的 image 模型与附件条件。
 - [Cua Driver 检测补全与入口迁移（2026-10-27）](queries/cua-driver-detect-and-placement.md) — 检测补齐安装器写入的稳定路径（`~/.local/bin`、`~/.cua-driver/packages/current`、Windows `LOCALAPPDATA`）并按 `X_OK` 判定，check 路由回报 `path`；安装入口从插件卡片 footer 迁到「计算机操作」详情页，安装后自动重检。
 - [任务列表跨轮次消失与状态不回写（2026-10-27）](queries/todo-list-lifetime-and-status.md) — `todos` 投影不再在 `turn/start` 清空（`stateVersion` 2→3），列表跨轮次保留；状态仍归模型 `todo_write` 全量重写，描述追加轮次结束前回写纪律。
 - [持久化历史分叉与来源种类补记（2026-10-27）](queries/persistence-history-fork-repair.md) — v5 记录快照重编码为 v2 布局、`action-card-status` 的 4 个共享根重排为 v5→action-card-status 消分叉、`assistant/peer-message` 来源联合新增 `action-cards` 补 `same-version` 记录；含「判断某根是否需记录要读门禁 tips」的复发预防。
